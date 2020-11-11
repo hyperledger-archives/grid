@@ -269,7 +269,8 @@ services:
 
   grid-ui-alpha:
     build:
-      context: ../../ui
+      context: ../../
+      dockerfile: ui/Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
     image: grid-ui-alpha
@@ -394,7 +395,8 @@ services:
 
   grid-ui-beta:
     build:
-      context: ../../ui
+      context: ../../
+      dockerfile: ui/Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
     image: grid-ui-beta
@@ -511,7 +513,8 @@ services:
 
   grid-ui-gamma:
     build:
-      context: ../../ui
+      context: ../../
+      dockerfile: ui/Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
     image: grid-ui-gamma
