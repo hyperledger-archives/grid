@@ -260,7 +260,7 @@ steps 3 through 10.
    ```
    - product_namespace: "GS1"
      product_id: "013600000929"
-     owner: "314156"
+     owner: "013600"
      properties:
       product_name: "Truvia 80 ct."
       image_url: "https://target.scene7.com/is/image/Target/GUEST_b7a6e983-b391-40a5-ad89-2f906bce5743?fmt=png&wid=1400&qlt=80"
@@ -305,8 +305,8 @@ steps 3 through 10.
 
    ```
    root@gridd-alpha:/# grid \
-   organization create 314156 myorg '123 main street' \
-    --metadata gs1_company_prefixes=314156
+   organization create 013600 myorg '123 main street' \
+    --metadata gs1_company_prefixes=013600
    ```
 
    This command creates and submits a transaction to create a new Pike
@@ -320,7 +320,7 @@ steps 3 through 10.
 
    ```
    root@gridd-alpha:/# grid \
-   agent update 314156 $(cat ~/.grid/keys/alpha-agent.pub) --active \
+   agent update 013600 $(cat ~/.grid/keys/alpha-agent.pub) --active \
    --role can_create_product \
    --role can_update_product \
    --role can_delete_product \
