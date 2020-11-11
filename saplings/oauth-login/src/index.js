@@ -31,15 +31,15 @@ registerConfigSapling('login', () => {
     window.$CANOPY.redirectedFrom.includes('access_token')
   ) {
     // Extract user token information
-    const accessTokenRegex = /\?access_token=([^&#]*)|&|$/;
+    const accessTokenRegex = /[?|&]access_token=([^&#]*)|&|$/;
     const token = window.$CANOPY.redirectedFrom.match(accessTokenRegex)[1];
     // Extract user information
-    const userIdRegex = /\?user_id=([^&#]*)|&|$/;
+    const userIdRegex = /[?|&]user_id=([^&#]*)|&|$/;
     let userId = window.$CANOPY.redirectedFrom.match(userIdRegex)[1];
     if (!userId) {
       userId = 'OAuthUser';
     }
-    const displayNameRegex = /\?display_name=([^&#]*)|&|$/;
+    const displayNameRegex = /[?|&]display_name=([^&#]*)|&|$/;
     let displayName = window.$CANOPY.redirectedFrom.match(displayNameRegex)[1];
     if (!displayName) {
       displayName = 'OAuthUser';
