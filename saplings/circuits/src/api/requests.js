@@ -68,10 +68,10 @@ function httpRequest(method, url, data, headerFn) {
   });
 }
 
-export function get(url) {
-  return httpRequest('GET', url);
+export function get(url, headerFn = null) {
+  return httpRequest('GET', url, null, headerFn);
 }
 
-export function post(url, data, headerFn) {
+export function post(url, data, headerFn = null) {
   return httpRequest('POST', url, data, headerFn);
 }
