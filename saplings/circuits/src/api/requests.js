@@ -42,6 +42,7 @@ function httpRequest(method, url, data, headerFn) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open(method, url, true);
+    request.withCredentials = true;
     if (headerFn) {
       headerFn(request);
     }
