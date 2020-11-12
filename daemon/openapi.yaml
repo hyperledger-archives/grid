@@ -17,22 +17,55 @@
 openapi: 3.0.0
 info:
   version: 0.1.0
-  title: Grid REST API
-  description: _An API providing HTTP/JSON interface to Hyperledger Grid._
+  title: Grid Daemon REST API
+  description: A REST API providing HTTP/JSON interface to Hyperledger Grid.
+  contact:
+    name: Hyperledger Grid community
+    url: https://grid.hyperledger.org/community/
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0
+externalDocs:
+  description: |
+    For more information about how to create Sabre batches, please see the
+    Sabre documentation.
+  url: https://sawtooth.hyperledger.org/docs/sabre/releases/latest/
 paths:
+  # Transactions
   /batches:
     post:
       tags:
         - Transaction
-      summary: Submit a BatchList of Transactions
+      summary: Submits a list of transaction batches to the distributed ledger
+      externalDocs:
+        description:
+          For more information about the Batch data structure, see the Sawtooth
+          architecture guide
+        url: https://sawtooth.hyperledger.org/docs/core/releases/latest/architecture/transactions_and_batches.html
       description: |
-        Accepts a protobuf formatted `BatchList` as an octet-stream binary
-        file and submits it to be committed.
+        This endpoint can be used to submit batches to the underlying
+        distributed ledger. The operation called by this endpoint will depend on
+        which distributed ledger is supporting this deployment of Grid.
+        Regardless of the underlying ledger, the body of this request must be a
+        valid list of Sabre batches.
+
+        If the Grid Daemon is running against a Sawtooth distributed ledger,
+        then the batches are forwarded to the `/batches` endpoint of the
+        Sawtooth REST API.
+
+        If the Grid Daemon is running against Splinter, then the `service_id`
+        query parameter is required for this request. The Grid Daemon will use
+        the service ID to forward the transaction to an endpoint on the Splinter
+        Daemon for the Scabbard service corresponding to the provided service
+        ID.
 
         The API will return immediately with a status of `202`. There will be
         no `data` object, only a `link` to a `/batch_statuses` endpoint to be
         polled to check the status of submitted batches.
       operationId: post_batches
+      parameters:
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/wait"
       requestBody:
         content:
           application/octet-stream:
@@ -42,17 +75,30 @@ paths:
         required: true
       responses:
         "202":
-          description: Batches submitted for validation, but not yet committed
+          description: |
+            The batch list was submitted for validation but have not yet been
+            evaluated. After the server receives the batches for validation, it
+            will attempt to execute the transactions contained in each batch in
+            the batch list. If each of the transactions in a batch are
+            successful, the distributed ledger's state will be updated and Grid
+            will receive state delta events from the distributed ledger. The
+            Grid Daemon processes these events and updates the Grid database
+            accordingly.
+
+            This means that there is a delay between when transactions are
+            submitted and when the new data is actually available to fetch using
+            the Grid REST API GET endpoints. This delay can range from a few
+            milliseconds to several minutes depending on the underlying ledger.
+            Developers should take this delay into account when designing apps
+            on top of Grid.
           content:
             application/json:
               schema:
                 properties:
                   link:
-                    $ref: "#/components/schemas/Link"
+                    $ref: "#/components/schemas/BatchStatusLink"
         "400":
           $ref: "#/components/responses/400BadRequest"
-        "429":
-          $ref: "#/components/responses/429TooManyRequests"
         "500":
           $ref: "#/components/responses/500ServerError"
         "503":
@@ -61,8 +107,7 @@ paths:
     get:
       tags:
         - Transaction
-      summary:
-        Fetch the committed statuses for a set of batches
+      summary: Fetches the committed statuses for a set of batches
       description: |
         Fetches an array of objects with a status and id for each batch
         requested. There are four possible statuses with string values
@@ -82,153 +127,76 @@ paths:
       parameters:
         - name: id
           in: query
-          description: A comma-separated list of batch ids
+          description: A comma-separated list of batch IDs
           required: true
           schema:
             type: string
         - $ref: "#/components/parameters/wait"
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
           description: Successful operation
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    $ref: "#/components/schemas/BatchStatuses"
-                  link:
-                    $ref: "#/components/schemas/Link"
+                type: array
+                items:
+                  properties:
+                    id:
+                      type: string
+                      example: 89807bfc9089e37e00d87d97357de14cfbc455cd608438d426a625a30a0da9a31c406983803c4aa27e1f32a3ff61709e8ec4b56abbc553d7d330635b5d27029c
+                    status:
+                      type: string
+                      example: INVALID
+                      enum:
+                        - COMMITTED
+                        - INVALID
+                        - PENDING
+                        - UNKNOWN
+                    invalid_transactions:
+                      type: array
+                      items:
+                        properties:
+                          id:
+                            type: string
+                            example: 540a6803971d1880ec73a96cb97815a95d374cbad5d865925e5aa0432fcf1931539afe10310c122c5eaae15df61236079abbf4f258889359c4d175516934484a
+                          message:
+                            type: string
+                            example: |
+                              Verb is \"inc\" but name \"foo\" not in state
+                          extended_data:
+                            type: string
+                            format: byte
+                            example: ZXJyb3IgZGF0YQ==
+                          link:
+                            $ref: "#/components/schemas/BatchStatusLink"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /schema:
-    get:
-      tags:
-        - Schema
-      summary: Get a list of schemas
-      description: Fetches a list of schemas from the reporting database
-      operationId: get_schemas
-      responses:
-        "200":
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Schema"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "429":
-          $ref: "#/components/responses/429TooManyRequests"
-        "500":
-          description: Something went wrong within the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "503":
-          description: API is unable to reach the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  "/schema/{schema_name}":
-    get:
-      tags:
-        - Schema
-      summary: Find schema by schema name
-      description: Returns a single schema
-      operationId: get_schema_by_name
-      parameters:
-        - name: schema_name
-          in: path
-          description: Name of the schema to return
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  link:
-                    $ref: "#/components/schemas/Schema"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "429":
-          $ref: "#/components/responses/429TooManyRequests"
-        "500":
-          description: Something went wrong within the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "503":
-          description: API is unable to reach the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  /agent:
-    get:
-      tags:
-        - Pike
-      summary: Get a list of Agents
-      description: Fetches a list of agents from the reporting database
-      operationId: list_agents
-      responses:
-        "200":
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Agent"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "429":
-          $ref: "#/components/responses/429TooManyRequests"
-        "500":
-          description: Something went wrong within the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "503":
-          description: API is unable to reach the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+
+  # Location
   /location:
     get:
       tags:
         - Location
+      summary: Lists all locations
       operationId: list_locations
+      parameters:
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
-          description: Successful operation
+          description: |
+            Successful request. The response will include a JSON list of the
+            requested locations.
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Location"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
@@ -239,33 +207,25 @@ paths:
     get:
       tags:
         - Location
-      summary: Fetch a specific location
-      description: Fetches a single location with the given location ID
+      summary: Fetches a single location with the given ID
       operationId: fetch_location
       parameters:
         - name: location_id
           in: path
-          description: ID of the location to fetch.
+          description: ID of the location to fetch
           required: true
           schema:
             type: string
-        - name: service_id
-          in: query
-          description: |
-            The ID of the service the payload should be sent to; required if
-            running on Splinter.
-          required: false
-          schema:
-            type: string
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
-          description: Successful operation
+          description: |
+            Successful request. The response will include a JSON object
+            representing the location.
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Product"
+                $ref: "#/components/schemas/Location"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "404":
@@ -275,169 +235,288 @@ paths:
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
 
-  /organization:
+  # Pike
+  /agent:
     get:
       tags:
         - Pike
-      operationId: list_organizations
-      responses:
-        "200":
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Organization"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "429":
-          $ref: "#/components/responses/429TooManyRequests"
-        "500":
-          description: Something went wrong within the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "503":
-          description: API is unable to reach the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  "/organization/{id}":
-    get:
-      tags:
-        - Pike
-      operationId: fetch_organization
+      summary: Lists all agents
+      operationId: list_agents
       parameters:
-        - name: id
-          in: path
-          description: Id of the organization to return
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
-          description: Successful operation
+          description: |
+            Successful request. The response will include a JSON list of the
+            requested agents.
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Organization"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agent"
         "400":
           $ref: "#/components/responses/400BadRequest"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "429":
-          $ref: "#/components/responses/429TooManyRequests"
         "500":
-          description: Something went wrong within the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/500ServerError"
         "503":
-          description: API is unable to reach the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  "/agent/{public_key}":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /agent/{public_key}:
     get:
       tags:
         - Pike
-      summary: Find agent by public key
-      description: Returns a single agent from reporting database
+      summary: Fetches an agent with the given public key
       operationId: fetch_agent
       parameters:
         - name: public_key
           in: path
-          description: Public key of the agent to return
+          description: Public key of the agent to fetch
           required: true
           schema:
             type: string
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
-          description: Successful operation
+          description: |
+            Successful request. The response will include a JSON object
+            representing the agent.
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Agent"
+                $ref: "#/components/schemas/Agent"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "404":
           $ref: "#/components/responses/404NotFound"
-        "429":
-          $ref: "#/components/responses/429TooManyRequests"
         "500":
-          description: Something went wrong within the database
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/500ServerError"
         "503":
-          description: API is unable to reach the database
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /organization:
+    get:
+      tags:
+        - Pike
+      summary: Lists all organizations
+      operationId: list_organizations
+      parameters:
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON list of the
+            requested organizations.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organization"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /organization/{id}:
+    get:
+      tags:
+        - Pike
+      summary: Fetches a single organization with the given ID
+      operationId: fetch_organization
+      parameters:
+        - name: id
+          in: path
+          description: ID of the organization to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+
+  # Product
+  /product:
+    get:
+      tags:
+        - Product
+      summary: Lists all products
+      operationId: list_products
+      parameters:
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON list of the
+            requested products.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /product/{product_id}:
+    get:
+      tags:
+        - Product
+      summary: Fetches a single product with the given ID
+      operationId: fetch_product
+      parameters:
+        - name: product_id
+          in: path
+          description: ID of the product to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+
+  # Schema
+  /schema:
+    get:
+      tags:
+        - Schema
+      summary: Lists all schemas
+      operationId: list_grid_schemas
+      parameters:
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON list of the
+            requested schemas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Schema"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /schema/{schema_name}:
+    get:
+      tags:
+        - Schema
+      summary: Fetches a single schema with the given name
+      operationId: get_schema_by_name
+      parameters:
+        - name: schema_name
+          in: path
+          description: Name of the schema to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the schema.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schema"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+
+  # Track and Trace
   /record:
     get:
       tags:
         - Track and Trace
-      summary: Fetch a list of records
-      description: |
+      summary: |
         Fetches a list of records, including lists of all updates made to the
-        owner and custodian.
+        owner and custodian
       operationId: list_records
+      parameters:
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
-          description: Successful operation
+          description: |
+            Successful request. The response will include a JSON list of the
+            requested records.
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Record"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Record"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  "/record/{record_id}":
+  /record/{record_id}:
     get:
       tags:
         - Track and Trace
-      summary: Fetch a particular record
-      description: Fetches a single record with the given record ID.
+      summary: Fetches a single record with the given ID
+      description: Fetches a single record with the given record ID
       operationId: fetch_record
       parameters:
         - name: record_id
           in: path
-          description: ID of the record to return
+          description: ID of the record to fetch
           required: true
           schema:
             type: string
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
-          description: Successful operation
+          description: |
+            Successful request. The response will include a JSON object
+            representing the record.
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Record"
+                $ref: "#/components/schemas/Record"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "404":
@@ -446,108 +525,35 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  "/record/{record_id}/property/{property_name}":
+  /record/{record_id}/property/{property_name}:
     get:
       tags:
         - Track and Trace
-      summary: Fetch a particular property
-      description: |
-        Fetches a single property with the given record ID and property name.
+      summary: |
+        Fetches a property with the given name from the record with the
+        specified ID
       operationId: fetch_property
       parameters:
         - name: record_id
           in: path
-          description: ID of the record to fetch a property from.
+          description: ID of the record to fetch a property from
           required: true
           schema:
             type: string
         - name: property_name
           in: path
-          description: Name of the property to fetch.
+          description: Name of the property to fetch
           required: true
           schema:
             type: string
+        - $ref: "#/components/parameters/service_id"
       responses:
         "200":
           description: Successful operation
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Property"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500ServerError"
-        "503":
-          $ref: "#/components/responses/503ServiceUnavailable"
-  /product:
-    get:
-      tags:
-        - Product
-      summary: List all products
-      description: Get a list of products
-      operationId: list_products
-      parameters:
-        - name: service_id
-          in: query
-          description: |
-            The ID of the service the payload should be sent to; required if
-            running on Splinter.
-          required: false
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Product"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "500":
-          $ref: "#/components/responses/500ServerError"
-        "503":
-          $ref: "#/components/responses/503ServiceUnavailable"
-  "/product/{product_id}":
-    get:
-      tags:
-        - Product
-      summary: Fetch a specific product
-      description: Fetches a single product with the given product ID
-      operationId: fetch_product
-      parameters:
-        - name: product_id
-          in: path
-          description: ID of the property to fetch.
-          required: true
-          schema:
-            type: string
-        - name: service_id
-          in: query
-          description: |
-            The ID of the service the payload should be sent to; required if
-            running on Splinter.
-          required: false
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Product"
+                $ref: "#/components/schemas/Property"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "404":
@@ -558,97 +564,357 @@ paths:
           $ref: "#/components/responses/503ServiceUnavailable"
 
 components:
-  parameters:
-    batch_id:
-      name: batch_id
-      in: path
-      required: true
-      description: Batch id
-      schema:
-        type: string
-    wait:
-      name: wait
-      in: query
-      description: A time in seconds to wait for commit
-      schema:
-        type: integer
-  responses:
-    400BadRequest:
-      description: Request was malformed
-      content:
-        "*/*":
-          schema:
-            $ref: "#/components/schemas/Error"
-    404NotFound:
-      description: Address or id did not match any resource
-      content:
-        "*/*":
-          schema:
-            $ref: "#/components/schemas/Error"
-    429TooManyRequests:
-      description: Too many requests have been made to process batches
-      content:
-        "*/*":
-          schema:
-            $ref: "#/components/schemas/Error"
-    500ServerError:
-      description: Something went wrong within the validator
-      content:
-        "*/*":
-          schema:
-            $ref: "#/components/schemas/Error"
-    503ServiceUnavailable:
-      description: API is unable to reach the validator
-      content:
-        "*/*":
-          schema:
-            $ref: "#/components/schemas/Error"
   schemas:
-    Link:
-      type: string
-      example: https://api.grid.com/state?head=65cd3a3ce088b265b626f704b7f3db97b6f12e848dccb35d7806f3d0324c71b709ed360d602b8b658b94695374717e3bdb4b76f77886953777d5d008558247dd
-    Error:
+    # Location models
+    Location:
+      type: object
       properties:
-        code:
+        location_id:
+          type: string
+          example: 0099474000005
+        location_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+
+    # Pike models
+    Agent:
+      properties:
+        public_key:
+          type: string
+          example: 038bba5708acc262464c9fe30d3de9e905a9a5fa30cedd151dd9cd09ea26d46d00
+        org_id:
+          type: string
+          example: 013600
+        active:
+          type: boolean
+          example: "true"
+        roles:
+          type: array
+          items:
+            type: string
+            example: admin
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          example: philips001
+        name:
+          type: string
+          example: Philips
+        address:
+          type: string
+          example: Amstelplein 2 1096 BC Amsterdam The Netherlands
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+
+    # Product models
+    Product:
+      type: object
+      properties:
+        product_id:
+          type: string
+          example: 00122765988220
+        product_address:
+          type: string
+          example: 621dee0201000000000000000000000000000000000000000000000012276598822000
+        product_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+
+    # Schema models
+    Schema:
+      properties:
+        name:
+          type: string
+          example: Lightbulb
+        description:
+          type: string
+          example: Example Lightbulb schema
+        owner:
+          type: string
+          example: philips001
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyDefinition"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    PropertyDefinition:
+      properties:
+        name:
+          type: string
+          example: size
+        data_type:
+          $ref: "#/components/schemas/DataTypeEnum"
+        description:
+          type: string
+          example: Lightbulb radius, in millimeters
+        required:
+          type: boolean
+          example: true
+        number_exponent:
           type: integer
-          example: 34
-        title:
+          format: int32
+          example: -6
+        enum_options:
+          type: array
+          items:
+            type: string
+          example:
+            - filament
+            - CF
+            - LED
+        struct_properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyDefinition"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    DataTypeEnum:
+      type: string
+      enum:
+        - BYTES
+        - BOOLEAN
+        - NUMBER
+        - STRING
+        - ENUM
+        - STRUCT
+        - LOCATION
+    PropertyValue:
+      type: object
+      properties:
+        name:
           type: string
-          example: No Batches Submitted
-        message:
+          example: brand_name
+        data_type:
           type: string
-          example: >
-            The protobuf BatchList you submitted was empty and contained no
-            Batches. You must submit at least one Batch.
-    BatchStatuses:
+          example: boolean
+        bytes_value:
+          $ref: "#/components/schemas/BytesValue"
+        boolean_value:
+          type: boolean
+          example: false
+        number_value:
+          type: integer
+          format: int64
+          example: 0
+        string_value:
+          type: string
+          example: mybrand
+        enum_value:
+          type: integer
+          format: int32
+          example: 0
+        struct_values:
+          $ref: "#/components/schemas/StructValue"
+        lat_long_value:
+          $ref: "#/components/schemas/LatLong"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    BytesValue:
+      type: string
+      format: byte
+      example: "AQIDBA=="
+    LatLong:
+      type: object
+      properties:
+        latitude:
+          type: integer
+          example: 46786299
+        longitude:
+          type: integer
+          example: -92051336
+    StructPropertyValue:
+      type: object
+      properties:
+        name:
+          type: string
+          example: location
+        type:
+          $ref: "#/components/schemas/DataTypeEnum"
+        value:
+          oneOf:
+            - type: string
+            - type: boolean
+            - type: number
+              format: int64
+            - type: integer
+              format: int32
+            - $ref: "#/components/schemas/StructValue"
+            - $ref: "#/components/schemas/LatLong"
+            - $ref: "#/components/schemas/BytesValue"
+          example: "AQIDBA=="
+    StructValue:
       type: array
       items:
+        $ref: "#/components/schemas/StructPropertyValue"
+
+    # Track and Trace models
+    Record:
+      type: object
+      properties:
+        record_id:
+          type: string
+          example: 7h15-45537-15-br173
+        schema:
+          type: string
+          example: Lightbulb
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        custodian:
+          type: string
+          example: 02fb5b3a093e20e420ecf9c5839215e74c97f49eb51889069eb87bc6f62ceca8dd
         properties:
-          id:
+          type: array
+          items:
+            $ref: "#/components/schemas/Property"
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Proposal"
+        owner_updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssociatedAgent"
+        custodian_updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssociatedAgent"
+        final:
+          type: boolean
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    AssociatedAgent:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          example: 02fb5b3a093e20e420ecf9c5839215e74c97f49eb51889069eb87bc6f62ceca8dd
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    ReportedValue:
+      type: object
+      properties:
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+        value:
+          oneOf:
+            - type: string
+            - type: boolean
+            - type: number
+              format: int64
+            - type: integer
+              format: int32
+            - $ref: "#/components/schemas/StructValue"
+            - $ref: "#/components/schemas/LatLong"
+            - $ref: "#/components/schemas/BytesValue"
+        reporter:
+          type: object
+          properties:
+            metadata:
+              type: object
+              example: { agent_name: "Smith" }
+            public_key:
+              type: string
+              example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+            service_id:
+              type: string
+              example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    Property:
+      type: object
+      properties:
+        name:
+          type: string
+          example: location
+        record_id:
+          type: string
+          example: 7h15-45537-15-br173
+        data_type:
+          $ref: "#/components/schemas/DataTypeEnum"
+        authorized_reporters:
+          type: array
+          items:
             type: string
-            example: 89807bfc9089e37e00d87d97357de14cfbc455cd608438d426a625a30a0da9a31c406983803c4aa27e1f32a3ff61709e8ec4b56abbc553d7d330635b5d27029c
-          status:
+            example:
+              - 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+              - 0364edd42bd9b2dea1315e2da820b569665f96e36c44b267ceeac488cfdc03bf61
+        value:
+          $ref: "#/components/schemas/ReportedValue"
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportedValue"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    ProposalRoleEnum:
+      type: string
+      enum:
+        - OWNER
+        - CUSTODIAN
+        - REPORTER
+    ProposalStatusEnum:
+      description: Status of a proposal
+      type: string
+      enum:
+        - OPEN
+        - ACCEPTED
+        - REJECTED
+        - CANCELED
+    Proposal:
+      type: object
+      properties:
+        receiving_agent:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        issuing_agent:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        role:
+          $ref: "#/components/schemas/ProposalRoleEnum"
+        properties:
+          type: array
+          items:
             type: string
-            example: INVALID
-            enum:
-              - COMMITTED
-              - INVALID
-              - PENDING
-              - UNKNOWN
-          invalid_transactions:
-            type: array
-            items:
-              properties:
-                id:
-                  type: string
-                  example: 540a6803971d1880ec73a96cb97815a95d374cbad5d865925e5aa0432fcf1931539afe10310c122c5eaae15df61236079abbf4f258889359c4d175516934484a
-                message:
-                  type: string
-                  example: Verb is \"inc\" but name \"foo\" not in state
-                extended_data:
-                  type: string
-                  format: byte
-                  example: ZXJyb3IgZGF0YQ==
+        status:
+          $ref: "#/components/schemas/ProposalStatusEnum"
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+
+    # Transaction models
     TransactionHeader:
       properties:
         batcher_public_key:
@@ -721,134 +987,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Batch"
-    Schema:
-      properties:
-        name:
-          type: string
-          example: Lightbulb
-        description:
-          type: string
-          example: Example Lightbulb schema
-        owner:
-          type: string
-          example: philips001
-        properties:
-          type: array
-          items:
-            $ref: "#/components/schemas/PropertyDefinition"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - name
-        - description
-        - owner
-        - properties
-    PropertyDefinition:
-      properties:
-        name:
-          type: string
-          example: size
-        data_type:
-          $ref: "#/components/schemas/DataTypeEnum"
-        description:
-          type: string
-          example: Lightbulb radius, in millimeters
-        required:
-          type: boolean
-          example: true
-        number_exponent:
-          type: integer
-          format: int32
-          example: -6
-        enum_options:
-          type: array
-          items:
-            type: string
-          example:
-            - filament
-            - CF
-            - LED
-        struct_properties:
-          type: array
-          items:
-            $ref: "#/components/schemas/PropertyDefinition"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - name
-        - data_type
-        - active
-        - description
-        - required
-        - number_exponent
-        - enum_options
-        - struct_properties
-    DataTypeEnum:
-      description: Data type of a PropertyDefinition
+    BatchStatusLink:
       type: string
-      enum:
-        - BYTES
-        - BOOLEAN
-        - NUMBER
-        - STRING
-        - ENUM
-        - STRUCT
-        - LOCATION
-    Agent:
-      properties:
-        public_key:
-          type: string
-          example: 038bba5708acc262464c9fe30d3de9e905a9a5fa30cedd151dd9cd09ea26d46d00
-        org_id:
-          type: string
-          example: 03c360a46457a284793153e09840c322bee1dcc34445d7d49e19e60abd18fd0758
-        active:
-          type: boolean
-          example: "true"
-        roles:
-          type: array
-          items:
-            type: string
-            example: admin
-        metadata:
-          type: array
-          items:
-            $ref: "#/components/schemas/Metadata"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - public_key
-        - org_id
-        - active
-        - roles
-        - metadata
-    Organization:
-      type: object
-      properties:
-        id:
-          type: string
-          example: philips001
-        name:
-          type: string
-          example: Philips
-        address:
-          type: string
-          example: Amstelplein 2 1096 BC Amsterdam The Netherlands
-        metadata:
-          type: array
-          items:
-            $ref: "#/components/schemas/Metadata"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - id
-        - name
-        - address
-        - metadata
+      example: https://api.grid.com/state?head=65cd3a3ce088b265b626f704b7f3db97b6f12e848dccb35d7806f3d0324c71b709ed360d602b8b658b94695374717e3bdb4b76f77886953777d5d008558247dd
+
+    # Shared models
+    Timestamp:
+      type: integer
+      example: 1557949075
     Metadata:
       type: object
       properties:
@@ -857,307 +1003,87 @@ components:
           example: industry
         value:
           type: string
-          example: eletronics
-    AssociatedAgent:
-      type: object
-      properties:
-        agent_id:
-          type: string
-          example: 02fb5b3a093e20e420ecf9c5839215e74c97f49eb51889069eb87bc6f62ceca8dd
-        timestamp:
-          type: integer
-          example: 1557949075
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - agent_id
-        - timestamp
-    LatLong:
-      type: object
-      properties:
-        latitude:
-          type: integer
-          example: 46786299
-        longitude:
-          type: integer
-          example: -92051336
-    Record:
-      type: object
-      properties:
-        record_id:
-          type: string
-          example: 7h15-45537-15-br173
-        schema:
-          type: string
-          example: Lightbulb
-        owner:
-          type: string
-          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-        custodian:
-          type: string
-          example: 02fb5b3a093e20e420ecf9c5839215e74c97f49eb51889069eb87bc6f62ceca8dd
-        properties:
-          type: array
-          items:
-            $ref: "#/components/schemas/Property"
-        proposals:
-          type: array
-          items:
-            $ref: "#/components/schemas/Proposal"
-        owner_updates:
-          type: array
-          items:
-            $ref: "#/components/schemas/AssociatedAgent"
-        custodian_updates:
-          type: array
-          items:
-            $ref: "#/components/schemas/AssociatedAgent"
-        final:
-          type: boolean
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - record_id
-        - schema
-        - owner
-        - custodian
-        - properties
-        - proposals
-        - owner_updates
-        - custodian_updates
-        - final
-    ReportedValue:
-      type: object
-      properties:
-        timestamp:
-          type: integer
-          example: 1557949075
-        value:
-          oneOf:
-            - type: string
-            - type: boolean
-            - type: number
-              format: int64
-            - type: integer
-              format: int32
-            - $ref: "#/components/schemas/StructValue"
-            - $ref: "#/components/schemas/LatLong"
-            - $ref: "#/components/schemas/BytesValue"
-          example: "AQIDBA=="
-        reporter:
-          type: object
-          properties:
-            metadata:
-              type: object
-              example: { agent_name: "Smith" }
-            public_key:
-              type: string
-              example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-            service_id:
-              type: string
-              example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-          required:
-            - metadata
-            - public_key
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - timestamp
-        - value
-        - reporter
-    Property:
-      type: object
-      properties:
-        name:
-          type: string
-          example: location
-        record_id:
-          type: string
-          example: 7h15-45537-15-br173
-        data_type:
-          $ref: "#/components/schemas/DataTypeEnum"
-        authorized_reporters:
-          type: array
-          items:
-            type: string
-            example:
-              - 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-              - 0364edd42bd9b2dea1315e2da820b569665f96e36c44b267ceeac488cfdc03bf61
-        value:
-          $ref: "#/components/schemas/ReportedValue"
-        updates:
-          type: array
-          items:
-            $ref: "#/components/schemas/ReportedValue"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - name
-        - record_id
-        - data_type
-        - authorized_reporters
-        - value
-        - updates
-    ProposalRoleEnum:
+          example: electronics
+    ServiceID:
       type: string
-      enum:
-        - OWNER
-        - CUSTODIAN
-        - REPORTER
-    ProposalStatusEnum:
-      description: Status of a proposal
-      type: string
-      enum:
-        - OPEN
-        - ACCEPTED
-        - REJECTED
-        - CANCELED
-    Proposal:
-      type: object
-      properties:
-        receiving_agent:
-          type: string
-          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-        issuing_agent:
-          type: string
-          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-        role:
-          $ref: "#/components/schemas/ProposalRoleEnum"
-        properties:
-          type: array
-          items:
-            type: string
-        status:
-          $ref: "#/components/schemas/ProposalStatusEnum"
-        timestamp:
-          type: integer
-          example: 1557949075
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - receiving_agent
-        - issuing_agent
-        - role
-        - properties
-        - status
-        - timestamp
-    StructPropertyValue:
-      type: object
-      properties:
-        name:
-          type: string
-          example: location
-        type:
-          $ref: "#/components/schemas/DataTypeEnum"
-        value:
-          oneOf:
-            - type: string
-            - type: boolean
-            - type: number
-              format: int64
-            - type: integer
-              format: int32
-            - $ref: "#/components/schemas/StructValue"
-            - $ref: "#/components/schemas/LatLong"
-            - $ref: "#/components/schemas/BytesValue"
-          example: "AQIDBA=="
-    StructValue:
-      type: array
-      items:
-        $ref: "#/components/schemas/StructPropertyValue"
-    BytesValue:
-      type: string
-      format: byte
-      example: "AQIDBA=="
-    NamepaceEnum:
+      example: "12345-QWERTY:gsAA"
+    NamespaceEnum:
       type: string
       enum:
         - UNSET_NAMESPACE
         - GS1
-    PropertyValue:
-      type: object
-      properties:
-        name:
-          type: string
-          example: location
-        data_type:
-          type: string
-          example: boolean
-        boolean_value:
-          type: boolean
-        number_value:
-          type: integer
-          format: int64
-        string_value:
-          type: string
-        enum_value:
-          type: integer
-          format: int32
-        struct_values:
-          type: array
-          items:
+
+  parameters:
+    batch_id:
+      name: batch_id
+      in: path
+      required: true
+      description: |
+        The Batch ID uniquely identifies a batch. It is a signature derived from
+        signing the batch header with the batcher's key.
+      schema:
+        type: string
+    service_id:
+      name: service_id
+      in: query
+      description: |
+        The ID of the service the request should be sent to. This parameter is
+        required if running on Splinter.
+
+        Format: \<circuit-id\>::\<service-id\>
+      required: false
+      schema:
+        type: string
+    wait:
+      name: wait
+      in: query
+      description: |
+        The number of seconds to wait for batches to be committed before
+        returning.
+      schema:
+        type: integer
+
+  responses:
+    # Error responses
+    400BadRequest:
+      description: |
+        The Grid Daemon REST API could not understand the request due to invalid
+        syntax. Normally this will indicate an invalid query parameter or a
+        malformed payload.
+      content:
+        application/json:
+          schema:
             type: string
-        lat_long_value:
-          $ref: "#/components/schemas/LatLong"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - name
-        - data_type
-        - boolean_value
-        - number_value
-        - string_value
-        - enum_value
-        - struct_values
-        - lat_long_value
-    Product:
-      type: object
-      properties:
-        product_id:
-          type: string
-          example: 00122765988220
-        product_address:
-          type: string
-          example: 621dee0201000000000000000000000000000000000000000000000012276598822000
-        product_namespace:
-          $ref: "#/components/schemas/NamepaceEnum"
-        owner:
-          type: string
-          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-        properties:
-          type: array
-          items:
-            $ref: "#/components/schemas/PropertyValue"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - product_id
-        - product_address
-        - product_namespace
-        - owner
-        - properties
-    Location:
-      type: object
-      properties:
-        location_id:
-          type: string
-          example: 0099474000005
-        location_namespace:
-          $ref: "#/components/schemas/NamepaceEnum"
-        owner:
-          type: string
-          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-        properties:
-          type: array
-          items:
-            $ref: "#/components/schemas/PropertyValue"
-        service_id:
-          type: string
-          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+            example: |
+              Circuit ID is not present, but Grid is running in Splinter mode.
+    404NotFound:
+      description: |
+        The requested resource did not exist. This can either mean that the
+        endpoint is invalid, that there is no resource with the specified ID.
+      content:
+        application/json:
+          schema:
+            type: string
+            example: "Not Found Error: No resource with that ID exists."
+    500ServerError:
+      description: |
+        Something went wrong within the Grid Daemon. This normally is not
+        something that the user has control over. If this type of error occurs,
+        the message returned by the REST API may be generic. The server admin
+        may have to look through the Grid Daemon service's logs to determine
+        the cause of the server error.
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Internal Server Error
+    503ServiceUnavailable:
+      description: |
+        The Grid Daemon service or a connected service is unavailable. This can
+        occur when the Grid Daemon cannot reach the underlying distributed
+        ledger service or the Grid database.
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Service Unavailable
