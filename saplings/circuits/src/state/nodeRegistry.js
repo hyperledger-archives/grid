@@ -14,23 +14,27 @@
  * limitations under the License.
  */
 
+import { getUser } from 'splinter-saplingjs';
 import { useState, useEffect } from 'react';
 import { getNodeRegistry } from '../api/splinter';
 
 function useNodeRegistryState() {
+  const user = getUser();
   const [nodesState, setNodes] = useState({ nodes: [] });
 
   useEffect(() => {
     const getNodes = async () => {
-      try {
-        const nodes = await getNodeRegistry();
-        setNodes({ nodes });
-      } catch (e) {
-        throw Error(`Error fetching information from node registry: ${e}`);
+      if (user) {
+        try {
+          const nodes = await getNodeRegistry(user.token);
+          setNodes({ nodes });
+        } catch (e) {
+          throw Error(`Error fetching information from node registry: ${e}`);
+        }
       }
     };
-    getNodes();
-  }, []);
+    getNodes(user);
+  }, [user]);
 
   return nodesState.nodes;
 }

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { getUser } from 'splinter-saplingjs';
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { getNodeID } from '../api/splinter';
@@ -21,18 +22,22 @@ import { getNodeID } from '../api/splinter';
 const LocalNodeContext = React.createContext();
 
 function LocalNodeProvider({ children }) {
+  const user = getUser();
+
   const [nodeState, setNodeID] = useState({ nodeID: 'unknown' });
   useEffect(() => {
     const getNode = async () => {
-      try {
-        const node = await getNodeID();
-        setNodeID({ nodeID: node });
-      } catch (e) {
-        throw Error(`Error fetching node information: ${e}`);
+      if (user) {
+        try {
+          const node = await getNodeID(user.token);
+          setNodeID({ nodeID: node });
+        } catch (e) {
+          throw Error(`Error fetching node information: ${e}`);
+        }
       }
     };
     getNode();
-  }, []);
+  }, [user]);
 
   return (
     <LocalNodeContext.Provider value={nodeState.nodeID}>

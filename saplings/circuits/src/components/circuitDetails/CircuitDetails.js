@@ -18,6 +18,7 @@ import '../Content.scss';
 import '../MainHeader.scss';
 import './CircuitDetails.scss';
 
+import { getUser } from 'splinter-saplingjs';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faQuestionCircle,
@@ -55,6 +56,7 @@ Label.defaultProps = {
 };
 
 const CircuitDetails = () => {
+  const user = getUser();
   const { circuitId } = useParams();
   const [circuit] = useCircuitState(circuitId);
   const localNodeID = useLocalNodeState();
@@ -63,20 +65,22 @@ const CircuitDetails = () => {
 
   React.useEffect(() => {
     const fetchNodes = async () => {
-      try {
-        const apiNodes = await getNodeRegistry();
-        const filteredNodes = apiNodes.filter(
-          node => !!circuit.members.find(id => id === node.identity)
-        );
-        setNodes(filteredNodes);
-      } catch (e) {
-        throw Error(`Unable to fetch nodes from the node registry: ${e}`);
+      if (user) {
+        try {
+          const apiNodes = await getNodeRegistry();
+          const filteredNodes = apiNodes.filter(
+            node => !!circuit.members.find(id => id === node.identity)
+          );
+          setNodes(filteredNodes);
+        } catch (e) {
+          throw Error(`Unable to fetch nodes from the node registry: ${e}`);
+        }
       }
     };
     if (circuit) {
       fetchNodes();
     }
-  }, [circuit]);
+  }, [circuit, user]);
 
   if (!circuit) {
     return <div />;
