@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { getUser } from 'splinter-saplingjs';
 import { useReducer, useEffect, useState } from 'react';
 import {
   listProposals,
@@ -227,6 +228,7 @@ const circuitsReducer = (state, action) => {
 };
 
 function useCircuitsState() {
+  const user = getUser();
   const [circuitState, circuitsDispatch] = useReducer(circuitsReducer, {
     circuits: [],
     termFilterFn: null,
@@ -236,19 +238,21 @@ function useCircuitsState() {
 
   useEffect(() => {
     const getCircuits = async () => {
-      try {
-        const apiCircuits = await listCircuits();
-        const apiProposals = await listProposals();
+      if (user) {
+        try {
+          const apiCircuits = await listCircuits(user.token);
+          const apiProposals = await listProposals(user.token);
 
-        const circuits = new ListCircuitsResponse(apiCircuits);
-        const proposals = new ListCircuitsResponse(apiProposals);
+          const circuits = new ListCircuitsResponse(apiCircuits);
+          const proposals = new ListCircuitsResponse(apiProposals);
 
-        circuitsDispatch({
-          type: 'set',
-          circuits: circuits.data.concat(proposals.data)
-        });
-      } catch (e) {
-        throw Error(`Error fetching circuits from the splinter daemon: ${e}`);
+          circuitsDispatch({
+            type: 'set',
+            circuits: circuits.data.concat(proposals.data)
+          });
+        } catch (e) {
+          throw Error(`Error fetching circuits from the splinter daemon: ${e}`);
+        }
       }
     };
     const intervalId = setInterval(() => getCircuits(), REFREST_INTERVAL);
@@ -256,24 +260,25 @@ function useCircuitsState() {
     return function cleanup() {
       clearInterval(intervalId);
     };
-  }, []);
+  }, [user]);
 
   return [circuitState, circuitsDispatch];
 }
 
 function useCircuitState(circuitId) {
+  const user = getUser();
   const [stateCircuitId, setCircuitId] = useState(circuitId);
   const [circuit, setCircuit] = useState(null);
 
   useEffect(() => {
     const loadCircuit = async () => {
-      if (stateCircuitId) {
+      if (user && stateCircuitId) {
         let apiCircuit = null;
         try {
-          apiCircuit = await getCircuit(stateCircuitId);
+          apiCircuit = await getCircuit(stateCircuitId, user.token);
         } catch (circuitError) {
           try {
-            apiCircuit = await getProposal(stateCircuitId);
+            apiCircuit = await getProposal(stateCircuitId, user.token);
           } catch (proposalError) {
             throw Error(
               `Unable to fetch ${stateCircuitId} from the splinter daemon`
@@ -292,7 +297,7 @@ function useCircuitState(circuitId) {
     return function cleanup() {
       clearInterval(intervalId);
     };
-  }, [stateCircuitId]);
+  }, [stateCircuitId, user]);
 
   return [circuit, setCircuitId];
 }

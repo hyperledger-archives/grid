@@ -20,8 +20,12 @@ import { NodeRegistryResponse } from '../data/nodeRegistry';
 
 const { splinterURL } = getSharedConfig().canopyConfig;
 
-export const getNodeID = async () => {
-  const result = await get(`${splinterURL}/status`);
+const addAuthHeader = token => request => {
+  request.setRequestHeader('Authorization', `Bearer ${token}`);
+};
+
+export const getNodeID = async token => {
+  const result = await get(`${splinterURL}/status`, addAuthHeader(token));
 
   if (result.ok) {
     return result.json.node_id;
@@ -29,8 +33,11 @@ export const getNodeID = async () => {
   throw Error(result.data);
 };
 
-export const listProposals = async () => {
-  const result = await get(`${splinterURL}/admin/proposals`);
+export const listProposals = async token => {
+  const result = await get(
+    `${splinterURL}/admin/proposals`,
+    addAuthHeader(token)
+  );
 
   if (result.ok) {
     return result.json;
@@ -38,8 +45,11 @@ export const listProposals = async () => {
   throw Error(result.data);
 };
 
-export const getProposal = async circuitId => {
-  const result = await get(`${splinterURL}/admin/proposals/${circuitId}`);
+export const getProposal = async (circuitId, token) => {
+  const result = await get(
+    `${splinterURL}/admin/proposals/${circuitId}`,
+    addAuthHeader(token)
+  );
 
   if (result.ok) {
     return result.json;
@@ -47,8 +57,11 @@ export const getProposal = async circuitId => {
   throw Error(result.data);
 };
 
-export const listCircuits = async () => {
-  const result = await get(`${splinterURL}/admin/circuits`);
+export const listCircuits = async token => {
+  const result = await get(
+    `${splinterURL}/admin/circuits`,
+    addAuthHeader(token)
+  );
 
   if (result.ok) {
     return result.json;
@@ -56,8 +69,11 @@ export const listCircuits = async () => {
   throw Error(result.data);
 };
 
-export const getCircuit = async circuitId => {
-  const result = await get(`${splinterURL}/admin/circuits/${circuitId}`);
+export const getCircuit = async (circuitId, token) => {
+  const result = await get(
+    `${splinterURL}/admin/circuits/${circuitId}`,
+    addAuthHeader(token)
+  );
 
   if (result.ok) {
     return result.json;
@@ -65,8 +81,11 @@ export const getCircuit = async circuitId => {
   throw Error(result.data);
 };
 
-export const getNodeRegistry = async () => {
-  const result = await get(`${splinterURL}/registry/nodes`);
+export const getNodeRegistry = async token => {
+  const result = await get(
+    `${splinterURL}/registry/nodes`,
+    addAuthHeader(token)
+  );
 
   if (result.ok) {
     const response = new NodeRegistryResponse(result.json);
@@ -75,8 +94,9 @@ export const getNodeRegistry = async () => {
   throw Error(result.data);
 };
 
-export const postNode = async node => {
+export const postNode = async (node, token) => {
   const setHeader = request => {
+    request.setRequestHeader('Authorization', `Bearer ${token}`);
     request.setRequestHeader('Content-Type', 'application/json');
   };
 
@@ -92,8 +112,9 @@ export const postNode = async node => {
   throw Error(result.json.message);
 };
 
-export const postCircuitManagementPayload = async payload => {
+export const postCircuitManagementPayload = async (payload, token) => {
   const setHeader = request => {
+    request.setRequestHeader('Authorization', `Bearer ${token}`);
     request.setRequestHeader('Content-Type', 'application/octet-stream');
   };
 

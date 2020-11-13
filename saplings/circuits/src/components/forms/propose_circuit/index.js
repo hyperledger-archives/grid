@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { getUser } from 'splinter-saplingjs';
 import React, { useState, useEffect, useReducer } from 'react';
 import yaml from 'js-yaml';
 import { useToasts } from 'react-toast-notifications';
@@ -419,6 +420,7 @@ export function ProposeCircuitForm() {
     });
 
     const { privateKey } = window.$CANOPY.getKeys();
+    const user = getUser();
 
     try {
       const payload = makeSignedPayload(
@@ -428,7 +430,7 @@ export function ProposeCircuitForm() {
         'proposeCircuit'
       );
       try {
-        await postCircuitManagementPayload(payload);
+        await postCircuitManagementPayload(payload, user.token);
         addToast('Circuit proposal submitted successfully', {
           appearance: 'success'
         });

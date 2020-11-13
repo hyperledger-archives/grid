@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { getUser } from 'splinter-saplingjs';
 import React, { useState, useEffect, useReducer } from 'react';
 import { useToasts } from 'react-toast-notifications';
 import PropTypes from 'prop-types';
@@ -409,7 +410,8 @@ export function NewNodeForm({ closeFn, successCallback }) {
       metadata
     };
     try {
-      await postNode(node);
+      const user = getUser();
+      await postNode(node, user.token);
       clearState();
       closeFn();
       successCallback(new Node(node));

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { getUser } from 'splinter-saplingjs';
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useToasts } from 'react-toast-notifications';
@@ -69,8 +70,10 @@ const VoteOnProposalForm = ({ proposal, nodes, closeFn }) => {
       'voteCircuitProposal'
     );
 
+    const user = getUser();
+
     try {
-      await postCircuitManagementPayload(payload);
+      await postCircuitManagementPayload(payload, user.token);
       addToast('Vote submitted successfully', {
         appearance: 'success'
       });

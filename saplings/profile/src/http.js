@@ -25,6 +25,7 @@ export async function http(method, url, data, headerFn) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open(method, url);
+    request.withCredentials = true;
     if (headerFn) {
       headerFn(request);
     }
