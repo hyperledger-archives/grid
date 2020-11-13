@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
 use std::pin::Pin;
 
 use futures::prelude::*;
@@ -59,8 +58,15 @@ pub struct BatchStatuses {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BatchStatus {
     pub id: String,
-    pub invalid_transactions: Vec<HashMap<String, String>>,
+    pub invalid_transactions: Vec<InvalidTransaction>,
     pub status: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct InvalidTransaction {
+    pub id: String,
+    pub message: String,
+    pub extended_data: String,
 }
 
 impl BatchStatus {
@@ -70,17 +76,10 @@ impl BatchStatus {
             invalid_transactions: proto
                 .get_invalid_transactions()
                 .iter()
-                .map(|txn| {
-                    let mut invalid_transaction_info = HashMap::new();
-                    invalid_transaction_info
-                        .insert("id".to_string(), txn.get_transaction_id().to_string());
-                    invalid_transaction_info
-                        .insert("message".to_string(), txn.get_message().to_string());
-                    invalid_transaction_info.insert(
-                        "extended_data".to_string(),
-                        base64::encode(txn.get_extended_data()),
-                    );
-                    invalid_transaction_info
+                .map(|txn| InvalidTransaction {
+                    id: txn.get_transaction_id().to_string(),
+                    message: txn.get_message().to_string(),
+                    extended_data: base64::encode(txn.get_extended_data()),
                 })
                 .collect(),
             status: format!("{:?}", proto.get_status()),
