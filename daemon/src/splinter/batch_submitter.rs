@@ -24,7 +24,7 @@ use sawtooth_sdk::messages::batch::Batch;
 
 use crate::rest_api::error::RestApiResponseError;
 use crate::submitter::{
-    BatchStatus, BatchStatusLink, BatchStatuses, BatchSubmitter, SubmitBatches,
+    BatchStatus, BatchStatusLink, BatchStatuses, BatchSubmitter, InvalidTransaction, SubmitBatches,
 };
 
 macro_rules! try_fut {
@@ -134,18 +134,69 @@ impl BatchSubmitter for SplinterBatchSubmitter {
                 Err(err) => future::err(err).boxed(),
             })
             .map(|result| {
-                result.map_err(|err| {
-                    RestApiResponseError::RequestHandlerError(format!(
-                        "Unable to retrieve batch statuses: {}",
-                        err
-                    ))
-                })
+                result
+                    .map(|stats: Vec<SplinterBatchStatus>| {
+                        stats.into_iter().map(|status| status.into()).collect()
+                    })
+                    .map_err(|err| {
+                        RestApiResponseError::RequestHandlerError(format!(
+                            "Unable to retrieve batch statuses: {}",
+                            err
+                        ))
+                    })
             })
             .boxed()
     }
 
     fn clone_box(&self) -> Box<dyn BatchSubmitter> {
         Box::new(self.clone())
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct SplinterBatchStatus {
+    id: String,
+    status: Status,
+    timestamp: Timestamp,
+}
+
+#[derive(Deserialize, Debug)]
+struct Status {
+    #[serde(rename(deserialize = "statusType"))]
+    status_type: String,
+    message: Vec<ErrorMessage>,
+}
+
+#[derive(Deserialize, Debug)]
+struct Timestamp {
+    secs_since_epoch: u64,
+    nanos_since_epoch: u64,
+}
+
+#[derive(Deserialize, Debug)]
+struct ErrorMessage {
+    transaction_id: String,
+    error_message: Option<String>,
+    error_data: Option<Vec<u8>>,
+}
+
+impl Into<BatchStatus> for SplinterBatchStatus {
+    fn into(self) -> BatchStatus {
+        BatchStatus {
+            id: self.id,
+            status: self.status.status_type,
+            invalid_transactions: self
+                .status
+                .message
+                .into_iter()
+                .filter(|message| message.error_message.is_some() && message.error_data.is_some())
+                .map(|message| InvalidTransaction {
+                    id: message.transaction_id,
+                    message: message.error_message.unwrap(),
+                    extended_data: base64::encode(&message.error_data.unwrap()),
+                })
+                .collect(),
+        }
     }
 }
 
