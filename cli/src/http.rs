@@ -46,7 +46,7 @@ pub fn submit_batches(
 
     let batch_link = response.json::<BatchStatusLink>()?;
 
-    debug!("Response: {:#?}", batch_link);
+    info!("Response: {:#?}", batch_link);
 
     while wait > 0 {
         let time = Instant::now();
@@ -61,7 +61,7 @@ pub fn submit_batches(
 
         let batch_status = response.json::<BatchStatusResponse>()?;
 
-        debug!("Batch Status: {:#?}", batch_status);
+        info!("Batch Status: {:#?}", batch_status);
 
         if batch_status.data.iter().all(|x| x.status != "PENDING") {
             break;
