@@ -51,9 +51,16 @@ pub fn submit_batches(
     while wait > 0 {
         let time = Instant::now();
 
-        let mut response = client
-            .get(&format!("{}&wait={}", batch_link.link, wait))
-            .send()?;
+        let url = if let Some(service_id) = service_id {
+            format!(
+                "{}&wait={}&service_id={}",
+                batch_link.link, wait, service_id
+            )
+        } else {
+            format!("{}&wait={}", batch_link.link, wait)
+        };
+
+        let mut response = client.get(&url).send()?;
 
         if !response.status().is_success() {
             return Err(CliError::DaemonError(response.text()?));
