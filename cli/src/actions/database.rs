@@ -16,7 +16,7 @@ use crate::error::CliError;
 
 use diesel::{connection::Connection as _, pg::PgConnection};
 
-use grid_sdk::grid_db::migrations::run_postgres_migrations;
+use grid_sdk::migrations::run_postgres_migrations;
 
 pub fn run_migrations(database_url: &str) -> Result<(), CliError> {
     let breakdown = database_url

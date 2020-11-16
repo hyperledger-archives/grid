@@ -14,10 +14,13 @@
 
 use std::sync::Arc;
 
-use grid_sdk::grid_db::{
-    AgentStore, DieselAgentStore, DieselLocationStore, DieselOrganizationStore, DieselProductStore,
-    DieselSchemaStore, DieselTrackAndTraceStore, LocationStore, OrganizationStore, ProductStore,
-    SchemaStore, TrackAndTraceStore,
+use grid_sdk::{
+    agents::{AgentStore, DieselAgentStore},
+    locations::{DieselLocationStore, LocationStore},
+    organizations::{DieselOrganizationStore, OrganizationStore},
+    products::{DieselProductStore, ProductStore},
+    schemas::{DieselSchemaStore, SchemaStore},
+    track_and_trace::{DieselTrackAndTraceStore, TrackAndTraceStore},
 };
 
 #[cfg(feature = "pike")]
@@ -137,7 +140,7 @@ mod test {
         ClientBatchSubmitResponse, ClientBatchSubmitResponse_Status,
     };
 
-    use grid_sdk::grid_db::{
+    use grid_sdk::{
         agents::store::{diesel::DieselAgentStore, Agent},
         locations::store::{diesel::DieselLocationStore, Location, LocationAttribute},
         migrations::{clear_postgres_database, run_postgres_migrations},
@@ -3125,6 +3128,7 @@ mod test {
     fn get_location(service_id: Option<String>) -> Vec<Location> {
         vec![Location {
             location_id: "0653114000000".to_string(),
+            location_address: "location-address".to_string(),
             location_namespace: "Grid Location".to_string(),
             owner: "phillips001".to_string(),
             attributes: get_location_attributes(service_id.clone()),
@@ -3141,7 +3145,6 @@ mod test {
                 end_commit_num: i64::MAX,
                 location_id: "0653114000000".to_string(),
                 location_address: "test_address".to_string(),
-                parent_property_name: None,
                 property_name: "location_name".to_string(),
                 data_type: "STRING".to_string(),
                 bytes_value: None,
@@ -3158,7 +3161,6 @@ mod test {
                 end_commit_num: i64::MAX,
                 location_id: "0653114000000".to_string(),
                 location_address: "test_address".to_string(),
-                parent_property_name: None,
                 property_name: "industry_sector".to_string(),
                 data_type: "STRING".to_string(),
                 bytes_value: None,

@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::grid_db::{
-    AgentStore, CommitStore, LocationStore, MemoryCommitStore, MemoryOrganizationStore,
-    OrganizationStore, SchemaStore, TrackAndTraceStore,
+use crate::{
+    agents::AgentStore, commits::CommitStore, commits::MemoryCommitStore, locations::LocationStore,
+    organizations::MemoryOrganizationStore, organizations::OrganizationStore, schemas::SchemaStore,
+    track_and_trace::TrackAndTraceStore,
 };
 
 use super::StoreFactory;
@@ -55,7 +56,7 @@ impl StoreFactory for MemoryStoreFactory {
         unimplemented!()
     }
 
-    fn get_grid_product_store(&self) -> Box<dyn crate::grid_db::ProductStore> {
+    fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore> {
         unimplemented!()
     }
 

@@ -21,7 +21,7 @@ use actix_web::{
     HttpResponse,
 };
 use futures::future::{Future, TryFutureExt};
-use grid_sdk::grid_db::{
+use grid_sdk::{
     agents::store::AgentStoreError, commits::store::CommitStoreError,
     locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
     products::store::ProductStoreError, schemas::store::SchemaStoreError,

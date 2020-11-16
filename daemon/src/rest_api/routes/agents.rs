@@ -20,7 +20,7 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::grid_db::agents::store::Agent;
+use grid_sdk::agents::store::Agent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 

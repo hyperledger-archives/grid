@@ -31,34 +31,38 @@ impl SqliteStoreFactory {
 }
 
 impl StoreFactory for SqliteStoreFactory {
-    fn get_grid_agent_store(&self) -> Box<dyn crate::grid_db::AgentStore> {
-        Box::new(crate::grid_db::DieselAgentStore::new(self.pool.clone()))
+    fn get_grid_agent_store(&self) -> Box<dyn crate::agents::AgentStore> {
+        Box::new(crate::agents::DieselAgentStore::new(self.pool.clone()))
     }
 
-    fn get_grid_commit_store(&self) -> Box<dyn crate::grid_db::CommitStore> {
-        Box::new(crate::grid_db::DieselCommitStore::new(self.pool.clone()))
+    fn get_grid_commit_store(&self) -> Box<dyn crate::commits::CommitStore> {
+        Box::new(crate::commits::DieselCommitStore::new(self.pool.clone()))
     }
 
-    fn get_grid_organization_store(&self) -> Box<dyn crate::grid_db::OrganizationStore> {
-        Box::new(crate::grid_db::DieselOrganizationStore::new(
+    fn get_grid_organization_store(&self) -> Box<dyn crate::organizations::OrganizationStore> {
+        Box::new(crate::organizations::DieselOrganizationStore::new(
             self.pool.clone(),
         ))
     }
 
-    fn get_grid_location_store(&self) -> Box<dyn crate::grid_db::LocationStore> {
-        Box::new(crate::grid_db::DieselLocationStore::new(self.pool.clone()))
+    fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore> {
+        Box::new(crate::locations::DieselLocationStore::new(
+            self.pool.clone(),
+        ))
     }
 
-    fn get_grid_product_store(&self) -> Box<dyn crate::grid_db::ProductStore> {
-        Box::new(crate::grid_db::DieselProductStore::new(self.pool.clone()))
+    fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore> {
+        Box::new(crate::products::DieselProductStore::new(self.pool.clone()))
     }
 
-    fn get_grid_schema_store(&self) -> Box<dyn crate::grid_db::SchemaStore> {
-        Box::new(crate::grid_db::DieselSchemaStore::new(self.pool.clone()))
+    fn get_grid_schema_store(&self) -> Box<dyn crate::schemas::SchemaStore> {
+        Box::new(crate::schemas::DieselSchemaStore::new(self.pool.clone()))
     }
 
-    fn get_grid_track_and_trace_store(&self) -> Box<dyn crate::grid_db::TrackAndTraceStore> {
-        Box::new(crate::grid_db::DieselTrackAndTraceStore::new(
+    fn get_grid_track_and_trace_store(
+        &self,
+    ) -> Box<dyn crate::track_and_trace::TrackAndTraceStore> {
+        Box::new(crate::track_and_trace::DieselTrackAndTraceStore::new(
             self.pool.clone(),
         ))
     }

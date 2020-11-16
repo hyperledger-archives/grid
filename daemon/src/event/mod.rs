@@ -21,9 +21,7 @@ mod error;
 use std::cell::RefCell;
 use std::thread;
 
-use grid_sdk::grid_db::commits::store::{
-    CommitEvent as DbCommitEvent, StateChange as DbStateChange,
-};
+use grid_sdk::commits::store::{CommitEvent as DbCommitEvent, StateChange as DbStateChange};
 
 pub use self::error::{EventError, EventIoError, EventProcessorError};
 

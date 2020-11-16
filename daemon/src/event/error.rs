@@ -18,7 +18,7 @@
 use std::error::Error;
 use std::fmt;
 
-use grid_sdk::grid_db::{
+use grid_sdk::{
     agents::store::AgentStoreError, commits::store::CommitStoreError,
     locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
     products::store::ProductStoreError, schemas::store::SchemaStoreError,

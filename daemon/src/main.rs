@@ -64,7 +64,7 @@ use crate::splinter::{
     app_auth_handler, batch_submitter::SplinterBatchSubmitter,
     event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
 };
-use grid_sdk::grid_db::commits::store::CommitStore;
+use grid_sdk::commits::store::CommitStore;
 use grid_sdk::store::create_store_factory;
 use grid_sdk::store::ConnectionUri;
 
