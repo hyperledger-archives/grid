@@ -48,12 +48,15 @@ mod integration {
     #[test]
     fn test_product_create() {
         get_setup();
+        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
+            .args(&["--url", &url])
             .arg("create")
-            .args(&["--file", &PRODUCT_CREATE_FILE]);
+            .args(&["--file", &PRODUCT_CREATE_FILE])
+            .args(&["--wait", "10000"]);
         cmd_product_create.assert().success();
     }
 
@@ -65,20 +68,25 @@ mod integration {
     #[test]
     fn test_product_update() {
         get_setup();
+        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
+            .args(&["--url", &url])
             .arg("create")
-            .args(&["--file", &PRODUCT_CREATE_FILE]);
+            .args(&["--file", &PRODUCT_CREATE_FILE])
+            .args(&["--wait", "10000"]);
         cmd_product_create.assert().success();
 
         //run `grid product update`
         let mut cmd_product_update = make_grid_command();
         cmd_product_update
             .arg("product")
+            .args(&["--url", &url])
             .arg("update")
-            .args(&["--file", &PRODUCT_UPDATE_FILE]);
+            .args(&["--file", &PRODUCT_UPDATE_FILE])
+            .args(&["--wait", "10000"]);
         cmd_product_update.assert().success();
     }
 
@@ -90,21 +98,26 @@ mod integration {
     #[test]
     fn test_product_delete() {
         get_setup();
+        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
+            .args(&["--url", &url])
             .arg("create")
-            .args(&["--file", &PRODUCT_CREATE_FILE]);
+            .args(&["--file", &PRODUCT_CREATE_FILE])
+            .args(&["--wait", "10000"]);
         cmd_product_create.assert().success();
 
         //run `grid product delete`
         let mut cmd_product_delete = make_grid_command();
         cmd_product_delete
             .arg("product")
+            .args(&["--url", &url])
             .arg("delete")
             .arg(&PRODUCT_DELETE_ID)
-            .args(&["--namespace", "GS1"]); //product type
+            .args(&["--namespace", "GS1"]) //product type
+            .args(&["--wait", "10000"]);
         cmd_product_delete.assert().success();
     }
 
@@ -113,6 +126,7 @@ mod integration {
     ///     Necessary to run product commands
     ///
     fn setup(org_suffix: &str) {
+        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
         //run `grid keygen`
         let key_name: String = get_current_username().unwrap().into_string().unwrap();
         println!("key name: {}", &key_name);
@@ -136,11 +150,13 @@ mod integration {
         let org_id = format!("{}{}", &ORG_ID, &org_suffix);
         cmd_org_create
             .arg("organization")
+            .args(&["--url", &url])
             .arg("create")
             .arg(&org_id)
             .arg(&ORG_NAME)
             .arg(&ORG_ADDRESS)
-            .args(&["--metadata", &format!("gs1_company_prefixes={}", &org_id)]);
+            .args(&["--metadata", &format!("gs1_company_prefixes={}", &org_id)])
+            .args(&["--wait", "10000"]);
         cmd_org_create.assert().success();
 
         //run `grid agent create`
@@ -150,6 +166,7 @@ mod integration {
         let mut cmd_agent_update = make_grid_command();
         cmd_agent_update
             .arg("agent")
+            .args(&["--url", &url])
             .arg("update")
             .arg(&org_id)
             .arg(&pub_key)
@@ -159,14 +176,17 @@ mod integration {
             .args(&["--role", "can_update_product"])
             .args(&["--role", "can_delete_product"])
             .args(&["--role", "can_create_schema"])
-            .args(&["--role", "can_update_schema"]);
+            .args(&["--role", "can_update_schema"])
+            .args(&["--wait", "10000"]);
         cmd_agent_update.assert().success();
 
         let mut cmd_schema_create = make_grid_command();
         cmd_schema_create
             .arg("schema")
+            .args(&["--url", &url])
             .arg("create")
-            .arg(&SCHEMA_CREATE_FILE);
+            .arg(&SCHEMA_CREATE_FILE)
+            .args(&["--wait", "10000"]);
         cmd_schema_create.assert().success();
     }
 
@@ -176,10 +196,7 @@ mod integration {
     ///
     fn make_grid_command() -> Command {
         let mut cmd = Command::cargo_bin("grid").unwrap();
-        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
-        cmd.args(&["--url", &url])
-            .args(&["--wait", "10000"])
-            .arg("-vv");
+        cmd.arg("-vv");
         return cmd;
     }
 
