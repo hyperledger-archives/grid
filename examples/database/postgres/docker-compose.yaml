@@ -1,0 +1,151 @@
+# Copyright 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+version: "3.6"
+
+volumes:
+  contracts:
+  db_console:
+  registry:
+  gridd:
+  templates:
+
+services:
+  db:
+    image: postgres
+    container_name: db
+    hostname: db
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid
+
+  griddb-console-builder:
+    image: griddb-console-builder
+    environment:
+      HOST: db
+      PORT: 5432
+      DATABASE: grid
+      USER: grid
+      PASSWORD: grid_example
+    build:
+      context: .
+      dockerfile: schemaspy/Dockerfile
+    volumes:
+      - db_console:/output
+    container_name: griddb-console-builder
+    depends_on:
+      - db
+
+  griddb-console:
+    image: httpd:2.4
+    container_name: griddb-console
+    volumes:
+      - db_console:/usr/local/apache2/htdocs
+    expose:
+      - 80
+    ports:
+      - 9001:80
+    command: "apachectl -D FOREGROUND"
+
+  gridd:
+    image: gridd
+    container_name: gridd
+    hostname: gridd
+    build:
+      context: ../../..
+      dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=-- --features experimental
+    volumes:
+      - contracts:/usr/share/scar
+      - gridd:/etc/grid/keys
+      - templates:/usr/share/splinter/circuit-templates
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
+    environment:
+      GRID_DAEMON_KEY: "alpha-agent"
+      GRID_DAEMON_ENDPOINT: "http://gridd:8080"
+    entrypoint: |
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_example psql -h db -U grid -c '\q' > /dev/null 2>&1; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        grid -vv admin keygen --skip && \
+        grid -vv database migrate \
+            --database-url postgres://grid:grid_example@db/grid &&
+        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd:8085 \
+            --database-url postgres://grid:grid_example@db/grid
+      "
+
+  splinterd:
+    image: splintercommunity/splinterd:0.4
+    container_name: splinterd
+    hostname: splinterd
+    expose:
+      - 8044
+      - 8085
+    ports:
+      - "8044:8044"
+      - "8085:8085"
+    volumes:
+      - contracts:/usr/share/scar
+      - registry:/registry
+      - templates:/usr/share/splinter/circuit-templates
+    entrypoint: |
+      bash -c "
+        until PGPASSWORD=admin psql -h splinter-db -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db:5432/splinter && \
+        splinterd -vv \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
+        --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoint tcps://splinterd:8044 \
+        --node-id node-000 \
+        --service-endpoint tcp://0.0.0.0:8043 \
+        --storage yaml \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db:5432/splinter \
+        --tls-insecure
+      "
+
+  splinter-db:
+    image: postgres
+    container_name: splinter-db
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
