@@ -17,6 +17,13 @@
 import promiseLoader from './promiseLoader';
 import { styleLoader, unloadStylesByClassName } from './styleLoader';
 
+function toUrl(filename) {
+  if (!filename.startsWith('http')) {
+    return `http://${filename}`;
+  }
+  return filename;
+}
+
 export async function mountCurrentSapling(userSaplingsResponse) {
   // Saplings will be guaranteed to to have a collision-free namespace that
   // corresponds with the place entry in the URL's path
@@ -40,12 +47,12 @@ export async function mountCurrentSapling(userSaplingsResponse) {
     unloadStylesByClassName('user-sapling-stylesheet');
     await Promise.all(
       currentSaplingManifest.styleFiles.map(styleFile =>
-        styleLoader(`http://${styleFile}`, 'user-sapling-stylesheet')
+        styleLoader(toUrl(styleFile), 'user-sapling-stylesheet')
       )
     );
     await Promise.all(
       currentSaplingManifest.runtimeFiles.map(saplingFile =>
-        promiseLoader(`http://${saplingFile}`)
+        promiseLoader(toUrl(saplingFile))
       )
     );
 
@@ -67,7 +74,7 @@ export async function mountConfigSaplingStyles(saplingResponse) {
 
   await Promise.all(
     saplingStyleFiles.map(styleFile =>
-      styleLoader(`http://${styleFile}`, 'config-sapling-stylesheet')
+      styleLoader(toUrl(styleFile), 'config-sapling-stylesheet')
     )
   );
   return true;
@@ -87,7 +94,7 @@ export async function mountConfigSaplings(configSaplingResponse) {
 
   await Promise.all(
     configSaplingRuntimeFiles.map(saplingFile =>
-      promiseLoader(`http://${saplingFile}`)
+      promiseLoader(toUrl(saplingFile))
     )
   );
   return true;
