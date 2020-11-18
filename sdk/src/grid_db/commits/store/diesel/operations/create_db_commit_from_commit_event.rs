@@ -15,6 +15,7 @@
 use std::convert::TryInto;
 
 use super::CommitStoreOperations;
+use crate::error::InternalError;
 use crate::grid_db::commits::store::diesel::{
     schema::commit, Commit, CommitEvent, CommitEventError,
 };
@@ -39,10 +40,7 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
         let commit_id = event.id.clone();
         let commit_num = match event.height {
             Some(height_u64) => height_u64.try_into().map_err(|err| {
-                CommitEventError::ConnectionError(format!(
-                    "failed to convert event height to i64: {}",
-                    err
-                ))
+                CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
             })?,
             None => commit::table
                 .select(max(commit::commit_num))
@@ -51,9 +49,8 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
                     Some(num) => num + 1,
                     None => 0,
                 })
-                .map_err(|err| CommitEventError::OperationError {
-                    context: "Failed to get next commit num".to_string(),
-                    source: Some(Box::new(err)),
+                .map_err(|err| {
+                    CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
                 })?,
         };
         let service_id = event.service_id.clone();
@@ -76,10 +73,7 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
         let commit_id = event.id.clone();
         let commit_num = match event.height {
             Some(height_u64) => height_u64.try_into().map_err(|err| {
-                CommitEventError::ConnectionError(format!(
-                    "failed to convert event height to i64: {}",
-                    err
-                ))
+                CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
             })?,
             None => commit::table
                 .select(max(commit::commit_num))
@@ -88,9 +82,8 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
                     Some(num) => num + 1,
                     None => 0,
                 })
-                .map_err(|err| CommitEventError::OperationError {
-                    context: "Failed to get next commit num".to_string(),
-                    source: Some(Box::new(err)),
+                .map_err(|err| {
+                    CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
                 })?,
         };
         let service_id = event.service_id.clone();

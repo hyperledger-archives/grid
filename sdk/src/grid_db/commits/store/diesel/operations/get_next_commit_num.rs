@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
+use crate::error::InternalError;
 use crate::grid_db::commits::store::diesel::{schema::commit, CommitStoreError};
 
 use diesel::{dsl::max, prelude::*};
@@ -33,9 +34,8 @@ impl<'a> CommitStoreGetNextCommitNumOperation
                 Some(num) => num + 1,
                 None => 0,
             })
-            .map_err(|err| CommitStoreError::OperationError {
-                context: "Failed to get next commit num".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
         Ok(commit_num)
     }
@@ -53,9 +53,8 @@ impl<'a> CommitStoreGetNextCommitNumOperation
                 Some(num) => num + 1,
                 None => 0,
             })
-            .map_err(|err| CommitStoreError::OperationError {
-                context: "Failed to get next commit num".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
         Ok(commit_num)
     }
