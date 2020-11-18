@@ -15,11 +15,16 @@
 use super::OrganizationStoreOperations;
 use crate::grid_db::organizations::store::diesel::{schema::organization, OrganizationStoreError};
 
+use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::organizations::store::diesel::models::{
     NewOrganizationModel, OrganizationModel,
 };
-use diesel::{dsl::insert_into, prelude::*, result::Error::NotFound};
+use diesel::{
+    dsl::insert_into,
+    prelude::*,
+    result::{DatabaseErrorKind, Error as dsl_error},
+};
 
 pub(in crate::grid_db::organizations::store::diesel) trait OrganizationStoreAddOrganizationsOperation
 {
@@ -47,25 +52,46 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                 )
                 .first::<OrganizationModel>(self.conn)
                 .map(Some)
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                .map_err(|err| OrganizationStoreError::QueryError {
-                    context: "Failed check for existing organization".to_string(),
-                    source: Box::new(err),
+                .or_else(|err| {
+                    if err == dsl_error::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
+                })
+                .map_err(|err| {
+                    OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
             if duplicate_org.is_some() {
-                return Err(OrganizationStoreError::DuplicateError {
-                    context: "Organization already exists".to_string(),
-                    source: None,
-                });
+                return Err(OrganizationStoreError::ConstraintViolationError(
+                    ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
+                ));
             }
 
             insert_into(organization::table)
                 .values(org)
                 .execute(self.conn)
                 .map(|_| ())
-                .map_err(|err| OrganizationStoreError::OperationError {
-                    context: "Failed to add organization".to_string(),
-                    source: Some(Box::new(err)),
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        OrganizationStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        OrganizationStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    _ => OrganizationStoreError::InternalError(InternalError::from_source(
+                        Box::new(err),
+                    )),
                 })?;
         }
 
@@ -91,25 +117,46 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                 )
                 .first::<OrganizationModel>(self.conn)
                 .map(Some)
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                .map_err(|err| OrganizationStoreError::QueryError {
-                    context: "Failed check for existing organization".to_string(),
-                    source: Box::new(err),
+                .or_else(|err| {
+                    if err == dsl_error::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
+                })
+                .map_err(|err| {
+                    OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
             if duplicate_org.is_some() {
-                return Err(OrganizationStoreError::DuplicateError {
-                    context: "Organization already exists".to_string(),
-                    source: None,
-                });
+                return Err(OrganizationStoreError::ConstraintViolationError(
+                    ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
+                ));
             }
 
             insert_into(organization::table)
                 .values(org)
                 .execute(self.conn)
                 .map(|_| ())
-                .map_err(|err| OrganizationStoreError::OperationError {
-                    context: "Failed to add organization".to_string(),
-                    source: Some(Box::new(err)),
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        OrganizationStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        OrganizationStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    _ => OrganizationStoreError::InternalError(InternalError::from_source(
+                        Box::new(err),
+                    )),
                 })?;
         }
 

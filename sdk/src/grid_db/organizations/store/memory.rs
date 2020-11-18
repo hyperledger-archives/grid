@@ -17,6 +17,7 @@ use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
 use super::OrganizationStore;
+use crate::error::InternalError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::organizations::store::{error::OrganizationStoreError, Organization};
 
@@ -37,13 +38,11 @@ impl MemoryOrganizationStore {
 
 impl OrganizationStore for MemoryOrganizationStore {
     fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
-        let mut inner_organization =
-            self.inner_organization
-                .lock()
-                .map_err(|_| OrganizationStoreError::StorageError {
-                    context: "Cannot access organizations: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
+        let mut inner_organization = self.inner_organization.lock().map_err(|_| {
+            OrganizationStoreError::InternalError(InternalError::with_message(
+                "Cannot access organizations: mutex lock poisoned".to_string(),
+            ))
+        })?;
         for org in orgs {
             inner_organization.insert(org.org_id.clone(), org);
         }
@@ -54,13 +53,11 @@ impl OrganizationStore for MemoryOrganizationStore {
         &self,
         service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
-        let inner_organization =
-            self.inner_organization
-                .lock()
-                .map_err(|_| OrganizationStoreError::StorageError {
-                    context: "Cannot access organizations: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
+        let inner_organization = self.inner_organization.lock().map_err(|_| {
+            OrganizationStoreError::InternalError(InternalError::with_message(
+                "Cannot access organizations: mutex lock poisoned".to_string(),
+            ))
+        })?;
         let filtered_orgs = inner_organization
             .iter()
             .filter(|(_, o)| {
@@ -84,13 +81,11 @@ impl OrganizationStore for MemoryOrganizationStore {
         org_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
-        let inner_organization =
-            self.inner_organization
-                .lock()
-                .map_err(|_| OrganizationStoreError::StorageError {
-                    context: "Cannot access organizations: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
+        let inner_organization = self.inner_organization.lock().map_err(|_| {
+            OrganizationStoreError::InternalError(InternalError::with_message(
+                "Cannot access organizations: mutex lock poisoned".to_string(),
+            ))
+        })?;
 
         for (_, o) in inner_organization.iter() {
             if o.service_id == service_id.map(String::from)

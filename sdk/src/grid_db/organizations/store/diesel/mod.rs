@@ -21,7 +21,10 @@ use std::iter::FromIterator;
 
 use super::diesel::models::{NewOrganizationModel, OrganizationModel};
 use super::{Organization, OrganizationStore, OrganizationStoreError};
-use crate::database::DatabaseError;
+use crate::error::{
+    ConstraintViolationError, ConstraintViolationType, InternalError,
+    ResourceTemporarilyUnavailableError,
+};
 use operations::add_organizations::OrganizationStoreAddOrganizationsOperation as _;
 use operations::fetch_organization::OrganizationStoreFetchOrganizationOperation as _;
 use operations::list_organizations::OrganizationStoreListOrganizationsOperation as _;
@@ -50,10 +53,9 @@ impl<C: diesel::Connection> DieselOrganizationStore<C> {
 impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
     fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            OrganizationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_organizations(Vec::from_iter(orgs.iter().map(|org| org.clone().into())))
     }
@@ -63,10 +65,9 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            OrganizationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_organizations(service_id)
     }
@@ -77,10 +78,9 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            OrganizationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_organization(org_id, service_id)
     }
@@ -90,10 +90,9 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
 impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnection> {
     fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            OrganizationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_organizations(Vec::from_iter(orgs.iter().map(|org| org.clone().into())))
     }
@@ -103,10 +102,9 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
         service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            OrganizationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_organizations(service_id)
     }
@@ -117,10 +115,9 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            OrganizationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_organization(org_id, service_id)
     }
@@ -168,23 +165,36 @@ impl Into<NewOrganizationModel> for Organization {
     }
 }
 
-impl From<DatabaseError> for OrganizationStoreError {
-    fn from(err: DatabaseError) -> OrganizationStoreError {
-        OrganizationStoreError::ConnectionError(Box::new(err))
-    }
-}
-
 impl From<diesel::result::Error> for OrganizationStoreError {
     fn from(err: diesel::result::Error) -> OrganizationStoreError {
-        OrganizationStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => OrganizationStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => OrganizationStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
 
 impl From<diesel::r2d2::PoolError> for OrganizationStoreError {
     fn from(err: diesel::r2d2::PoolError) -> OrganizationStoreError {
-        OrganizationStoreError::ConnectionError(Box::new(err))
+        OrganizationStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }
