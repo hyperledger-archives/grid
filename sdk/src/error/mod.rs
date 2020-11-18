@@ -76,6 +76,8 @@
 
 mod constraint_violation;
 mod internal;
+mod unavailable;
 
 pub use constraint_violation::{ConstraintViolationError, ConstraintViolationType};
 pub use internal::InternalError;
+pub use unavailable::ResourceTemporarilyUnavailableError;
