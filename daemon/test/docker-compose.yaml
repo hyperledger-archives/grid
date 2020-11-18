@@ -46,6 +46,6 @@ services:
         cd daemon
         cargo test --features test-api,experimental --  --test-threads=1
         cd ../cli
-        cargo test actions -- --test-threads=1
-        cargo test yaml_parser -- --test-threads=1
+        cargo test --features stable actions -- --test-threads=1
+        cargo test --features stable yaml_parser -- --test-threads=1
         "
