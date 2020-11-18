@@ -14,6 +14,7 @@
 
 use super::SchemaStoreOperations;
 
+use crate::error::InternalError;
 use crate::grid_db::schemas::{
     store::{
         diesel::{models::GridPropertyDefinition, schema::grid_property_definition},
@@ -51,9 +52,8 @@ impl<'a> ListPropertyDefinitionsOperation for SchemaStoreOperations<'a, diesel::
         let defns = query
             .load::<GridPropertyDefinition>(self.conn)
             .map(Some)
-            .map_err(|err| SchemaStoreError::QueryError {
-                context: "Failed to list definitions for schema".to_string(),
-                source: Box::new(err),
+            .map_err(|err| {
+                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?
             .ok_or_else(|| {
                 SchemaStoreError::NotFoundError(
@@ -90,9 +90,8 @@ impl<'a> ListPropertyDefinitionsOperation
         let defns = query
             .load::<GridPropertyDefinition>(self.conn)
             .map(Some)
-            .map_err(|err| SchemaStoreError::QueryError {
-                context: "Failed to list definitions for schema".to_string(),
-                source: Box::new(err),
+            .map_err(|err| {
+                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?
             .ok_or_else(|| {
                 SchemaStoreError::NotFoundError(

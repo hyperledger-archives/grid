@@ -14,6 +14,7 @@
 
 use super::SchemaStoreOperations;
 
+use crate::error::InternalError;
 use crate::grid_db::schemas::{
     store::{
         diesel::{models::GridPropertyDefinition, schema::grid_property_definition},
@@ -61,20 +62,14 @@ impl<'a> GetPropertyDefinitionByNameOperation
 
         let defn = query
             .first::<GridPropertyDefinition>(self.conn)
+            .map(PropertyDefinition::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| SchemaStoreError::QueryError {
-                context: "Failed to fetch definition for schema and definition name".to_string(),
-                source: Box::new(err),
-            })?
-            .ok_or_else(|| {
-                SchemaStoreError::NotFoundError(format!(
-                    "Failed to find property definition: {}",
-                    schema_name,
-                ))
+            .map_err(|err| {
+                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-        Ok(Some(PropertyDefinition::from(defn)))
+        Ok(defn)
     }
 }
 
@@ -106,19 +101,13 @@ impl<'a> GetPropertyDefinitionByNameOperation
 
         let defn = query
             .first::<GridPropertyDefinition>(self.conn)
+            .map(PropertyDefinition::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| SchemaStoreError::QueryError {
-                context: "Failed to fetch definition for schema and definition name".to_string(),
-                source: Box::new(err),
-            })?
-            .ok_or_else(|| {
-                SchemaStoreError::NotFoundError(format!(
-                    "Failed to find property definition: {}",
-                    schema_name,
-                ))
+            .map_err(|err| {
+                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-        Ok(Some(PropertyDefinition::from(defn)))
+        Ok(defn)
     }
 }

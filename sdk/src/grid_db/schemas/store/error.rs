@@ -15,53 +15,23 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
+
 /// Represents Store errors
 #[derive(Debug)]
 pub enum SchemaStoreError {
-    /// Represents CRUD operations failures
-    OperationError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents database query failures
-    QueryError {
-        context: String,
-        source: Box<dyn Error>,
-    },
-    /// Represents general failures in the database
-    StorageError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    DuplicateError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents an issue connecting to the database
-    ConnectionError(Box<dyn Error>),
+    InternalError(InternalError),
+    ConstraintViolationError(ConstraintViolationError),
+    ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
     NotFoundError(String),
 }
 
 impl Error for SchemaStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            SchemaStoreError::OperationError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            SchemaStoreError::OperationError { source: None, .. } => None,
-            SchemaStoreError::QueryError { source, .. } => Some(&**source),
-            SchemaStoreError::StorageError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            SchemaStoreError::StorageError { source: None, .. } => None,
-            SchemaStoreError::ConnectionError(err) => Some(&**err),
-            SchemaStoreError::DuplicateError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            SchemaStoreError::DuplicateError { source: None, .. } => None,
+            SchemaStoreError::InternalError(err) => Some(err),
+            SchemaStoreError::ConstraintViolationError(err) => Some(err),
+            SchemaStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
             SchemaStoreError::NotFoundError(_) => None,
         }
     }
@@ -70,40 +40,9 @@ impl Error for SchemaStoreError {
 impl fmt::Display for SchemaStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SchemaStoreError::OperationError {
-                context,
-                source: Some(source),
-            } => write!(f, "Failed to perform operation: {}: {}", context, source),
-            SchemaStoreError::OperationError {
-                context,
-                source: None,
-            } => write!(f, "Failed to perform operation: {}", context),
-            SchemaStoreError::QueryError { context, source } => {
-                write!(f, "Failed query: {}: {}", context, source)
-            }
-            SchemaStoreError::StorageError {
-                context,
-                source: Some(source),
-            } => write!(
-                f,
-                "The underlying storage returned an error: {}: {}",
-                context, source
-            ),
-            SchemaStoreError::StorageError {
-                context,
-                source: None,
-            } => write!(f, "The underlying storage returned an error: {}", context),
-            SchemaStoreError::ConnectionError(err) => {
-                write!(f, "Failed to connect to underlying storage: {}", err)
-            }
-            SchemaStoreError::DuplicateError {
-                context,
-                source: Some(source),
-            } => write!(f, "Element already exists: {}: {}", context, source),
-            SchemaStoreError::DuplicateError {
-                context,
-                source: None,
-            } => write!(f, "The element already exists: {}", context),
+            SchemaStoreError::InternalError(err) => err.fmt(f),
+            SchemaStoreError::ConstraintViolationError(err) => err.fmt(f),
+            SchemaStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
             SchemaStoreError::NotFoundError(ref s) => write!(f, "Element not found: {}", s),
         }
     }

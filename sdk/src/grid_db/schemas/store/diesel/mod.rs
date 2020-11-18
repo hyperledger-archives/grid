@@ -16,7 +16,10 @@ pub(in crate::grid_db) mod models;
 mod operations;
 pub(in crate::grid_db) mod schema;
 
-use crate::database::DatabaseError;
+use crate::error::{
+    ConstraintViolationError, ConstraintViolationType, InternalError,
+    ResourceTemporarilyUnavailableError,
+};
 
 use models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema};
 use operations::{
@@ -48,10 +51,9 @@ impl<C: diesel::Connection> DieselSchemaStore<C> {
 impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
     fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_schema(schema)
     }
@@ -62,20 +64,18 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Schema>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_schema(name, service_id)
     }
 
     fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_schemas(service_id)
     }
@@ -85,10 +85,9 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_property_definitions(service_id)
     }
@@ -99,10 +98,9 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_property_definitions_with_schema_name(schema_name, service_id)
     }
@@ -114,10 +112,9 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_property_definition_by_name(schema_name, definition_name, service_id)
     }
@@ -127,10 +124,9 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
 impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
     fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_schema(schema)
     }
@@ -141,20 +137,18 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Schema>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_schema(name, service_id)
     }
 
     fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_schemas(service_id)
     }
@@ -164,10 +158,9 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_property_definitions(service_id)
     }
@@ -178,10 +171,9 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_property_definitions_with_schema_name(schema_name, service_id)
     }
@@ -193,10 +185,9 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            SchemaStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_property_definition_by_name(schema_name, definition_name, service_id)
     }
@@ -301,23 +292,36 @@ impl From<(GridPropertyDefinition, Vec<PropertyDefinition>)> for PropertyDefinit
     }
 }
 
-impl From<DatabaseError> for SchemaStoreError {
-    fn from(err: DatabaseError) -> SchemaStoreError {
-        SchemaStoreError::ConnectionError(Box::new(err))
-    }
-}
-
 impl From<diesel::result::Error> for SchemaStoreError {
     fn from(err: diesel::result::Error) -> SchemaStoreError {
-        SchemaStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => SchemaStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => SchemaStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => SchemaStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
 
 impl From<diesel::r2d2::PoolError> for SchemaStoreError {
     fn from(err: diesel::r2d2::PoolError) -> SchemaStoreError {
-        SchemaStoreError::ConnectionError(Box::new(err))
+        SchemaStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }
