@@ -17,6 +17,7 @@ use crate::grid_db::track_and_trace::store::diesel::{
     schema::reported_value_reporter_to_agent_metadata, TrackAndTraceStoreError,
 };
 
+use crate::error::InternalError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::track_and_trace::store::diesel::models::ReportedValueReporterToAgentMetadataModel;
 use crate::grid_db::track_and_trace::store::ReportedValueReporterToAgentMetadata;
@@ -69,10 +70,7 @@ impl<'a>
             )
             .load::<ReportedValueReporterToAgentMetadataModel>(self.conn)
             .map(Some)
-            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                context: "Failed to fetch records".to_string(),
-                source: Some(Box::new(err)),
-            })?
+            .map_err(|err| TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err))))?
             .ok_or_else(|| {
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
@@ -203,10 +201,7 @@ impl<'a>
             )
             .load::<ReportedValueReporterToAgentMetadataModel>(self.conn)
             .map(Some)
-            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                context: "Failed to fetch records".to_string(),
-                source: Some(Box::new(err)),
-            })?
+            .map_err(|err| TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err))))?
             .ok_or_else(|| {
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),

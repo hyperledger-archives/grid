@@ -15,6 +15,7 @@
 use super::TrackAndTraceStoreOperations;
 use crate::grid_db::track_and_trace::store::diesel::{schema::record, TrackAndTraceStoreError};
 
+use crate::error::InternalError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::track_and_trace::store::diesel::models::RecordModel;
 use crate::grid_db::track_and_trace::store::Record;
@@ -58,9 +59,8 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
             .first::<RecordModel>(self.conn)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| TrackAndTraceStoreError::QueryError {
-                context: "Failed to fetch existing record".to_string(),
-                source: Box::new(err),
+            .map_err(|err| {
+                TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
         Ok(rec.map(Record::from))
@@ -95,9 +95,8 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
             .first::<RecordModel>(self.conn)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| TrackAndTraceStoreError::QueryError {
-                context: "Failed to fetch existing record".to_string(),
-                source: Box::new(err),
+            .map_err(|err| {
+                TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
         Ok(rec.map(Record::from))

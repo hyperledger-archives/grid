@@ -27,7 +27,10 @@ use super::{
     AssociatedAgent, LatLongValue, Property, Proposal, Record, ReportedValue,
     ReportedValueReporterToAgentMetadata, Reporter, TrackAndTraceStore, TrackAndTraceStoreError,
 };
-use crate::database::DatabaseError;
+use crate::error::{
+    ConstraintViolationError, ConstraintViolationType, InternalError,
+    ResourceTemporarilyUnavailableError,
+};
 use operations::add_associated_agents::TrackAndTraceStoreAddAssociatedAgentsOperation as _;
 use operations::add_properties::TrackAndTraceStoreAddPropertiesOperation as _;
 use operations::add_proposals::TrackAndTraceStoreAddProposalsOperation as _;
@@ -72,40 +75,36 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         agents: Vec<AssociatedAgent>,
     ) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_associated_agents(agents.iter().map(|a| a.clone().into()).collect())
     }
 
     fn add_properties(&self, properties: Vec<Property>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_properties(properties.into_iter().map(|p| p.into()).collect())
     }
 
     fn add_proposals(&self, proposals: Vec<Proposal>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_proposals(proposals.into_iter().map(|p| p.into()).collect())
     }
 
     fn add_records(&self, records: Vec<Record>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_records(records.into_iter().map(|r| r.into()).collect())
     }
@@ -115,20 +114,18 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         values: Vec<ReportedValue>,
     ) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_reported_values(make_reported_value_models(&values, None))
     }
 
     fn add_reporters(&self, reporters: Vec<Reporter>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_reporters(reporters.into_iter().map(|r| r.into()).collect())
     }
@@ -140,10 +137,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_property_with_data_type(record_id, property_name, service_id)
     }
@@ -154,10 +150,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_record(record_id, service_id)
     }
@@ -170,10 +165,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_reported_value_reporter_to_agent_metadata(
             record_id,
@@ -189,10 +183,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_associated_agents(record_ids, service_id)
     }
@@ -203,10 +196,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_properties_with_data_type(record_ids, service_id)
     }
@@ -217,10 +209,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_proposals(record_ids, service_id)
     }
@@ -230,10 +221,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_records(service_id)
     }
@@ -245,10 +235,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_reported_value_reporter_to_agent_metadata(
             record_id,
@@ -264,10 +253,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_reporters(record_id, property_name, service_id)
     }
@@ -280,40 +268,36 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         agents: Vec<AssociatedAgent>,
     ) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_associated_agents(agents.iter().map(|a| a.clone().into()).collect())
     }
 
     fn add_properties(&self, properties: Vec<Property>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_properties(properties.into_iter().map(|p| p.into()).collect())
     }
 
     fn add_proposals(&self, proposals: Vec<Proposal>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_proposals(proposals.into_iter().map(|p| p.into()).collect())
     }
 
     fn add_records(&self, records: Vec<Record>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_records(records.into_iter().map(|r| r.into()).collect())
     }
@@ -323,20 +307,18 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         values: Vec<ReportedValue>,
     ) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_reported_values(make_reported_value_models(&values, None))
     }
 
     fn add_reporters(&self, reporters: Vec<Reporter>) -> Result<(), TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_reporters(reporters.into_iter().map(|r| r.into()).collect())
     }
@@ -348,10 +330,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_property_with_data_type(record_id, property_name, service_id)
     }
@@ -362,10 +343,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_record(record_id, service_id)
     }
@@ -378,10 +358,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_reported_value_reporter_to_agent_metadata(
             record_id,
@@ -397,10 +376,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_associated_agents(record_ids, service_id)
     }
@@ -411,10 +389,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_properties_with_data_type(record_ids, service_id)
     }
@@ -425,10 +402,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_proposals(record_ids, service_id)
     }
@@ -438,10 +414,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_records(service_id)
     }
@@ -453,10 +428,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_reported_value_reporter_to_agent_metadata(
             record_id,
@@ -472,10 +446,9 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_reporters(record_id, property_name, service_id)
     }
@@ -766,23 +739,36 @@ pub fn create_lat_long_value(lat: Option<i64>, long: Option<i64>) -> Option<LatL
     }
 }
 
-impl From<DatabaseError> for TrackAndTraceStoreError {
-    fn from(err: DatabaseError) -> TrackAndTraceStoreError {
-        TrackAndTraceStoreError::ConnectionError(Box::new(err))
-    }
-}
-
 impl From<diesel::result::Error> for TrackAndTraceStoreError {
     fn from(err: diesel::result::Error) -> TrackAndTraceStoreError {
-        TrackAndTraceStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => TrackAndTraceStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => TrackAndTraceStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
 
 impl From<diesel::r2d2::PoolError> for TrackAndTraceStoreError {
     fn from(err: diesel::r2d2::PoolError) -> TrackAndTraceStoreError {
-        TrackAndTraceStoreError::ConnectionError(Box::new(err))
+        TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }
