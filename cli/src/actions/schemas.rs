@@ -77,6 +77,39 @@ impl Into<StateDataType> for DataType {
     }
 }
 
+pub fn display_schemas_info(schemas: &[GridSchemaSlice]) {
+    // Maximum length of the name column
+    let mut name_width: usize = "NAME".len();
+    // Minimum length of the owner column
+    let mut owner_width: usize = "OWNER".len();
+    schemas.iter().for_each(|schema| {
+        if schema.name.len() > name_width {
+            name_width = schema.name.len();
+        }
+        if schema.owner.len() > owner_width {
+            owner_width = schema.owner.len();
+        }
+    });
+    println!(
+        "{:<width_name$} {:<width_owner$} {}",
+        "NAME",
+        "OWNER",
+        "DESCRIPTION".to_string(),
+        width_name = name_width,
+        width_owner = owner_width,
+    );
+    schemas.iter().for_each(|schema| {
+        println!(
+            "{:<width_name$} {:<width_owner$} {}",
+            schema.name,
+            schema.owner,
+            schema.description,
+            width_name = name_width,
+            width_owner = owner_width,
+        )
+    });
+}
+
 pub fn display_schema(schema: &GridSchemaSlice) {
     println!(
         "Name: {:?}\n Description: {:?}\n Owner: {:?}\n Properties:",
@@ -115,7 +148,7 @@ pub fn do_list_schemas(url: &str, service_id: Option<String>) -> Result<(), CliE
     }
 
     let schemas = response.json::<Vec<GridSchemaSlice>>()?;
-    schemas.iter().for_each(|schema| display_schema(schema));
+    display_schemas_info(&schemas);
     Ok(())
 }
 
