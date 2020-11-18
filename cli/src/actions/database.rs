@@ -19,6 +19,19 @@ use diesel::{connection::Connection as _, pg::PgConnection};
 use grid_sdk::grid_db::migrations::run_postgres_migrations;
 
 pub fn run_migrations(database_url: &str) -> Result<(), CliError> {
+    let breakdown = database_url
+        .split("://")
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    if breakdown.len() < 2 || breakdown[0] != "postgres" {
+        return Err(CliError::DatabaseError(
+            "Scheme not found: must specify the postgres database scheme.
+               Example: 'postgres://localhost:5432'"
+                .into(),
+        ));
+    }
+
     let connection = PgConnection::establish(database_url)
         .map_err(|err| CliError::DatabaseError(err.to_string()))?;
 
