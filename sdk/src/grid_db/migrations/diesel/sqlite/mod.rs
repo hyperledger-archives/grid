@@ -31,7 +31,8 @@ use diesel::RunQueryDsl;
 #[cfg(feature = "sqlite")]
 use diesel::{sqlite::SqliteConnection, Connection};
 
-use crate::database::error::{ConnectionError, DatabaseError};
+use crate::error::ResourceTemporarilyUnavailableError;
+use crate::grid_db::migrations::error::MigrationsError;
 
 embed_migrations!("./src/grid_db/migrations/diesel/sqlite/migrations");
 
@@ -42,10 +43,11 @@ embed_migrations!("./src/grid_db/migrations/diesel/sqlite/migrations");
 /// * `conn` - Connection to database
 ///
 #[cfg(all(feature = "sqlite", feature = "diesel"))]
-pub fn run_migrations(conn: &SqliteConnection) -> Result<(), ConnectionError> {
-    embedded_migrations::run(conn).map_err(|err| ConnectionError {
-        context: "Failed to embed migrations".to_string(),
-        source: Box::new(err),
+pub fn run_migrations(conn: &SqliteConnection) -> Result<(), MigrationsError> {
+    embedded_migrations::run(conn).map_err(|err| {
+        MigrationsError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     })?;
 
     info!("Successfully applied Grid migrations");
@@ -54,8 +56,8 @@ pub fn run_migrations(conn: &SqliteConnection) -> Result<(), ConnectionError> {
 }
 
 #[cfg(all(feature = "sqlite", feature = "diesel"))]
-pub fn clear_database(conn: &SqliteConnection) -> Result<(), DatabaseError> {
-    conn.transaction::<_, DatabaseError, _>(|| {
+pub fn clear_database(conn: &SqliteConnection) -> Result<(), MigrationsError> {
+    conn.transaction::<_, MigrationsError, _>(|| {
         diesel::delete(agent).execute(conn)?;
         diesel::delete(role).execute(conn)?;
         diesel::delete(chain_record).execute(conn)?;
