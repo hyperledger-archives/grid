@@ -18,6 +18,7 @@ use crate::grid_db::locations::store::diesel::{
     LocationStoreError,
 };
 
+use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::locations::store::diesel::models::{
     LocationAttributeModel, LocationModel, NewLocationAttributeModel, NewLocationModel,
@@ -25,7 +26,7 @@ use crate::grid_db::locations::store::diesel::models::{
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
-    result::Error::NotFound,
+    result::{DatabaseErrorKind, Error as dsl_error},
 };
 
 pub(in crate::grid_db::locations::store::diesel) trait LocationStoreAddLocationOperation {
@@ -60,10 +61,15 @@ impl<'a> LocationStoreAddLocationOperation
                     )
                     .first::<LocationModel>(self.conn)
                     .map(Some)
-                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| LocationStoreError::QueryError {
-                        context: "Failed check for existing location".to_string(),
-                        source: Box::new(err),
+                    .or_else(|err| {
+                        if err == dsl_error::NotFound {
+                            Ok(None)
+                        } else {
+                            Err(err)
+                        }
+                    })
+                    .map_err(|err| {
+                        LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 if duplicate_loc.is_some() {
@@ -77,9 +83,26 @@ impl<'a> LocationStoreAddLocationOperation
                         .set(location::end_commit_num.eq(current_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| LocationStoreError::OperationError {
-                            context: "Failed to update location".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 
@@ -87,9 +110,26 @@ impl<'a> LocationStoreAddLocationOperation
                     .values(&location)
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| LocationStoreError::OperationError {
-                        context: "Failed to add location".to_string(),
-                        source: Some(Box::new(err)),
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            LocationStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            LocationStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => LocationStoreError::InternalError(InternalError::from_source(
+                            Box::new(err),
+                        )),
                     })?;
 
                 for attr in attributes {
@@ -103,10 +143,17 @@ impl<'a> LocationStoreAddLocationOperation
                         )
                         .first::<LocationAttributeModel>(self.conn)
                         .map(Some)
-                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                        .map_err(|err| LocationStoreError::QueryError {
-                            context: "Failed check for existing attribute".to_string(),
-                            source: Box::new(err),
+                        .or_else(|err| {
+                            if err == dsl_error::NotFound {
+                                Ok(None)
+                            } else {
+                                Err(err)
+                            }
+                        })
+                        .map_err(|err| {
+                            LocationStoreError::InternalError(InternalError::from_source(Box::new(
+                                err,
+                            )))
                         })?;
 
                     if duplicate_attr.is_some() {
@@ -121,9 +168,27 @@ impl<'a> LocationStoreAddLocationOperation
                             .set(location_attribute::end_commit_num.eq(current_commit_num))
                             .execute(self.conn)
                             .map(|_| ())
-                            .map_err(|err| LocationStoreError::OperationError {
-                                context: "Failed to update location attribute".to_string(),
-                                source: Some(Box::new(err)),
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    LocationStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                ),
+                                _ => LocationStoreError::InternalError(InternalError::from_source(
+                                    Box::new(err),
+                                )),
                             })?;
                     }
 
@@ -131,9 +196,26 @@ impl<'a> LocationStoreAddLocationOperation
                         .values(&attr)
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| LocationStoreError::OperationError {
-                            context: "Failed to add location attribute".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 
@@ -163,10 +245,15 @@ impl<'a> LocationStoreAddLocationOperation
                     )
                     .first::<LocationModel>(self.conn)
                     .map(Some)
-                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| LocationStoreError::QueryError {
-                        context: "Failed check for existing location".to_string(),
-                        source: Box::new(err),
+                    .or_else(|err| {
+                        if err == dsl_error::NotFound {
+                            Ok(None)
+                        } else {
+                            Err(err)
+                        }
+                    })
+                    .map_err(|err| {
+                        LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 if duplicate_loc.is_some() {
@@ -180,9 +267,26 @@ impl<'a> LocationStoreAddLocationOperation
                         .set(location::end_commit_num.eq(current_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| LocationStoreError::OperationError {
-                            context: "Failed to update location".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 
@@ -190,9 +294,26 @@ impl<'a> LocationStoreAddLocationOperation
                     .values(&location)
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| LocationStoreError::OperationError {
-                        context: "Failed to add location".to_string(),
-                        source: Some(Box::new(err)),
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            LocationStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            LocationStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => LocationStoreError::InternalError(InternalError::from_source(
+                            Box::new(err),
+                        )),
                     })?;
 
                 for attr in attributes {
@@ -206,10 +327,17 @@ impl<'a> LocationStoreAddLocationOperation
                         )
                         .first::<LocationAttributeModel>(self.conn)
                         .map(Some)
-                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                        .map_err(|err| LocationStoreError::QueryError {
-                            context: "Failed check for existing attribute".to_string(),
-                            source: Box::new(err),
+                        .or_else(|err| {
+                            if err == dsl_error::NotFound {
+                                Ok(None)
+                            } else {
+                                Err(err)
+                            }
+                        })
+                        .map_err(|err| {
+                            LocationStoreError::InternalError(InternalError::from_source(Box::new(
+                                err,
+                            )))
                         })?;
 
                     if duplicate_attr.is_some() {
@@ -224,9 +352,27 @@ impl<'a> LocationStoreAddLocationOperation
                             .set(location_attribute::end_commit_num.eq(current_commit_num))
                             .execute(self.conn)
                             .map(|_| ())
-                            .map_err(|err| LocationStoreError::OperationError {
-                                context: "Failed to update location attribute".to_string(),
-                                source: Some(Box::new(err)),
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    LocationStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                ),
+                                _ => LocationStoreError::InternalError(InternalError::from_source(
+                                    Box::new(err),
+                                )),
                             })?;
                     }
 
@@ -234,9 +380,26 @@ impl<'a> LocationStoreAddLocationOperation
                         .values(&attr)
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| LocationStoreError::OperationError {
-                            context: "Failed to add location attribute".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 

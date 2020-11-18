@@ -19,6 +19,7 @@ use crate::grid_db::locations::store::diesel::{
     LocationStoreError,
 };
 
+use crate::error::InternalError;
 use crate::grid_db::locations::store::diesel::models::{LocationAttributeModel, LocationModel};
 use crate::grid_db::locations::store::{Location, LocationAttribute};
 use diesel::prelude::*;
@@ -64,10 +65,7 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
                 }
 
                 let locs = query.load::<LocationModel>(self.conn).map_err(|err| {
-                    LocationStoreError::OperationError {
-                        context: "Failed to fetch locations".to_string(),
-                        source: Some(Box::new(err)),
-                    }
+                    LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
                 let mut locations = Vec::new();
@@ -170,10 +168,7 @@ impl<'a> LocationStoreListLocationsOperation<diesel::sqlite::SqliteConnection>
                 }
 
                 let locs = query.load::<LocationModel>(self.conn).map_err(|err| {
-                    LocationStoreError::OperationError {
-                        context: "Failed to fetch locations".to_string(),
-                        source: Some(Box::new(err)),
-                    }
+                    LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
                 let mut locations = Vec::new();

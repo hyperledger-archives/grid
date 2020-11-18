@@ -20,7 +20,10 @@ use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::diesel::models::{AgentModel, NewAgentModel, NewRoleModel, RoleModel};
 use super::{Agent, AgentStore, AgentStoreError, Role};
-use crate::database::DatabaseError;
+use crate::error::{
+    ConstraintViolationError, ConstraintViolationType, InternalError,
+    ResourceTemporarilyUnavailableError,
+};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use operations::add_agent::AgentStoreAddAgentOperation as _;
 use operations::fetch_agent::AgentStoreFetchAgentOperation as _;
@@ -51,20 +54,18 @@ impl<C: diesel::Connection> DieselAgentStore<C> {
 impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
     fn add_agent(&self, agent: Agent) -> Result<(), AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_agent(agent.clone().into(), make_role_models(&agent))
     }
 
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_agents(service_id)
     }
@@ -75,20 +76,18 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_agent(pub_key, service_id)
     }
 
     fn update_agent(&self, agent: Agent) -> Result<(), AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .update_agent(agent.clone().into(), make_role_models(&agent))
     }
@@ -98,20 +97,18 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
 impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
     fn add_agent(&self, agent: Agent) -> Result<(), AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_agent(agent.clone().into(), make_role_models(&agent))
     }
 
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_agents(service_id)
     }
@@ -122,20 +119,18 @@ impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_agent(pub_key, service_id)
     }
 
     fn update_agent(&self, agent: Agent) -> Result<(), AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            AgentStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .update_agent(agent.clone().into(), make_role_models(&agent))
     }
@@ -201,23 +196,36 @@ pub fn make_role_models(agent: &Agent) -> Vec<NewRoleModel> {
     roles
 }
 
-impl From<DatabaseError> for AgentStoreError {
-    fn from(err: DatabaseError) -> AgentStoreError {
-        AgentStoreError::ConnectionError(Box::new(err))
-    }
-}
-
 impl From<diesel::result::Error> for AgentStoreError {
     fn from(err: diesel::result::Error) -> AgentStoreError {
-        AgentStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => AgentStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => AgentStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
 
 impl From<diesel::r2d2::PoolError> for AgentStoreError {
     fn from(err: diesel::r2d2::PoolError) -> AgentStoreError {
-        AgentStoreError::ConnectionError(Box::new(err))
+        AgentStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }

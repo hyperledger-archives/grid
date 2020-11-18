@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
+use crate::error::InternalError;
 use crate::grid_db::commits::store::diesel::{
     models::CommitModel, schema::commit, Commit, CommitStoreError,
 };
@@ -38,9 +39,8 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(Commit::from(commit)))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
-                context: "Failed to fetch commit".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })
     }
 }
@@ -59,9 +59,8 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(Commit::from(commit)))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
-                context: "Failed to fetch commit".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })
     }
 }

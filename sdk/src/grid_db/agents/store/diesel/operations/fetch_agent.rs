@@ -18,6 +18,7 @@ use crate::grid_db::agents::store::diesel::{
     Agent, AgentStoreError,
 };
 
+use crate::error::InternalError;
 use crate::grid_db::agents::store::diesel::models::{AgentModel, RoleModel};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use diesel::{prelude::*, result::Error::NotFound};
@@ -57,9 +58,8 @@ impl<'a> AgentStoreFetchAgentOperation for AgentStoreOperations<'a, diesel::pg::
                     .first::<AgentModel>(self.conn)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| AgentStoreError::QueryError {
-                        context: "Failed to fetch agent for pub_key".to_string(),
-                        source: Box::new(err),
+                    .map_err(|err| {
+                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 let mut query = role::table
@@ -79,10 +79,7 @@ impl<'a> AgentStoreFetchAgentOperation for AgentStoreOperations<'a, diesel::pg::
                 }
 
                 let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                    AgentStoreError::OperationError {
-                        context: "Failed to fetch roles".to_string(),
-                        source: Some(Box::new(err)),
-                    }
+                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
                 Ok(agent.map(|agent| Agent::from((agent, roles))))
@@ -117,9 +114,8 @@ impl<'a> AgentStoreFetchAgentOperation
                     .first::<AgentModel>(self.conn)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| AgentStoreError::QueryError {
-                        context: "Failed to fetch agent for pub_key".to_string(),
-                        source: Box::new(err),
+                    .map_err(|err| {
+                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 let mut query = role::table
@@ -139,10 +135,7 @@ impl<'a> AgentStoreFetchAgentOperation
                 }
 
                 let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                    AgentStoreError::OperationError {
-                        context: "Failed to fetch roles".to_string(),
-                        source: Some(Box::new(err)),
-                    }
+                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
                 Ok(agent.map(|agent| Agent::from((agent, roles))))

@@ -17,6 +17,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use crate::error::InternalError;
 use crate::grid_db::schemas::store::{Schema, SchemaStore, SchemaStoreError};
 
 #[derive(Clone, Default)]
@@ -37,10 +38,9 @@ impl SchemaStore for MemorySchemaStore {
         let mut inner = self
             .inner
             .lock()
-            .map_err(|_| SchemaStoreError::StorageError {
-                context: "Cannot access schemas: mutex lock poisoned".to_string(),
-                source: None,
-            })?;
+            .map_err(|_| SchemaStoreError::InternalError(
+                InternalError::with_message("Cannot access schemas: mutex lock poisoned".to_string()
+            ))?;
 
         let key = if let Some(ref service_id) = schema.service_id {
             format!("{}:{}", schema.name, service_id)
@@ -61,10 +61,9 @@ impl SchemaStore for MemorySchemaStore {
         let inner = self
             .inner
             .lock()
-            .map_err(|_| SchemaStoreError::StorageError {
-                context: "Cannot access schemas: mutex lock poisoned".to_string(),
-                source: None,
-            })?;
+            .map_err(|_| SchemaStoreError::InternalError(
+                InternalError::with_message("Cannot access schemas: mutex lock poisoned".to_string()
+            ))?;
 
         let key = if let Some(ref service_id) = service_id {
             format!("{}:{}", name, service_id)
@@ -79,10 +78,9 @@ impl SchemaStore for MemorySchemaStore {
         let inner = self
             .inner
             .lock()
-            .map_err(|_| SchemaStoreError::StorageError {
-                context: "Cannot access schemas: mutex lock poisoned".to_string(),
-                source: None,
-            })?;
+            .map_err(|_| SchemaStoreError::InternalError(
+                InternalError::with_message("Cannot access schemas: mutex lock poisoned".to_string()
+            ))?;
 
         if let Some(service_id) = service_id {
             Ok(inner

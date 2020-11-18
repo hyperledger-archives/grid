@@ -19,6 +19,7 @@ use crate::grid_db::track_and_trace::store::diesel::{
     TrackAndTraceStoreError,
 };
 
+use crate::error::InternalError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::track_and_trace::store::diesel::models::PropertyModel;
 use crate::grid_db::track_and_trace::store::Property;
@@ -75,9 +76,8 @@ impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
             ))
             .load::<(PropertyModel, Option<String>)>(self.conn)
             .map(Some)
-            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                context: "Failed to fetch records".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?
             .ok_or_else(|| {
                 TrackAndTraceStoreError::NotFoundError(
@@ -135,9 +135,8 @@ impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
             ))
             .load::<(PropertyModel, Option<String>)>(self.conn)
             .map(Some)
-            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                context: "Failed to fetch records".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?
             .ok_or_else(|| {
                 TrackAndTraceStoreError::NotFoundError(

@@ -15,13 +15,14 @@
 use super::TrackAndTraceStoreOperations;
 use crate::grid_db::track_and_trace::store::diesel::{schema::record, TrackAndTraceStoreError};
 
+use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::track_and_trace::store::diesel::models::{NewRecordModel, RecordModel};
 
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
-    result::Error::NotFound,
+    result::{DatabaseErrorKind, Error as dsl_error},
 };
 
 pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreAddRecordsOperation {
@@ -47,10 +48,17 @@ impl<'a> TrackAndTraceStoreAddRecordsOperation
                         )
                         .first::<RecordModel>(self.conn)
                         .map(Some)
-                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                        .map_err(|err| TrackAndTraceStoreError::QueryError {
-                            context: "Failed check for existing record".to_string(),
-                            source: Box::new(err),
+                        .or_else(|err| {
+                            if err == dsl_error::NotFound {
+                                Ok(None)
+                            } else {
+                                Err(err)
+                            }
+                        })
+                        .map_err(|err| {
+                            TrackAndTraceStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            ))
                         })?;
 
                     if duplicate.is_some() {
@@ -64,9 +72,27 @@ impl<'a> TrackAndTraceStoreAddRecordsOperation
                             .set(record::end_commit_num.eq(&rec.start_commit_num))
                             .execute(self.conn)
                             .map(|_| ())
-                            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                                context: "Failed to update record".to_string(),
-                                source: Some(Box::new(err)),
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    TrackAndTraceStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => TrackAndTraceStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                ),
+                                _ => TrackAndTraceStoreError::InternalError(
+                                    InternalError::from_source(Box::new(err)),
+                                ),
                             })?;
                     }
 
@@ -74,9 +100,26 @@ impl<'a> TrackAndTraceStoreAddRecordsOperation
                         .values(&rec)
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| TrackAndTraceStoreError::OperationError {
-                            context: "Failed to add record".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                TrackAndTraceStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                TrackAndTraceStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => TrackAndTraceStoreError::InternalError(
+                                InternalError::from_source(Box::new(err)),
+                            ),
                         })?;
                 }
 
@@ -102,10 +145,17 @@ impl<'a> TrackAndTraceStoreAddRecordsOperation
                         )
                         .first::<RecordModel>(self.conn)
                         .map(Some)
-                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                        .map_err(|err| TrackAndTraceStoreError::QueryError {
-                            context: "Failed check for existing record".to_string(),
-                            source: Box::new(err),
+                        .or_else(|err| {
+                            if err == dsl_error::NotFound {
+                                Ok(None)
+                            } else {
+                                Err(err)
+                            }
+                        })
+                        .map_err(|err| {
+                            TrackAndTraceStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            ))
                         })?;
 
                     if duplicate.is_some() {
@@ -119,9 +169,27 @@ impl<'a> TrackAndTraceStoreAddRecordsOperation
                             .set(record::end_commit_num.eq(&rec.start_commit_num))
                             .execute(self.conn)
                             .map(|_| ())
-                            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                                context: "Failed to update record".to_string(),
-                                source: Some(Box::new(err)),
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    TrackAndTraceStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => TrackAndTraceStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                ),
+                                _ => TrackAndTraceStoreError::InternalError(
+                                    InternalError::from_source(Box::new(err)),
+                                ),
                             })?;
                     }
 
@@ -129,9 +197,26 @@ impl<'a> TrackAndTraceStoreAddRecordsOperation
                         .values(&rec)
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| TrackAndTraceStoreError::OperationError {
-                            context: "Failed to add record".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                TrackAndTraceStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                TrackAndTraceStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => TrackAndTraceStoreError::InternalError(
+                                InternalError::from_source(Box::new(err)),
+                            ),
                         })?;
                 }
 

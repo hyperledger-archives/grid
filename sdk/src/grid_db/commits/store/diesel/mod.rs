@@ -19,7 +19,10 @@ pub(in crate::grid_db) mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{Commit, CommitEvent, CommitEventError, CommitStore, CommitStoreError};
-use crate::database::DatabaseError;
+use crate::error::{
+    ConstraintViolationError, ConstraintViolationType, InternalError,
+    ResourceTemporarilyUnavailableError,
+};
 use crate::grid_db::commits::store::diesel::models::{CommitModel, NewCommitModel};
 use operations::add_commit::CommitStoreAddCommitOperation as _;
 use operations::create_db_commit_from_commit_event::CommitStoreCreateDbCommitFromCommitEventOperation as _;
@@ -52,20 +55,18 @@ impl<C: diesel::Connection> DieselCommitStore<C> {
 impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
     fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_commit(commit.into())
     }
 
     fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .resolve_fork(commit_num)
     }
@@ -75,30 +76,27 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
         commit_num: i64,
     ) -> Result<Option<Commit>, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_commit_by_commit_num(commit_num)
     }
 
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_current_commit_id()
     }
 
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_next_commit_num()
     }
@@ -108,10 +106,9 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
         event: &CommitEvent,
     ) -> Result<Option<Commit>, CommitEventError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitEventError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .create_db_commit_from_commit_event(event)
     }
@@ -121,20 +118,18 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
 impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
     fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_commit(commit.into())
     }
 
     fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .resolve_fork(commit_num)
     }
@@ -144,30 +139,27 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
         commit_num: i64,
     ) -> Result<Option<Commit>, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_commit_by_commit_num(commit_num)
     }
 
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_current_commit_id()
     }
 
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .get_next_commit_num()
     }
@@ -177,10 +169,9 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
         event: &CommitEvent,
     ) -> Result<Option<Commit>, CommitEventError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            CommitEventError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .create_db_commit_from_commit_event(event)
     }
@@ -242,29 +233,36 @@ impl std::fmt::Display for CommitEvent {
     }
 }
 
-impl From<DatabaseError> for CommitStoreError {
-    fn from(err: DatabaseError) -> CommitStoreError {
-        CommitStoreError::ConnectionError(Box::new(err))
-    }
-}
-
 impl From<diesel::result::Error> for CommitStoreError {
     fn from(err: diesel::result::Error) -> CommitStoreError {
-        CommitStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => CommitStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => CommitStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
 
 impl From<diesel::r2d2::PoolError> for CommitStoreError {
     fn from(err: diesel::r2d2::PoolError) -> CommitStoreError {
-        CommitStoreError::ConnectionError(Box::new(err))
-    }
-}
-
-impl From<DatabaseError> for CommitEventError {
-    fn from(err: DatabaseError) -> CommitEventError {
-        CommitEventError::ConnectionError(format!("{}", err))
+        CommitStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }

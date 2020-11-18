@@ -15,53 +15,23 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
+
 /// Represents CommitStore errors
 #[derive(Debug)]
 pub enum CommitStoreError {
-    /// Represents CRUD operations failures
-    OperationError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents database query failures
-    QueryError {
-        context: String,
-        source: Box<dyn Error>,
-    },
-    /// Represents general failures in the database
-    StorageError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    DuplicateError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents an issue connecting to the database
-    ConnectionError(Box<dyn Error>),
+    InternalError(InternalError),
+    ConstraintViolationError(ConstraintViolationError),
+    ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
     NotFoundError(String),
 }
 
 impl Error for CommitStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            CommitStoreError::OperationError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            CommitStoreError::OperationError { source: None, .. } => None,
-            CommitStoreError::QueryError { source, .. } => Some(&**source),
-            CommitStoreError::StorageError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            CommitStoreError::StorageError { source: None, .. } => None,
-            CommitStoreError::ConnectionError(err) => Some(&**err),
-            CommitStoreError::DuplicateError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            CommitStoreError::DuplicateError { source: None, .. } => None,
+            CommitStoreError::InternalError(err) => Some(err),
+            CommitStoreError::ConstraintViolationError(err) => Some(err),
+            CommitStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
             CommitStoreError::NotFoundError(_) => None,
         }
     }
@@ -70,40 +40,9 @@ impl Error for CommitStoreError {
 impl fmt::Display for CommitStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CommitStoreError::OperationError {
-                context,
-                source: Some(source),
-            } => write!(f, "failed to perform operation: {}: {}", context, source),
-            CommitStoreError::OperationError {
-                context,
-                source: None,
-            } => write!(f, "failed to perform operation: {}", context),
-            CommitStoreError::QueryError { context, source } => {
-                write!(f, "failed query: {}: {}", context, source)
-            }
-            CommitStoreError::StorageError {
-                context,
-                source: Some(source),
-            } => write!(
-                f,
-                "the underlying storage returned an error: {}: {}",
-                context, source
-            ),
-            CommitStoreError::StorageError {
-                context,
-                source: None,
-            } => write!(f, "the underlying storage returned an error: {}", context),
-            CommitStoreError::ConnectionError(err) => {
-                write!(f, "failed to connect to underlying storage: {}", err)
-            }
-            CommitStoreError::DuplicateError {
-                context,
-                source: Some(source),
-            } => write!(f, "Commit already exists: {}: {}", context, source),
-            CommitStoreError::DuplicateError {
-                context,
-                source: None,
-            } => write!(f, "The commit already exists: {}", context),
+            CommitStoreError::InternalError(err) => err.fmt(f),
+            CommitStoreError::ConstraintViolationError(err) => err.fmt(f),
+            CommitStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
             CommitStoreError::NotFoundError(ref s) => write!(f, "Commit not found: {}", s),
         }
     }
@@ -112,24 +51,15 @@ impl fmt::Display for CommitStoreError {
 /// Represents CommitEvent errors
 #[derive(Debug)]
 pub enum CommitEventError {
-    /// Represents CRUD operations failures
-    OperationError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents an issue receiving events
-    ConnectionError(String),
+    InternalError(InternalError),
+    ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
 }
 
 impl Error for CommitEventError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            CommitEventError::OperationError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            CommitEventError::OperationError { source: None, .. } => None,
-            CommitEventError::ConnectionError(_err) => None,
+            CommitEventError::InternalError(err) => Some(err),
+            CommitEventError::ResourceTemporarilyUnavailableError(err) => Some(err),
         }
     }
 }
@@ -137,15 +67,8 @@ impl Error for CommitEventError {
 impl fmt::Display for CommitEventError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CommitEventError::OperationError {
-                context,
-                source: Some(source),
-            } => write!(f, "failed to perform operation: {}: {}", context, source),
-            CommitEventError::OperationError {
-                context,
-                source: None,
-            } => write!(f, "failed to perform operation: {}", context),
-            CommitEventError::ConnectionError(err) => write!(f, "Event Error: {}", err),
+            CommitEventError::InternalError(err) => err.fmt(f),
+            CommitEventError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
         }
     }
 }

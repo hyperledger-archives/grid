@@ -27,8 +27,7 @@ extern crate diesel;
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
 
-#[cfg(feature = "diesel")]
-pub mod database;
+pub mod error;
 pub mod grid_db;
 mod hex;
 #[macro_use]

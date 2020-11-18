@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::OrganizationStoreOperations;
+use crate::error::InternalError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::organizations::store::diesel::models::OrganizationModel;
 use crate::grid_db::organizations::store::diesel::{schema::organization, OrganizationStoreError};
@@ -57,9 +58,8 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
             .map(Organization::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| OrganizationStoreError::QueryError {
-                context: "Failed to fetch organization for org_id".to_string(),
-                source: Box::new(err),
+            .map_err(|err| {
+                OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })
     }
 }
@@ -93,9 +93,8 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
             .map(Organization::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| OrganizationStoreError::QueryError {
-                context: "Failed to fetch organization for org_id".to_string(),
-                source: Box::new(err),
+            .map_err(|err| {
+                OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })
     }
 }

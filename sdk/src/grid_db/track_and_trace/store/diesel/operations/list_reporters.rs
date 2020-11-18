@@ -15,6 +15,7 @@
 use super::TrackAndTraceStoreOperations;
 use crate::grid_db::track_and_trace::store::diesel::{schema::reporter, TrackAndTraceStoreError};
 
+use crate::error::InternalError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::track_and_trace::store::diesel::models::ReporterModel;
 use crate::grid_db::track_and_trace::store::Reporter;
@@ -60,9 +61,8 @@ impl<'a> TrackAndTraceStoreListReportersOperation
         let model: Vec<ReporterModel> = query
             .load::<ReporterModel>(self.conn)
             .map(Some)
-            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                context: "Failed to fetch records".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?
             .ok_or_else(|| {
                 TrackAndTraceStoreError::NotFoundError(
@@ -105,9 +105,8 @@ impl<'a> TrackAndTraceStoreListReportersOperation
         let model: Vec<ReporterModel> = query
             .load::<ReporterModel>(self.conn)
             .map(Some)
-            .map_err(|err| TrackAndTraceStoreError::OperationError {
-                context: "Failed to fetch records".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?
             .ok_or_else(|| {
                 TrackAndTraceStoreError::NotFoundError(

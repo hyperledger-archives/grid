@@ -28,6 +28,7 @@
 
 #[cfg(feature = "diesel")]
 mod diesel;
+pub mod error;
 
 #[cfg(feature = "postgres")]
 pub use self::diesel::postgres::clear_database as clear_postgres_database;

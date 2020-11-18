@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
+use crate::error::InternalError;
 use crate::grid_db::commits::store::diesel::{
     models::CommitModel, schema::commit, CommitStoreError,
 };
@@ -35,9 +36,8 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(commit.commit_id))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
-                context: "Failed to fetch current commit ID".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })
     }
 }
@@ -54,9 +54,8 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(commit.commit_id))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
-                context: "Failed to fetch current commit ID".to_string(),
-                source: Some(Box::new(err)),
+            .map_err(|err| {
+                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })
     }
 }

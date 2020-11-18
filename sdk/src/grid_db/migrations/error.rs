@@ -19,45 +19,60 @@ use std::fmt;
 use crate::error::ConstraintViolationType;
 use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
 
-/// Represents Store errors
 #[derive(Debug)]
-pub enum ProductStoreError {
+pub enum MigrationsError {
     InternalError(InternalError),
     ConstraintViolationError(ConstraintViolationError),
     ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
-    NotFoundError(String),
+    MigrationError(Box<dyn Error>),
 }
 
-impl Error for ProductStoreError {
+impl Error for MigrationsError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            ProductStoreError::InternalError(err) => Some(err),
-            ProductStoreError::ConstraintViolationError(err) => Some(err),
-            ProductStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
-            ProductStoreError::NotFoundError(_) => None,
+            MigrationsError::InternalError(err) => Some(err),
+            MigrationsError::ConstraintViolationError(err) => Some(err),
+            MigrationsError::ResourceTemporarilyUnavailableError(err) => Some(err),
+            MigrationsError::MigrationError(e) => Some(&**e),
         }
     }
 }
 
-impl fmt::Display for ProductStoreError {
+impl fmt::Display for MigrationsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ProductStoreError::InternalError(err) => err.fmt(f),
-            ProductStoreError::ConstraintViolationError(err) => err.fmt(f),
-            ProductStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
-            ProductStoreError::NotFoundError(ref s) => write!(f, "Element not found: {}", s),
+            MigrationsError::InternalError(err) => err.fmt(f),
+            MigrationsError::ConstraintViolationError(err) => err.fmt(f),
+            MigrationsError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
+            MigrationsError::MigrationError(e) => write!(f, "Unable to migrate database: {}", e),
         }
     }
 }
 
 #[cfg(feature = "diesel")]
-impl From<diesel::result::Error> for ProductStoreError {
+impl From<diesel::ConnectionError> for MigrationsError {
+    fn from(err: diesel::ConnectionError) -> Self {
+        MigrationsError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel_migrations::RunMigrationsError> for MigrationsError {
+    fn from(err: diesel_migrations::RunMigrationsError) -> Self {
+        MigrationsError::MigrationError(Box::new(err))
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel::result::Error> for MigrationsError {
     fn from(err: diesel::result::Error) -> Self {
         match err {
             diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UniqueViolation,
                 _,
-            ) => ProductStoreError::ConstraintViolationError(
+            ) => MigrationsError::ConstraintViolationError(
                 ConstraintViolationError::from_source_with_violation_type(
                     ConstraintViolationType::Unique,
                     Box::new(err),
@@ -66,22 +81,13 @@ impl From<diesel::result::Error> for ProductStoreError {
             diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::ForeignKeyViolation,
                 _,
-            ) => ProductStoreError::ConstraintViolationError(
+            ) => MigrationsError::ConstraintViolationError(
                 ConstraintViolationError::from_source_with_violation_type(
                     ConstraintViolationType::ForeignKey,
                     Box::new(err),
                 ),
             ),
-            _ => ProductStoreError::InternalError(InternalError::from_source(Box::new(err))),
+            _ => MigrationsError::InternalError(InternalError::from_source(Box::new(err))),
         }
-    }
-}
-
-#[cfg(feature = "diesel")]
-impl From<diesel::r2d2::PoolError> for ProductStoreError {
-    fn from(err: diesel::r2d2::PoolError) -> ProductStoreError {
-        ProductStoreError::ResourceTemporarilyUnavailableError(
-            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-        )
     }
 }
