@@ -16,7 +16,7 @@ pub(in crate::grid_db) mod models;
 mod operations;
 pub(in crate::grid_db) mod schema;
 
-use crate::database::DatabaseError;
+use crate::error::ResourceTemporarilyUnavailableError;
 use crate::grid_db::products::MAX_COMMIT_NUM;
 
 use models::{NewProduct, NewProductPropertyValue, Product as ModelProduct, ProductPropertyValue};
@@ -46,10 +46,9 @@ impl<C: diesel::Connection> DieselProductStore<C> {
 impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
     fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_product(product)
     }
@@ -60,20 +59,18 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Product>, ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_product(product_id, service_id)
     }
 
     fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_products(service_id)
     }
@@ -85,10 +82,9 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .update_product(product_id, service_id, current_commit_num)
     }
@@ -99,10 +95,9 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .delete_product(address, current_commit_num)
     }
@@ -112,10 +107,9 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
 impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
     fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_product(product)
     }
@@ -126,20 +120,18 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Product>, ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_product(product_id, service_id)
     }
 
     fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_products(service_id)
     }
@@ -151,10 +143,9 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .update_product(product_id, service_id, current_commit_num)
     }
@@ -165,10 +156,9 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            ProductStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .delete_product(address, current_commit_num)
     }

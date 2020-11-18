@@ -16,55 +16,24 @@ use std::error::Error;
 use std::fmt;
 
 #[cfg(feature = "diesel")]
-use crate::database::error;
+use crate::error::ConstraintViolationType;
+use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
 
 /// Represents Store errors
 #[derive(Debug)]
 pub enum ProductStoreError {
-    /// Represents CRUD operations failures
-    OperationError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents database query failures
-    QueryError {
-        context: String,
-        source: Box<dyn Error>,
-    },
-    /// Represents general failures in the database
-    StorageError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    DuplicateError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents an issue connecting to the database
-    ConnectionError(Box<dyn Error>),
+    InternalError(InternalError),
+    ConstraintViolationError(ConstraintViolationError),
+    ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
     NotFoundError(String),
 }
 
 impl Error for ProductStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            ProductStoreError::OperationError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            ProductStoreError::OperationError { source: None, .. } => None,
-            ProductStoreError::QueryError { source, .. } => Some(&**source),
-            ProductStoreError::StorageError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            ProductStoreError::StorageError { source: None, .. } => None,
-            ProductStoreError::ConnectionError(err) => Some(&**err),
-            ProductStoreError::DuplicateError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            ProductStoreError::DuplicateError { source: None, .. } => None,
+            ProductStoreError::InternalError(err) => Some(err),
+            ProductStoreError::ConstraintViolationError(err) => Some(err),
+            ProductStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
             ProductStoreError::NotFoundError(_) => None,
         }
     }
@@ -73,58 +42,37 @@ impl Error for ProductStoreError {
 impl fmt::Display for ProductStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ProductStoreError::OperationError {
-                context,
-                source: Some(source),
-            } => write!(f, "Failed to perform operation: {}: {}", context, source),
-            ProductStoreError::OperationError {
-                context,
-                source: None,
-            } => write!(f, "Failed to perform operation: {}", context),
-            ProductStoreError::QueryError { context, source } => {
-                write!(f, "Failed query: {}: {}", context, source)
-            }
-            ProductStoreError::StorageError {
-                context,
-                source: Some(source),
-            } => write!(
-                f,
-                "The underlying storage returned an error: {}: {}",
-                context, source
-            ),
-            ProductStoreError::StorageError {
-                context,
-                source: None,
-            } => write!(f, "The underlying storage returned an error: {}", context),
-            ProductStoreError::ConnectionError(err) => {
-                write!(f, "Failed to connect to underlying storage: {}", err)
-            }
-            ProductStoreError::DuplicateError {
-                context,
-                source: Some(source),
-            } => write!(f, "Element already exists: {}: {}", context, source),
-            ProductStoreError::DuplicateError {
-                context,
-                source: None,
-            } => write!(f, "The element already exists: {}", context),
+            ProductStoreError::InternalError(err) => err.fmt(f),
+            ProductStoreError::ConstraintViolationError(err) => err.fmt(f),
+            ProductStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
             ProductStoreError::NotFoundError(ref s) => write!(f, "Element not found: {}", s),
         }
     }
 }
 
 #[cfg(feature = "diesel")]
-impl From<error::DatabaseError> for ProductStoreError {
-    fn from(err: error::DatabaseError) -> ProductStoreError {
-        ProductStoreError::ConnectionError(Box::new(err))
-    }
-}
-
-#[cfg(feature = "diesel")]
 impl From<diesel::result::Error> for ProductStoreError {
-    fn from(err: diesel::result::Error) -> ProductStoreError {
-        ProductStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
+    fn from(err: diesel::result::Error) -> Self {
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => ProductStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => ProductStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => ProductStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
@@ -132,6 +80,8 @@ impl From<diesel::result::Error> for ProductStoreError {
 #[cfg(feature = "diesel")]
 impl From<diesel::r2d2::PoolError> for ProductStoreError {
     fn from(err: diesel::r2d2::PoolError) -> ProductStoreError {
-        ProductStoreError::ConnectionError(Box::new(err))
+        ProductStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }
