@@ -74,6 +74,8 @@
 //! }
 //! ```
 
+mod constraint_violation;
 mod internal;
 
+pub use constraint_violation::{ConstraintViolationError, ConstraintViolationType};
 pub use internal::InternalError;
