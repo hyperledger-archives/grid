@@ -20,20 +20,32 @@ use grid_sdk::grid_db::{
     SchemaStore, TrackAndTraceStore,
 };
 
+#[cfg(feature = "pike")]
 mod agents;
 mod batches;
+#[cfg(feature = "location")]
 mod locations;
+#[cfg(feature = "pike")]
 mod organizations;
+#[cfg(feature = "product")]
 mod products;
+#[cfg(feature = "track-and-trace")]
 mod records;
+#[cfg(feature = "schema")]
 mod schemas;
 
+#[cfg(feature = "pike")]
 pub use agents::*;
 pub use batches::*;
+#[cfg(feature = "location")]
 pub use locations::*;
+#[cfg(feature = "pike")]
 pub use organizations::*;
+#[cfg(feature = "product")]
 pub use products::*;
+#[cfg(feature = "track-and-trace")]
 pub use records::*;
+#[cfg(feature = "schema")]
 pub use schemas::*;
 
 use crate::database::ConnectionPool;

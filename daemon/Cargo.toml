@@ -63,16 +63,27 @@ default = ["sawtooth-support"]
 
 stable = [
     "sawtooth-support",
+    "pike",
+    "schema",
+    "product",
+    "location"
 ]
 
 experimental = [
     "stable",
     "splinter-support",
+    "track-and-trace"
 ]
 
 sawtooth-support = []
 splinter-support = ["scabbard", "splinter", "reqwest", "sabre-sdk", "transact", "transact/contract-archive"]
 test-api = []
+pike = []
+schema = ["pike"]
+product = ["pike", "schema"]
+location = ["pike", "schema"]
+track-and-trace = []
+
 
 [package.metadata.deb]
 maintainer = "The Hyperledger Grid Team"

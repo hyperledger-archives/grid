@@ -20,11 +20,19 @@ use std::thread;
 
 use crate::config::Endpoint;
 pub use crate::rest_api::error::RestApiServerError;
-use crate::rest_api::routes::{
-    fetch_agent, fetch_grid_schema, fetch_location, fetch_organization, fetch_product,
-    fetch_record, fetch_record_property, get_batch_statuses, list_agents, list_grid_schemas,
-    list_locations, list_organizations, list_products, list_records, submit_batches,
-};
+
+#[cfg(feature = "pike")]
+use crate::rest_api::routes::{fetch_agent, fetch_organization, list_agents, list_organizations};
+#[cfg(feature = "schema")]
+use crate::rest_api::routes::{fetch_grid_schema, list_grid_schemas};
+#[cfg(feature = "location")]
+use crate::rest_api::routes::{fetch_location, list_locations};
+#[cfg(feature = "product")]
+use crate::rest_api::routes::{fetch_product, list_products};
+#[cfg(feature = "track-and-trace")]
+use crate::rest_api::routes::{fetch_record, fetch_record_property, list_records};
+
+use crate::rest_api::routes::{get_batch_statuses, submit_batches};
 
 use crate::submitter::BatchSubmitter;
 use actix::{Addr, SyncArbiter};
@@ -142,7 +150,9 @@ pub fn run(
             let state = AppState::new(batch_submitter, db_executor);
 
             let addr = HttpServer::new(move || {
-                App::new()
+                #[allow(clippy::let_and_return)]
+                #[allow(unused_mut)]
+                let mut app = App::new()
                     .data(state.clone())
                     .app_data(endpoint.clone())
                     .service(web::resource("/batches").route(web::post().to(submit_batches)))
@@ -150,39 +160,60 @@ pub fn run(
                         web::resource("/batch_statuses")
                             .name("batch_statuses")
                             .route(web::get().to(get_batch_statuses)),
-                    )
-                    .service(
-                        web::scope("/agent")
-                            .service(web::resource("").route(web::get().to(list_agents)))
-                            .service(
-                                web::resource("/{public_key}").route(web::get().to(fetch_agent)),
-                            ),
-                    )
-                    .service(
+                    );
+
+                #[cfg(feature = "pike")]
+                {
+                    app = app
+                        .service(
+                            web::scope("/agent")
+                                .service(web::resource("").route(web::get().to(list_agents)))
+                                .service(
+                                    web::resource("/{public_key}")
+                                        .route(web::get().to(fetch_agent)),
+                                ),
+                        )
+                        .service(
+                            web::scope("/organization")
+                                .service(web::resource("").route(web::get().to(list_organizations)))
+                                .service(
+                                    web::resource("/{id}").route(web::get().to(fetch_organization)),
+                                ),
+                        );
+                }
+
+                #[cfg(feature = "location")]
+                {
+                    app = app.service(
                         web::scope("/location")
                             .service(web::resource("").route(web::get().to(list_locations)))
                             .service(web::resource("/{id}").route(web::get().to(fetch_location))),
-                    )
-                    .service(
-                        web::scope("/organization")
-                            .service(web::resource("").route(web::get().to(list_organizations)))
-                            .service(
-                                web::resource("/{id}").route(web::get().to(fetch_organization)),
-                            ),
-                    )
-                    .service(
+                    );
+                }
+
+                #[cfg(feature = "product")]
+                {
+                    app = app.service(
                         web::scope("/product")
                             .service(web::resource("").route(web::get().to(list_products)))
                             .service(web::resource("/{id}").route(web::get().to(fetch_product))),
-                    )
-                    .service(
+                    );
+                }
+
+                #[cfg(feature = "schema")]
+                {
+                    app = app.service(
                         web::scope("/schema")
                             .service(web::resource("").route(web::get().to(list_grid_schemas)))
                             .service(
                                 web::resource("/{name}").route(web::get().to(fetch_grid_schema)),
                             ),
-                    )
-                    .service(
+                    );
+                }
+
+                #[cfg(feature = "track-and-trace")]
+                {
+                    app = app.service(
                         web::scope("/record")
                             .service(web::resource("").route(web::get().to(list_records)))
                             .service(
@@ -193,7 +224,10 @@ pub fn run(
                                             .route(web::get().to(fetch_record_property)),
                                     ),
                             ),
-                    )
+                    );
+                }
+
+                app
             })
             .bind(bind_url)?
             .disable_signals()

@@ -202,8 +202,11 @@ services:
       - ..:/project/grid
     entrypoint: |
       bash -c "
-        cargo build -p grid-daemon  && \
-        cargo build -p grid-cli  && \
+        cd daemon && \
+        cargo build --features experimental && \
+        cd ../cli && \
+        cargo build --features experimental -p grid-cli  && \
+        cd .. && \
         # we need to wait for the db to have started.
         until PGPASSWORD=grid_example psql -h db -U grid -c '\q'; do
             >&2 echo \"Database is unavailable - sleeping\"
