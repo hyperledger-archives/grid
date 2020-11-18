@@ -18,6 +18,7 @@ use crate::grid_db::agents::store::diesel::{
     Agent, AgentStoreError,
 };
 
+use crate::error::InternalError;
 use crate::grid_db::agents::store::diesel::models::{AgentModel, RoleModel};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use diesel::prelude::*;
@@ -45,10 +46,7 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                 }
 
                 let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
-                    AgentStoreError::OperationError {
-                        context: "Failed to fetch agents".to_string(),
-                        source: Some(Box::new(err)),
-                    }
+                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
                 let mut agents = Vec::new();
@@ -67,10 +65,7 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                     }
 
                     let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                        AgentStoreError::OperationError {
-                            context: "Failed to fetch roles".to_string(),
-                            source: Some(Box::new(err)),
-                        }
+                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                     agents.push(Agent::from((a, roles)));
@@ -100,10 +95,7 @@ impl<'a> AgentStoreListAgentsOperation
                 }
 
                 let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
-                    AgentStoreError::OperationError {
-                        context: "Failed to fetch agents".to_string(),
-                        source: Some(Box::new(err)),
-                    }
+                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
                 let mut agents = Vec::new();
@@ -122,10 +114,7 @@ impl<'a> AgentStoreListAgentsOperation
                     }
 
                     let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                        AgentStoreError::OperationError {
-                            context: "Failed to fetch roles".to_string(),
-                            source: Some(Box::new(err)),
-                        }
+                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                     agents.push(Agent::from((a, roles)));

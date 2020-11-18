@@ -15,53 +15,23 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
+
 /// Represents AgentStore errors
 #[derive(Debug)]
 pub enum AgentStoreError {
-    /// Represents CRUD operations failures
-    OperationError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents database query failures
-    QueryError {
-        context: String,
-        source: Box<dyn Error>,
-    },
-    /// Represents general failures in the database
-    StorageError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    DuplicateError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents an issue connecting to the database
-    ConnectionError(Box<dyn Error>),
+    InternalError(InternalError),
+    ConstraintViolationError(ConstraintViolationError),
+    ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
     NotFoundError(String),
 }
 
 impl Error for AgentStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            AgentStoreError::OperationError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            AgentStoreError::OperationError { source: None, .. } => None,
-            AgentStoreError::QueryError { source, .. } => Some(&**source),
-            AgentStoreError::StorageError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            AgentStoreError::StorageError { source: None, .. } => None,
-            AgentStoreError::ConnectionError(err) => Some(&**err),
-            AgentStoreError::DuplicateError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            AgentStoreError::DuplicateError { source: None, .. } => None,
+            AgentStoreError::InternalError(err) => Some(err),
+            AgentStoreError::ConstraintViolationError(err) => Some(err),
+            AgentStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
             AgentStoreError::NotFoundError(_) => None,
         }
     }
@@ -70,40 +40,9 @@ impl Error for AgentStoreError {
 impl fmt::Display for AgentStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AgentStoreError::OperationError {
-                context,
-                source: Some(source),
-            } => write!(f, "failed to perform operation: {}: {}", context, source),
-            AgentStoreError::OperationError {
-                context,
-                source: None,
-            } => write!(f, "failed to perform operation: {}", context),
-            AgentStoreError::QueryError { context, source } => {
-                write!(f, "failed query: {}: {}", context, source)
-            }
-            AgentStoreError::StorageError {
-                context,
-                source: Some(source),
-            } => write!(
-                f,
-                "the underlying storage returned an error: {}: {}",
-                context, source
-            ),
-            AgentStoreError::StorageError {
-                context,
-                source: None,
-            } => write!(f, "the underlying storage returned an error: {}", context),
-            AgentStoreError::ConnectionError(err) => {
-                write!(f, "failed to connect to underlying storage: {}", err)
-            }
-            AgentStoreError::DuplicateError {
-                context,
-                source: Some(source),
-            } => write!(f, "Agent already exists: {}: {}", context, source),
-            AgentStoreError::DuplicateError {
-                context,
-                source: None,
-            } => write!(f, "The agent already exists: {}", context),
+            AgentStoreError::InternalError(err) => err.fmt(f),
+            AgentStoreError::ConstraintViolationError(err) => err.fmt(f),
+            AgentStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
             AgentStoreError::NotFoundError(ref s) => write!(f, "Agent not found: {}", s),
         }
     }

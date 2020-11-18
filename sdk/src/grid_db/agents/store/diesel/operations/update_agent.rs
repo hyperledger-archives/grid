@@ -18,13 +18,14 @@ use crate::grid_db::agents::store::diesel::{
     AgentStoreError,
 };
 
+use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 use crate::grid_db::agents::store::diesel::models::{AgentModel, NewAgentModel, NewRoleModel};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
-    result::Error::NotFound,
+    result::{DatabaseErrorKind, Error as dsl_error},
 };
 
 pub(in crate::grid_db::agents) trait AgentStoreUpdateAgentOperation {
@@ -55,10 +56,15 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                     )
                     .first::<AgentModel>(self.conn)
                     .map(Some)
-                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| AgentStoreError::QueryError {
-                        context: "Failed to fetch agent for pub_key".to_string(),
-                        source: Box::new(err),
+                    .or_else(|err| {
+                        if err == dsl_error::NotFound {
+                            Ok(None)
+                        } else {
+                            Err(err)
+                        }
+                    })
+                    .map_err(|err| {
+                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 if agt.is_some() {
@@ -72,9 +78,26 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                         .set(agent::end_commit_num.eq(&agent.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| AgentStoreError::OperationError {
-                            context: "Failed to update agent".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 
@@ -82,9 +105,26 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                     .values(&agent)
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| AgentStoreError::OperationError {
-                        context: "Failed to add agent".to_string(),
-                        source: Some(Box::new(err)),
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        ))),
                     })?;
 
                 update(role::table)
@@ -97,9 +137,26 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                     .set(role::end_commit_num.eq(&agent.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| AgentStoreError::OperationError {
-                        context: "Failed to update role".to_string(),
-                        source: Some(Box::new(err)),
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        ))),
                     })?;
 
                 for role in roles {
@@ -107,9 +164,26 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                         .values(&role)
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| AgentStoreError::OperationError {
-                            context: "Failed to add agent attribute".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 
@@ -138,10 +212,15 @@ impl<'a> AgentStoreUpdateAgentOperation
                     )
                     .first::<AgentModel>(self.conn)
                     .map(Some)
-                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| AgentStoreError::QueryError {
-                        context: "Failed to fetch agent for pub_key".to_string(),
-                        source: Box::new(err),
+                    .or_else(|err| {
+                        if err == dsl_error::NotFound {
+                            Ok(None)
+                        } else {
+                            Err(err)
+                        }
+                    })
+                    .map_err(|err| {
+                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 if agt.is_some() {
@@ -155,9 +234,26 @@ impl<'a> AgentStoreUpdateAgentOperation
                         .set(agent::end_commit_num.eq(&agent.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| AgentStoreError::OperationError {
-                            context: "Failed to update agent".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 
@@ -165,9 +261,26 @@ impl<'a> AgentStoreUpdateAgentOperation
                     .values(&agent)
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| AgentStoreError::OperationError {
-                        context: "Failed to add agent".to_string(),
-                        source: Some(Box::new(err)),
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        ))),
                     })?;
 
                 update(role::table)
@@ -180,9 +293,26 @@ impl<'a> AgentStoreUpdateAgentOperation
                     .set(role::end_commit_num.eq(&agent.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| AgentStoreError::OperationError {
-                        context: "Failed to update role".to_string(),
-                        source: Some(Box::new(err)),
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            AgentStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        ))),
                     })?;
 
                 for role in roles {
@@ -190,9 +320,26 @@ impl<'a> AgentStoreUpdateAgentOperation
                         .values(&role)
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| AgentStoreError::OperationError {
-                            context: "Failed to add agent attribute".to_string(),
-                            source: Some(Box::new(err)),
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                AgentStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
                         })?;
                 }
 
