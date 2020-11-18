@@ -16,55 +16,24 @@ use std::error::Error;
 use std::fmt;
 
 #[cfg(feature = "diesel")]
-use crate::database::error;
+use crate::error::ConstraintViolationType;
+use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
 
 /// Represents LocationStore errors
 #[derive(Debug)]
 pub enum LocationStoreError {
-    /// Represents CRUD operations failures
-    OperationError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents database query failures
-    QueryError {
-        context: String,
-        source: Box<dyn Error>,
-    },
-    /// Represents general failures in the database
-    StorageError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    DuplicateError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-    /// Represents an issue connecting to the database
-    ConnectionError(Box<dyn Error>),
+    InternalError(InternalError),
+    ConstraintViolationError(ConstraintViolationError),
+    ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
     NotFoundError(String),
 }
 
 impl Error for LocationStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            LocationStoreError::OperationError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            LocationStoreError::OperationError { source: None, .. } => None,
-            LocationStoreError::QueryError { source, .. } => Some(&**source),
-            LocationStoreError::StorageError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            LocationStoreError::StorageError { source: None, .. } => None,
-            LocationStoreError::ConnectionError(err) => Some(&**err),
-            LocationStoreError::DuplicateError {
-                source: Some(source),
-                ..
-            } => Some(&**source),
-            LocationStoreError::DuplicateError { source: None, .. } => None,
+            LocationStoreError::InternalError(err) => Some(err),
+            LocationStoreError::ConstraintViolationError(err) => Some(err),
+            LocationStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
             LocationStoreError::NotFoundError(_) => None,
         }
     }
@@ -73,58 +42,37 @@ impl Error for LocationStoreError {
 impl fmt::Display for LocationStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            LocationStoreError::OperationError {
-                context,
-                source: Some(source),
-            } => write!(f, "failed to perform operation: {}: {}", context, source),
-            LocationStoreError::OperationError {
-                context,
-                source: None,
-            } => write!(f, "failed to perform operation: {}", context),
-            LocationStoreError::QueryError { context, source } => {
-                write!(f, "failed query: {}: {}", context, source)
-            }
-            LocationStoreError::StorageError {
-                context,
-                source: Some(source),
-            } => write!(
-                f,
-                "the underlying storage returned an error: {}: {}",
-                context, source
-            ),
-            LocationStoreError::StorageError {
-                context,
-                source: None,
-            } => write!(f, "the underlying storage returned an error: {}", context),
-            LocationStoreError::ConnectionError(err) => {
-                write!(f, "failed to connect to underlying storage: {}", err)
-            }
-            LocationStoreError::DuplicateError {
-                context,
-                source: Some(source),
-            } => write!(f, "Commit already exists: {}: {}", context, source),
-            LocationStoreError::DuplicateError {
-                context,
-                source: None,
-            } => write!(f, "The commit already exists: {}", context),
+            LocationStoreError::InternalError(err) => err.fmt(f),
+            LocationStoreError::ConstraintViolationError(err) => err.fmt(f),
+            LocationStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
             LocationStoreError::NotFoundError(ref s) => write!(f, "Commit not found: {}", s),
         }
     }
 }
 
 #[cfg(feature = "diesel")]
-impl From<error::DatabaseError> for LocationStoreError {
-    fn from(err: error::DatabaseError) -> LocationStoreError {
-        LocationStoreError::ConnectionError(Box::new(err))
-    }
-}
-
-#[cfg(feature = "diesel")]
 impl From<diesel::result::Error> for LocationStoreError {
-    fn from(err: diesel::result::Error) -> LocationStoreError {
-        LocationStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
+    fn from(err: diesel::result::Error) -> Self {
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => LocationStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => LocationStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => LocationStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
@@ -132,6 +80,8 @@ impl From<diesel::result::Error> for LocationStoreError {
 #[cfg(feature = "diesel")]
 impl From<diesel::r2d2::PoolError> for LocationStoreError {
     fn from(err: diesel::r2d2::PoolError) -> LocationStoreError {
-        LocationStoreError::ConnectionError(Box::new(err))
+        LocationStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }

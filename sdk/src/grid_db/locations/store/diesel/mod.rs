@@ -22,7 +22,7 @@ use super::diesel::models::{
     LocationAttributeModel, LocationModel, NewLocationAttributeModel, NewLocationModel,
 };
 use super::{LatLongValue, Location, LocationAttribute, LocationStore, LocationStoreError};
-use crate::database::DatabaseError;
+use crate::error::ResourceTemporarilyUnavailableError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use operations::add_location::LocationStoreAddLocationOperation as _;
 use operations::delete_location::LocationStoreDeleteLocationOperation as _;
@@ -56,10 +56,9 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         let attributes = make_location_attribute_models(&location.attributes, None);
         let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_location(location.into(), attributes, current_commit_num)
     }
@@ -70,10 +69,9 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_location(location_id, service_id)
     }
@@ -83,10 +81,9 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_locations(service_id)
     }
@@ -95,10 +92,9 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         let attributes = make_location_attribute_models(&location.attributes, None);
         let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .update_location(location.into(), attributes, current_commit_num)
     }
@@ -109,10 +105,9 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         current_commit_num: i64,
     ) -> Result<(), LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .delete_location(address, current_commit_num)
     }
@@ -124,10 +119,9 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
         let attributes = make_location_attribute_models(&location.attributes, None);
         let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .add_location(location.into(), attributes, current_commit_num)
     }
@@ -138,10 +132,9 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .fetch_location(location_id, service_id)
     }
@@ -151,10 +144,9 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
         service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .list_locations(service_id)
     }
@@ -163,10 +155,9 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
         let attributes = make_location_attribute_models(&location.attributes, None);
         let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .update_location(location.into(), attributes, current_commit_num)
     }
@@ -177,10 +168,9 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
         current_commit_num: i64,
     ) -> Result<(), LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            DatabaseError::ConnectionError {
-                context: "Could not get connection pool".to_string(),
-                source: Box::new(err),
-            }
+            LocationStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
         })?)
         .delete_location(address, current_commit_num)
     }

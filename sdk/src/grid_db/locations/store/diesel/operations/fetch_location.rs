@@ -18,6 +18,7 @@ use crate::grid_db::locations::store::diesel::{
     LocationStoreError,
 };
 
+use crate::error::InternalError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use crate::grid_db::locations::store::diesel::models::{LocationAttributeModel, LocationModel};
 use crate::grid_db::locations::store::{Location, LocationAttribute};
@@ -75,9 +76,8 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
                     .first::<LocationModel>(self.conn)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| LocationStoreError::QueryError {
-                        context: "Failed to fetch location for location_id".to_string(),
-                        source: Box::new(err),
+                    .map_err(|err| {
+                        LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
@@ -180,9 +180,8 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::sqlite::SqliteConnection>
                     .first::<LocationModel>(self.conn)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| LocationStoreError::QueryError {
-                        context: "Failed to fetch location for location_id".to_string(),
-                        source: Box::new(err),
+                    .map_err(|err| {
+                        LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
