@@ -29,17 +29,23 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate log;
 
+#[cfg(feature = "pike")]
 pub mod agents;
 pub mod commits;
 pub mod error;
 mod hex;
+#[cfg(feature = "location")]
 pub mod locations;
 pub mod migrations;
+#[cfg(feature = "pike")]
 pub mod organizations;
 pub mod permissions;
+#[cfg(feature = "product")]
 pub mod products;
 pub mod protocol;
 pub mod protos;
+#[cfg(feature = "schema")]
 pub mod schemas;
 pub mod store;
+#[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;
