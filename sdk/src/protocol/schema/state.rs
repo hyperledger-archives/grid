@@ -377,7 +377,7 @@ impl PropertyDefinitionBuilder {
             PropertyDefinitionBuildError::MissingField("'data_type' field is required".to_string())
         })?;
 
-        let required = self.required.unwrap_or_else(|| false);
+        let required = self.required.unwrap_or(false);
         let description = self.description.unwrap_or_default();
 
         let number_exponent = {

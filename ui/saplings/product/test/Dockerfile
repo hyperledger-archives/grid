@@ -19,7 +19,11 @@ WORKDIR /ui/saplings/product
 
 COPY ./ui/saplings/product/package*.json /ui/saplings/product
 
-RUN apk add git
+RUN apk add \
+    g++ \
+    git \
+    make \
+    python
 
 # Gives npm permission to run the prepare script in splinter-canopyjs as root
 RUN npm config set unsafe-perm true && npm install
