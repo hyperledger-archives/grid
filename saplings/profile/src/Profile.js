@@ -170,11 +170,36 @@ export function Profile() {
     setModalActive(false);
   };
 
-  const logout = () => {
+  const logout = async () => {
     sessionStorage.removeItem('CANOPY_USER');
     sessionStorage.removeItem('CANOPY_KEYS');
     sessionStorage.removeItem('KEY_SECRET');
-    window.location.href = `${window.location.origin}/login`;
+
+    if (sessionStorage.getItem('LOGOUT')) {
+      try {
+        const { splinterURL } = getSharedConfig().canopyConfig;
+        await http(
+          'GET',
+          `${splinterURL}${sessionStorage.getItem('LOGOUT')}`,
+          {},
+          request => {
+            request.setRequestHeader('Authorization', `Bearer ${user.token}`);
+          }
+        );
+        sessionStorage.removeItem('LOGOUT');
+        window.location.href = `${window.location.origin}/login`;
+      } catch (err) {
+        switch (err.code) {
+          case '401':
+            window.location.href = `${window.location.origin}/login`;
+            break;
+          default:
+            break;
+        }
+      }
+    } else {
+      window.location.href = `${window.location.origin}/login`;
+    }
   };
 
   return (
