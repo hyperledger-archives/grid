@@ -18,10 +18,14 @@ import { getSharedConfig } from 'splinter-saplingjs';
 
 import { get } from './requests';
 
+export const ProductProtocolVersion = '1';
+
 const { gridURL } = getSharedConfig().appConfig;
 
 export const listProducts = async serviceID => {
-  const result = await get(`${gridURL}/product?service_id=${serviceID}`);
+  const result = await get(`${gridURL}/product?service_id=${serviceID}`,
+    ProductProtocolVersion
+  );
 
   if (result.ok) {
     return result.json;
@@ -31,7 +35,8 @@ export const listProducts = async serviceID => {
 
 export const fetchProduct = async (serviceID, productID) => {
   const result = await get(
-    `${gridURL}/product/${productID}?service_id=${serviceID}`
+    `${gridURL}/product/${productID}?service_id=${serviceID}`,
+    ProductProtocolVersion
   );
 
   if (result.ok) {

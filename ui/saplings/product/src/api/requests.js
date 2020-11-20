@@ -25,10 +25,13 @@ function errorResponse(request, message) {
   };
 }
 
-export function get(url) {
+export function get(url, protocolVersion) {
   return new Promise(resolve => {
     const request = new XMLHttpRequest();
     request.open('GET', url, true);
+    if (protocolVersion) {
+      request.setRequestHeader('GridProtocolVersion', protocolVersion);
+    }
     request.timeout = 5000;
 
     request.onload = () => {

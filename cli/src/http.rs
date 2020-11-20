@@ -38,7 +38,11 @@ pub fn submit_batches(
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
     debug!("url {}", final_url);
-    let mut response = client.post(&final_url).body(bytes).send()?;
+    let mut response = client
+        .post(&final_url)
+        .header("GridProtocolVersion", "1")
+        .body(bytes)
+        .send()?;
 
     if !response.status().is_success() {
         return Err(CliError::DaemonError(response.text()?));
