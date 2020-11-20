@@ -73,7 +73,7 @@ impl ProductTransactionHandler {
     pub fn new() -> ProductTransactionHandler {
         ProductTransactionHandler {
             family_name: "grid_product".to_string(),
-            family_versions: vec!["1.0".to_string()],
+            family_versions: vec!["1".to_string()],
             namespaces: vec![get_product_prefix()],
         }
     }

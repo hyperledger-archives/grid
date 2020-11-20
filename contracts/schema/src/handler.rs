@@ -73,7 +73,7 @@ impl GridSchemaTransactionHandler {
     pub fn new() -> Self {
         GridSchemaTransactionHandler {
             family_name: "grid_schema".to_string(),
-            family_versions: vec!["1.0".to_string()],
+            family_versions: vec!["1".to_string()],
             namespaces: vec![GRID_NAMESPACE.to_string()],
         }
     }

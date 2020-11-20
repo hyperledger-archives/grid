@@ -215,7 +215,7 @@ impl PikeTransactionHandler {
     pub fn new() -> PikeTransactionHandler {
         PikeTransactionHandler {
             family_name: "pike".to_string(),
-            family_versions: vec!["0.1".to_string()],
+            family_versions: vec!["1".to_string()],
             namespaces: vec![NAMESPACE.to_string()],
         }
     }
