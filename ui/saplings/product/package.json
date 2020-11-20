@@ -48,7 +48,7 @@
     "react-toast-notifications": "^2.4.0",
     "rewire": "^4.0.1",
     "splinter-saplingjs": "github:cargill/splinter-saplingjs#master",
-    "transact-sdk-javascript": "github:hyperledger/transact-sdk-javascript#master"
+    "transact-sdk": "^0.1.0"
   },
   "devDependencies": {
     "eslint": "^6.6.0",

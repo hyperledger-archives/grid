@@ -19,7 +19,7 @@ import {
   SabreTransactionBuilder,
   BatchBuilder,
   Secp256k1PrivateKey
-} from 'transact-sdk-javascript';
+} from 'transact-sdk';
 import crypto from 'crypto';
 import { submitBatchList, getSharedConfig } from 'splinter-saplingjs';
 import protos from '../protobuf';
