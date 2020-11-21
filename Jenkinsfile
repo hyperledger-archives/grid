@@ -147,7 +147,7 @@ pipeline {
         stage("Build artifacts") {
             steps {
                 sh 'mkdir -p build/debs'
-                sh 'docker run --rm -v $(pwd)/build/debs/:/debs gridd:${ISOLATION_ID} bash -c "cp /tmp/grid*.deb /debs && chown -R ${JENKINS_UID} /debs"'
+                sh 'docker-compose -f docker/compose/copy-artifacts.yaml up'
             }
         }
     }
@@ -155,9 +155,10 @@ pipeline {
     post {
         always {
             sh 'docker-compose -f docker/compose/grid_tests.yaml down'
+            sh 'docker-compose -f docker/compose/copy-artifacts.yaml down'
         }
         success {
-            archiveArtifacts '*.tgz, *.zip, build/debs/*.deb'
+            archiveArtifacts '*.tgz, *.zip, build/debs/*.deb, build/scar/*.scar'
         }
         aborted {
             error "Aborted, exiting now"

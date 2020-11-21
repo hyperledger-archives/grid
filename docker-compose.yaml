@@ -21,7 +21,7 @@ volumes:
 services:
 
   tnt-contract-builder:
-    image: tnt-contract-builder
+    image: tnt-contract-builder:${ISOLATION_ID}
     container_name: tnt-contract-builder
     build:
       context: .
@@ -43,7 +43,7 @@ services:
       "
 
   schema-contract-builder:
-    image: schema-contract-builder
+    image: schema-contract-builder:${ISOLATION_ID}
     container_name: schema-contract-builder
     build:
       context: .
@@ -64,7 +64,7 @@ services:
       "
 
   pike-contract-builder:
-    image: pike-contract-builder
+    image: pike-contract-builder:${ISOLATION_ID}
     container_name: pike-contract-builder
     build:
       context: .
@@ -84,7 +84,7 @@ services:
       "
     
   product-contract-builder:
-    image: product-contract-builder
+    image: product-contract-builder:${ISOLATION_ID}
     container_name: product-contract-builder
     build:
       context: .
@@ -108,7 +108,7 @@ services:
       "
 
   location-contract-builder:
-    image: location-contract-builder
+    image: location-contract-builder:${ISOLATION_ID}
     container_name: location-contract-builder
     build:
       context: .
