@@ -53,7 +53,7 @@
     "react-router-dom": "^5.1.2",
     "react-toast-notifications": "^2.4.0",
     "splinter-saplingjs": "github:cargill/splinter-saplingjs#master",
-    "transact-sdk-javascript": "github:hyperledger/transact-sdk-javascript#master"
+    "transact-sdk": "^0.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.10.5",
