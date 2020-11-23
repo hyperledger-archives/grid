@@ -37,6 +37,7 @@ pipeline {
         ISOLATION_ID = sh(returnStdout: true, script: 'printf $BUILD_TAG | sha256sum | cut -c1-64').trim()
         COMPOSE_PROJECT_NAME = sh(returnStdout: true, script: 'printf $BUILD_TAG | sha256sum | cut -c1-64').trim()
         JENKINS_UID = sh(returnStdout: true, script: "id -u ${USER}").trim()
+        VERSION = "AUTO_STRICT"
     }
 
     stages {
@@ -109,7 +110,7 @@ pipeline {
         // environment doesn't need all the dependencies.
         stage("Build Grid Test Dependencies") {
             steps {
-                sh 'VERSION=AUTO_STRICT REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
+                sh 'REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
                 sh 'docker-compose -f docker/compose/grid_tests.yaml build --force-rm'
             }
         }
@@ -147,7 +148,7 @@ pipeline {
         stage("Build artifacts") {
             steps {
                 sh 'mkdir -p build/debs'
-                sh 'docker run --rm -v $(pwd)/build/debs/:/debs gridd:${ISOLATION_ID} bash -c "cp /tmp/grid*.deb /debs && chown -R ${JENKINS_UID} /debs"'
+                sh 'docker-compose -f docker/compose/copy-artifacts.yaml up'
             }
         }
     }
@@ -155,9 +156,10 @@ pipeline {
     post {
         always {
             sh 'docker-compose -f docker/compose/grid_tests.yaml down'
+            sh 'docker-compose -f docker/compose/copy-artifacts.yaml down'
         }
         success {
-            archiveArtifacts '*.tgz, *.zip, build/debs/*.deb'
+            archiveArtifacts '*.tgz, *.zip, build/debs/*.deb, build/scar/*.scar'
         }
         aborted {
             error "Aborted, exiting now"
