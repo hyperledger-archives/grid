@@ -238,7 +238,7 @@ fn run() -> Result<(), CliError> {
             )
             (@subcommand show =>
                 (about: "Show location specified by ID argument")
-                (@arg location_id: +required +takes_value "Unique identifier for location")
+                (@arg location_id: +required "Unique identifier for location")
             )
         )
 
@@ -671,7 +671,7 @@ fn run() -> Result<(), CliError> {
                 locations::do_delete_location(&url, key, wait, action, service_id.as_deref())?;
             }
             ("list", Some(_)) => locations::do_list_locations(&url, service_id.as_deref())?,
-            ("show", Some(_)) => locations::do_show_location(
+            ("show", Some(m)) => locations::do_show_location(
                 &url,
                 m.value_of("location_id").unwrap(),
                 service_id.as_deref(),
