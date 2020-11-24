@@ -16,77 +16,139 @@
  */
 
 use diesel::Connection;
+use grid_sdk::grid_db::{
+    commits::store::CommitEvent as DbCommitEvent, CommitStore, DieselCommitStore,
+};
+#[cfg(any(feature = "location", feature = "product"))]
+use grid_sdk::protocol::schema::state::PropertyValue;
+#[cfg(any(
+    feature = "pike",
+    feature = "schema",
+    feature = "product",
+    feature = "location"
+))]
+use grid_sdk::protos::FromBytes;
+#[cfg(feature = "pike")]
 use grid_sdk::{
     grid_db::{
-        agents::store::Agent,
-        commits::store::CommitEvent as DbCommitEvent,
+        agents::store::Agent, organizations::store::Organization, AgentStore, DieselAgentStore,
+        DieselOrganizationStore, OrganizationStore,
+    },
+    protocol::pike::state::{AgentList, OrganizationList},
+};
+#[cfg(feature = "location")]
+use grid_sdk::{
+    grid_db::{
         locations::store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute},
-        organizations::store::Organization,
+        DieselLocationStore, LocationStore,
+    },
+    protocol::location::state::LocationList,
+};
+#[cfg(feature = "product")]
+use grid_sdk::{
+    grid_db::{
         products::store::{
             LatLongValue as ProductLatLongValue, Product, PropertyValue as ProductPropertyValue,
         },
+        DieselProductStore, ProductStore,
+    },
+    protocol::product::state::ProductList,
+};
+#[cfg(feature = "schema")]
+use grid_sdk::{
+    grid_db::{
         schemas::store::{PropertyDefinition as StorePropertyDefinition, Schema},
+        DieselSchemaStore, SchemaStore,
+    },
+    protocol::schema::state::{PropertyDefinition, SchemaList},
+};
+#[cfg(feature = "track-and-trace")]
+use grid_sdk::{
+    grid_db::{
         track_and_trace::store::{
             AssociatedAgent, LatLongValue as TntLatLongValue, Property, Proposal, Record,
             ReportedValue as StoreReportedValue, Reporter,
         },
-        AgentStore, CommitStore, DieselAgentStore, DieselCommitStore, DieselLocationStore,
-        DieselOrganizationStore, DieselProductStore, DieselSchemaStore, DieselTrackAndTraceStore,
-        LocationStore, OrganizationStore, ProductStore, SchemaStore, TrackAndTraceStore,
+        DieselTrackAndTraceStore, TrackAndTraceStore,
     },
-    protocol::{
-        location::state::LocationList,
-        pike::state::{AgentList, OrganizationList},
-        product::state::ProductList,
-        schema::state::{DataType, PropertyDefinition, PropertyValue, SchemaList},
-        track_and_trace::state::{
-            PropertyList, PropertyPageList, ProposalList, RecordList, ReportedValue,
-        },
+    protocol::schema::state::DataType,
+    protocol::track_and_trace::state::{
+        PropertyList, PropertyPageList, ProposalList, RecordList, ReportedValue,
     },
-    protos::FromBytes,
 };
+#[cfg(feature = "pike")]
 use std::collections::HashMap;
 use std::i64;
 
 use crate::database::ConnectionPool;
 
-use super::{
-    CommitEvent, EventError, EventHandler, StateChange, GRID_LOCATION, GRID_PRODUCT, GRID_SCHEMA,
-    IGNORED_NAMESPACES, PIKE_AGENT, PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL,
-    TRACK_AND_TRACE_RECORD,
-};
+#[cfg(feature = "location")]
+use super::GRID_LOCATION;
+#[cfg(feature = "product")]
+use super::GRID_PRODUCT;
+#[cfg(feature = "schema")]
+use super::GRID_SCHEMA;
+use super::{CommitEvent, EventError, EventHandler, StateChange, IGNORED_NAMESPACES};
+#[cfg(feature = "pike")]
+use super::{PIKE_AGENT, PIKE_ORG};
+#[cfg(feature = "track-and-trace")]
+use super::{TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD};
 
+#[cfg(any(
+    feature = "pike",
+    feature = "schema",
+    feature = "product",
+    feature = "location"
+))]
 pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 
 pub struct DatabaseEventHandler<C: diesel::Connection + 'static> {
     connection_pool: ConnectionPool<C>,
+    #[cfg(feature = "pike")]
     agent_store: DieselAgentStore<C>,
     commit_store: DieselCommitStore<C>,
+    #[cfg(feature = "pike")]
     organization_store: DieselOrganizationStore<C>,
+    #[cfg(feature = "location")]
     location_store: DieselLocationStore<C>,
+    #[cfg(feature = "product")]
     product_store: DieselProductStore<C>,
+    #[cfg(feature = "schema")]
     schema_store: DieselSchemaStore<C>,
+    #[cfg(feature = "track-and-trace")]
     tnt_store: DieselTrackAndTraceStore<C>,
 }
 
 impl DatabaseEventHandler<diesel::pg::PgConnection> {
     pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> Self {
+        #[cfg(feature = "pike")]
         let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
         let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "pike")]
         let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "location")]
         let location_store = DieselLocationStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "product")]
         let product_store = DieselProductStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "schema")]
         let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "track-and-trace")]
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
 
         Self {
+            #[cfg(feature = "pike")]
             agent_store,
             connection_pool,
             commit_store,
+            #[cfg(feature = "pike")]
             organization_store,
+            #[cfg(feature = "location")]
             location_store,
+            #[cfg(feature = "product")]
             product_store,
+            #[cfg(feature = "schema")]
             schema_store,
+            #[cfg(feature = "track-and-trace")]
             tnt_store,
         }
     }
@@ -150,59 +212,69 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
 
             for op in db_ops {
                 match op {
+                    #[cfg(feature = "pike")]
                     DbInsertOperation::Agents(agents) => {
                         debug!("Inserting {} agents", agents.len());
                         agents
                             .into_iter()
                             .try_for_each(|agent| self.agent_store.add_agent(agent))?;
                     }
+                    #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
                         debug!("Inserting {} organizations", orgs.len());
                         self.organization_store.add_organizations(orgs)?;
                     }
-
+                    #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
                         debug!("Inserting {} schemas", schemas.len());
                         schemas
                             .into_iter()
                             .try_for_each(|schema| self.schema_store.add_schema(schema))?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Properties(properties, reporters) => {
                         debug!("Inserting {} properties", properties.len());
                         self.tnt_store.add_properties(properties)?;
                         debug!("Inserting {} reporters", reporters.len());
                         self.tnt_store.add_reporters(reporters)?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::ReportedValues(reported_values) => {
                         debug!("Inserting {} reported values", reported_values.len());
                         self.tnt_store.add_reported_values(reported_values)?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Proposals(proposals) => {
                         debug!("Inserting {} proposals", proposals.len());
                         self.tnt_store.add_proposals(proposals)?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Records(records, associated_agents) => {
                         debug!("Inserting {} records", records.len());
                         self.tnt_store.add_records(records)?;
                         debug!("Inserting {} associated agents", associated_agents.len());
                         self.tnt_store.add_associated_agents(associated_agents)?;
                     }
+                    #[cfg(feature = "location")]
                     DbInsertOperation::Locations(locations) => {
                         debug!("Inserting {} locations", locations.len());
                         locations
                             .into_iter()
                             .try_for_each(|location| self.location_store.add_location(location))?;
                     }
+                    #[cfg(feature = "location")]
                     DbInsertOperation::RemoveLocation(ref address, current_commit_num) => {
                         self.location_store
                             .delete_location(address, current_commit_num)?;
                     }
+                    #[cfg(feature = "product")]
                     DbInsertOperation::Products(products) => {
                         debug!("Inserting {} products", products.len());
                         products
                             .into_iter()
                             .try_for_each(|product| self.product_store.add_product(product))?;
                     }
+                    #[cfg(feature = "product")]
                     DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
                         self.product_store
                             .delete_product(address, current_commit_num)?;
@@ -223,22 +295,34 @@ impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
     pub fn from_sqlite_pool(
         connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
     ) -> Self {
+        #[cfg(feature = "pike")]
         let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
         let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "pike")]
         let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "location")]
         let location_store = DieselLocationStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "product")]
         let product_store = DieselProductStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "schema")]
         let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
+        #[cfg(feature = "track-and-trace")]
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
 
         Self {
+            #[cfg(feature = "pike")]
             agent_store,
             connection_pool,
             commit_store,
+            #[cfg(feature = "pike")]
             organization_store,
+            #[cfg(feature = "location")]
             location_store,
+            #[cfg(feature = "product")]
             product_store,
+            #[cfg(feature = "schema")]
             schema_store,
+            #[cfg(feature = "track-and-trace")]
             tnt_store,
         }
     }
@@ -302,59 +386,70 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
 
             for op in db_ops {
                 match op {
+                    #[cfg(feature = "pike")]
                     DbInsertOperation::Agents(agents) => {
                         debug!("Inserting {} agents", agents.len());
                         agents
                             .into_iter()
                             .try_for_each(|agent| self.agent_store.add_agent(agent))?;
                     }
+                    #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
                         debug!("Inserting {} organizations", orgs.len());
                         self.organization_store.add_organizations(orgs)?;
                     }
 
+                    #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
                         debug!("Inserting {} schemas", schemas.len());
                         schemas
                             .into_iter()
                             .try_for_each(|schema| self.schema_store.add_schema(schema))?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Properties(properties, reporters) => {
                         debug!("Inserting {} properties", properties.len());
                         self.tnt_store.add_properties(properties)?;
                         debug!("Inserting {} reporters", reporters.len());
                         self.tnt_store.add_reporters(reporters)?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::ReportedValues(reported_values) => {
                         debug!("Inserting {} reported values", reported_values.len());
                         self.tnt_store.add_reported_values(reported_values)?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Proposals(proposals) => {
                         debug!("Inserting {} proposals", proposals.len());
                         self.tnt_store.add_proposals(proposals)?;
                     }
+                    #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Records(records, associated_agents) => {
                         debug!("Inserting {} records", records.len());
                         self.tnt_store.add_records(records)?;
                         debug!("Inserting {} associated agents", associated_agents.len());
                         self.tnt_store.add_associated_agents(associated_agents)?;
                     }
+                    #[cfg(feature = "location")]
                     DbInsertOperation::Locations(locations) => {
                         debug!("Inserting {} locations", locations.len());
                         locations
                             .into_iter()
                             .try_for_each(|location| self.location_store.add_location(location))?;
                     }
+                    #[cfg(feature = "location")]
                     DbInsertOperation::RemoveLocation(ref address, current_commit_num) => {
                         self.location_store
                             .delete_location(address, current_commit_num)?;
                     }
+                    #[cfg(feature = "product")]
                     DbInsertOperation::Products(products) => {
                         debug!("Inserting {} products", products.len());
                         products
                             .into_iter()
                             .try_for_each(|product| self.product_store.add_product(product))?;
                     }
+                    #[cfg(feature = "product")]
                     DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
                         self.product_store
                             .delete_product(address, current_commit_num)?;
@@ -384,13 +479,16 @@ fn create_db_operations_from_state_changes(
         .collect::<Result<Vec<DbInsertOperation>, EventError>>()
 }
 
+#[allow(unused_variables)]
 fn state_change_to_db_operation(
     state_change: &StateChange,
     commit_num: i64,
     service_id: Option<&String>,
 ) -> Result<Option<DbInsertOperation>, EventError> {
+    #[allow(clippy::match_single_binding)]
     match state_change {
         StateChange::Set { key, value } => match &key[0..8] {
+            #[cfg(feature = "pike")]
             PIKE_AGENT => {
                 let agents = AgentList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
@@ -418,6 +516,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Agents(agents)))
             }
+            #[cfg(feature = "pike")]
             PIKE_ORG => {
                 let orgs = OrganizationList::from_bytes(&value)
                     .map_err(|err| {
@@ -446,6 +545,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Organizations(orgs)))
             }
+            #[cfg(feature = "schema")]
             GRID_SCHEMA => {
                 let schemas = SchemaList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
@@ -469,6 +569,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::GridSchemas(schemas)))
             }
+            #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPERTY if &key[66..] == "0000" => {
                 let properties = PropertyList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse property list {}", err)))?
@@ -517,6 +618,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Properties(properties, reporters)))
             }
+            #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPERTY => {
                 let property_pages = PropertyPageList::from_bytes(&value)
                     .map_err(|err| {
@@ -546,6 +648,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::ReportedValues(reported_values)))
             }
+            #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPOSAL => {
                 let proposals = ProposalList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
@@ -569,6 +672,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Proposals(proposals)))
             }
+            #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_RECORD => {
                 let record_list = RecordList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse record list {}", err)))?
@@ -637,6 +741,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Records(records, associated_agents)))
             }
+            #[cfg(feature = "location")]
             GRID_LOCATION => {
                 let locations = LocationList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse location list {}", err)))?
@@ -662,6 +767,7 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Locations(locations)))
             }
+            #[cfg(feature = "product")]
             GRID_PRODUCT => {
                 let products = ProductList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
@@ -697,42 +803,52 @@ fn state_change_to_db_operation(
                 Ok(None)
             }
         },
-        StateChange::Delete { key } => {
-            if &key[0..8] == GRID_PRODUCT {
-                Ok(Some(DbInsertOperation::RemoveProduct(
-                    key.to_string(),
-                    commit_num,
-                )))
-            } else if &key[0..8] == GRID_LOCATION {
-                Ok(Some(DbInsertOperation::RemoveLocation(
-                    key.to_string(),
-                    commit_num,
-                )))
-            } else {
-                Err(EventError(format!(
-                    "could not handle state change; unexpected delete of key {}",
-                    key
-                )))
-            }
-        }
+        StateChange::Delete { key } => match &key[0..8] {
+            #[cfg(feature = "product")]
+            GRID_PRODUCT => Ok(Some(DbInsertOperation::RemoveProduct(
+                key.to_string(),
+                commit_num,
+            ))),
+            #[cfg(feature = "location")]
+            GRID_LOCATION => Ok(Some(DbInsertOperation::RemoveLocation(
+                key.to_string(),
+                commit_num,
+            ))),
+            _ => Err(EventError(format!(
+                "could not handle state change; unexpected delete of key {}",
+                key
+            ))),
+        },
     }
 }
 
 #[derive(Debug)]
 enum DbInsertOperation {
+    #[cfg(feature = "pike")]
     Agents(Vec<Agent>),
+    #[cfg(feature = "pike")]
     Organizations(Vec<Organization>),
+    #[cfg(feature = "schema")]
     GridSchemas(Vec<Schema>),
+    #[cfg(feature = "location")]
     Locations(Vec<Location>),
+    #[cfg(feature = "track-and-trace")]
     Properties(Vec<Property>, Vec<Reporter>),
+    #[cfg(feature = "track-and-trace")]
     ReportedValues(Vec<StoreReportedValue>),
+    #[cfg(feature = "track-and-trace")]
     Proposals(Vec<Proposal>),
+    #[cfg(feature = "track-and-trace")]
     Records(Vec<Record>, Vec<AssociatedAgent>),
+    #[cfg(feature = "product")]
     Products(Vec<Product>),
+    #[cfg(feature = "location")]
     RemoveLocation(String, i64),
+    #[cfg(feature = "product")]
     RemoveProduct(String, i64),
 }
 
+#[cfg(feature = "track-and-trace")]
 fn make_reported_values(
     start_commit_num: i64,
     record_id: &str,
@@ -802,6 +918,7 @@ fn make_reported_values(
     Ok(new_values)
 }
 
+#[cfg(feature = "schema")]
 fn make_property_definitions(
     start_commit_num: i64,
     service_id: Option<&String>,
@@ -834,6 +951,7 @@ fn make_property_definitions(
     properties
 }
 
+#[cfg(feature = "product")]
 fn make_product_property_values(
     start_commit_num: i64,
     service_id: Option<&String>,
@@ -874,6 +992,7 @@ fn make_product_property_values(
     properties
 }
 
+#[cfg(feature = "location")]
 fn make_location_attributes(
     start_commit_num: i64,
     service_id: Option<&String>,

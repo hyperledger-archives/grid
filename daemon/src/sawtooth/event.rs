@@ -395,9 +395,7 @@ mod tests {
 
     use sawtooth_sdk::messages::events::Event_Attribute;
 
-    const PIKE_NAMESPACE: &str = "cad11d";
     const GRID_NAMESPACE: &str = "621dee";
-    const TRACK_AND_TRACE_NAMESPACE: &str = "a43b46";
 
     /// Verify that a valid set of Sawtooth events can be converted to a `CommitEvent`.
     #[test]
@@ -406,9 +404,9 @@ mod tests {
         let block_num = 1;
 
         let grid_state_changes = vec![
-            create_state_change(format!("{}01", PIKE_NAMESPACE), Some(vec![0x01])),
+            create_state_change(format!("{}01", GRID_NAMESPACE), Some(vec![0x01])),
             create_state_change(format!("{}02", GRID_NAMESPACE), Some(vec![0x02])),
-            create_state_change(format!("{}03", TRACK_AND_TRACE_NAMESPACE), None),
+            create_state_change(format!("{}03", GRID_NAMESPACE), None),
         ];
         let non_grid_state_changes = vec![create_state_change("ef".into(), None)];
 

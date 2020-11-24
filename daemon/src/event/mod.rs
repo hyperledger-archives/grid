@@ -27,21 +27,37 @@ use grid_sdk::grid_db::commits::store::{
 
 pub use self::error::{EventError, EventIoError, EventProcessorError};
 
+#[cfg(feature = "pike")]
 const PIKE_NAMESPACE: &str = "cad11d";
+#[cfg(feature = "pike")]
 const PIKE_AGENT: &str = "cad11d00";
+#[cfg(feature = "pike")]
 const PIKE_ORG: &str = "cad11d01";
 
 const GRID_NAMESPACE: &str = "621dee";
+#[cfg(feature = "schema")]
 const GRID_SCHEMA: &str = "621dee01";
+#[cfg(feature = "product")]
 const GRID_PRODUCT: &str = "621dee02";
+#[cfg(feature = "location")]
 const GRID_LOCATION: &str = "621dee04";
 
+#[cfg(feature = "track-and-trace")]
 const TRACK_AND_TRACE_NAMESPACE: &str = "a43b46";
+#[cfg(feature = "track-and-trace")]
 const TRACK_AND_TRACE_PROPERTY: &str = "a43b46ea";
+#[cfg(feature = "track-and-trace")]
 const TRACK_AND_TRACE_PROPOSAL: &str = "a43b46aa";
+#[cfg(feature = "track-and-trace")]
 const TRACK_AND_TRACE_RECORD: &str = "a43b46ec";
 
-const ALL_GRID_NAMESPACES: &[&str] = &[PIKE_NAMESPACE, GRID_NAMESPACE, TRACK_AND_TRACE_NAMESPACE];
+const ALL_GRID_NAMESPACES: &[&str] = &[
+    #[cfg(feature = "pike")]
+    PIKE_NAMESPACE,
+    GRID_NAMESPACE,
+    #[cfg(feature = "track-and-trace")]
+    TRACK_AND_TRACE_NAMESPACE,
+];
 
 const SABRE_NAMESPACE: &str = "00ec";
 

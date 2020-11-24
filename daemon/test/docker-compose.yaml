@@ -44,7 +44,7 @@ services:
             sleep 1
         done
         cd daemon
-        cargo test --features test-api --  --test-threads=1
+        cargo test --features test-api,experimental --  --test-threads=1
         cd ../cli
         cargo test actions -- --test-threads=1
         cargo test yaml_parser -- --test-threads=1

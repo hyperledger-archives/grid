@@ -38,8 +38,11 @@ use crate::splinter::app_auth_handler::error::AppAuthHandlerError;
 const SCABBARD_SUBMISSION_WAIT_SECS: u64 = 10;
 
 // Pike constants
+#[cfg(feature = "pike")]
 const PIKE_PREFIX: &str = "cad11d";
+#[cfg(feature = "pike")]
 const PIKE_CONTRACT_NAME: &str = "grid-pike";
+#[cfg(feature = "pike")]
 const PIKE_CONTRACT_VERSION_REQ: &str = "0.1.0-dev";
 
 // Product constants
@@ -77,90 +80,136 @@ pub fn setup_grid(
     }
 
     // Make Pike transactions
+    #[cfg(feature = "pike")]
     let pike_contract = SmartContractArchive::from_scar_file(
         PIKE_CONTRACT_NAME,
         PIKE_CONTRACT_VERSION_REQ,
         &default_scar_path(),
     )?;
+    #[cfg(feature = "pike")]
     let pike_contract_registry_txn =
         make_contract_registry_txn(&signer, &pike_contract.metadata.name)?;
+    #[cfg(feature = "pike")]
     let pike_contract_txn = make_upload_contract_txn(&signer, &pike_contract, PIKE_PREFIX)?;
+    #[cfg(feature = "pike")]
     let pike_namespace_registry_txn = make_namespace_registry_txn(&signer, PIKE_PREFIX)?;
+    #[cfg(feature = "pike")]
     let pike_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &pike_contract, PIKE_PREFIX)?;
 
     // Make Product transactions
+    #[cfg(feature = "product")]
     let product_contract = SmartContractArchive::from_scar_file(
         PRODUCT_CONTRACT_NAME,
         PRODUCT_CONTRACT_VERSION_REQ,
         &default_scar_path(),
     )?;
+    #[cfg(feature = "product")]
     let product_contract_registry_txn =
         make_contract_registry_txn(&signer, &product_contract.metadata.name)?;
+    #[cfg(feature = "product")]
     let product_contract_txn =
         make_upload_contract_txn(&signer, &product_contract, PRODUCT_PREFIX)?;
+    #[cfg(feature = "product")]
     let product_namespace_registry_txn = make_namespace_registry_txn(&signer, PRODUCT_PREFIX)?;
+    #[cfg(feature = "product")]
     let product_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &product_contract, PRODUCT_PREFIX)?;
+    #[cfg(feature = "product")]
     let product_pike_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &product_contract, PIKE_PREFIX)?;
+    #[cfg(feature = "product")]
     let product_schema_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &product_contract, SCHEMA_PREFIX)?;
 
     // Make Location transactions
+    #[cfg(feature = "location")]
     let location_contract = SmartContractArchive::from_scar_file(
         LOCATION_CONTRACT_NAME,
         LOCATION_CONTRACT_VERSION_REQ,
         &default_scar_path(),
     )?;
+    #[cfg(feature = "location")]
     let location_contract_registry_txn =
         make_contract_registry_txn(&signer, &location_contract.metadata.name)?;
+    #[cfg(feature = "location")]
     let location_contract_txn =
         make_upload_contract_txn(&signer, &location_contract, LOCATION_PREFIX)?;
+    #[cfg(feature = "location")]
     let location_namespace_registry_txn = make_namespace_registry_txn(&signer, LOCATION_PREFIX)?;
+    #[cfg(feature = "location")]
     let location_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &location_contract, LOCATION_PREFIX)?;
+    #[cfg(feature = "location")]
     let location_pike_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &location_contract, PIKE_PREFIX)?;
+    #[cfg(feature = "location")]
     let location_schema_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &location_contract, SCHEMA_PREFIX)?;
 
     // Make schema transactions
+    #[cfg(feature = "schema")]
     let schema_contract = SmartContractArchive::from_scar_file(
         SCHEMA_CONTRACT_NAME,
         SCHEMA_CONTRACT_VERSION_REQ,
         &default_scar_path(),
     )?;
+    #[cfg(feature = "schema")]
     let schema_contract_registry_txn =
         make_contract_registry_txn(&signer, &schema_contract.metadata.name)?;
+    #[cfg(feature = "schema")]
     let schema_contract_txn = make_upload_contract_txn(&signer, &schema_contract, SCHEMA_PREFIX)?;
+    #[cfg(feature = "schema")]
     let schema_namespace_registry_txn = make_namespace_registry_txn(&signer, SCHEMA_PREFIX)?;
+    #[cfg(feature = "schema")]
     let schema_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &schema_contract, SCHEMA_PREFIX)?;
+    #[cfg(feature = "schema")]
     let schema_pike_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &schema_contract, PIKE_PREFIX)?;
 
     let txns = vec![
+        #[cfg(feature = "pike")]
         pike_contract_registry_txn,
+        #[cfg(feature = "pike")]
         pike_contract_txn,
+        #[cfg(feature = "pike")]
         pike_namespace_registry_txn,
+        #[cfg(feature = "pike")]
         pike_namespace_permissions_txn,
+        #[cfg(feature = "product")]
         product_contract_registry_txn,
+        #[cfg(feature = "product")]
         product_contract_txn,
+        #[cfg(feature = "product")]
         product_namespace_registry_txn,
+        #[cfg(feature = "product")]
         product_pike_namespace_permissions_txn,
+        #[cfg(feature = "product")]
         product_namespace_permissions_txn,
+        #[cfg(feature = "schema")]
         schema_contract_registry_txn,
+        #[cfg(feature = "schema")]
         schema_contract_txn,
+        #[cfg(feature = "schema")]
         schema_namespace_registry_txn,
+        #[cfg(feature = "product")]
         product_schema_namespace_permissions_txn,
+        #[cfg(feature = "schema")]
         schema_pike_namespace_permissions_txn,
+        #[cfg(feature = "schema")]
         schema_namespace_permissions_txn,
+        #[cfg(feature = "location")]
         location_contract_registry_txn,
+        #[cfg(feature = "location")]
         location_contract_txn,
+        #[cfg(feature = "location")]
         location_namespace_registry_txn,
+        #[cfg(feature = "location")]
         location_namespace_permissions_txn,
+        #[cfg(feature = "location")]
         location_pike_namespace_permissions_txn,
+        #[cfg(feature = "location")]
         location_schema_namespace_permissions_txn,
     ];
     let batch = BatchBuilder::new().with_transactions(txns).build(&signer)?;
@@ -194,6 +243,7 @@ fn make_contract_registry_txn(
         .build(signer)?)
 }
 
+#[cfg(feature = "pike")]
 fn make_upload_contract_txn(
     signer: &dyn Signer,
     contract: &SmartContractArchive,
