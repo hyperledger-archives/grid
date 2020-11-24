@@ -44,15 +44,21 @@ const PIKE_PREFIX: &str = "cad11d";
 const PIKE_CONTRACT_NAME: &str = "grid-pike";
 
 // Product constants
+#[cfg(feature = "product")]
 const PRODUCT_PREFIX: &str = "621dee02";
+#[cfg(feature = "product")]
 const PRODUCT_CONTRACT_NAME: &str = "grid-product";
 
 // Schema constants
+#[cfg(feature = "schema")]
 const SCHEMA_PREFIX: &str = "621dee01";
+#[cfg(feature = "schema")]
 const SCHEMA_CONTRACT_NAME: &str = "grid-schema";
 
 // Location constants
+#[cfg(feature = "location")]
 const LOCATION_PREFIX: &str = "621dee04";
+#[cfg(feature = "location")]
 const LOCATION_CONTRACT_NAME: &str = "grid-location";
 
 pub fn setup_grid(
