@@ -15,6 +15,26 @@
  * -----------------------------------------------------------------------------
  */
 
+use std::ffi::CString;
+use std::path::Path;
+
+use super::error::CliError;
+
+fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
+    let pathstr = path
+        .to_str()
+        .ok_or_else(|| CliError::UserError(format!("Invalid path: {:?}", path)))?;
+    let cpath = CString::new(pathstr).map_err(|err| CliError::UserError(format!("{}", err)))?;
+    let result = unsafe { libc::chown(cpath.as_ptr(), uid, gid) };
+    match result {
+        0 => Ok(()),
+        code => Err(CliError::UserError(format!(
+            "Error chowning file {}: {}",
+            pathstr, code
+        ))),
+    }
+}
+
 #[cfg(feature = "admin-keygen")]
 pub mod admin;
 pub mod agents;
