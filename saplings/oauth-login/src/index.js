@@ -50,6 +50,8 @@ registerConfigSapling('login', () => {
       userId,
       displayName
     });
+    // Set the OAuth logout route
+    sessionStorage.setItem('LOGOUT', '/oauth/logout');
 
     window.$CANOPY.redirectedFrom = window.location.href;
     window.location.replace('/');
