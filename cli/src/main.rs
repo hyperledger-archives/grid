@@ -213,6 +213,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file")
@@ -271,6 +272,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file")
@@ -333,6 +335,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file")
@@ -374,6 +377,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file")
@@ -423,6 +427,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
@@ -445,6 +450,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
@@ -536,6 +542,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
@@ -582,6 +589,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
@@ -610,6 +618,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
@@ -701,6 +710,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
@@ -747,6 +757,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
@@ -775,6 +786,7 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("key")
+                                .long("key")
                                 .short("k")
                                 .takes_value(true)
                                 .help("Base name for private signing key file"),
