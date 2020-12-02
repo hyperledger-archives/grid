@@ -42,23 +42,24 @@ const SCABBARD_SUBMISSION_WAIT_SECS: u64 = 10;
 const PIKE_PREFIX: &str = "cad11d";
 #[cfg(feature = "pike")]
 const PIKE_CONTRACT_NAME: &str = "grid-pike";
-#[cfg(feature = "pike")]
-const PIKE_CONTRACT_VERSION_REQ: &str = "0.1.0-dev";
 
 // Product constants
+#[cfg(feature = "product")]
 const PRODUCT_PREFIX: &str = "621dee02";
+#[cfg(feature = "product")]
 const PRODUCT_CONTRACT_NAME: &str = "grid-product";
-const PRODUCT_CONTRACT_VERSION_REQ: &str = "0.1.0-dev";
 
 // Schema constants
+#[cfg(feature = "schema")]
 const SCHEMA_PREFIX: &str = "621dee01";
+#[cfg(feature = "schema")]
 const SCHEMA_CONTRACT_NAME: &str = "grid-schema";
-const SCHEMA_CONTRACT_VERSION_REQ: &str = "0.1.0-dev";
 
 // Location constants
+#[cfg(feature = "location")]
 const LOCATION_PREFIX: &str = "621dee04";
+#[cfg(feature = "location")]
 const LOCATION_CONTRACT_NAME: &str = "grid-location";
-const LOCATION_CONTRACT_VERSION_REQ: &str = "0.1.0-dev";
 
 pub fn setup_grid(
     scabbard_admin_key: &str,
@@ -67,6 +68,8 @@ pub fn setup_grid(
     service_id: &str,
     circuit_id: &str,
 ) -> Result<(), AppAuthHandlerError> {
+    let version = env!("CARGO_PKG_VERSION");
+
     let signer = new_signer(&scabbard_admin_key)?;
 
     // The node with the first key in the list of scabbard admins is responsible for setting up xo
@@ -81,11 +84,8 @@ pub fn setup_grid(
 
     // Make Pike transactions
     #[cfg(feature = "pike")]
-    let pike_contract = SmartContractArchive::from_scar_file(
-        PIKE_CONTRACT_NAME,
-        PIKE_CONTRACT_VERSION_REQ,
-        &default_scar_path(),
-    )?;
+    let pike_contract =
+        SmartContractArchive::from_scar_file(PIKE_CONTRACT_NAME, &version, &default_scar_path())?;
     #[cfg(feature = "pike")]
     let pike_contract_registry_txn =
         make_contract_registry_txn(&signer, &pike_contract.metadata.name)?;
@@ -101,7 +101,7 @@ pub fn setup_grid(
     #[cfg(feature = "product")]
     let product_contract = SmartContractArchive::from_scar_file(
         PRODUCT_CONTRACT_NAME,
-        PRODUCT_CONTRACT_VERSION_REQ,
+        &version,
         &default_scar_path(),
     )?;
     #[cfg(feature = "product")]
@@ -126,7 +126,7 @@ pub fn setup_grid(
     #[cfg(feature = "location")]
     let location_contract = SmartContractArchive::from_scar_file(
         LOCATION_CONTRACT_NAME,
-        LOCATION_CONTRACT_VERSION_REQ,
+        &version,
         &default_scar_path(),
     )?;
     #[cfg(feature = "location")]
@@ -149,11 +149,8 @@ pub fn setup_grid(
 
     // Make schema transactions
     #[cfg(feature = "schema")]
-    let schema_contract = SmartContractArchive::from_scar_file(
-        SCHEMA_CONTRACT_NAME,
-        SCHEMA_CONTRACT_VERSION_REQ,
-        &default_scar_path(),
-    )?;
+    let schema_contract =
+        SmartContractArchive::from_scar_file(SCHEMA_CONTRACT_NAME, &version, &default_scar_path())?;
     #[cfg(feature = "schema")]
     let schema_contract_registry_txn =
         make_contract_registry_txn(&signer, &schema_contract.metadata.name)?;
