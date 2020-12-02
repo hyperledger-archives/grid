@@ -36,7 +36,6 @@ pipeline {
     environment {
         ISOLATION_ID = sh(returnStdout: true, script: 'printf $BUILD_TAG | sha256sum | cut -c1-64').trim()
         COMPOSE_PROJECT_NAME = sh(returnStdout: true, script: 'printf $BUILD_TAG | sha256sum | cut -c1-64').trim()
-        JENKINS_UID = sh(returnStdout: true, script: "id -u ${USER}").trim()
         VERSION = "AUTO_STRICT"
     }
 
