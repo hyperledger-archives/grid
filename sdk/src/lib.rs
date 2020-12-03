@@ -26,13 +26,20 @@ extern crate diesel;
 #[macro_use]
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
-
-pub mod error;
-pub mod grid_db;
-mod hex;
 #[macro_use]
 extern crate log;
+
+pub mod agents;
+pub mod commits;
+pub mod error;
+mod hex;
+pub mod locations;
+pub mod migrations;
+pub mod organizations;
 pub mod permissions;
+pub mod products;
 pub mod protocol;
 pub mod protos;
+pub mod schemas;
 pub mod store;
+pub mod track_and_trace;

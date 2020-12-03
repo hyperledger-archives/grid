@@ -18,7 +18,7 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::grid_db::locations::store::{LatLongValue, Location, LocationAttribute};
+use grid_sdk::locations::store::{LatLongValue, Location, LocationAttribute};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -16,9 +16,7 @@
  */
 
 use diesel::Connection;
-use grid_sdk::grid_db::{
-    commits::store::CommitEvent as DbCommitEvent, CommitStore, DieselCommitStore,
-};
+use grid_sdk::commits::{store::CommitEvent as DbCommitEvent, CommitStore, DieselCommitStore};
 #[cfg(any(feature = "location", feature = "product"))]
 use grid_sdk::protocol::schema::state::PropertyValue;
 #[cfg(any(
@@ -30,50 +28,48 @@ use grid_sdk::protocol::schema::state::PropertyValue;
 use grid_sdk::protos::FromBytes;
 #[cfg(feature = "pike")]
 use grid_sdk::{
-    grid_db::{
-        agents::store::Agent, organizations::store::Organization, AgentStore, DieselAgentStore,
-        DieselOrganizationStore, OrganizationStore,
-    },
+    agents::{store::Agent, AgentStore, DieselAgentStore},
+    organizations::{store::Organization, DieselOrganizationStore, OrganizationStore},
     protocol::pike::state::{AgentList, OrganizationList},
 };
 #[cfg(feature = "location")]
 use grid_sdk::{
-    grid_db::{
-        locations::store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute},
+    locations::{
+        store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute},
         DieselLocationStore, LocationStore,
     },
     protocol::location::state::LocationList,
 };
 #[cfg(feature = "product")]
 use grid_sdk::{
-    grid_db::{
-        products::store::{
+    products::{
+        store::{
             LatLongValue as ProductLatLongValue, Product, PropertyValue as ProductPropertyValue,
         },
         DieselProductStore, ProductStore,
     },
     protocol::product::state::ProductList,
 };
-#[cfg(feature = "schema")]
-use grid_sdk::{
-    grid_db::{
-        schemas::store::{PropertyDefinition as StorePropertyDefinition, Schema},
-        DieselSchemaStore, SchemaStore,
-    },
-    protocol::schema::state::{PropertyDefinition, SchemaList},
-};
 #[cfg(feature = "track-and-trace")]
 use grid_sdk::{
-    grid_db::{
-        track_and_trace::store::{
+    protocol::schema::state::DataType,
+    protocol::track_and_trace::state::{
+        PropertyList, PropertyPageList, ProposalList, RecordList, ReportedValue,
+    },
+    track_and_trace::{
+        store::{
             AssociatedAgent, LatLongValue as TntLatLongValue, Property, Proposal, Record,
             ReportedValue as StoreReportedValue, Reporter,
         },
         DieselTrackAndTraceStore, TrackAndTraceStore,
     },
-    protocol::schema::state::DataType,
-    protocol::track_and_trace::state::{
-        PropertyList, PropertyPageList, ProposalList, RecordList, ReportedValue,
+};
+#[cfg(feature = "schema")]
+use grid_sdk::{
+    protocol::schema::state::{PropertyDefinition, SchemaList},
+    schemas::{
+        store::{PropertyDefinition as StorePropertyDefinition, Schema},
+        DieselSchemaStore, SchemaStore,
     },
 };
 #[cfg(feature = "pike")]

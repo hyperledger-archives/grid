@@ -26,19 +26,20 @@ use diesel::r2d2::{ConnectionManager, Pool};
 /// An abstract factory for creating Grid stores backed by the same storage
 pub trait StoreFactory {
     /// Get a new `AgentStore`
-    fn get_grid_agent_store(&self) -> Box<dyn crate::grid_db::AgentStore>;
+    fn get_grid_agent_store(&self) -> Box<dyn crate::agents::AgentStore>;
     /// Get a new `CommitStore`
-    fn get_grid_commit_store(&self) -> Box<dyn crate::grid_db::CommitStore>;
+    fn get_grid_commit_store(&self) -> Box<dyn crate::commits::CommitStore>;
     /// Get a new `OrganizationStore`
-    fn get_grid_organization_store(&self) -> Box<dyn crate::grid_db::OrganizationStore>;
+    fn get_grid_organization_store(&self) -> Box<dyn crate::organizations::OrganizationStore>;
     /// Get a new `LocationStore`
-    fn get_grid_location_store(&self) -> Box<dyn crate::grid_db::LocationStore>;
+    fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore>;
     /// Get a new `ProductStore`
-    fn get_grid_product_store(&self) -> Box<dyn crate::grid_db::ProductStore>;
+    fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore>;
     /// Get a new `SchemaStore`
-    fn get_grid_schema_store(&self) -> Box<dyn crate::grid_db::SchemaStore>;
+    fn get_grid_schema_store(&self) -> Box<dyn crate::schemas::SchemaStore>;
     /// Get a new `TrackAndTraceStore`
-    fn get_grid_track_and_trace_store(&self) -> Box<dyn crate::grid_db::TrackAndTraceStore>;
+    fn get_grid_track_and_trace_store(&self)
+        -> Box<dyn crate::track_and_trace::TrackAndTraceStore>;
 }
 
 /// Creates a `StoreFactory` backed by the given connection

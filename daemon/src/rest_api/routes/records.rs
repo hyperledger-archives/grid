@@ -20,7 +20,7 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::grid_db::track_and_trace::store::{
+use grid_sdk::track_and_trace::store::{
     AssociatedAgent, LatLongValue, Property, Proposal, Record,
     ReportedValueReporterToAgentMetadata, TrackAndTraceStore,
 };

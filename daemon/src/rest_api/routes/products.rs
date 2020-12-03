@@ -21,7 +21,7 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::grid_db::products::store::{LatLongValue, Product, PropertyValue};
+use grid_sdk::products::store::{LatLongValue, Product, PropertyValue};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
