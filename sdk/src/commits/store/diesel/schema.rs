@@ -13,7 +13,7 @@
 // limitations under the License.
 
 table! {
-    commit (id) {
+    commits (id) {
         id -> Int8,
         commit_id -> Text,
         commit_num -> Int8,

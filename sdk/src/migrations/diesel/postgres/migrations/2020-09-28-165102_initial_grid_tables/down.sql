@@ -13,7 +13,7 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-DROP TABLE commit;
+DROP TABLE commits;
 DROP TABLE chain_record;
 DROP TABLE grid_circuit;
 DROP TABLE grid_circuit_member;

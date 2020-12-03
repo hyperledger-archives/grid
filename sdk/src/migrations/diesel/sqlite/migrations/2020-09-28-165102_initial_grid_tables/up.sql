@@ -13,8 +13,8 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-CREATE TABLE commit (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE commits (
+    id INTEGER PRIMARY KEY,
     commit_id VARCHAR(128),
     commit_num BIGINT NOT NULL,
     service_id TEXT

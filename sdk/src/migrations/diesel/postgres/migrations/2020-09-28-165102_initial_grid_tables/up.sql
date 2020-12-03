@@ -13,7 +13,7 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-CREATE TABLE commit (
+CREATE TABLE commits (
     id BIGSERIAL PRIMARY KEY,
     commit_id VARCHAR(128),
     commit_num BIGINT NOT NULL,

@@ -14,8 +14,9 @@
 
 use super::CommitStoreOperations;
 use crate::commits::store::diesel::models::{CommitModel, NewCommitModel};
-use crate::commits::store::diesel::{schema::commit, CommitStoreError};
+use crate::commits::store::diesel::{schema::commits, CommitStoreError};
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
+
 use diesel::{
     dsl::insert_into,
     prelude::*,
@@ -29,8 +30,8 @@ pub(in crate::commits) trait CommitStoreAddCommitOperation {
 #[cfg(feature = "postgres")]
 impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg::PgConnection> {
     fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError> {
-        let duplicate_commit = commit::table
-            .filter(commit::commit_id.eq(&commit.commit_id))
+        let duplicate_commit = commits::table
+            .filter(commits::commit_id.eq(&commit.commit_id))
             .first::<CommitModel>(self.conn)
             .map(Some)
             .or_else(|err| {
@@ -49,7 +50,7 @@ impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg:
             ));
         }
 
-        insert_into(commit::table)
+        insert_into(commits::table)
             .values(commit)
             .execute(self.conn)
             .map(|_| ())
@@ -81,8 +82,8 @@ impl<'a> CommitStoreAddCommitOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError> {
-        let duplicate_commit = commit::table
-            .filter(commit::commit_id.eq(&commit.commit_id))
+        let duplicate_commit = commits::table
+            .filter(commits::commit_id.eq(&commit.commit_id))
             .first::<CommitModel>(self.conn)
             .map(Some)
             .or_else(|err| {
@@ -101,7 +102,7 @@ impl<'a> CommitStoreAddCommitOperation
             ));
         }
 
-        insert_into(commit::table)
+        insert_into(commits::table)
             .values(commit)
             .execute(self.conn)
             .map(|_| ())
