@@ -88,94 +88,6 @@ fn run() -> Result<(), CliError> {
         (about: "Command line for Hyperledger Grid")
         (@arg verbose: -v +multiple +global "Log verbosely")
         (@arg quiet: -q --quiet +global conflicts_with[verbose] "Do not display output")
-        (@subcommand agent =>
-            (about: "Update or create agent")
-            (@setting SubcommandRequiredElseHelp)
-            (@arg url: --url +takes_value "URL for the REST API")
-            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
-                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
-            (@subcommand create =>
-                (about: "Create an agent")
-                (@arg org_id: +takes_value +required "organization ID")
-                (@arg public_key: +takes_value +required "public key")
-                (@arg active: --active conflicts_with[inactive] required_unless[inactive]
-                    "Set agent as active")
-                (@arg inactive: --inactive conflicts_with[active] required_unless[active]
-                    "Set agent as inactive")
-                (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
-                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
-                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand update =>
-                (about: "Update an agent")
-                (@arg org_id: +takes_value +required "organization ID")
-                (@arg public_key: +takes_value +required "public key")
-                (@arg active: --active conflicts_with[inactive] required_unless[inactive]
-                    "Set agent as active")
-                (@arg inactive: --inactive conflicts_with[active] required_unless[active]
-                    "Set agent as inactive")
-                (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
-                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
-                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-        )
-        (@subcommand organization =>
-            (about: "Update or create organization")
-            (@setting SubcommandRequiredElseHelp)
-            (@arg url: --url +takes_value "URL for the REST API")
-            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
-                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
-            (@subcommand create =>
-                (about: "Create an organization")
-                (@arg org_id: +required +takes_value "Unique ID for organization")
-                (@arg name: +required +takes_value "Name of the organization")
-                (@arg address: +takes_value "Physical address for organization")
-                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
-                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand update =>
-                (about: "Update an organization")
-                (@arg org_id: +required +takes_value "Unique ID for organization")
-                (@arg name: +required +takes_value "Name of the organization")
-                (@arg address: +takes_value "Physical address for organization")
-                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
-                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-        )
-        (@subcommand schema =>
-            (about: "Update or create schemas")
-            (@setting SubcommandRequiredElseHelp)
-            (@arg url: --url +takes_value "URL for the REST API")
-            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
-                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
-            (@subcommand create =>
-                (about: "Create schemas from a yaml file")
-                (@arg path: +takes_value +required "Path to yaml file containing a list of schema definitions")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand update =>
-                (about: "Update schemas from a yaml file")
-                (@arg path: +takes_value +required "Path to yaml file containing a list of schema definitions")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand list =>
-                (about: "List currently defined schemas")
-            )
-            (@subcommand show =>
-                (about: "Show schema specified by name argument")
-                (@arg name: +takes_value +required "Name of schema")
-            )
-        )
         (@subcommand database =>
             (about: "Manage Grid Daemon database")
             (@setting SubcommandRequiredElseHelp)
@@ -190,90 +102,6 @@ fn run() -> Result<(), CliError> {
            (@arg key_name: +takes_value "Name of the key to create")
            (@arg force: --force "Overwrite files if they exist")
            (@arg key_dir: -d --key_dir +takes_value "Specify the directory for the key files")
-        )
-        (@subcommand product =>
-            (about: "Create, update, or delete products")
-            (@setting SubcommandRequiredElseHelp)
-            (@arg url: --url +takes_value "URL for the REST API")
-            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
-                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
-            (@subcommand create =>
-                (about: "Create products from a yaml file")
-                (@arg product_id: conflicts_with[file] "Unique ID for product")
-                (@arg product_namespace: --namespace +takes_value conflicts_with[file] "Product namespace (example: GS1)")
-                (@arg owner: --owner +takes_value conflicts_with[file] "Pike organization ID")
-                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file] "Key value pair specifying a product property formatted as key=value")
-                (@arg file: --file -f +takes_value "Path to yaml file containing a list of products")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand update =>
-                (about: "Update products from a yaml file")
-                (@arg product_id: conflicts_with[file] "Unique ID for product")
-                (@arg product_namespace: --namespace +takes_value conflicts_with[file] "Product namespace (example: GS1)")
-                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file] "Key value pair specifying a product property formatted as key=value")
-                (@arg file: --file -f +takes_value "Path to yaml file containing a list of products")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand delete =>
-                (about: "Delete a product")
-                (@arg product_id: +required "Unique ID for a product")
-                (@arg product_namespace: --namespace +required +takes_value "Namespace of product (e.g. GS1")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand list =>
-                (about: "List currently defined products")
-            )
-            (@subcommand show =>
-                (about: "Show product specified by ID argument")
-                (@arg product_id: +required "ID of product")
-            )
-        )
-        (@subcommand location =>
-            (about: "Create, update, delete, show, or list locations")
-            (@setting SubcommandRequiredElseHelp)
-            (@arg url: --url +takes_value "URL for the REST API")
-            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
-                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
-            (@subcommand create =>
-                (about: "Create a new location")
-                (@arg location_id: +takes_value conflicts_with[file] "Unique identifier for location")
-                (@arg location_namespace: --namespace +takes_value conflicts_with[file] "Location name space (example: GS1)")
-                (@arg owner: --owner +takes_value conflicts_with[file] "Pike organization ID")
-                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file]
-                    "Key value pair specifying a location property formatted as key=value")
-                (@arg file: --file -f +takes_value
-                    "Path to yaml file containing a list of locations")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand update =>
-                (about: "Update an existing location")
-                (@arg location_id: +takes_value conflicts_with[file] "Unique identifier for location")
-                (@arg location_namespace: --namespace +takes_value conflicts_with[file] "Location name space (example: GS1)")
-                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file]
-                    "Key value pair specifying a location property formatted as key=value")
-                (@arg file: --file -f +takes_value
-                    "Path to yaml file containing a list of locations")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand delete =>
-                (about: "Delete a location")
-                (@arg location_id: +takes_value "Unique identifier for location")
-                (@arg location_namespace: --namespace +takes_value "Location name space (example: GS1)")
-                (@arg key: -k +takes_value "base name for private signing key file")
-                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
-            )
-            (@subcommand list =>
-                (about: "List currently defined locations")
-            )
-            (@subcommand show =>
-                (about: "Show location specified by ID argument")
-                (@arg location_id: +required "Unique identifier for location")
-            )
         )
 
     );
@@ -310,6 +138,663 @@ fn run() -> Result<(), CliError> {
                                 .long("skip")
                                 .conflicts_with("force")
                                 .help("Check if files exist; generate if missing"),
+                        ),
+                ),
+        );
+    }
+
+    #[cfg(feature = "pike")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("agent")
+                .about("Update or create agent")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .arg(
+                    Arg::with_name("service_id")
+                        .long("service-id")
+                        .takes_value(true)
+                        .help(
+                            "The ID of the service the payload should be \
+                         sent to; required if running on Splinter. Format \
+                         <circuit-id>::<service-id>",
+                        ),
+                )
+                .arg(Arg::with_name("url")
+                    .long("url")
+                    .takes_value(true)
+                    .help("URL for the REST API")
+                )
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create an Agent")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("organization ID"),
+                        )
+                        .arg(
+                            Arg::with_name("public_key")
+                                .takes_value(true)
+                                .required(true)
+                                .help("public key"),
+                        )
+                        .arg(
+                            Arg::with_name("active")
+                                .long("active")
+                                .conflicts_with("inactive")
+                                .required_unless("inactive")
+                                .help("Set agent as active"),
+                        )
+                        .arg(
+                            Arg::with_name("inactive")
+                                .long("inactive")
+                                .conflicts_with("active")
+                                .required_unless("active")
+                                .help("Set agent as inactive"),
+                        )
+                        .arg(
+                            Arg::with_name("role")
+                                .long("role")
+                                .takes_value(true)
+                                .use_delimiter(true)
+                                .multiple(true)
+                                .help("Roles assigned to agent"),
+                        )
+                        .arg(
+                            Arg::with_name("metadata")
+                                .long("metadata")
+                                .takes_value(true)
+                                .use_delimiter(true)
+                                .multiple(true)
+                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file")
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed")
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Update an Agent")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("organization ID"),
+                        )
+                        .arg(
+                            Arg::with_name("public_key")
+                                .takes_value(true)
+                                .required(true)
+                                .help("public key"),
+                        )
+                        .arg(
+                            Arg::with_name("active")
+                                .long("active")
+                                .conflicts_with("inactive")
+                                .required_unless("inactive")
+                                .help("Set agent as active"),
+                        )
+                        .arg(
+                            Arg::with_name("inactive")
+                                .long("inactive")
+                                .conflicts_with("active")
+                                .required_unless("active")
+                                .help("Set agent as inactive"),
+                        )
+                        .arg(
+                            Arg::with_name("role")
+                                .long("role")
+                                .takes_value(true)
+                                .use_delimiter(true)
+                                .multiple(true)
+                                .help("Roles assigned to agent"),
+                        )
+                        .arg(
+                            Arg::with_name("metadata")
+                                .long("metadata")
+                                .takes_value(true)
+                                .use_delimiter(true)
+                                .multiple(true)
+                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file")
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed")
+                        ),
+                    )
+
+        )
+        .subcommand(
+            SubCommand::with_name("organization")
+                .about("Update or create organization")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .arg(
+                    Arg::with_name("service_id")
+                        .long("service-id")
+                        .takes_value(true)
+                        .help(
+                            "The ID of the service the payload should be \
+                         sent to; required if running on Splinter. Format \
+                         <circuit-id>::<service-id>",
+                        ),
+                )
+                .arg(Arg::with_name("url")
+                    .long("url")
+                    .takes_value(true)
+                    .help("URL for the REST API")
+                )
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create an Organization")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Unique ID for organization"),
+                        )
+                        .arg(
+                            Arg::with_name("name")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Name of organization"),
+                        )
+                        .arg(
+                            Arg::with_name("address")
+                                .takes_value(true)
+                                .help("Physical address for organization"),
+                        )
+                        .arg(
+                            Arg::with_name("metadata")
+                                .long("metadata")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file")
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed")
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Update an organization")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Unique ID for organization"),
+                        )
+                        .arg(
+                            Arg::with_name("name")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Name of organization"),
+                        )
+                        .arg(
+                            Arg::with_name("address")
+                                .takes_value(true)
+                                .help("Physical address for organization"),
+                        )
+                        .arg(
+                            Arg::with_name("metadata")
+                                .long("metadata")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file")
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed")
+                        ),
+                )
+        );
+    }
+
+    #[cfg(feature = "schema")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("schema")
+                .about("Create, update, list, or show schemas")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .arg(
+                    Arg::with_name("service_id")
+                        .long("service-id")
+                        .takes_value(true)
+                        .help(
+                            "The ID of the service the payload should be \
+                         sent to; required if running on Splinter. Format \
+                         <circuit-id>::<service-id>",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("url")
+                        .long("url")
+                        .takes_value(true)
+                        .help("URL for the REST API"),
+                )
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create schemas from a yaml file")
+                        .arg(
+                            Arg::with_name("path")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Path to yaml file containing a list of schema definitions"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Update schemas from a yaml file")
+                        .arg(
+                            Arg::with_name("path")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Path to yaml file containing a list of schema definitions"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(SubCommand::with_name("list").about("List currently defined schemas"))
+                .subcommand(
+                    SubCommand::with_name("show")
+                        .about("Show schema specified by name argument")
+                        .arg(
+                            Arg::with_name("name")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Name of schema"),
+                        ),
+                ),
+        );
+    }
+
+    #[cfg(feature = "product")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("product")
+                .about("Create, update, delete, list, or show products")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .arg(
+                    Arg::with_name("service_id")
+                        .long("service-id")
+                        .takes_value(true)
+                        .help(
+                            "The ID of the service the payload should be \
+                     sent to; required if running on Splinter. Format \
+                     <circuit-id>::<service-id>",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("url")
+                        .long("url")
+                        .takes_value(true)
+                        .help("URL for the REST API"),
+                )
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create a product")
+                        .arg(
+                            Arg::with_name("product_id")
+                                .conflicts_with("file")
+                                .takes_value(true)
+                                .required_unless("file")
+                                .help("Unique ID for product"),
+                        )
+                        .arg(
+                            Arg::with_name("product_namespace")
+                                .long("namespace")
+                                .takes_value(true)
+                                .conflicts_with("file")
+                                .help("Product namespace (example: GS1)"),
+                        )
+                        .arg(
+                            Arg::with_name("owner")
+                                .long("owner")
+                                .takes_value(true)
+                                .conflicts_with("file")
+                                .help("Pike organization ID"),
+                        )
+                        .arg(
+                            Arg::with_name("property")
+                                .long("property")
+                                .use_delimiter(true)
+                                .takes_value(true)
+                                .multiple(true)
+                                .conflicts_with("file")
+                                .help("Key value pair specifying a product property formatted as key=value"),
+                        )
+                        .arg(
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .help("Path to yaml file containing a list of products"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Update products from a yaml file")
+                        .arg(
+                            Arg::with_name("product_id")
+                                .conflicts_with("file")
+                                .takes_value(true)
+                                .required_unless("file")
+                                .help("Unique ID for product"),
+                        )
+                        .arg(
+                            Arg::with_name("product_namespace")
+                                .long("namespace")
+                                .takes_value(true)
+                                .conflicts_with("file")
+                                .help("Product namespace (example: GS1)"),
+                        )
+                        .arg(
+                            Arg::with_name("property")
+                                .long("property")
+                                .use_delimiter(true)
+                                .takes_value(true)
+                                .multiple(true)
+                                .conflicts_with("file")
+                                .help("Key value pair specifying a product property formatted as key=value"),
+                        )
+                        .arg(
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .help("Path to yaml file containing a list of products"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("delete")
+                        .about("Delete a product")
+                        .arg(
+                            Arg::with_name("product_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Unique ID for product"),
+                        )
+                        .arg(
+                            Arg::with_name("product_namespace")
+                                .long("namespace")
+                                .takes_value(true)
+                                .help("Product namespace (example: GS1)"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(SubCommand::with_name("list").about("List currently defined products"))
+                .subcommand(
+                    SubCommand::with_name("show")
+                        .about("Show product specified by ID argument")
+                        .arg(
+                            Arg::with_name("product_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("ID of product"),
+                        ),
+                ),
+        );
+    }
+
+    #[cfg(feature = "location")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("location")
+                .about("Create, update, delete, list, or show locations")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .arg(
+                    Arg::with_name("service_id")
+                        .long("service-id")
+                        .takes_value(true)
+                        .help(
+                            "The ID of the service the payload should be \
+                     sent to; required if running on Splinter. Format \
+                     <circuit-id>::<service-id>",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("url")
+                        .long("url")
+                        .takes_value(true)
+                        .help("URL for the REST API"),
+                )
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create a new location")
+                        .arg(
+                            Arg::with_name("location_id")
+                                .conflicts_with("file")
+                                .takes_value(true)
+                                .required_unless("file")
+                                .help("Unique identifier for location"),
+                        )
+                        .arg(
+                            Arg::with_name("location_namespace")
+                                .long("namespace")
+                                .takes_value(true)
+                                .conflicts_with("file")
+                                .help("Location name space (example: GS1)"),
+                        )
+                        .arg(
+                            Arg::with_name("owner")
+                                .long("owner")
+                                .takes_value(true)
+                                .conflicts_with("file")
+                                .help("Pike organization ID"),
+                        )
+                        .arg(
+                            Arg::with_name("property")
+                                .long("property")
+                                .use_delimiter(true)
+                                .takes_value(true)
+                                .multiple(true)
+                                .conflicts_with("file")
+                                .help("Key value pair specifying a location property formatted as key=value"),
+                        )
+                        .arg(
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .help("Path to yaml file containing a list of locations"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Update an existing location")
+                        .arg(
+                            Arg::with_name("location_id")
+                                .conflicts_with("file")
+                                .takes_value(true)
+                                .required_unless("file")
+                                .help("Unique identifier for location"),
+                        )
+                        .arg(
+                            Arg::with_name("location_namespace")
+                                .long("namespace")
+                                .takes_value(true)
+                                .conflicts_with("file")
+                                .help("Location namespace (example: GS1)"),
+                        )
+                        .arg(
+                            Arg::with_name("property")
+                                .long("property")
+                                .use_delimiter(true)
+                                .takes_value(true)
+                                .multiple(true)
+                                .conflicts_with("file")
+                                .help("Key value pair specifying a location property formatted as key=value"),
+                        )
+                        .arg(
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .help("Path to yaml file containing a list of locations"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("delete")
+                        .about("Delete a location")
+                        .arg(
+                            Arg::with_name("location_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Unique identifier for location"),
+                        )
+                        .arg(
+                            Arg::with_name("location_namespace")
+                                .long("namespace")
+                                .takes_value(true)
+                                .help("Location namespace (example: GS1)"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        ),
+                )
+                .subcommand(SubCommand::with_name("list").about("List currently defined locations"))
+                .subcommand(
+                    SubCommand::with_name("show")
+                        .about("Show locations specified by ID argument")
+                        .arg(
+                            Arg::with_name("location_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Unique identifier for location"),
                         ),
                 ),
         );

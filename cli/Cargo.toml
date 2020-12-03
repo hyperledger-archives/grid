@@ -49,10 +49,14 @@ diesel_migrations = "1.4"
 [features]
 default = ["sawtooth"]
 
-stable = ["sawtooth"]
+stable = ["location", "pike", "product", "schema", "sawtooth"]
 
-experimental = ["splinter"]
+experimental = ["splinter", "stable"]
 
+pike = []
+schema = ["pike"]
+product = ["pike", "schema"]
+location = ["pike", "schema"]
 sawtooth = []
 splinter = ["admin-keygen"]
 admin-keygen = []

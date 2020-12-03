@@ -205,7 +205,7 @@ services:
         cd daemon && \
         cargo build --features experimental && \
         cd ../cli && \
-        cargo build --features experimental -p grid-cli  && \
+        cargo build --features experimental && \
         cd .. && \
         # we need to wait for the db to have started.
         until PGPASSWORD=grid_example psql -h db -U grid -c '\q'; do
@@ -220,7 +220,7 @@ services:
             --database-url postgres://grid:grid_example@db/grid &
         cd cli
         while true; do curl -s http://gridd:8080; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        cargo test integration -- --nocapture --test-threads=1
+        cargo test --features stable integration -- --nocapture --test-threads=1
       "
 
   grid-cli:
