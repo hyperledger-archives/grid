@@ -31,6 +31,7 @@ impl SqliteStoreFactory {
 }
 
 impl StoreFactory for SqliteStoreFactory {
+    #[cfg(feature = "pike")]
     fn get_grid_agent_store(&self) -> Box<dyn crate::agents::AgentStore> {
         Box::new(crate::agents::DieselAgentStore::new(self.pool.clone()))
     }
@@ -39,26 +40,31 @@ impl StoreFactory for SqliteStoreFactory {
         Box::new(crate::commits::DieselCommitStore::new(self.pool.clone()))
     }
 
+    #[cfg(feature = "pike")]
     fn get_grid_organization_store(&self) -> Box<dyn crate::organizations::OrganizationStore> {
         Box::new(crate::organizations::DieselOrganizationStore::new(
             self.pool.clone(),
         ))
     }
 
+    #[cfg(feature = "location")]
     fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore> {
         Box::new(crate::locations::DieselLocationStore::new(
             self.pool.clone(),
         ))
     }
 
+    #[cfg(feature = "product")]
     fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore> {
         Box::new(crate::products::DieselProductStore::new(self.pool.clone()))
     }
 
+    #[cfg(feature = "schema")]
     fn get_grid_schema_store(&self) -> Box<dyn crate::schemas::SchemaStore> {
         Box::new(crate::schemas::DieselSchemaStore::new(self.pool.clone()))
     }
 
+    #[cfg(feature = "track-and-trace")]
     fn get_grid_track_and_trace_store(
         &self,
     ) -> Box<dyn crate::track_and_trace::TrackAndTraceStore> {
