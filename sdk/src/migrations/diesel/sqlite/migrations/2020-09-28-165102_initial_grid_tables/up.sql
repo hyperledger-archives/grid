@@ -77,15 +77,19 @@ CREATE TABLE agent (
     org_id VARCHAR(256) NOT NULL,
     active BOOLEAN NOT NULL,
     metadata BYTEA NOT NULL,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL,
     service_id TEXT
-) INHERITS (chain_record);
+);
 
 CREATE TABLE role (
     id INTEGER PRIMARY KEY,
     public_key VARCHAR(70) NOT NULL,
     role_name TEXT NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE organization (
     id INTEGER PRIMARY KEY,
@@ -93,8 +97,10 @@ CREATE TABLE organization (
     name VARCHAR(256) NOT NULL,
     address VARCHAR(256) NOT NULL,
     metadata BYTEA NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE associated_agent (
     id INTEGER PRIMARY KEY,
@@ -102,8 +108,10 @@ CREATE TABLE associated_agent (
     role TEXT NOT NULL,
     agent_id TEXT NOT NULL,
     timestamp BIGINT NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE property (
     id INTEGER PRIMARY KEY,
@@ -112,8 +120,10 @@ CREATE TABLE property (
     property_definition TEXT NOT NULL,
     current_page INTEGER NOT NULL,
     wrapped BOOLEAN NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE proposal (
     id INTEGER PRIMARY KEY,
@@ -157,18 +167,22 @@ CREATE TABLE reported_value (
     parent_name TEXT,
     latitude_value BIGINT,
     longitude_value BIGINT,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE reporter (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     property_name TEXT NOT NULL,
     record_id TEXT NOT NULL,
     public_key TEXT NOT NULL,
     authorized BOOLEAN NOT NULL,
     reporter_index INTEGER NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE VIEW reporter_to_agent_metadata
 AS
@@ -203,7 +217,6 @@ AS
                                        agent.end_commit_num) AS
                  join_tables) X
   WHERE  rownum = 1;
-
 
 CREATE VIEW reported_value_reporter_to_agent_metadata
 AS
@@ -271,8 +284,10 @@ CREATE TABLE grid_schema (
     name TEXT NOT NULL,
     description TEXT NOT NULL,
     owner TEXT NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE grid_property_definition (
     id INTEGER PRIMARY KEY,
@@ -344,5 +359,7 @@ CREATE TABLE location_attribute (
     enum_value INTEGER,
     latitude_value BIGINT,
     longitude_value BIGINT,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
