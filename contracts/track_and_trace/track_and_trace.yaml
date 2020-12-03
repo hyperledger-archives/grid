@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: grid_track_and_trace
-version: '1.0'
+version: '1'
 wasm: /tmp/grid-track-and-trace-tp.wasm
 inputs:
   - 'a43b46'
