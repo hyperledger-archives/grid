@@ -21,7 +21,7 @@ CREATE TABLE commits (
 );
 
 CREATE TABLE chain_record (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
@@ -41,7 +41,7 @@ CREATE TABLE grid_circuit (
 );
 
 CREATE TABLE grid_circuit_proposal (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     proposal_type TEXT NOT NULL,
     circuit_id TEXT NOT NULL,
     circuit_hash TEXT NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE grid_circuit_proposal (
 );
 
 CREATE TABLE grid_circuit_member (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     circuit_id TEXT NOT NULL,
     node_id TEXT NOT NULL,
     endpoint TEXT NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE grid_circuit_member (
 );
 
 CREATE TABLE grid_circuit_proposal_vote_record (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     proposal_id BIGSERIAL NOT NULL,
     voter_public_key TEXT NOT NULL,
     voter_node_id TEXT NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE grid_circuit_proposal_vote_record (
 );
 
 CREATE TABLE agent (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     public_key VARCHAR(70) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     active BOOLEAN NOT NULL,
@@ -81,14 +81,14 @@ CREATE TABLE agent (
 ) INHERITS (chain_record);
 
 CREATE TABLE role (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     public_key VARCHAR(70) NOT NULL,
     role_name TEXT NOT NULL,
     service_id TEXT
 ) INHERITS (chain_record);
 
 CREATE TABLE organization (
-    id BIGSERIAL CONSTRAINT pk_organization PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     org_id VARCHAR(256) NOT NULL,
     name VARCHAR(256) NOT NULL,
     address VARCHAR(256) NOT NULL,
@@ -97,7 +97,7 @@ CREATE TABLE organization (
 ) INHERITS (chain_record);
 
 CREATE TABLE associated_agent (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     record_id TEXT NOT NULL,
     role TEXT NOT NULL,
     agent_id TEXT NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE associated_agent (
 ) INHERITS (chain_record);
 
 CREATE TABLE property (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     record_id TEXT NOT NULL,
     property_definition TEXT NOT NULL,
@@ -116,7 +116,7 @@ CREATE TABLE property (
 ) INHERITS (chain_record);
 
 CREATE TABLE proposal (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     record_id TEXT NOT NULL,
     timestamp BIGINT NOT NULL,
     issuing_agent TEXT NOT NULL,
@@ -125,21 +125,25 @@ CREATE TABLE proposal (
     properties TEXT NOT NULL,
     status TEXT NOT NULL,
     terms TEXT NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE record (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     record_id TEXT NOT NULL,
     schema TEXT NOT NULL,
     final BOOL NOT NULL,
     owners TEXT NOT NULL,
     custodians TEXT NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE reported_value (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     property_name TEXT NOT NULL,
     record_id TEXT NOT NULL,
     reporter_index INTEGER NOT NULL,
@@ -263,7 +267,7 @@ AS
   WHERE  rownum = 1;
 
 CREATE TABLE grid_schema (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
     owner TEXT NOT NULL,
@@ -271,7 +275,7 @@ CREATE TABLE grid_schema (
 ) INHERITS (chain_record);
 
 CREATE TABLE grid_property_definition (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     schema_name TEXT NOT NULL,
     data_type TEXT NOT NULL,
@@ -280,20 +284,24 @@ CREATE TABLE grid_property_definition (
     number_exponent BIGINT NOT NULL,
     enum_options TEXT NOT NULL,
     parent_name TEXT,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE product (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     product_id VARCHAR(256) NOT NULL,
     product_address VARCHAR(70) NOT NULL,
     product_namespace TEXT NOT NULL,
     owner VARCHAR(256) NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE product_property_value (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     product_id VARCHAR(256) NOT NULL,
     product_address VARCHAR(70) NOT NULL,
     property_name TEXT NOT NULL,
@@ -306,19 +314,24 @@ CREATE TABLE product_property_value (
     enum_value INTEGER,
     latitude_value BIGINT,
     longitude_value BIGINT,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE location (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     location_id VARCHAR(256) NOT NULL,
+    location_address VARCHAR(70) NOT NULL,
     location_namespace TEXT NOT NULL,
     owner VARCHAR(256) NOT NULL,
-    service_id TEXT
-) INHERITS (chain_record);
+    service_id TEXT,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL
+);
 
 CREATE TABLE location_attribute (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     location_id VARCHAR(256) NOT NULL,
     location_address VARCHAR(70) NOT NULL,
     property_name TEXT NOT NULL,
