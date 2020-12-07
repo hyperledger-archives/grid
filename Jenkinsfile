@@ -150,7 +150,33 @@ pipeline {
                 sh 'docker-compose -f docker/compose/copy-artifacts.yaml up'
             }
         }
+
+        stage('Publishing artifacts') {
+            when {
+                expression {
+                    return isVersionTag(getTag())
+                }
+            }
+            steps {
+                withCredentials([string( \
+                credentialsId: '7f3873a0-f681-4dd0-aee7-f0fa3356a8ca', \
+                variable: 'CARGO_CRED')]) {
+                    sh './ci/publish-crates'
+                }
+
+                withCredentials([usernamePassword( \
+                credentialsId: '464911a1-007a-4910-90c8-78ff16ba165e', \
+                usernameVariable: 'dockerhub_username', \
+                passwordVariable: 'dockerhub_password')]) {
+                    sh '''
+                        docker login --username $dockerhub_username --password $dockerhub_password
+                        ./ci/publish-docker
+                    '''
+                }
+            }
+        }
     }
+
 
     post {
         always {
@@ -167,4 +193,18 @@ pipeline {
             error "Failed, exiting now"
         }
     }
+}
+
+def boolean isVersionTag(String tag) {
+    if (tag == null) {
+        return false
+    }
+
+    def tagMatcher = tag =~ /v\d+\.\d+\.\d+/
+
+    return tagMatcher.matches()
+}
+
+def String getTag() {
+    return sh(returnStdout: true, script: "git describe --tags").trim()
 }
