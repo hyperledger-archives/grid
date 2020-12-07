@@ -1,0 +1,31 @@
+# Copyright 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Description:
+#   Run to publish grid-sdk to crates.io.
+#   A crates api token passed in as CARGO_CRED and repository version
+#   passed in as REPO_VERSION must be supplied with Docker's -e option
+#   at runtime. Pairs with ci/publish-crates.
+
+
+FROM hyperledger/grid-dev:v5
+
+WORKDIR /project/grid/sdk
+
+CMD cargo login $CARGO_CRED \
+ && rm -f ../Cargo.lock ./Cargo.lock \
+ && sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"$REPO_VERSION\"/" Cargo.toml \
+ && cargo clean \
+ && cargo test \
+ && cargo publish
