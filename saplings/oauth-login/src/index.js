@@ -48,7 +48,7 @@ registerConfigSapling('login', () => {
     setUser({
       token,
       userId,
-      displayName
+      displayName: decodeURI(displayName)
     });
     // Set the OAuth logout route
     sessionStorage.setItem('LOGOUT', '/oauth/logout');
