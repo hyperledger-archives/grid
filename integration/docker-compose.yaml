@@ -91,8 +91,6 @@ services:
       "
 
   product-contract-builder:
-    logging:
-      driver: none
     image: product-contract-builder
     container_name: product-contract-builder
     build:
@@ -105,6 +103,7 @@ services:
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        echo '---------========= loading grid_product contract =========---------'
         sabre cr --create grid_product --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre upload --filename /tmp/product.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create cad11d --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
@@ -224,8 +223,6 @@ services:
       "
 
   grid-cli:
-    logging:
-      driver: none
     image: grid-cli:${ISOLATION_ID}
     container_name: grid-cli
     build:
