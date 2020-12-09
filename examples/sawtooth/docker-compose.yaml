@@ -272,7 +272,7 @@ services:
         done
         grid keygen && \
         grid -vv database migrate \
-            --database-url postgres://grid:grid_example@db-alpha/grid &&
+            -C postgres://grid:grid_example@db-alpha/grid &&
         gridd -vv -b 0.0.0.0:8080 -C tcp://sawtooth-validator:4004 \
             --database-url postgres://grid:grid_example@db-alpha/grid
       "
@@ -320,7 +320,7 @@ services:
         done
         grid keygen && \
         grid -vv database migrate \
-            --database-url postgres://grid:grid_example@db-beta/grid &&
+            -C postgres://grid:grid_example@db-beta/grid &&
         gridd -vv -b 0.0.0.0:8080 -C tcp://sawtooth-validator:4004 \
             --database-url postgres://grid:grid_example@db-beta/grid
       "

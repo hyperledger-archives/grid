@@ -201,7 +201,7 @@ services:
         done
         grid -vv admin keygen --skip && \
         grid -vv database migrate \
-            --database-url postgres://grid:grid_example@db-alpha/grid &&
+            -C postgres://grid:grid_example@db-alpha/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
             --database-url postgres://grid:grid_example@db-alpha/grid
       "
@@ -328,7 +328,7 @@ services:
         done
         grid -vv admin keygen --skip && \
         grid -vv database migrate \
-            --database-url postgres://grid:grid_example@db-beta/grid &&
+            -C postgres://grid:grid_example@db-beta/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
             --database-url postgres://grid:grid_example@db-beta/grid
       "
@@ -454,7 +454,7 @@ services:
         done
         grid -vv admin keygen --skip && \
         grid -vv database migrate \
-            --database-url postgres://grid:grid_example@db-gamma/grid &&
+            -C postgres://grid:grid_example@db-gamma/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-gamma:8085 \
             --database-url postgres://grid:grid_example@db-gamma/grid
       "

@@ -215,7 +215,7 @@ services:
         cp /project/grid/target/debug/gridd /usr/sbin/gridd && \
         cp /project/grid/target/debug/grid /usr/bin/grid && \
         grid database migrate \
-            --database-url postgres://grid:grid_example@db/grid && \
+            -C postgres://grid:grid_example@db/grid && \
         gridd -b gridd:8080 -C tcp://validator:4004 \
             --database-url postgres://grid:grid_example@db/grid &
         cd cli
