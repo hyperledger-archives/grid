@@ -122,7 +122,7 @@
             done
             grid -vv admin keygen --skip && \
             grid -vv database migrate \
-                --database-url postgres://admin:admin@grid-db/grid &&
+                -C postgres://admin:admin@grid-db/grid &&
             gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd:8085 \
                 --database-url postgres://admin:admin@grid-db/grid
           "

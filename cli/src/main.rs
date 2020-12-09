@@ -93,7 +93,7 @@ fn run() -> Result<(), CliError> {
             (@setting SubcommandRequiredElseHelp)
             (@subcommand migrate =>
                 (about: "Run database migrations")
-                (@arg database_url: --("database-url") +takes_value
+                (@arg connect: -C --("connect") +takes_value
                     "URL for database")
             )
         )
@@ -1030,7 +1030,7 @@ fn run() -> Result<(), CliError> {
         }
         ("database", Some(m)) => match m.subcommand() {
             ("migrate", Some(m)) => database::run_migrations(
-                m.value_of("database_url")
+                m.value_of("connect")
                     .unwrap_or("postgres://grid:grid_example@localhost/grid"),
             )?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),

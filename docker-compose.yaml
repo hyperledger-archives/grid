@@ -82,7 +82,7 @@ services:
         sabre perm cad11d pike --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= pike contract is loaded =========---------'
       "
-    
+
   product-contract-builder:
     image: product-contract-builder:${ISOLATION_ID}
     container_name: product-contract-builder
@@ -214,7 +214,7 @@ services:
           done
 
           grid -vv database migrate \
-              --database-url postgres://grid:grid_example@db/grid &&
+              -C postgres://grid:grid_example@db/grid &&
           gridd -vv -b gridd:8080 -C tcp://validator:4004 \
               --database-url postgres://grid:grid_example@db/grid
         "

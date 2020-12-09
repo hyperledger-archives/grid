@@ -40,7 +40,7 @@ services:
               sleep 1
           done
           grid -vv database migrate \
-              --database-url postgres://grid:grid_example@db/grid &&
+              -C postgres://grid:grid_example@db/grid &&
           gridd -vv -b gridd:8080 -C splinter:http://splinterd:8085 \
               --database-url postgres://grid:grid_example@db/grid
         "

@@ -31,6 +31,7 @@ path = "src/main.rs"
 [dependencies]
 assert_cmd = "1.0"
 clap = "2"
+diesel = { version = "1.0", features = ["postgres"], optional = true }
 log = "0.4"
 flexi_logger = "0.14"
 sawtooth-sdk = "0.4"
@@ -43,15 +44,26 @@ reqwest = "0.9"
 dirs = "1"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
-diesel = { version = "1.0", features = ["postgres"] }
 diesel_migrations = "1.4"
 
 [features]
-default = ["sawtooth"]
+default = [
+    "sawtooth",
+    "database",
+    "postgres",
+]
 
-stable = ["location", "pike", "product", "schema", "sawtooth"]
+stable = ["location", "pike", "product", "schema", "default"]
 
-experimental = ["splinter", "stable"]
+experimental = ["splinter", "stable", "sqlite"]
+
+database = ["diesel"]
+postgres = [
+    "diesel/postgres",
+]
+sqlite = [
+    "diesel/sqlite",
+]
 
 pike = []
 schema = ["pike"]
