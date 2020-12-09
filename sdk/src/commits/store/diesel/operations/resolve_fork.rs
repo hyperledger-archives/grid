@@ -13,11 +13,9 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
-use crate::commits::store::diesel::{schema::chain_record, schema::commit};
-use crate::commits::MAX_COMMIT_NUM;
-
+use crate::commits::store::diesel::{schema::chain_record, schema::commits};
 use crate::commits::store::CommitStoreError;
-
+use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 
 use diesel::{
@@ -82,8 +80,8 @@ impl<'a> CommitStoreResolveForkOperation for CommitStoreOperations<'a, diesel::p
                 _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
             })?;
 
-        delete(commit::table)
-            .filter(commit::commit_num.ge(commit_num))
+        delete(commits::table)
+            .filter(commits::commit_num.ge(commit_num))
             .execute(self.conn)
             .map(|_| ())
             .map_err(|err| match err {
@@ -164,8 +162,8 @@ impl<'a> CommitStoreResolveForkOperation
                 _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
             })?;
 
-        delete(commit::table)
-            .filter(commit::commit_num.ge(commit_num))
+        delete(commits::table)
+            .filter(commits::commit_num.ge(commit_num))
             .execute(self.conn)
             .map(|_| ())
             .map_err(|err| match err {

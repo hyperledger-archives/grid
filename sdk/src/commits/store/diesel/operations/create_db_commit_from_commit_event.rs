@@ -15,7 +15,7 @@
 use std::convert::TryInto;
 
 use super::CommitStoreOperations;
-use crate::commits::store::diesel::{schema::commit, Commit, CommitEvent, CommitEventError};
+use crate::commits::store::diesel::{schema::commits, Commit, CommitEvent, CommitEventError};
 use crate::error::InternalError;
 
 use diesel::{dsl::max, prelude::*};
@@ -40,8 +40,8 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
             Some(height_u64) => height_u64.try_into().map_err(|err| {
                 CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
             })?,
-            None => commit::table
-                .select(max(commit::commit_num))
+            None => commits::table
+                .select(max(commits::commit_num))
                 .first(self.conn)
                 .map(|option: Option<i64>| match option {
                     Some(num) => num + 1,
@@ -73,8 +73,8 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
             Some(height_u64) => height_u64.try_into().map_err(|err| {
                 CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
             })?,
-            None => commit::table
-                .select(max(commit::commit_num))
+            None => commits::table
+                .select(max(commits::commit_num))
                 .first(self.conn)
                 .map(|option: Option<i64>| match option {
                     Some(num) => num + 1,

@@ -14,7 +14,7 @@
 
 use super::CommitStoreOperations;
 use crate::commits::store::diesel::{
-    models::CommitModel, schema::commit, Commit, CommitStoreError,
+    models::CommitModel, schema::commits, Commit, CommitStoreError,
 };
 use crate::error::InternalError;
 
@@ -33,9 +33,9 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
         &self,
         commit_num: i64,
     ) -> Result<Option<Commit>, CommitStoreError> {
-        commit::table
-            .select(commit::all_columns)
-            .filter(commit::commit_num.eq(&commit_num))
+        commits::table
+            .select(commits::all_columns)
+            .filter(commits::commit_num.eq(&commit_num))
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(Commit::from(commit)))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
@@ -53,9 +53,9 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
         &self,
         commit_num: i64,
     ) -> Result<Option<Commit>, CommitStoreError> {
-        commit::table
-            .select(commit::all_columns)
-            .filter(commit::commit_num.eq(&commit_num))
+        commits::table
+            .select(commits::all_columns)
+            .filter(commits::commit_num.eq(&commit_num))
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(Commit::from(commit)))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })

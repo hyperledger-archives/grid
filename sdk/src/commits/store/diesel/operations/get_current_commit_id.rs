@@ -13,8 +13,9 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
-use crate::commits::store::diesel::{models::CommitModel, schema::commit, CommitStoreError};
+use crate::commits::store::diesel::{models::CommitModel, schema::commits, CommitStoreError};
 use crate::error::InternalError;
+
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in crate::commits) trait CommitStoreGetCurrentCommitIdOperation {
@@ -26,9 +27,9 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
     for CommitStoreOperations<'a, diesel::pg::PgConnection>
 {
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
-        commit::table
-            .select(commit::all_columns)
-            .order_by(commit::commit_num.desc())
+        commits::table
+            .select(commits::all_columns)
+            .order_by(commits::commit_num.desc())
             .limit(1)
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(commit.commit_id))
@@ -44,9 +45,9 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
-        commit::table
-            .select(commit::all_columns)
-            .order_by(commit::commit_num.desc())
+        commits::table
+            .select(commits::all_columns)
+            .order_by(commits::commit_num.desc())
             .limit(1)
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(commit.commit_id))
