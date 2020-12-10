@@ -16,15 +16,130 @@
  * ------------------------------------------------------------------------------
  */
 
-use std::fs::{self, OpenOptions};
+use std::fs::{create_dir_all, metadata, OpenOptions};
 use std::io::prelude::*;
 use std::os::unix::fs::OpenOptionsExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use sawtooth_sdk::signing;
-use users::get_current_username;
+#[cfg(target_os = "linux")]
+use std::os::linux::fs::MetadataExt;
+#[cfg(not(target_os = "linux"))]
+use std::os::unix::fs::MetadataExt;
 
 use crate::error::CliError;
+use cylinder::{secp256k1::Secp256k1Context, Context};
+
+use super::chown;
+
+pub fn create_key_pair(
+    key_dir: &Path,
+    private_key_path: PathBuf,
+    public_key_path: PathBuf,
+    force_create: bool,
+    change_permissions: bool,
+) -> Result<Vec<u8>, CliError> {
+    if !force_create {
+        if private_key_path.exists() {
+            return Err(CliError::UserError(format!(
+                "File already exists: {:?}",
+                private_key_path
+            )));
+        }
+        if public_key_path.exists() {
+            return Err(CliError::UserError(format!(
+                "File already exists: {:?}",
+                public_key_path
+            )));
+        }
+    }
+
+    let context = Secp256k1Context::new();
+
+    let private_key = context.new_random_private_key();
+    let public_key = context
+        .get_public_key(&private_key)
+        .map_err(|err| CliError::UserError(format!("Failed to get public key: {}", err)))?;
+
+    let key_dir_info = metadata(key_dir).map_err(|err| {
+        CliError::UserError(format!(
+            "Failed to read key directory '{}': {}",
+            key_dir.display(),
+            err
+        ))
+    })?;
+
+    #[cfg(not(target_os = "linux"))]
+    let (key_dir_uid, key_dir_gid) = (key_dir_info.uid(), key_dir_info.gid());
+    #[cfg(target_os = "linux")]
+    let (key_dir_uid, key_dir_gid) = (key_dir_info.st_uid(), key_dir_info.st_gid());
+
+    {
+        if private_key_path.exists() {
+            info!(
+                "Overwriting private key file: {}",
+                private_key_path.display()
+            );
+        } else {
+            info!("Writing private key file: {}", private_key_path.display());
+        }
+
+        let private_key_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o640)
+            .open(private_key_path.as_path())
+            .map_err(|err| {
+                CliError::UserError(format!(
+                    "Failed to open private key file '{}': {}",
+                    private_key_path.display(),
+                    err
+                ))
+            })?;
+
+        writeln!(&private_key_file, "{}", private_key.as_hex()).map_err(|err| {
+            CliError::UserError(format!(
+                "Failed to write to private key file '{}': {}",
+                private_key_path.display(),
+                err
+            ))
+        })?;
+    }
+
+    {
+        if public_key_path.exists() {
+            info!("Overwriting public key file: {}", public_key_path.display());
+        } else {
+            info!("writing public key file: {}", public_key_path.display());
+        }
+
+        let public_key_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o644)
+            .open(public_key_path.as_path())
+            .map_err(|err| {
+                CliError::UserError(format!(
+                    "Failed to open public key file '{}': {}",
+                    public_key_path.display(),
+                    err
+                ))
+            })?;
+
+        writeln!(&public_key_file, "{}", public_key.as_hex()).map_err(|err| {
+            CliError::UserError(format!(
+                "Failed to write to public key file '{}': {}",
+                public_key_path.display(),
+                err
+            ))
+        })?;
+    }
+    if change_permissions {
+        chown(private_key_path.as_path(), key_dir_uid, key_dir_gid)?;
+        chown(public_key_path.as_path(), key_dir_uid, key_dir_gid)?;
+    }
+
+    Ok(public_key.into_bytes())
+}
 
 /// Generates a public/private key pair that can be used to sign transactions.
 /// If no directory is provided, the keys are created in the default directory
@@ -32,91 +147,14 @@ use crate::error::CliError;
 ///   $HOME/.grid/keys/
 ///
 /// If no key_name is provided the key name is set to USER environment variable.
-pub fn generate_keys(
-    key_name: Option<&str>,
-    force: bool,
-    key_directory: Option<&str>,
-) -> Result<(), CliError> {
-    let key_name = match key_name {
-        Some(name) => name.to_string(),
-        None => get_current_username()
-            .ok_or(0)
-            .and_then(|os_str| os_str.into_string().map_err(|_| 0))
-            .map_err(|_| {
-                CliError::UserError(String::from(
-                    "Could not determine key name, please provide one.",
-                ))
-            })?,
-    };
+pub fn generate_keys(key_name: String, force: bool, key_dir: PathBuf) -> Result<(), CliError> {
+    create_dir_all(key_dir.as_path())
+        .map_err(|err| CliError::UserError(format!("Failed to create keys directory: {}", err)))?;
 
-    let key_dir = match key_directory {
-        Some(path) => {
-            let dir = PathBuf::from(&path);
-            if !dir.exists() {
-                return Err(CliError::UserError(format!("No such directory: {}", path)));
-            }
-            dir
-        }
-        None => {
-            let key_path = dirs::home_dir()
-                .ok_or_else(|| {
-                    CliError::UserError(String::from("Unable to determine home directory"))
-                })
-                .map(|mut p| {
-                    p.push(".grid");
-                    p.push("keys");
-                    p
-                })?;
-            if !key_path.exists() {
-                fs::create_dir_all(key_path.clone())?;
-            }
-            key_path
-        }
-    };
+    let private_key_path = key_dir.join(&key_name).with_extension("priv");
+    let public_key_path = key_dir.join(&key_name).with_extension("pub");
 
-    let mut public_key_path = key_dir.clone();
-    public_key_path.push(format!("{}.pub", &key_name));
-    let mut private_key_path = key_dir.clone();
-    private_key_path.push(format!("{}.priv", &key_name));
-
-    if (public_key_path.exists() || private_key_path.exists()) && !force {
-        return Err(CliError::UserError(format!(
-            "Key files already exist at {:?}. Rerun with --force to overwrite existing files",
-            key_dir
-        )));
-    }
-
-    let context = signing::create_context("secp256k1")?;
-
-    let private_key = context.new_random_private_key()?;
-
-    let public_key = context.get_public_key(&*private_key)?;
-
-    if public_key_path.exists() {
-        info!("Overwriting file: {}", &public_key_path.display());
-    } else {
-        info!("Writing file: {}", &public_key_path.display());
-    }
-    let public_key_file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .mode(0o644)
-        .open(public_key_path.as_path())?;
-
-    writeln!(&public_key_file, "{}", public_key.as_hex())?;
-
-    if private_key_path.exists() {
-        info!("Overwriting file: {}", &private_key_path.display());
-    } else {
-        info!("Writing file: {}", &private_key_path.display());
-    }
-    let private_key_file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .mode(0o640)
-        .open(private_key_path.as_path())?;
-
-    writeln!(&private_key_file, "{}", &private_key.as_hex())?;
+    create_key_pair(&key_dir, private_key_path, public_key_path, force, true)?;
 
     Ok(())
 }

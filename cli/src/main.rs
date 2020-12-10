@@ -30,7 +30,7 @@ mod splinter;
 mod transaction;
 mod yaml_parser;
 
-use std::{collections::HashMap, env, fs::File, io::prelude::*};
+use std::{collections::HashMap, env, fs::File, io::prelude::*, path::PathBuf};
 
 use clap::ArgMatches;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
@@ -70,6 +70,8 @@ const GRID_DAEMON_KEY: &str = "GRID_DAEMON_KEY";
 const GRID_DAEMON_ENDPOINT: &str = "GRID_DAEMON_ENDPOINT";
 const GRID_SERVICE_ID: &str = "GRID_SERVICE_ID";
 
+const SYSTEM_KEY_PATH: &str = "/etc/grid/keys";
+
 // log format for cli that will only show the log message
 pub fn log_format(
     w: &mut dyn std::io::Write,
@@ -98,10 +100,11 @@ fn run() -> Result<(), CliError> {
             )
         )
         (@subcommand keygen =>
-           (about: "Generates keys with which the user can sign transactions and batches.")
-           (@arg key_name: +takes_value "Name of the key to create")
-           (@arg force: --force "Overwrite files if they exist")
-           (@arg key_dir: -d --key_dir +takes_value "Specify the directory for the key files")
+            (about: "Generates keys with which the user can sign transactions and batches.")
+            (@arg key_name: +takes_value "Name of the key to create")
+            (@arg force: --force "Overwrite files if they exist")
+            (@arg key_dir: -d --key_dir +takes_value conflicts_with[system] "Specify the directory for the key files")
+            (@arg system: --system "Generate system keys in /etc/grid/keys")
         )
 
     );
@@ -1047,11 +1050,27 @@ fn run() -> Result<(), CliError> {
             )?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
-        ("keygen", Some(m)) => keygen::generate_keys(
-            m.value_of("key_name"),
-            m.is_present("force"),
-            m.value_of("key_dir"),
-        )?,
+        ("keygen", Some(m)) => {
+            let key_name = m
+                .value_of("key_name")
+                .map(String::from)
+                .unwrap_or_else(whoami::username);
+
+            let key_dir = if let Some(dir) = m.value_of("key_dir") {
+                PathBuf::from(dir)
+            } else if m.is_present("system") {
+                PathBuf::from(SYSTEM_KEY_PATH)
+            } else {
+                dirs::home_dir()
+                    .map(|mut p| {
+                        p.push(".grid/keys");
+                        p
+                    })
+                    .ok_or_else(|| CliError::UserError("Home directory not found".into()))?
+            };
+
+            keygen::generate_keys(key_name, m.is_present("force"), key_dir)?
+        }
         ("product", Some(m)) => {
             let url = m
                 .value_of("url")
