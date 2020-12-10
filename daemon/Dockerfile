@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v5 as gridd-builder
+FROM hyperledger/grid-dev:v6 as gridd-builder
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -51,7 +51,9 @@ WORKDIR /tmp
 RUN git rev-parse HEAD > /commit-hash
 
 # -------------=== gridd docker build ===-------------
-FROM ubuntu:bionic
+FROM ubuntu:focal
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
