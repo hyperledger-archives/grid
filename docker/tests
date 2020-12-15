@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic as BUILDER
+FROM ubuntu:focal as BUILDER
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install base dependencies
 RUN apt-get update \

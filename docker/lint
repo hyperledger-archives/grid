@@ -15,7 +15,9 @@
 # docker build . -f docker/lint -t lint-grid
 # docker run --rm -v $(pwd):/project/grid lint-grid
 
-FROM ubuntu:bionic as GRID-LINTER
+FROM ubuntu:focal as GRID-LINTER
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install base dependencies
 RUN apt-get update \
