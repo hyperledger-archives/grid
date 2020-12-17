@@ -19,7 +19,7 @@ use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 use crate::organizations::store::diesel::models::{NewOrganizationModel, OrganizationModel};
 use diesel::{
-    dsl::insert_into,
+    dsl::{insert_into, update},
     prelude::*,
     result::{DatabaseErrorKind, Error as dsl_error},
 };
@@ -60,11 +60,38 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                     OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
             if duplicate_org.is_some() {
-                return Err(OrganizationStoreError::ConstraintViolationError(
-                    ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
-                ));
+                update(organization::table)
+                    .filter(
+                        organization::org_id
+                            .eq(&org.org_id)
+                            .and(organization::service_id.eq(&org.service_id))
+                            .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    )
+                    .set(organization::end_commit_num.eq(org.start_commit_num))
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            OrganizationStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            OrganizationStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => OrganizationStoreError::InternalError(InternalError::from_source(
+                            Box::new(err),
+                        )),
+                    })?;
             }
-
             insert_into(organization::table)
                 .values(org)
                 .execute(self.conn)
