@@ -1,4 +1,4 @@
-# Copyright 2020 Cargill Incorporated
+# Copyright 2018-2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v6 as grid-location-builder
+FROM hyperledger/grid-dev:v6 as builder
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
+COPY griddle/Cargo.toml /build/griddle/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
@@ -27,40 +28,47 @@ COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
 COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo.toml
 
 # Copy over build files
-COPY contracts/location /build/contracts/location
-COPY sdk/ /build/sdk/
-COPY griddle/ /build/griddle/
+COPY cli /build/cli
+COPY griddle /build/griddle
+COPY sdk /build/sdk
 
-WORKDIR /build/contracts/location
-
-# Build the contract
+# Build the griddle package
+WORKDIR /build/griddle
+ARG CARGO_ARGS
 ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo build --target wasm32-unknown-unknown --release
+RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
-# Build a scar file
-# Copy the packaging directory
-COPY contracts/location/packaging/scar/* \
-     /build/contracts/location/packaging/scar/
+# Build the grid-cli package
+WORKDIR /build/cli
+ARG CARGO_ARGS
+ARG REPO_VERSION
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
+RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
-# Copy the contract to the packaging directory
-RUN cp /build/target/wasm32-unknown-unknown/release/grid-location-tp.wasm \
-    packaging/scar
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
 
-WORKDIR /build/contracts/location/packaging/scar
+# -------------=== griddle docker build ===-------------
+FROM ubuntu:focal
 
-# Create .scar file
-RUN tar -jcvf /tmp/grid-location_${REPO_VERSION}.scar .
+ENV DEBIAN_FRONTEND=noninteractive
 
-# -------------=== location submitter build ===-------------
+ARG CARGO_ARGS
+RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
-FROM hyperledger/sawtooth-sabre-cli:0.5
+COPY --from=builder /build/target/debian/grid-cli_*.deb /tmp
+COPY --from=builder /build/target/debian/grid-griddle*.deb /tmp
+COPY --from=builder /commit-hash /commit-hash
 
-COPY --from=grid-location-builder \
-     /build/target/wasm32-unknown-unknown/release/grid-location-tp.wasm /tmp
+RUN apt-get update \
+ && apt-get install -y -q \
+    postgresql-client \
+&& apt-get install -y -q \
+    libsqlite3-dev \
+ && dpkg --unpack /tmp/grid*.deb \
+ && apt-get -f -y install
 
-# Copy the contract definition
-COPY contracts/location/location.yaml /tmp
-
-COPY --from=grid-location-builder \
-    /tmp/grid-location*.scar /tmp
+CMD ["griddle"]

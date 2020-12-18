@@ -8,5 +8,6 @@ members = [
     "contracts/schema",
     "contracts/track_and_trace",
     "daemon",
+    "griddle",
     "sdk"
 ]
