@@ -70,7 +70,7 @@ mod tests {
     };
     use grid_sdk::protocol::schema::state::{DataType, PropertyDefinitionBuilder};
     use grid_sdk::protos;
-    use grid_sdk::protos::IntoNative;
+    use grid_sdk::protos::{IntoNative, ProtoConversionError};
 
     #[test]
     // Test a payload with a schema create action is properly validated. This test needs to use
@@ -79,8 +79,10 @@ mod tests {
     // a certain invalid payloads.
     fn test_validate_schema_create_action() {
         let mut payload_proto = protos::schema_payload::SchemaPayload::new();
+        let result: Result<SchemaPayload, ProtoConversionError> =
+            payload_proto.clone().into_native();
         assert!(
-            payload_proto.clone().into_native().is_err(),
+            result.is_err(),
             "Cannot convert SchemaPayload_Action with type unset."
         );
 
@@ -146,8 +148,10 @@ mod tests {
     // a certain invalid payloads.
     fn test_validate_schema_update_action() {
         let mut payload_proto = protos::schema_payload::SchemaPayload::new();
+        let result: Result<SchemaPayload, ProtoConversionError> =
+            payload_proto.clone().into_native();
         assert!(
-            payload_proto.clone().into_native().is_err(),
+            result.is_err(),
             "Cannot convert SchemaPayload_Action with type unset."
         );
 
