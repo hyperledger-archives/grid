@@ -19,6 +19,8 @@
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(feature = "integration")]
+use grid_sdk::rest_api::actix_web_3::State as IntegrationState;
 use grid_sdk::store::ConnectionUri;
 use splinter::events::Reactor;
 
@@ -67,6 +69,32 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         }
     };
 
+    #[cfg(feature = "integration")]
+    let connection_uri = config
+        .database_url()
+        .parse()
+        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+
+    #[cfg(feature = "integration")]
+    let integration_state = match connection_uri {
+        ConnectionUri::Postgres(_) => {
+            let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
+                ConnectionPool::new(config.database_url())?;
+            IntegrationState::with_pg_pool(
+                &config.key_file_name().to_string(),
+                connection_pool.pool,
+            )
+        }
+        ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+            let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
+                ConnectionPool::new(config.database_url())?;
+            IntegrationState::with_sqlite_pool(
+                &config.key_file_name().to_string(),
+                connection_pool.pool,
+            )
+        }
+    };
+
     app_auth_handler::run(
         config.endpoint().url(),
         scabbard_event_connection_factory,
@@ -82,6 +110,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         db_executor,
         batch_submitter,
         config.endpoint().clone(),
+        #[cfg(feature = "integration")]
+        integration_state,
     )?;
 
     let reactor_shutdown_signaler = reactor.shutdown_signaler();

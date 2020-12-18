@@ -271,9 +271,10 @@ services:
             sleep 1
         done
         grid keygen && \
+        grid keygen --system && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-alpha/grid &&
-        gridd -vv -b 0.0.0.0:8080 -C tcp://sawtooth-validator:4004 \
+        gridd -vv -b 0.0.0.0:8080 -k root -C tcp://sawtooth-validator:4004 \
             --database-url postgres://grid:grid_example@db-alpha/grid
       "
 
@@ -319,8 +320,10 @@ services:
             sleep 1
         done
         grid keygen && \
+        grid keygen --system && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-beta/grid &&
         gridd -vv -b 0.0.0.0:8080 -C tcp://sawtooth-validator:4004 \
-            --database-url postgres://grid:grid_example@db-beta/grid
+            -k root \
+            --database-url postgres://grid:grid_example@db-beta/grid &&
       "

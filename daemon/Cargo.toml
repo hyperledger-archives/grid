@@ -81,6 +81,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "integration",
     "splinter-support",
     "track-and-trace",
 ]
@@ -97,6 +98,7 @@ splinter-support = ["database", "event", "rest-api", "reqwest", "scabbard", "sab
 submitter = ["rest-api"]
 test-postgres = []
 track-and-trace = []
+integration = []
 
 
 [package.metadata.deb]
