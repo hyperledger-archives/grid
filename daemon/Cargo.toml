@@ -71,6 +71,7 @@ stable = [
 
 experimental = [
     "stable",
+    "griddle",
     "splinter-support",
     "track-and-trace"
 ]
@@ -83,6 +84,7 @@ schema = ["pike"]
 product = ["pike", "schema"]
 location = ["pike", "schema"]
 track-and-trace = []
+griddle = []
 
 
 [package.metadata.deb]

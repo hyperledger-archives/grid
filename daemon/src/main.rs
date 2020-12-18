@@ -65,6 +65,8 @@ use crate::splinter::{
     event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
 };
 use grid_sdk::commits::store::CommitStore;
+#[cfg(feature = "griddle")]
+use grid_sdk::rest_api::actix_web_3::State as GriddleState;
 use grid_sdk::store::create_store_factory;
 use grid_sdk::store::ConnectionUri;
 
@@ -72,7 +74,8 @@ const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn run() -> Result<(), DaemonError> {
-    let matches = clap_app!(myapp =>
+    #[allow(unused_mut)]
+    let mut app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
         (author: "Contributors to Hyperledger Grid")
@@ -82,8 +85,21 @@ fn run() -> Result<(), DaemonError> {
         (@arg database_url: --("database-url") +takes_value
          "specifies the database URL to connect to.")
         (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
-        (@arg admin_key_dir: --("admin-key-dir") +takes_value "directory containing the Scabbard admin key files"))
-    .get_matches();
+        (@arg admin_key_dir: --("admin-key-dir") +takes_value "directory containing the Scabbard admin key files"));
+
+    #[cfg(feature = "griddle")]
+    {
+        use clap::Arg;
+        app = app.arg(
+            Arg::with_name("key")
+                .short("k")
+                .long("key")
+                .takes_value(true)
+                .help("Base name for private signing key file"),
+        );
+    }
+
+    let matches = app.get_matches();
 
     let log_level = match matches.occurrences_of("verbose") {
         0 => log::LevelFilter::Warn,
@@ -176,11 +192,30 @@ fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
         }
     };
 
+    #[cfg(feature = "griddle")]
+    let griddle_state = match connection_uri {
+        ConnectionUri::Postgres(_) => {
+            let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
+                ConnectionPool::new(config.database_url())?;
+            GriddleState::with_pg_pool(&config.key_file_name().to_string(), connection_pool.pool)
+        }
+        ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+            let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
+                ConnectionPool::new(config.database_url())?;
+            GriddleState::with_sqlite_pool(
+                &config.key_file_name().to_string(),
+                connection_pool.pool,
+            )
+        }
+    };
+
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
         db_executor,
         batch_submitter,
         config.endpoint().clone(),
+        #[cfg(feature = "griddle")]
+        griddle_state,
     )?;
 
     let (event_processor_shutdown_handle, event_processor_join_handle) =
@@ -263,6 +298,29 @@ fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         }
     };
 
+    #[cfg(feature = "griddle")]
+    let connection_uri = config
+        .database_url()
+        .parse()
+        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+
+    #[cfg(feature = "griddle")]
+    let griddle_state = match connection_uri {
+        ConnectionUri::Postgres(_) => {
+            let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
+                ConnectionPool::new(config.database_url())?;
+            GriddleState::with_pg_pool(&config.key_file_name().to_string(), connection_pool.pool)
+        }
+        ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+            let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
+                ConnectionPool::new(config.database_url())?;
+            GriddleState::with_sqlite_pool(
+                &config.key_file_name().to_string(),
+                connection_pool.pool,
+            )
+        }
+    };
+
     app_auth_handler::run(
         config.endpoint().url(),
         scabbard_event_connection_factory,
@@ -278,6 +336,8 @@ fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         db_executor,
         batch_submitter,
         config.endpoint().clone(),
+        #[cfg(feature = "griddle")]
+        griddle_state,
     )?;
 
     let reactor_shutdown_signaler = reactor.shutdown_signaler();

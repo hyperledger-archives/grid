@@ -24,6 +24,8 @@ pub struct GridConfig {
     database_url: String,
     #[cfg(feature = "splinter-support")]
     admin_key_dir: String,
+    #[cfg(feature = "griddle")]
+    key_file_name: String,
 }
 
 impl GridConfig {
@@ -42,6 +44,11 @@ impl GridConfig {
     #[cfg(feature = "splinter-support")]
     pub fn admin_key_dir(&self) -> &str {
         &self.admin_key_dir
+    }
+
+    #[cfg(feature = "griddle")]
+    pub fn key_file_name(&self) -> &str {
+        &self.key_file_name
     }
 }
 
@@ -102,6 +109,8 @@ pub struct GridConfigBuilder {
     database_url: Option<String>,
     #[cfg(feature = "splinter-support")]
     admin_key_dir: Option<String>,
+    #[cfg(feature = "griddle")]
+    key_file_name: Option<String>,
 }
 
 impl Default for GridConfigBuilder {
@@ -115,6 +124,8 @@ impl Default for GridConfigBuilder {
             database_url: Some("postgres://grid:grid_example@localhost/grid".to_owned()),
             #[cfg(feature = "splinter-support")]
             admin_key_dir: Some("/etc/grid/keys".to_owned()),
+            #[cfg(feature = "griddle")]
+            key_file_name: Some("root".to_string()),
         }
     }
 }
@@ -142,6 +153,12 @@ impl GridConfigBuilder {
                 .value_of("admin_key_dir")
                 .map(ToOwned::to_owned)
                 .or_else(|| self.admin_key_dir.take()),
+
+            #[cfg(feature = "griddle")]
+            key_file_name: matches
+                .value_of("key")
+                .map(ToOwned::to_owned)
+                .or_else(|| self.key_file_name.take()),
         }
     }
 
@@ -164,6 +181,11 @@ impl GridConfigBuilder {
                 .admin_key_dir
                 .take()
                 .ok_or_else(|| ConfigurationError::MissingValue("admin_key_dir".to_owned()))?,
+            #[cfg(feature = "griddle")]
+            key_file_name: self
+                .key_file_name
+                .take()
+                .ok_or_else(|| ConfigurationError::MissingValue("key_file_name".to_owned()))?,
         })
     }
 }
