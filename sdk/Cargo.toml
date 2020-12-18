@@ -28,10 +28,12 @@ license = "Apache-2.0"
 
 
 [dependencies]
+actix-web = { version = "3", optional = true }
 byteorder = "1"
 cfg-if = "0.1"
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
+futures-util = { version = "0.3", optional = true }
 log = "0.4"
 protobuf = "2.19"
 sabre-sdk = { version = "0.5", optional = true }
@@ -44,6 +46,7 @@ rust-crypto-wasm = "0.3"
 sabre-sdk = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cylinder = { version = "0.2.1", features = ["key-load"], optional = true}
 rust-crypto = "0.2"
 sawtooth-sdk = "0.4"
 
@@ -66,6 +69,8 @@ experimental = [
     "stable",
     # The following features are experimental:
     "database",
+    "rest-api-resources",
+    "rest-api-actix-web-3",
     "track-and-trace"
 ]
 
@@ -83,9 +88,12 @@ schema = ["pike"]
 product = ["pike", "schema"]
 location = ["pike", "schema"]
 track-and-trace = []
+batch-store = ["uuid"]
 
 grid_db = ["sawtooth-compat"]
 postgres = ["diesel/postgres", "diesel_migrations"]
+rest-api-actix-web-3 = ["actix-web", "futures-util", "rest-api-resources", "sqlite", "postgres"]
+rest-api-resources = ["cylinder", "sabre-sdk"]
 sawtooth-compat = [
     "sabre-sdk",
     "sawtooth-sdk"
