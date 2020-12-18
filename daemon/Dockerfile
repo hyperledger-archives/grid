@@ -30,6 +30,7 @@ COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo
 COPY cli /build/cli
 COPY daemon /build/daemon
 COPY sdk /build/sdk
+COPY griddle/ /build/griddle/
 
 # Build the gridd package
 WORKDIR /build/daemon
