@@ -388,7 +388,7 @@ impl PropertyDefinitionBuilder {
                     )
                 })?
             } else {
-                0 as i32
+                0
             }
         };
 
@@ -996,7 +996,7 @@ impl PropertyValueBuilder {
                     )
                 })?
             } else {
-                0 as i64
+                0
             }
         };
 
@@ -1020,7 +1020,7 @@ impl PropertyValueBuilder {
                     )
                 })?
             } else {
-                0 as u32
+                0
             }
         };
 
