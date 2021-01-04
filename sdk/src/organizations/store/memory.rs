@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::collections::HashMap;
-use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
 use super::OrganizationStore;
@@ -72,8 +71,9 @@ impl OrganizationStore for MemoryOrganizationStore {
                 start_commit_num: o.start_commit_num,
                 end_commit_num: o.end_commit_num,
                 service_id: o.service_id.clone(),
-            });
-        Ok(Vec::from_iter(filtered_orgs))
+            })
+            .collect();
+        Ok(filtered_orgs)
     }
 
     fn fetch_organization(

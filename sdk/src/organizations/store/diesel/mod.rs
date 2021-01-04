@@ -17,7 +17,6 @@ mod operations;
 pub(in crate) mod schema;
 
 use diesel::r2d2::{ConnectionManager, Pool};
-use std::iter::FromIterator;
 
 use super::diesel::models::{NewOrganizationModel, OrganizationModel};
 use super::{Organization, OrganizationStore, OrganizationStoreError};
@@ -57,7 +56,7 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_organizations(Vec::from_iter(orgs.iter().map(|org| org.clone().into())))
+        .add_organizations(orgs.iter().map(|org| org.clone().into()).collect())
     }
 
     fn list_organizations(
@@ -94,7 +93,7 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_organizations(Vec::from_iter(orgs.iter().map(|org| org.clone().into())))
+        .add_organizations(orgs.iter().map(|org| org.clone().into()).collect())
     }
 
     fn list_organizations(
