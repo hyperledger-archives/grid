@@ -15,7 +15,7 @@
 
 - product_namespace: "GS1"
   product_id: "762111177704"
-  owner: cgl
+  owner: 762
   properties:
     length: 8
     width: 11

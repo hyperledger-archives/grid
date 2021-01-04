@@ -28,8 +28,8 @@ mod integration {
     static KEY_DIR: &str = "/root";
     static PUB_KEY_FILE: &str = "/root/.grid/keys/root.pub";
 
-    static ORG_ID: &str = "cgl";
-    static ORG_NAME: &str = "Cargill";
+    static ORG_ID: &str = "762";
+    static ORG_NAME: &str = "MyOrg";
     static ORG_ADDRESS: &str = "hq";
 
     static SCHEMA_CREATE_FILE: &str = "tests/products/test_product_schema.yaml";
