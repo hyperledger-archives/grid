@@ -287,7 +287,7 @@ impl FromNative<LocationList> for protos::location_state::LocationList {
 
 impl FromBytes<LocationList> for LocationList {
     fn from_bytes(bytes: &[u8]) -> Result<LocationList, ProtoConversionError> {
-        let proto: protos::location_state::LocationList = protobuf::parse_from_bytes(bytes)
+        let proto: protos::location_state::LocationList = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get LocationList from bytes".to_string(),

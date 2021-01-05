@@ -141,7 +141,7 @@ impl FromNative<LocationPayload> for protos::location_payload::LocationPayload {
 impl FromBytes<LocationPayload> for LocationPayload {
     fn from_bytes(bytes: &[u8]) -> Result<LocationPayload, ProtoConversionError> {
         let proto: location_payload::LocationPayload =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get LocationPayload from bytes".into(),
                 )
@@ -287,7 +287,7 @@ impl FromNative<LocationCreateAction> for location_payload::LocationCreateAction
 impl FromBytes<LocationCreateAction> for LocationCreateAction {
     fn from_bytes(bytes: &[u8]) -> Result<LocationCreateAction, ProtoConversionError> {
         let proto: protos::location_payload::LocationCreateAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get LocationCreateAction from bytes".to_string(),
                 )
@@ -421,7 +421,7 @@ impl FromNative<LocationUpdateAction> for protos::location_payload::LocationUpda
 impl FromBytes<LocationUpdateAction> for LocationUpdateAction {
     fn from_bytes(bytes: &[u8]) -> Result<LocationUpdateAction, ProtoConversionError> {
         let proto: protos::location_payload::LocationUpdateAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get LocationUpdateAction from bytes".to_string(),
                 )
@@ -540,7 +540,7 @@ impl FromNative<LocationDeleteAction> for protos::location_payload::LocationDele
 impl FromBytes<LocationDeleteAction> for LocationDeleteAction {
     fn from_bytes(bytes: &[u8]) -> Result<LocationDeleteAction, ProtoConversionError> {
         let proto: protos::location_payload::LocationDeleteAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get LocationDeleteAction from bytes".to_string(),
                 )

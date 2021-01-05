@@ -125,12 +125,12 @@ impl FromNative<CreateRecordAction> for track_and_trace_payload::CreateRecordAct
 
 impl FromBytes<CreateRecordAction> for CreateRecordAction {
     fn from_bytes(bytes: &[u8]) -> Result<CreateRecordAction, ProtoConversionError> {
-        let proto: track_and_trace_payload::CreateRecordAction = protobuf::parse_from_bytes(bytes)
+        let proto: track_and_trace_payload::CreateRecordAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
-                ProtoConversionError::SerializationError(
-                    "Unable to get CreateRecordAction from bytes".into(),
-                )
-            })?;
+            ProtoConversionError::SerializationError(
+                "Unable to get CreateRecordAction from bytes".into(),
+            )
+        })?;
         proto.into_native()
     }
 }
@@ -200,8 +200,8 @@ impl FromNative<FinalizeRecordAction> for track_and_trace_payload::FinalizeRecor
 
 impl FromBytes<FinalizeRecordAction> for FinalizeRecordAction {
     fn from_bytes(bytes: &[u8]) -> Result<FinalizeRecordAction, ProtoConversionError> {
-        let proto: track_and_trace_payload::FinalizeRecordAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+        let proto: track_and_trace_payload::FinalizeRecordAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get CreateFinalizeAction from bytes".into(),
                 )
@@ -306,7 +306,7 @@ impl FromNative<UpdatePropertiesAction> for track_and_trace_payload::UpdatePrope
 impl FromBytes<UpdatePropertiesAction> for UpdatePropertiesAction {
     fn from_bytes(bytes: &[u8]) -> Result<UpdatePropertiesAction, ProtoConversionError> {
         let proto: track_and_trace_payload::UpdatePropertiesAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get UpdatePropertiesAction from bytes".into(),
                 )
@@ -447,8 +447,8 @@ impl FromNative<CreateProposalAction> for track_and_trace_payload::CreateProposa
 
 impl FromBytes<CreateProposalAction> for CreateProposalAction {
     fn from_bytes(bytes: &[u8]) -> Result<CreateProposalAction, ProtoConversionError> {
-        let proto: track_and_trace_payload::CreateProposalAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+        let proto: track_and_trace_payload::CreateProposalAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get CreateProposalAction from bytes".into(),
                 )
@@ -608,8 +608,8 @@ impl FromNative<AnswerProposalAction> for track_and_trace_payload::AnswerProposa
 
 impl FromBytes<AnswerProposalAction> for AnswerProposalAction {
     fn from_bytes(bytes: &[u8]) -> Result<AnswerProposalAction, ProtoConversionError> {
-        let proto: track_and_trace_payload::AnswerProposalAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+        let proto: track_and_trace_payload::AnswerProposalAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get AnswerProposalAction from bytes".into(),
                 )
@@ -721,8 +721,8 @@ impl FromNative<RevokeReporterAction> for track_and_trace_payload::RevokeReporte
 
 impl FromBytes<RevokeReporterAction> for RevokeReporterAction {
     fn from_bytes(bytes: &[u8]) -> Result<RevokeReporterAction, ProtoConversionError> {
-        let proto: track_and_trace_payload::RevokeReporterAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+        let proto: track_and_trace_payload::RevokeReporterAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get RevokeReporterAction from bytes".into(),
                 )
@@ -874,8 +874,8 @@ impl FromNative<TrackAndTracePayload> for track_and_trace_payload::TrackAndTrace
 
 impl FromBytes<TrackAndTracePayload> for TrackAndTracePayload {
     fn from_bytes(bytes: &[u8]) -> Result<TrackAndTracePayload, ProtoConversionError> {
-        let proto: track_and_trace_payload::TrackAndTracePayload =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+        let proto: track_and_trace_payload::TrackAndTracePayload = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get TrackAndTracePaylaod from bytes".into(),
                 )

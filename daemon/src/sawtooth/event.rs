@@ -201,7 +201,7 @@ fn content_of_type<M: protobuf::Message>(
         )));
     }
 
-    protobuf::parse_from_bytes(msg.get_content())
+    protobuf::Message::parse_from_bytes(msg.get_content())
         .map_err(|err| EventIoError::ConnectionError(err.to_string()))
 }
 
@@ -241,14 +241,12 @@ fn make_event_filter(namespace: &str) -> EventSubscription {
 }
 
 fn extract_event(msg: Message) -> Result<CommitEvent, EventIoError> {
-    let sawtooth_events = protobuf::parse_from_bytes::<SawtoothEventList>(msg.get_content())
-        .map_err(|err| {
+    let mut sawtooth_events: SawtoothEventList =
+        protobuf::Message::parse_from_bytes(msg.get_content()).map_err(|err| {
             EventIoError::InvalidMessage(format!("Unable to parse event list: {}", err))
-        })?
-        .take_events()
-        .to_vec();
+        })?;
 
-    sawtooth_event_to_commit_event(sawtooth_events.as_slice())
+    sawtooth_event_to_commit_event(sawtooth_events.take_events().to_vec().as_slice())
 }
 
 impl TryFrom<&[SawtoothEvent]> for CommitEvent {
@@ -332,8 +330,8 @@ fn get_state_changes(events: &[SawtoothEvent]) -> Result<Vec<StateChange>, Event
 fn get_sawtooth_state_changes_from_sawtooth_event(
     sawtooth_event: &SawtoothEvent,
 ) -> Result<Vec<SawtoothStateChange>, EventIoError> {
-    protobuf::parse_from_bytes::<StateChangeList>(&sawtooth_event.data)
-        .map(|mut list| list.take_state_changes().to_vec())
+    protobuf::Message::parse_from_bytes(&sawtooth_event.data)
+        .map(|mut list: StateChangeList| list.take_state_changes().to_vec())
         .map_err(|err| {
             EventIoError::InvalidMessage(format!(
                 "failed to parse state change list from state change event: {}",

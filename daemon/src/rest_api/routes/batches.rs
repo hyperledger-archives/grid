@@ -29,7 +29,7 @@ pub async fn submit_batches(
     query_service_id: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
-    let batch_list: BatchList = match protobuf::parse_from_bytes(&*body) {
+    let batch_list: BatchList = match protobuf::Message::parse_from_bytes(&*body) {
         Ok(batch_list) => batch_list,
         Err(err) => {
             return Err(RestApiResponseError::BadRequest(format!(

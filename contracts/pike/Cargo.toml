@@ -18,7 +18,7 @@ version = "0.1.0"
 authors = ["Cargill Incorporated"]
 
 [dependencies]
-protobuf = "2"
+protobuf = "2.19"
 cfg-if = "0.1"
 hex = "0.3.1"
 grid-sdk = {path = "../../sdk"}

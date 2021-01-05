@@ -40,7 +40,7 @@ sawtooth-sdk = "0.4"
 sabre-sdk = "0.5"
 grid-sdk = { path = "../sdk", features = ["database"] }
 rust-crypto = "0.2"
-protobuf = "2"
+protobuf = "2.19"
 users = "0.9"
 reqwest = "0.9"
 dirs = "1"

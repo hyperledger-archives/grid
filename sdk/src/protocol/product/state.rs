@@ -135,7 +135,7 @@ impl FromNative<Product> for protos::product_state::Product {
 impl FromBytes<Product> for Product {
     fn from_bytes(bytes: &[u8]) -> Result<Product, ProtoConversionError> {
         let proto: protos::product_state::Product =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Product from bytes".to_string(),
                 )
@@ -300,7 +300,7 @@ impl FromNative<ProductList> for protos::product_state::ProductList {
 impl FromBytes<ProductList> for ProductList {
     fn from_bytes(bytes: &[u8]) -> Result<ProductList, ProtoConversionError> {
         let proto: protos::product_state::ProductList =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get ProductList from bytes".to_string(),
                 )
