@@ -64,7 +64,7 @@ impl FromNative<KeyValueEntry> for protos::pike_state::KeyValueEntry {
 impl FromBytes<KeyValueEntry> for KeyValueEntry {
     fn from_bytes(bytes: &[u8]) -> Result<KeyValueEntry, ProtoConversionError> {
         let proto: protos::pike_state::KeyValueEntry =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get KeyValueEntry from bytes".to_string(),
                 )
@@ -224,7 +224,7 @@ impl FromNative<Agent> for protos::pike_state::Agent {
 
 impl FromBytes<Agent> for Agent {
     fn from_bytes(bytes: &[u8]) -> Result<Agent, ProtoConversionError> {
-        let proto: protos::pike_state::Agent = protobuf::parse_from_bytes(bytes).map_err(|_| {
+        let proto: protos::pike_state::Agent = Message::parse_from_bytes(bytes).map_err(|_| {
             ProtoConversionError::SerializationError("Unable to get Agent from bytes".to_string())
         })?;
         proto.into_native()
@@ -379,7 +379,7 @@ impl FromNative<AgentList> for protos::pike_state::AgentList {
 impl FromBytes<AgentList> for AgentList {
     fn from_bytes(bytes: &[u8]) -> Result<AgentList, ProtoConversionError> {
         let proto: protos::pike_state::AgentList =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get AgentList from bytes".to_string(),
                 )
@@ -527,7 +527,7 @@ impl FromNative<Organization> for protos::pike_state::Organization {
 impl FromBytes<Organization> for Organization {
     fn from_bytes(bytes: &[u8]) -> Result<Organization, ProtoConversionError> {
         let proto: protos::pike_state::Organization =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Organization from bytes".to_string(),
                 )
@@ -682,7 +682,7 @@ impl FromNative<OrganizationList> for protos::pike_state::OrganizationList {
 
 impl FromBytes<OrganizationList> for OrganizationList {
     fn from_bytes(bytes: &[u8]) -> Result<OrganizationList, ProtoConversionError> {
-        let proto: protos::pike_state::OrganizationList = protobuf::parse_from_bytes(bytes)
+        let proto: protos::pike_state::OrganizationList = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get OrganizationList from bytes".to_string(),

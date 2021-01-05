@@ -84,7 +84,7 @@ impl FromNative<SchemaPayload> for protos::schema_payload::SchemaPayload {
 
 impl FromBytes<SchemaPayload> for SchemaPayload {
     fn from_bytes(bytes: &[u8]) -> Result<SchemaPayload, ProtoConversionError> {
-        let proto: protos::schema_payload::SchemaPayload = protobuf::parse_from_bytes(bytes)
+        let proto: protos::schema_payload::SchemaPayload = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get SchemaPayload from bytes".to_string(),
@@ -217,12 +217,12 @@ impl FromNative<SchemaCreateAction> for protos::schema_payload::SchemaCreateActi
 
 impl FromBytes<SchemaCreateAction> for SchemaCreateAction {
     fn from_bytes(bytes: &[u8]) -> Result<SchemaCreateAction, ProtoConversionError> {
-        let proto: protos::schema_payload::SchemaCreateAction = protobuf::parse_from_bytes(bytes)
+        let proto: protos::schema_payload::SchemaCreateAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
-            ProtoConversionError::SerializationError(
-                "Unable to get SchemaCreateAction from bytes".to_string(),
-            )
-        })?;
+                ProtoConversionError::SerializationError(
+                    "Unable to get SchemaCreateAction from bytes".to_string(),
+                )
+            })?;
         proto.into_native()
     }
 }
@@ -372,12 +372,12 @@ impl FromNative<SchemaUpdateAction> for protos::schema_payload::SchemaUpdateActi
 
 impl FromBytes<SchemaUpdateAction> for SchemaUpdateAction {
     fn from_bytes(bytes: &[u8]) -> Result<SchemaUpdateAction, ProtoConversionError> {
-        let proto: protos::schema_payload::SchemaUpdateAction = protobuf::parse_from_bytes(bytes)
+        let proto: protos::schema_payload::SchemaUpdateAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
-            ProtoConversionError::SerializationError(
-                "Unable to get SchemaUpdateAction from bytes".to_string(),
-            )
-        })?;
+                ProtoConversionError::SerializationError(
+                    "Unable to get SchemaUpdateAction from bytes".to_string(),
+                )
+            })?;
         proto.into_native()
     }
 }

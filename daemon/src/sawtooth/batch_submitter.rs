@@ -141,7 +141,7 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
             ))
         })?;
 
-    protobuf::parse_from_bytes(
+    protobuf::Message::parse_from_bytes(
         response_future
             .get_timeout(Duration::new(DEFAULT_TIME_OUT.into(), 0))
             .map_err(|err| RestApiResponseError::RequestHandlerError(err.to_string()))?

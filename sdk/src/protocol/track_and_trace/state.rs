@@ -112,7 +112,7 @@ impl FromNative<Reporter> for track_and_trace_state::Property_Reporter {
 
 impl FromBytes<Reporter> for Reporter {
     fn from_bytes(bytes: &[u8]) -> Result<Reporter, ProtoConversionError> {
-        let proto: track_and_trace_state::Property_Reporter = protobuf::parse_from_bytes(bytes)
+        let proto: track_and_trace_state::Property_Reporter = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError("Unable to get Reporter from bytes".into())
             })?;
@@ -282,7 +282,7 @@ impl FromNative<Property> for track_and_trace_state::Property {
 impl FromBytes<Property> for Property {
     fn from_bytes(bytes: &[u8]) -> Result<Property, ProtoConversionError> {
         let proto: track_and_trace_state::Property =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError("Unable to get Property from bytes".into())
             })?;
         proto.into_native()
@@ -369,8 +369,8 @@ impl FromNative<PropertyList> for track_and_trace_state::PropertyList {
 
 impl FromBytes<PropertyList> for PropertyList {
     fn from_bytes(bytes: &[u8]) -> Result<PropertyList, ProtoConversionError> {
-        let proto: track_and_trace_state::PropertyList = protobuf::parse_from_bytes(bytes)
-            .map_err(|_| {
+        let proto: track_and_trace_state::PropertyList =
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get PropertyList from Bytes".into(),
                 )
@@ -482,7 +482,7 @@ impl FromNative<ReportedValue> for track_and_trace_state::PropertyPage_ReportedV
 impl FromBytes<ReportedValue> for ReportedValue {
     fn from_bytes(bytes: &[u8]) -> Result<ReportedValue, ProtoConversionError> {
         let proto: track_and_trace_state::PropertyPage_ReportedValue =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get ReportedValue from bytes".into(),
                 )
@@ -611,8 +611,8 @@ impl FromNative<PropertyPage> for track_and_trace_state::PropertyPage {
 
 impl FromBytes<PropertyPage> for PropertyPage {
     fn from_bytes(bytes: &[u8]) -> Result<PropertyPage, ProtoConversionError> {
-        let proto: track_and_trace_state::PropertyPage = protobuf::parse_from_bytes(bytes)
-            .map_err(|_| {
+        let proto: track_and_trace_state::PropertyPage =
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Undable to get PropertyPage from bytes".into(),
                 )
@@ -704,7 +704,7 @@ impl FromNative<PropertyPageList> for track_and_trace_state::PropertyPageList {
 
 impl FromBytes<PropertyPageList> for PropertyPageList {
     fn from_bytes(bytes: &[u8]) -> Result<PropertyPageList, ProtoConversionError> {
-        let proto: track_and_trace_state::PropertyPageList = protobuf::parse_from_bytes(bytes)
+        let proto: track_and_trace_state::PropertyPageList = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get PropertyPageList from Bytes".into(),
@@ -982,7 +982,7 @@ impl FromNative<Proposal> for track_and_trace_state::Proposal {
 impl FromBytes<Proposal> for Proposal {
     fn from_bytes(bytes: &[u8]) -> Result<Proposal, ProtoConversionError> {
         let proto: track_and_trace_state::Proposal =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError("Unable to get Proposal from bytes".into())
             })?;
         proto.into_native()
@@ -1070,8 +1070,8 @@ impl FromNative<ProposalList> for track_and_trace_state::ProposalList {
 
 impl FromBytes<ProposalList> for ProposalList {
     fn from_bytes(bytes: &[u8]) -> Result<ProposalList, ProtoConversionError> {
-        let proto: track_and_trace_state::ProposalList = protobuf::parse_from_bytes(bytes)
-            .map_err(|_| {
+        let proto: track_and_trace_state::ProposalList =
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get ProposalList from bytes".into(),
                 )
@@ -1170,8 +1170,8 @@ impl FromNative<AssociatedAgent> for track_and_trace_state::Record_AssociatedAge
 
 impl FromBytes<AssociatedAgent> for AssociatedAgent {
     fn from_bytes(bytes: &[u8]) -> Result<AssociatedAgent, ProtoConversionError> {
-        let proto: track_and_trace_state::Record_AssociatedAgent =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+        let proto: track_and_trace_state::Record_AssociatedAgent = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get AssociatedAgent from bytes".into(),
                 )
@@ -1349,7 +1349,7 @@ impl FromNative<Record> for track_and_trace_state::Record {
 impl FromBytes<Record> for Record {
     fn from_bytes(bytes: &[u8]) -> Result<Record, ProtoConversionError> {
         let proto: track_and_trace_state::Record =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError("Unable to get Record from bytes".into())
             })?;
         proto.into_native()
@@ -1435,7 +1435,7 @@ impl FromNative<RecordList> for track_and_trace_state::RecordList {
 impl FromBytes<RecordList> for RecordList {
     fn from_bytes(bytes: &[u8]) -> Result<RecordList, ProtoConversionError> {
         let proto: track_and_trace_state::RecordList =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError("Unable to get Record from bytes".into())
             })?;
         proto.into_native()

@@ -105,7 +105,7 @@ impl FromNative<ProductPayload> for protos::product_payload::ProductPayload {
 impl FromBytes<ProductPayload> for ProductPayload {
     fn from_bytes(bytes: &[u8]) -> Result<ProductPayload, ProtoConversionError> {
         let proto: product_payload::ProductPayload =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get ProductPayload from bytes".into(),
                 )
@@ -252,7 +252,7 @@ impl FromNative<ProductCreateAction> for product_payload::ProductCreateAction {
 
 impl FromBytes<ProductCreateAction> for ProductCreateAction {
     fn from_bytes(bytes: &[u8]) -> Result<ProductCreateAction, ProtoConversionError> {
-        let proto: protos::product_payload::ProductCreateAction = protobuf::parse_from_bytes(bytes)
+        let proto: protos::product_payload::ProductCreateAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get ProductCreateAction from bytes".to_string(),
@@ -387,7 +387,7 @@ impl FromNative<ProductUpdateAction> for protos::product_payload::ProductUpdateA
 
 impl FromBytes<ProductUpdateAction> for ProductUpdateAction {
     fn from_bytes(bytes: &[u8]) -> Result<ProductUpdateAction, ProtoConversionError> {
-        let proto: protos::product_payload::ProductUpdateAction = protobuf::parse_from_bytes(bytes)
+        let proto: protos::product_payload::ProductUpdateAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get ProductUpdateAction from bytes".to_string(),
@@ -506,7 +506,7 @@ impl FromNative<ProductDeleteAction> for protos::product_payload::ProductDeleteA
 
 impl FromBytes<ProductDeleteAction> for ProductDeleteAction {
     fn from_bytes(bytes: &[u8]) -> Result<ProductDeleteAction, ProtoConversionError> {
-        let proto: protos::product_payload::ProductDeleteAction = protobuf::parse_from_bytes(bytes)
+        let proto: protos::product_payload::ProductDeleteAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get ProductDeleteAction from bytes".to_string(),

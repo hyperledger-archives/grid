@@ -148,7 +148,7 @@ impl FromNative<CreateAgentAction> for protos::pike_payload::CreateAgentAction {
 
 impl FromBytes<CreateAgentAction> for CreateAgentAction {
     fn from_bytes(bytes: &[u8]) -> Result<CreateAgentAction, ProtoConversionError> {
-        let proto: protos::pike_payload::CreateAgentAction = protobuf::parse_from_bytes(bytes)
+        let proto: protos::pike_payload::CreateAgentAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get CreateAgentAction from bytes".to_string(),
@@ -339,7 +339,7 @@ impl FromNative<UpdateAgentAction> for protos::pike_payload::UpdateAgentAction {
 
 impl FromBytes<UpdateAgentAction> for UpdateAgentAction {
     fn from_bytes(bytes: &[u8]) -> Result<UpdateAgentAction, ProtoConversionError> {
-        let proto: protos::pike_payload::UpdateAgentAction = protobuf::parse_from_bytes(bytes)
+        let proto: protos::pike_payload::UpdateAgentAction = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get UpdateAgentAction from bytes".to_string(),
@@ -523,7 +523,7 @@ impl FromNative<CreateOrganizationAction> for protos::pike_payload::CreateOrgani
 impl FromBytes<CreateOrganizationAction> for CreateOrganizationAction {
     fn from_bytes(bytes: &[u8]) -> Result<CreateOrganizationAction, ProtoConversionError> {
         let proto: protos::pike_payload::CreateOrganizationAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get CreateOrganizationAction from bytes".to_string(),
                 )
@@ -710,7 +710,7 @@ impl FromNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
 impl FromBytes<UpdateOrganizationAction> for UpdateOrganizationAction {
     fn from_bytes(bytes: &[u8]) -> Result<UpdateOrganizationAction, ProtoConversionError> {
         let proto: protos::pike_payload::UpdateOrganizationAction =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get UpdateOrganizationAction from bytes".to_string(),
                 )
@@ -889,7 +889,7 @@ impl FromNative<PikePayload> for protos::pike_payload::PikePayload {
 impl FromBytes<PikePayload> for PikePayload {
     fn from_bytes(bytes: &[u8]) -> Result<PikePayload, ProtoConversionError> {
         let proto: protos::pike_payload::PikePayload =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get PikePayload from bytes".to_string(),
                 )

@@ -257,7 +257,7 @@ impl FromNative<PropertyDefinition> for protos::schema_state::PropertyDefinition
 
 impl FromBytes<PropertyDefinition> for PropertyDefinition {
     fn from_bytes(bytes: &[u8]) -> Result<PropertyDefinition, ProtoConversionError> {
-        let proto: protos::schema_state::PropertyDefinition = protobuf::parse_from_bytes(bytes)
+        let proto: protos::schema_state::PropertyDefinition = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get PropertyDefinition from bytes".to_string(),
@@ -496,7 +496,7 @@ impl FromNative<Schema> for protos::schema_state::Schema {
 impl FromBytes<Schema> for Schema {
     fn from_bytes(bytes: &[u8]) -> Result<Schema, ProtoConversionError> {
         let proto: protos::schema_state::Schema =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Schema from bytes".to_string(),
                 )
@@ -655,7 +655,7 @@ impl FromNative<SchemaList> for protos::schema_state::SchemaList {
 impl FromBytes<SchemaList> for SchemaList {
     fn from_bytes(bytes: &[u8]) -> Result<SchemaList, ProtoConversionError> {
         let proto: protos::schema_state::SchemaList =
-            protobuf::parse_from_bytes(bytes).map_err(|_| {
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get SchemaList from bytes".to_string(),
                 )
@@ -839,8 +839,8 @@ impl FromNative<PropertyValue> for protos::schema_state::PropertyValue {
 
 impl FromBytes<PropertyValue> for PropertyValue {
     fn from_bytes(bytes: &[u8]) -> Result<PropertyValue, ProtoConversionError> {
-        let proto: protos::schema_state::PropertyValue = protobuf::parse_from_bytes(bytes)
-            .map_err(|_| {
+        let proto: protos::schema_state::PropertyValue =
+            Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get PropertyValue from bytes".to_string(),
                 )
