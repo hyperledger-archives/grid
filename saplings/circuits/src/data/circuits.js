@@ -66,7 +66,11 @@ function Service(jsonSource) {
   if (jsonSource) {
     this.serviceId = jsonSource.service_id;
     this.serviceType = jsonSource.service_type;
-    this.allowedNodes = jsonSource.allowed_nodes;
+    if (jsonSource.node_id) {
+      this.allowedNodes = [jsonSource.node_id];
+    } else {
+      this.allowedNodes = jsonSource.allowed_nodes;
+    }
     this.arguments = argsToObject(jsonSource.arguments);
   } else {
     this.serviceId = '';
