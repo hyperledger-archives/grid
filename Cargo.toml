@@ -2,6 +2,7 @@
 
 members = [
     "cli",
+    "contracts/identity",
     "contracts/location",
     "contracts/pike",
     "contracts/product",
