@@ -193,6 +193,14 @@ const TableHeader = ({ dispatch, circuits }) => {
     <thead>
       <tr className="table-header">
         <th
+          onClick={() => {
+            sortCircuitsBy('displayName', !sortedBy.ascendingOrder);
+          }}
+        >
+          Circuit Name
+          {sortSymbol('displayName')}
+        </th>
+        <th
           onClick={() => sortCircuitsBy('circuitID', !sortedBy.ascendingOrder)}
         >
           Circuit ID

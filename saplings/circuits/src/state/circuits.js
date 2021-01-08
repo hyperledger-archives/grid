@@ -30,6 +30,9 @@ const REFREST_INTERVAL = 10000; // ten seconds;
 const filterCircuitsByTerm = filterBy => {
   if (filterBy.filterTerm.length > 0) {
     return circuit => {
+      if (circuit.displayName.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
+        return true;
+      }
       if (circuit.id.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
         return true;
       }
@@ -93,6 +96,23 @@ const sortCircuits = ({ field, ascendingOrder }) => {
           return order;
         }
         if (circuitA.comments > circuitB.comments) {
+          return -order;
+        }
+        return 0;
+      };
+    }
+    case 'displayName': {
+      return (circuitA, circuitB) => {
+        if (!circuitA.displayName && circuitB.displayName) {
+          return 1; // 'Empty display names should always be at the bottom'
+        }
+        if (circuitA.displayName && !circuitB.displayName) {
+          return -1; // 'Empty display names should always be at the bottom'
+        }
+        if (circuitA.displayName < circuitB.displayName) {
+          return order;
+        }
+        if (circuitA.displayName > circuitB.displayName) {
           return -order;
         }
         return 0;

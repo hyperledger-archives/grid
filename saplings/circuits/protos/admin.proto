@@ -95,6 +95,9 @@ message Circuit {
 
     // Human-readable comments about the circuit
     string comments = 10;
+
+    // Human-readable display name of the circuit
+    string display_name = 11;
 }
 
 // Contains the vote counts for a given proposal.

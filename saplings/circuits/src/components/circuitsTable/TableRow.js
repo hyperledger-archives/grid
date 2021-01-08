@@ -88,6 +88,9 @@ const TableRow = ({ circuit }) => {
         history.push(`/circuits/${circuit.id}`);
       }}
     >
+      <td className={circuit.displayName === '' ? 'text-grey' : ''}>
+        <div>{circuit.displayName}</div>
+      </td>
       <td className="text-highlight">{circuit.id}</td>
       <td>{members()}</td>
       <td>{serviceTypeCount()}</td>

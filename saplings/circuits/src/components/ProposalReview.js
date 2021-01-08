@@ -32,7 +32,8 @@ const ProposalReview = ({
   services,
   managementType,
   comments,
-  metadata
+  metadata,
+  displayName
 }) => {
   const localNodeID = useLocalNodeState();
   return (
@@ -58,6 +59,8 @@ const ProposalReview = ({
       </div>
       <div className="details-container">
         <div className="title">Details</div>
+        <div className="label">Display Name</div>
+        <div className="field-value">{displayName}</div>
         <div className="label">Management type</div>
         <div className="field-value">{managementType}</div>
         <div className="label">Comments</div>
@@ -87,7 +90,8 @@ ProposalReview.propTypes = {
   metadata: PropTypes.shape({
     metadata: PropTypes.string,
     encoding: PropTypes.string
-  }).isRequired
+  }).isRequired,
+  displayName: PropTypes.string.isRequired
 };
 
 ProposalReview.defaultProps = {};

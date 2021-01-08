@@ -233,6 +233,12 @@ const servicesReducer = (state, [action, ...args]) => {
 
 const detailsReducer = (state, action) => {
   switch (action.type) {
+    case 'set-display-name': {
+      const { displayName } = action;
+      const newState = state;
+      newState.displayName = displayName;
+      return { ...newState };
+    }
     case 'set-management-type': {
       const { managementType } = action;
       const newState = state;
@@ -345,6 +351,7 @@ export function ProposeCircuitForm() {
   const [detailsState, detailsDispatcher] = useReducer(detailsReducer, {
     managementType: '',
     comments: '',
+    displayName: '',
     errors: {
       managementType: ''
     }
@@ -413,7 +420,8 @@ export function ProposeCircuitForm() {
       routes: protos.Circuit.RouteType.ANY_ROUTE,
       circuitManagementType: detailsState.managementType,
       applicationMetadata: metadata,
-      comments: detailsState.comments
+      comments: detailsState.comments,
+      displayName: detailsState.displayName
     });
     const circuitCreateRequest = protos.CircuitCreateRequest.create({
       circuit
@@ -676,6 +684,20 @@ export function ProposeCircuitForm() {
         </div>
         <div className="propose-form-wrapper circuit-details-wrapper">
           <div className="input-wrapper">
+            <div className="label">Display name</div>
+            <input
+              type="text"
+              className="form-input"
+              value={detailsState.displayName}
+              onChange={e => {
+                detailsDispatcher({
+                  type: 'set-display-name',
+                  displayName: e.target.value
+                });
+              }}
+            />
+          </div>
+          <div className="input-wrapper">
             <div className="label">Management type</div>
             <input
               type="text"
@@ -768,6 +790,7 @@ export function ProposeCircuitForm() {
               encoding: metadataState.encoding,
               metadata: metadataState.metadata
             }}
+            displayName={detailsState.displayName}
           />
         </div>
       </Step>
