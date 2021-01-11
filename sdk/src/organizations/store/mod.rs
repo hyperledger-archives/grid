@@ -15,22 +15,43 @@
 #[cfg(feature = "diesel")]
 pub mod diesel;
 mod error;
-pub mod memory;
 
 pub use error::OrganizationStoreError;
 
 use crate::hex::as_hex;
 
-/// Represents a Grid commit
+/// Represents a Grid Organization
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Organization {
     pub org_id: String,
     pub name: String,
-    pub address: String,
+    pub locations: Vec<Location>,
+    pub alternate_ids: Vec<AltID>,
     #[serde(serialize_with = "as_hex")]
     #[serde(deserialize_with = "deserialize_hex")]
     #[serde(default)]
     pub metadata: Vec<u8>,
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct Location {
+    pub location: String,
+    pub org_id: String,
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct AltID {
+    pub alternate_id: String,
+    pub id_type: String,
+    pub org_id: String,
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,
     pub end_commit_num: i64,
@@ -42,8 +63,8 @@ pub trait OrganizationStore: Send + Sync {
     ///
     /// # Arguments
     ///
-    ///  * `orgs` - The commit to be added
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError>;
+    ///  * `org` - The organization to be added
+    fn add_organization(&self, org: Organization) -> Result<(), OrganizationStoreError>;
 
     ///  Lists organizations from the underlying storage
     ///
@@ -72,8 +93,8 @@ impl<OS> OrganizationStore for Box<OS>
 where
     OS: OrganizationStore + ?Sized,
 {
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
-        (**self).add_organizations(orgs)
+    fn add_organization(&self, org: Organization) -> Result<(), OrganizationStoreError> {
+        (**self).add_organization(org)
     }
 
     fn list_organizations(

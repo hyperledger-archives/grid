@@ -28,8 +28,9 @@ use crate::track_and_trace::store::diesel::schema::{
 };
 #[cfg(feature = "pike")]
 use crate::{
-    agents::store::diesel::schema::{agent::dsl::*, role::dsl::role},
+    agents::store::diesel::schema::agent::dsl::*,
     organizations::store::diesel::schema::organization::dsl::*,
+    roles::store::diesel::schema::role::dsl as pike_role,
 };
 
 use diesel::RunQueryDsl;
@@ -67,7 +68,7 @@ pub fn clear_database(conn: &SqliteConnection) -> Result<(), MigrationsError> {
         {
             diesel::delete(agent).execute(conn)?;
             diesel::delete(organization).execute(conn)?;
-            diesel::delete(role).execute(conn)?;
+            diesel::delete(pike_role::role).execute(conn)?;
         }
         #[cfg(feature = "location")]
         {

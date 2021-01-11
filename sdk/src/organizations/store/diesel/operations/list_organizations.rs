@@ -15,8 +15,11 @@
 use super::OrganizationStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::organizations::store::diesel::models::OrganizationModel;
-use crate::organizations::store::diesel::{schema::organization, OrganizationStoreError};
+use crate::organizations::store::diesel::models::{AltIDModel, LocationModel, OrganizationModel};
+use crate::organizations::store::diesel::{
+    schema::{alternate_identifier, org_location, organization},
+    OrganizationStoreError,
+};
 use crate::organizations::store::Organization;
 
 use diesel::prelude::*;
@@ -36,27 +39,76 @@ impl<'a> OrganizationStoreListOrganizationsOperation
         &self,
         service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
-        let mut query = organization::table
-            .into_boxed()
-            .select(organization::all_columns)
-            .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
+        self.conn
+            .build_transaction()
+            .read_write()
+            .run::<_, OrganizationStoreError, _>(|| {
+                let mut query = organization::table
+                    .into_boxed()
+                    .select(organization::all_columns)
+                    .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
 
-        if let Some(service_id) = service_id {
-            query = query.filter(organization::service_id.eq(service_id));
-        } else {
-            query = query.filter(organization::service_id.is_null());
-        }
+                if let Some(service_id) = service_id {
+                    query = query.filter(organization::service_id.eq(service_id));
+                } else {
+                    query = query.filter(organization::service_id.is_null());
+                }
 
-        let orgs = query
-            .load::<OrganizationModel>(self.conn)
-            .map_err(|err| {
-                OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?
-            .into_iter()
-            .map(Organization::from)
-            .collect();
+                let org_models = query.load::<OrganizationModel>(self.conn).map_err(|err| {
+                    OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
 
-        Ok(orgs)
+                let mut orgs = Vec::new();
+
+                for org in org_models {
+                    let mut locs_query = org_location::table
+                        .into_boxed()
+                        .select(org_location::all_columns)
+                        .filter(
+                            org_location::org_id
+                                .eq(&org.org_id)
+                                .and(org_location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        );
+
+                    if let Some(service_id) = service_id {
+                        locs_query = locs_query.filter(org_location::service_id.eq(service_id));
+                    } else {
+                        locs_query = locs_query.filter(org_location::service_id.is_null());
+                    }
+
+                    let locs = locs_query.load::<LocationModel>(self.conn).map_err(|err| {
+                        OrganizationStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        )))
+                    })?;
+
+                    let mut ids_query = alternate_identifier::table
+                        .into_boxed()
+                        .select(alternate_identifier::all_columns)
+                        .filter(
+                            alternate_identifier::org_id
+                                .eq(&org.org_id)
+                                .and(alternate_identifier::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        );
+
+                    if let Some(service_id) = service_id {
+                        ids_query =
+                            ids_query.filter(alternate_identifier::service_id.eq(service_id));
+                    } else {
+                        ids_query = ids_query.filter(alternate_identifier::service_id.is_null());
+                    }
+
+                    let ids = ids_query.load::<AltIDModel>(self.conn).map_err(|err| {
+                        OrganizationStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        )))
+                    })?;
+
+                    orgs.push(Organization::from((org, locs, ids)));
+                }
+
+                Ok(orgs)
+            })
     }
 }
 
@@ -68,26 +120,73 @@ impl<'a> OrganizationStoreListOrganizationsOperation
         &self,
         service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
-        let mut query = organization::table
-            .into_boxed()
-            .select(organization::all_columns)
-            .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
+        self.conn
+            .immediate_transaction::<_, OrganizationStoreError, _>(|| {
+                let mut query = organization::table
+                    .into_boxed()
+                    .select(organization::all_columns)
+                    .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
 
-        if let Some(service_id) = service_id {
-            query = query.filter(organization::service_id.eq(service_id));
-        } else {
-            query = query.filter(organization::service_id.is_null());
-        }
+                if let Some(service_id) = service_id {
+                    query = query.filter(organization::service_id.eq(service_id));
+                } else {
+                    query = query.filter(organization::service_id.is_null());
+                }
 
-        let orgs = query
-            .load::<OrganizationModel>(self.conn)
-            .map_err(|err| {
-                OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?
-            .into_iter()
-            .map(Organization::from)
-            .collect();
+                let org_models = query.load::<OrganizationModel>(self.conn).map_err(|err| {
+                    OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
 
-        Ok(orgs)
+                let mut orgs = Vec::new();
+
+                for org in org_models {
+                    let mut locs_query = org_location::table
+                        .into_boxed()
+                        .select(org_location::all_columns)
+                        .filter(
+                            org_location::org_id
+                                .eq(&org.org_id)
+                                .and(org_location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        );
+
+                    if let Some(service_id) = service_id {
+                        locs_query = locs_query.filter(org_location::service_id.eq(service_id));
+                    } else {
+                        locs_query = locs_query.filter(org_location::service_id.is_null());
+                    }
+
+                    let locs = locs_query.load::<LocationModel>(self.conn).map_err(|err| {
+                        OrganizationStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        )))
+                    })?;
+
+                    let mut ids_query = alternate_identifier::table
+                        .into_boxed()
+                        .select(alternate_identifier::all_columns)
+                        .filter(
+                            alternate_identifier::org_id
+                                .eq(&org.org_id)
+                                .and(alternate_identifier::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        );
+
+                    if let Some(service_id) = service_id {
+                        ids_query =
+                            ids_query.filter(alternate_identifier::service_id.eq(service_id));
+                    } else {
+                        ids_query = ids_query.filter(alternate_identifier::service_id.is_null());
+                    }
+
+                    let ids = ids_query.load::<AltIDModel>(self.conn).map_err(|err| {
+                        OrganizationStoreError::InternalError(InternalError::from_source(Box::new(
+                            err,
+                        )))
+                    })?;
+
+                    orgs.push(Organization::from((org, locs, ids)));
+                }
+
+                Ok(orgs)
+            })
     }
 }

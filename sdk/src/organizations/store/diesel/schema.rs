@@ -17,8 +17,30 @@ table! {
         id -> Int8,
         org_id -> Varchar,
         name -> Varchar,
-        address -> Varchar,
         metadata -> Binary,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    alternate_identifier (id) {
+        id -> Int8,
+        alternate_id -> Varchar,
+        id_type -> Varchar,
+        org_id -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    org_location (id) {
+        id -> Int8,
+        location -> Varchar,
+        org_id -> Varchar,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,

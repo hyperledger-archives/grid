@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::agents::store::diesel::schema::*;
+use crate::roles::store::diesel::schema::*;
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
-#[table_name = "agent"]
-pub struct NewAgentModel {
-    pub public_key: String,
+#[table_name = "role"]
+pub struct NewRoleModel {
     pub org_id: String,
-    pub active: bool,
-    pub roles: Vec<u8>,
-    pub metadata: Vec<u8>,
-
+    pub name: String,
+    pub description: String,
+    pub permissions: Vec<u8>,
+    pub allowed_orgs: Vec<u8>,
+    pub inherit_from: Vec<u8>,
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,
     pub end_commit_num: i64,
@@ -31,16 +31,15 @@ pub struct NewAgentModel {
 }
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
-#[table_name = "agent"]
-pub struct AgentModel {
-    ///  This is the record id for the slowly-changing-dimensions table.
+#[table_name = "role"]
+pub struct RoleModel {
     pub id: i64,
-    pub public_key: String,
     pub org_id: String,
-    pub active: bool,
-    pub roles: Vec<u8>,
-    pub metadata: Vec<u8>,
-
+    pub name: String,
+    pub description: String,
+    pub permissions: Vec<u8>,
+    pub allowed_orgs: Vec<u8>,
+    pub inherit_from: Vec<u8>,
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,
     pub end_commit_num: i64,

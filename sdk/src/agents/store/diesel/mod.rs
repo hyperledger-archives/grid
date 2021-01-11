@@ -18,8 +18,8 @@ pub(in crate) mod schema;
 
 use diesel::r2d2::{ConnectionManager, Pool};
 
-use super::diesel::models::{AgentModel, NewAgentModel, NewRoleModel, RoleModel};
-use super::{Agent, AgentStore, AgentStoreError, Role};
+use super::diesel::models::{AgentModel, NewAgentModel};
+use super::{Agent, AgentStore, AgentStoreError};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{
     ConstraintViolationError, ConstraintViolationType, InternalError,
@@ -58,7 +58,7 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_agent(agent.clone().into(), make_role_models(&agent))
+        .add_agent(agent.clone().into())
     }
 
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
@@ -89,7 +89,7 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .update_agent(agent.clone().into(), make_role_models(&agent))
+        .update_agent(agent.clone().into())
     }
 }
 
@@ -101,7 +101,7 @@ impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_agent(agent.clone().into(), make_role_models(&agent))
+        .add_agent(agent.clone().into())
     }
 
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
@@ -132,33 +132,18 @@ impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .update_agent(agent.clone().into(), make_role_models(&agent))
+        .update_agent(agent.clone().into())
     }
 }
 
-impl From<RoleModel> for Role {
-    fn from(role: RoleModel) -> Self {
-        Self {
-            public_key: role.public_key,
-            role_name: role.role_name,
-            start_commit_num: role.start_commit_num,
-            end_commit_num: role.end_commit_num,
-            service_id: role.service_id,
-        }
-    }
-}
-
-impl From<(AgentModel, Vec<RoleModel>)> for Agent {
-    fn from((agent_model, role_models): (AgentModel, Vec<RoleModel>)) -> Self {
+impl From<AgentModel> for Agent {
+    fn from(agent_model: AgentModel) -> Self {
         Self {
             public_key: agent_model.public_key,
             org_id: agent_model.org_id,
             active: agent_model.active,
             metadata: agent_model.metadata,
-            roles: role_models
-                .iter()
-                .map(|role| role.role_name.to_string())
-                .collect(),
+            roles: agent_model.roles,
             start_commit_num: agent_model.start_commit_num,
             end_commit_num: agent_model.end_commit_num,
             service_id: agent_model.service_id,
@@ -172,28 +157,13 @@ impl Into<NewAgentModel> for Agent {
             public_key: self.public_key,
             org_id: self.org_id,
             active: self.active,
+            roles: self.roles,
             metadata: self.metadata,
             start_commit_num: self.start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
             service_id: self.service_id,
         }
     }
-}
-
-pub fn make_role_models(agent: &Agent) -> Vec<NewRoleModel> {
-    let mut roles = Vec::new();
-
-    for role in &agent.roles {
-        roles.push(NewRoleModel {
-            public_key: agent.public_key.to_string(),
-            role_name: role.to_string(),
-            start_commit_num: agent.start_commit_num,
-            end_commit_num: agent.end_commit_num,
-            service_id: agent.service_id.clone(),
-        })
-    }
-
-    roles
 }
 
 impl From<diesel::result::Error> for AgentStoreError {

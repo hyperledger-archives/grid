@@ -19,9 +19,7 @@ use crate::schemas::SchemaStore;
 #[cfg(feature = "track-and-trace")]
 use crate::track_and_trace::TrackAndTraceStore;
 #[cfg(feature = "pike")]
-use crate::{
-    agents::AgentStore, organizations::MemoryOrganizationStore, organizations::OrganizationStore,
-};
+use crate::{agents::AgentStore, organizations::OrganizationStore, roles::RoleStore};
 use crate::{commits::CommitStore, commits::MemoryCommitStore};
 
 use super::StoreFactory;
@@ -30,21 +28,13 @@ use super::StoreFactory;
 #[derive(Default)]
 pub struct MemoryStoreFactory {
     grid_commit_store: MemoryCommitStore,
-    #[cfg(feature = "pike")]
-    grid_organization_store: MemoryOrganizationStore,
 }
 
 impl MemoryStoreFactory {
     pub fn new() -> Self {
         let grid_commit_store = MemoryCommitStore::new();
-        #[cfg(feature = "pike")]
-        let grid_organization_store = MemoryOrganizationStore::new();
 
-        Self {
-            grid_commit_store,
-            #[cfg(feature = "pike")]
-            grid_organization_store,
-        }
+        Self { grid_commit_store }
     }
 }
 
@@ -60,7 +50,12 @@ impl StoreFactory for MemoryStoreFactory {
 
     #[cfg(feature = "pike")]
     fn get_grid_organization_store(&self) -> Box<dyn OrganizationStore> {
-        Box::new(self.grid_organization_store.clone())
+        unimplemented!()
+    }
+
+    #[cfg(feature = "pike")]
+    fn get_grid_role_store(&self) -> Box<dyn RoleStore> {
+        unimplemented!()
     }
 
     #[cfg(feature = "location")]

@@ -13,12 +13,8 @@
 // limitations under the License.
 
 use super::AgentStoreOperations;
-use crate::agents::store::diesel::{
-    schema::{agent, role},
-    Agent, AgentStoreError,
-};
-
-use crate::agents::store::diesel::models::{AgentModel, RoleModel};
+use crate::agents::store::diesel::models::AgentModel;
+use crate::agents::store::diesel::{schema::agent, Agent, AgentStoreError};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use diesel::prelude::*;
@@ -45,31 +41,14 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                     query = query.filter(agent::service_id.is_null());
                 }
 
-                let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
-                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
-
-                let mut agents = Vec::new();
-
-                for a in agent_models {
-                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
-                        role::public_key
-                            .eq(&a.public_key)
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
-
-                    if let Some(service_id) = service_id {
-                        query = query.filter(role::service_id.eq(service_id));
-                    } else {
-                        query = query.filter(role::service_id.is_null());
-                    }
-
-                    let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                let agents = query
+                    .load::<AgentModel>(self.conn)
+                    .map_err(|err| {
                         AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                    agents.push(Agent::from((a, roles)));
-                }
+                    })?
+                    .into_iter()
+                    .map(Agent::from)
+                    .collect();
 
                 Ok(agents)
             })
@@ -94,31 +73,14 @@ impl<'a> AgentStoreListAgentsOperation
                     query = query.filter(agent::service_id.is_null());
                 }
 
-                let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
-                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
-
-                let mut agents = Vec::new();
-
-                for a in agent_models {
-                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
-                        role::public_key
-                            .eq(&a.public_key)
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
-
-                    if let Some(service_id) = service_id {
-                        query = query.filter(role::service_id.eq(service_id));
-                    } else {
-                        query = query.filter(role::service_id.is_null());
-                    }
-
-                    let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                let agents = query
+                    .load::<AgentModel>(self.conn)
+                    .map_err(|err| {
                         AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                    agents.push(Agent::from((a, roles)));
-                }
+                    })?
+                    .into_iter()
+                    .map(Agent::from)
+                    .collect();
 
                 Ok(agents)
             })

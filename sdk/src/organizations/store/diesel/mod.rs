@@ -17,14 +17,18 @@ mod operations;
 pub(in crate) mod schema;
 
 use diesel::r2d2::{ConnectionManager, Pool};
+use std::iter::FromIterator;
 
-use super::diesel::models::{NewOrganizationModel, OrganizationModel};
-use super::{Organization, OrganizationStore, OrganizationStoreError};
+use super::diesel::models::{
+    AltIDModel, LocationModel, NewAltIDModel, NewLocationModel, NewOrganizationModel,
+    OrganizationModel,
+};
+use super::{AltID, Location, Organization, OrganizationStore, OrganizationStoreError};
 use crate::error::{
     ConstraintViolationError, ConstraintViolationType, InternalError,
     ResourceTemporarilyUnavailableError,
 };
-use operations::add_organizations::OrganizationStoreAddOrganizationsOperation as _;
+use operations::add_organization::OrganizationStoreAddOrganizationOperation as _;
 use operations::fetch_organization::OrganizationStoreFetchOrganizationOperation as _;
 use operations::list_organizations::OrganizationStoreListOrganizationsOperation as _;
 use operations::OrganizationStoreOperations;
@@ -50,13 +54,17 @@ impl<C: diesel::Connection> DieselOrganizationStore<C> {
 
 #[cfg(feature = "postgres")]
 impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
+    fn add_organization(&self, org: Organization) -> Result<(), OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             OrganizationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_organizations(orgs.iter().map(|org| org.clone().into()).collect())
+        .add_organization(
+            NewOrganizationModel::from(&org),
+            Vec::from_iter(org.locations.iter().map(|loc| NewLocationModel::from(loc))),
+            Vec::from_iter(org.alternate_ids.iter().map(|id| NewAltIDModel::from(id))),
+        )
     }
 
     fn list_organizations(
@@ -87,13 +95,17 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
 
 #[cfg(feature = "sqlite")]
 impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnection> {
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
+    fn add_organization(&self, org: Organization) -> Result<(), OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             OrganizationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_organizations(orgs.iter().map(|org| org.clone().into()).collect())
+        .add_organization(
+            NewOrganizationModel::from(&org),
+            Vec::from_iter(org.locations.iter().map(|loc| NewLocationModel::from(loc))),
+            Vec::from_iter(org.alternate_ids.iter().map(|id| NewAltIDModel::from(id))),
+        )
     }
 
     fn list_organizations(
@@ -122,12 +134,15 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
     }
 }
 
-impl From<OrganizationModel> for Organization {
-    fn from(org: OrganizationModel) -> Self {
+impl From<(OrganizationModel, Vec<LocationModel>, Vec<AltIDModel>)> for Organization {
+    fn from(
+        (org, locations, alternate_ids): (OrganizationModel, Vec<LocationModel>, Vec<AltIDModel>),
+    ) -> Self {
         Self {
             org_id: org.org_id,
             name: org.name,
-            address: org.address,
+            locations: locations.iter().map(|l| Location::from(l)).collect(),
+            alternate_ids: alternate_ids.iter().map(|a| AltID::from(a)).collect(),
             metadata: org.metadata,
             start_commit_num: org.start_commit_num,
             end_commit_num: org.end_commit_num,
@@ -136,12 +151,19 @@ impl From<OrganizationModel> for Organization {
     }
 }
 
-impl From<NewOrganizationModel> for Organization {
-    fn from(org: NewOrganizationModel) -> Self {
+impl From<(NewOrganizationModel, Vec<LocationModel>, Vec<AltIDModel>)> for Organization {
+    fn from(
+        (org, locations, alternate_ids): (
+            NewOrganizationModel,
+            Vec<LocationModel>,
+            Vec<AltIDModel>,
+        ),
+    ) -> Self {
         Self {
             org_id: org.org_id,
             name: org.name,
-            address: org.address,
+            locations: locations.iter().map(|l| Location::from(l)).collect(),
+            alternate_ids: alternate_ids.iter().map(|a| AltID::from(a)).collect(),
             metadata: org.metadata,
             start_commit_num: org.start_commit_num,
             end_commit_num: org.end_commit_num,
@@ -150,16 +172,65 @@ impl From<NewOrganizationModel> for Organization {
     }
 }
 
-impl Into<NewOrganizationModel> for Organization {
-    fn into(self) -> NewOrganizationModel {
+impl From<&Organization> for NewOrganizationModel {
+    fn from(org: &Organization) -> NewOrganizationModel {
         NewOrganizationModel {
-            org_id: self.org_id,
-            name: self.name,
-            address: self.address,
-            metadata: self.metadata,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+            org_id: org.org_id.clone(),
+            name: org.name.clone(),
+            metadata: org.metadata.clone(),
+            start_commit_num: org.start_commit_num.clone(),
+            end_commit_num: org.end_commit_num.clone(),
+            service_id: org.service_id.clone(),
+        }
+    }
+}
+
+impl From<&LocationModel> for Location {
+    fn from(location: &LocationModel) -> Location {
+        Location {
+            location: location.location.clone(),
+            org_id: location.org_id.clone(),
+            start_commit_num: location.start_commit_num.clone(),
+            end_commit_num: location.end_commit_num.clone(),
+            service_id: location.service_id.clone(),
+        }
+    }
+}
+
+impl From<&Location> for NewLocationModel {
+    fn from(location: &Location) -> NewLocationModel {
+        NewLocationModel {
+            location: location.location.clone(),
+            org_id: location.org_id.clone(),
+            start_commit_num: location.start_commit_num.clone(),
+            end_commit_num: location.end_commit_num.clone(),
+            service_id: location.service_id.clone(),
+        }
+    }
+}
+
+impl From<&AltIDModel> for AltID {
+    fn from(id: &AltIDModel) -> AltID {
+        AltID {
+            alternate_id: id.alternate_id.clone(),
+            id_type: id.id_type.clone(),
+            org_id: id.org_id.clone(),
+            start_commit_num: id.start_commit_num.clone(),
+            end_commit_num: id.end_commit_num.clone(),
+            service_id: id.service_id.clone(),
+        }
+    }
+}
+
+impl From<&AltID> for NewAltIDModel {
+    fn from(id: &AltID) -> NewAltIDModel {
+        NewAltIDModel {
+            alternate_id: id.alternate_id.clone(),
+            id_type: id.id_type.clone(),
+            org_id: id.org_id.clone(),
+            start_commit_num: id.start_commit_num.clone(),
+            end_commit_num: id.end_commit_num.clone(),
+            service_id: id.service_id.clone(),
         }
     }
 }

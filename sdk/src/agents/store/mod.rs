@@ -16,6 +16,8 @@
 pub mod diesel;
 mod error;
 
+use crate::hex::as_hex;
+
 pub use error::AgentStoreError;
 
 /// Represents a Grid Agent
@@ -25,22 +27,14 @@ pub struct Agent {
     pub org_id: String,
     pub active: bool,
     pub metadata: Vec<u8>,
-    pub roles: Vec<String>,
+    #[serde(serialize_with = "as_hex")]
+    #[serde(deserialize_with = "deserialize_hex")]
+    #[serde(default)]
+    pub roles: Vec<u8>,
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub service_id: Option<String>,
-}
-
-/// Represents a Grid Agent Role
-#[derive(Clone, Debug, Serialize, PartialEq)]
-pub struct Role {
-    pub public_key: String,
-    pub role_name: String,
-    // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
     pub service_id: Option<String>,
 }
 
