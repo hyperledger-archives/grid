@@ -24,7 +24,7 @@ services:
   # ---== alpha node ==---
 
   splinterd-alpha:
-    image: splintercommunity/splinterd:experimental
+    image: splintercommunity/splinterd:master
     container_name: splinterd-alpha
     hostname: splinterd-alpha
     expose:
@@ -89,7 +89,7 @@ services:
 # ---== beta node ==---
 
   splinterd-beta:
-    image: splintercommunity/splinterd:experimental
+    image: splintercommunity/splinterd:master
     container_name: splinterd-beta
     hostname: splinterd-beta
     expose:

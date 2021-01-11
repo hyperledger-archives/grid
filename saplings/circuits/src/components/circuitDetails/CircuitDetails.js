@@ -82,6 +82,35 @@ const CircuitDetails = () => {
     }
   }, [circuit, user]);
 
+  const getCircuitTitle = () => {
+    if (circuit.displayName) {
+      return (
+        <div className="circuit-title">
+          <h4>{`${circuit.displayName}`}</h4>
+          <h6>{`Circuit ${circuitId}`}</h6>
+          <div className="managementType">
+            {circuit.managementType}
+            <span>
+              <FontAwesomeIcon icon={faQuestionCircle} />
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="circuit-title">
+        <h4>{`Circuit ${circuitId}`}</h4>
+        <div className="managementType">
+          {circuit.managementType}
+          <span>
+            <FontAwesomeIcon icon={faQuestionCircle} />
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   if (!circuit) {
     return <div />;
   }
@@ -108,15 +137,7 @@ const CircuitDetails = () => {
           </div>
           {requiresAction}
           <div className="mid-header-wrapper">
-            <div className="circuit-title">
-              <h4>{`Circuit ${circuitId}`}</h4>
-              <div className="managementType">
-                {circuit.managementType}
-                <span>
-                  <FontAwesomeIcon icon={faQuestionCircle} />
-                </span>
-              </div>
-            </div>
+            {getCircuitTitle()}
             {circuit.actionRequired(localNodeID) && (
               <VoteButton
                 onClickFn={() => {

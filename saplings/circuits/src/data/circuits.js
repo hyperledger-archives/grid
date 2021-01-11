@@ -66,7 +66,11 @@ function Service(jsonSource) {
   if (jsonSource) {
     this.serviceId = jsonSource.service_id;
     this.serviceType = jsonSource.service_type;
-    this.allowedNodes = jsonSource.allowed_nodes;
+    if (jsonSource.node_id) {
+      this.allowedNodes = [jsonSource.node_id];
+    } else {
+      this.allowedNodes = jsonSource.allowed_nodes;
+    }
     this.arguments = argsToObject(jsonSource.arguments);
   } else {
     this.serviceId = '';
@@ -93,6 +97,9 @@ function Circuit(data) {
     );
     this.encodedApplicationData = data.circuit.application_metadata;
     this.comments = data.circuit.comments;
+    if (data.circuit.display_name) {
+      this.displayName = data.circuit.display_name;
+    }
     this.proposal = {
       votes: data.votes,
       requester: data.requester,
@@ -109,6 +116,9 @@ function Circuit(data) {
     this.applicationMetadata = metadataFromJson(data.application_metadata);
     this.encodedApplicationData = data.application_metadata;
     this.comments = 'N/A';
+    if (data.display_name) {
+      this.displayName = data.display_name;
+    }
     this.proposal = {
       votes: [],
       requester: '',
