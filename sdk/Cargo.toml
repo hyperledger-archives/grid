@@ -66,7 +66,8 @@ experimental = [
     "stable",
     # The following features are experimental:
     "database",
-    "track-and-trace"
+    "track-and-trace",
+    "workflow"
 ]
 
 database = [
@@ -91,3 +92,4 @@ sawtooth-compat = [
     "sawtooth-sdk"
 ]
 sqlite = ["diesel/sqlite", "diesel_migrations"]
+workflow = []

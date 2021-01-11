@@ -49,3 +49,5 @@ pub mod schemas;
 pub mod store;
 #[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;
+#[cfg(feature = "workflow")]
+pub mod workflow;
