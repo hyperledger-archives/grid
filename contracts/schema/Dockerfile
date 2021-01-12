@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v6 as grid-schema-builder
+FROM hyperledger/grid-dev:v7 as grid-schema-builder
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -20,6 +20,7 @@ COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
+COPY contracts/identity/Cargo.toml /build/contracts/identity/Cargo.toml
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
 COPY contracts/pike/Cargo.toml /build/contracts/pike/Cargo.toml
 COPY contracts/product/Cargo.toml /build/contracts/product/Cargo.toml
