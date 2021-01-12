@@ -60,6 +60,7 @@ RUN USER=root cargo new --bin daemon
 RUN USER=root cargo new --bin sdk
 
 # Create empty Cargo projects for contracts
+RUN USER=root cargo new --bin contracts/identity
 RUN USER=root cargo new --bin contracts/location
 RUN USER=root cargo new --bin contracts/pike
 RUN USER=root cargo new --bin contracts/product
@@ -72,6 +73,7 @@ COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
+COPY contracts/identity/Cargo.toml /build/contracts/identity/Cargo.toml
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
 COPY contracts/pike/Cargo.toml /build/contracts/pike/Cargo.toml
 COPY contracts/product/Cargo.toml /build/contracts/product/Cargo.toml
