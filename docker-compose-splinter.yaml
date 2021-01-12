@@ -120,6 +120,21 @@ services:
         cp /tmp/grid-location*.scar /usr/share/scar
       "
 
+  identity-contract-builder:
+    image: identity-contract-builder
+    container_name: identity-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/identity/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-identity*.scar /usr/share/scar
+      "
+
   db:
     image: postgres
     container_name: db

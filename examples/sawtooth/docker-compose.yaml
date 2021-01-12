@@ -141,6 +141,26 @@ services:
         echo '---------========= grid_location contract is loaded =========---------'
       "
 
+  identity-contract-builder:
+    image: identity-contract-builder
+    container_name: identity-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/identity/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - grid-shared:/grid-shared
+    entrypoint: |
+      bash -c "
+        while true; do curl -s http://sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        sabre cr --create grid_identity --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename /tmp/identity.yaml --key /grid-shared/my_key --url http://sawtooth-rest-api:8008 --wait 30
+        sabre ns --create 621dee05 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee05 grid_identity --key /grid-shared/my_key --read --write --url http://sawtooth-rest-api:8008 --wait 30
+        echo '---------========= grid_identity contract is loaded =========---------'
+      "
+
   sawtooth-validator:
     image: hyperledger/sawtooth-validator:latest
     volumes:
