@@ -44,7 +44,7 @@ pub struct PikeTransactionHandler {
     namespaces: Vec<String>,
 }
 
-const NAMESPACE: &str = "cad11d";
+const NAMESPACE: &str = "621dee05";
 
 fn compute_address(name: &str, resource: Resource) -> String {
     let mut sha = Sha512::new();
@@ -63,7 +63,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
-        let address = compute_address(public_key, Resource::AGENT);
+        let address = compute_address(public_key, Resource::Agent);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -90,7 +90,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn set_agent(&mut self, public_key: &str, new_agent: Agent) -> Result<(), ApplyError> {
-        let address = compute_address(public_key, Resource::AGENT);
+        let address = compute_address(public_key, Resource::Agent);
         let d = self.context.get_state_entry(&address)?;
         let mut agent_list = match d {
             Some(packed) => match protobuf::Message::parse_from_bytes(packed.as_slice()) {
@@ -134,7 +134,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn get_organization(&mut self, id: &str) -> Result<Option<Organization>, ApplyError> {
-        let address = compute_address(id, Resource::ORG);
+        let address = compute_address(id, Resource::Org);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -165,7 +165,7 @@ impl<'a> PikeState<'a> {
         id: &str,
         new_organization: Organization,
     ) -> Result<(), ApplyError> {
-        let address = compute_address(id, Resource::ORG);
+        let address = compute_address(id, Resource::Org);
         let d = self.context.get_state_entry(&address)?;
         let mut organization_list = match d {
             Some(packed) => match protobuf::Message::parse_from_bytes(packed.as_slice()) {
