@@ -14,7 +14,7 @@
 
 [package]
 name = "grid-product-tp"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Target Inc"]
 description = "Grid Product Smart Contract"
 homepage = "https://grid.hyperledger.org"
