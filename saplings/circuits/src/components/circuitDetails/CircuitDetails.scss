@@ -179,3 +179,13 @@
     }
   }
 }
+
+.error-message {
+  display: inline-flex;
+  h4 {
+    color: var(--color-attention);
+    padding: 5rem;
+    font-size: 26px;
+    font-weight: 100;
+  }
+}

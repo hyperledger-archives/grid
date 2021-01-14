@@ -29,7 +29,9 @@ function useNodeRegistryState() {
           const nodes = await getNodeRegistry(user.token);
           setNodes({ nodes });
         } catch (e) {
-          throw Error(`Error fetching information from node registry: ${e}`);
+          throw Error(
+            `Error fetching information from node registry: ${e.json.message}`
+          );
         }
       }
     };
