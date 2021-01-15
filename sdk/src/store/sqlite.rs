@@ -72,4 +72,9 @@ impl StoreFactory for SqliteStoreFactory {
             self.pool.clone(),
         ))
     }
+
+    #[cfg(feature = "batch-store")]
+    fn get_batch_store(&self) -> Box<dyn crate::batches::BatchStore> {
+        Box::new(crate::batches::DieselBatchStore::new(self.pool.clone()))
+    }
 }

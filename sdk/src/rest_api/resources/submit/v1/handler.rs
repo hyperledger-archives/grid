@@ -234,44 +234,6 @@ fn batches_into_bytes(
     Ok(bytes)
 }
 
-//fn load_signing_key(key_file_name: &str) -> Result<Secp256k1PrivateKey, ErrorResponse> {
-//let mut private_key_filename = PathBuf::new();
-//private_key_filename.push(&format!("/etc/grid/keys/{}.priv", key_file_name));
-
-//if !private_key_filename.as_path().exists() {
-//return Err(ErrorResponse::new(
-//500,
-//&format!("No such key file: {}", private_key_filename.display()),
-//));
-//}
-
-//let mut f = File::open(&private_key_filename).map_err(|err| {
-//error!("{}", err);
-//ErrorResponse::internal_error(Box::new(err))
-//})?;
-
-//let mut contents = String::new();
-//f.read_to_string(&mut contents).map_err(|err| {
-//error!("{}", err);
-//ErrorResponse::internal_error(Box::new(err))
-//})?;
-
-//let key_str = match contents.lines().next() {
-//Some(k) => k.trim(),
-//None => {
-//return Err(ErrorResponse::new(
-//500,
-//&format!("Empty key file: {}", private_key_filename.display()),
-//));
-//}
-//};
-
-//Ok(Secp256k1PrivateKey::from_hex(&key_str).map_err(|err| {
-//error!("{}", err);
-//ErrorResponse::internal_error(Box::new(err))
-//})?)
-//}
-
 /// Creates a nonce appropriate for a TransactionHeader
 fn create_nonce() -> String {
     let elapsed = Instant::now().elapsed();

@@ -49,6 +49,7 @@ sabre-sdk = "0.5"
 cylinder = { version = "0.2.1", features = ["key-load"], optional = true}
 rust-crypto = "0.2"
 sawtooth-sdk = "0.4"
+uuid = { version = "0.8", features = ["v4"], optional = true }
 
 [build-dependencies]
 protoc-rust = "2.14"
@@ -68,6 +69,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "batch-store",
     "database",
     "rest-api-resources",
     "rest-api-actix-web-3",
