@@ -594,7 +594,9 @@ fn create_org(
     let mut organization = Organization::new();
     organization.set_org_id(payload.get_id().to_string());
     organization.set_name(payload.get_name().to_string());
-    organization.set_address(payload.get_address().to_string());
+    organization.set_locations(protobuf::RepeatedField::from_vec(
+        payload.get_locations().to_vec(),
+    ));
     organization.set_metadata(protobuf::RepeatedField::from_vec(
         payload.get_metadata().to_vec(),
     ));
@@ -603,6 +605,23 @@ fn create_org(
     state.get_agent(signer).map_err(|e| {
         ApplyError::InternalError(format!("Failed to create organization: {:?}", e))
     })?;
+
+    let role_builder = RoleBuilder::new();
+    let role = role_builder
+        .with_org_id(payload.get_id().to_string())
+        .with_name(format!("{}.admin", payload.get_id().to_string()))
+        .with_permissions(vec![
+            permission_to_perm_string(Permission::CanCreateAgents),
+            permission_to_perm_string(Permission::CanUpdateAgents),
+            permission_to_perm_string(Permission::CanDeleteAgents),
+            permission_to_perm_string(Permission::CanUpdateOrganization),
+            permission_to_perm_string(Permission::CanCreateRoles),
+            permission_to_perm_string(Permission::CanUpdateRoles),
+            permission_to_perm_string(Permission::CanDeleteRoles),
+        ])
+        .build()
+        .unwrap();
+    state.set_role(role)?;
 
     // Check if the agent already exists
     match state.get_agent(signer) {
@@ -625,7 +644,7 @@ fn create_org(
     agent.set_org_id(payload.get_id().to_string());
     agent.set_active(true);
     agent.set_roles(protobuf::RepeatedField::from_vec(vec![String::from(
-        "admin",
+        format!("{}.admin", payload.get_id().to_string()),
     )]));
 
     state
@@ -667,8 +686,10 @@ fn update_org(
     if !payload.get_name().is_empty() {
         organization.set_name(payload.get_name().to_string());
     }
-    if !payload.get_address().is_empty() {
-        organization.set_address(payload.get_address().to_string());
+    if !payload.get_locations().is_empty() {
+        organization.set_locations(protobuf::RepeatedField::from_vec(
+            payload.get_locations().to_vec(),
+        ));
     }
     if !payload.get_metadata().is_empty() {
         organization.set_metadata(protobuf::RepeatedField::from_vec(
