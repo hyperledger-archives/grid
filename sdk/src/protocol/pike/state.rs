@@ -239,6 +239,105 @@ impl IntoBytes for Role {
 impl IntoProto<protos::pike_state::Role> for Role {}
 impl IntoNative<Role> for protos::pike_state::Role {}
 
+#[derive(Debug)]
+pub enum RoleBuildError {
+    MissingField(String),
+}
+
+impl StdError for RoleBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            RoleBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            RoleBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for RoleBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            RoleBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+        }
+    }
+}
+
+/// Builder used to create a Role
+#[derive(Default, Clone)]
+pub struct RoleBuilder {
+    org_id: Option<String>,
+    name: Option<String>,
+    description: Option<String>,
+    permissions: Vec<String>,
+    allowed_organizations: Vec<String>,
+    inherit_from: Vec<String>,
+}
+
+impl RoleBuilder {
+    pub fn new() -> Self {
+        RoleBuilder::default()
+    }
+
+    pub fn with_org_id(mut self, org_id: String) -> RoleBuilder {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    pub fn with_name(mut self, name: String) -> RoleBuilder {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn with_description(mut self, description: String) -> RoleBuilder {
+        self.description = Some(description);
+        self
+    }
+
+    pub fn with_permissions(mut self, permissions: Vec<String>) -> RoleBuilder {
+        self.permissions = permissions;
+        self
+    }
+
+    pub fn with_allowed_organizations(mut self, allowed_organizations: Vec<String>) -> RoleBuilder {
+        self.allowed_organizations = allowed_organizations;
+        self
+    }
+
+    pub fn with_inherit_from(mut self, inherit_from: Vec<String>) -> RoleBuilder {
+        self.inherit_from = inherit_from;
+        self
+    }
+
+    pub fn build(self) -> Result<Role, RoleBuildError> {
+        let org_id = self.org_id.ok_or_else(|| {
+            RoleBuildError::MissingField("'org_id' field is required".to_string())
+        })?;
+
+        let name = self
+            .name
+            .ok_or_else(|| RoleBuildError::MissingField("'name' field is required".to_string()))?;
+
+        let description = self.description.unwrap_or("".to_string());
+
+        let permissions = self.permissions;
+        let allowed_organizations = self.allowed_organizations;
+        let inherit_from = self.inherit_from;
+
+        Ok(Role {
+            org_id,
+            name,
+            description,
+            permissions,
+            allowed_organizations,
+            inherit_from,
+        })
+    }
+}
+
 /// Native implementation of RoleList
 #[derive(Debug, Clone, PartialEq)]
 pub struct RoleList {
@@ -308,6 +407,64 @@ impl IntoBytes for RoleList {
 
 impl IntoProto<protos::pike_state::RoleList> for RoleList {}
 impl IntoNative<RoleList> for protos::pike_state::RoleList {}
+
+#[derive(Debug)]
+pub enum RoleListBuildError {
+    MissingField(String),
+}
+
+impl StdError for RoleListBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            RoleListBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            RoleListBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for RoleListBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            RoleListBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+        }
+    }
+}
+
+/// Builder used to create a RoleList
+#[derive(Default, Clone)]
+pub struct RoleListBuilder {
+    pub roles: Vec<Role>,
+}
+
+impl RoleListBuilder {
+    pub fn new() -> Self {
+        RoleListBuilder::default()
+    }
+
+    pub fn with_roles(mut self, roles: Vec<Role>) -> RoleListBuilder {
+        self.roles = roles;
+        self
+    }
+
+    pub fn build(self) -> Result<RoleList, RoleListBuildError> {
+        let roles = {
+            if self.roles.is_empty() {
+                return Err(RoleListBuildError::MissingField(
+                    "'roles' cannot be empty".to_string(),
+                ));
+            } else {
+                self.roles
+            }
+        };
+
+        Ok(RoleList { roles })
+    }
+}
 
 /// Native implementation of AlternateIDIndexEntry
 #[derive(Debug, Clone, PartialEq)]
