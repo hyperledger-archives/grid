@@ -71,6 +71,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "batch-store",
     "database",
     "rest-api-resources",
     "rest-api-actix-web-3",
@@ -84,7 +85,7 @@ pike = []
 product = ["pike", "schema"]
 schema = ["pike"]
 track-and-trace = []
-batch-store = ["uuid"]
+batch-store = []
 
 grid_db = ["sawtooth-compat"]
 postgres = ["diesel/postgres", "diesel_migrations", "log"]

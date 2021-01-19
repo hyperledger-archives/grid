@@ -28,7 +28,7 @@ use serde::Serializer;
 ///
 ///  * `bytes`: the byte array to convert
 #[cfg(feature = "pike")]
-fn to_hex(bytes: &[u8]) -> String {
+pub fn to_hex(bytes: &[u8]) -> String {
     let mut buf = String::new();
     for b in bytes {
         write!(&mut buf, "{:02x}", b).expect("Unable to write to string");

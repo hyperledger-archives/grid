@@ -81,7 +81,7 @@ impl SubmitBatchResponse {
     pub fn new(ids: Vec<String>) -> Self {
         Self {
             ids,
-            message: "Batch batches submitted successfully".to_string(),
+            message: "Batches submitted successfully".to_string(),
         }
     }
 }

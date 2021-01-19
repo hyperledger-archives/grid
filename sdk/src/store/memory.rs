@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "batch-store")]
+use crate::batches::BatchStore;
 #[cfg(feature = "location")]
 use crate::locations::LocationStore;
 #[cfg(feature = "schema")]
@@ -80,6 +82,11 @@ impl StoreFactory for MemoryStoreFactory {
 
     #[cfg(feature = "track-and-trace")]
     fn get_grid_track_and_trace_store(&self) -> Box<dyn TrackAndTraceStore> {
+        unimplemented!()
+    }
+
+    #[cfg(feature = "batch-store")]
+    fn get_batch_store(&self) -> Box<dyn BatchStore> {
         unimplemented!()
     }
 }

@@ -46,6 +46,8 @@ pub trait StoreFactory {
     #[cfg(feature = "track-and-trace")]
     fn get_grid_track_and_trace_store(&self)
         -> Box<dyn crate::track_and_trace::TrackAndTraceStore>;
+    #[cfg(feature = "batch-store")]
+    fn get_batch_store(&self) -> Box<dyn crate::batches::BatchStore>;
 }
 
 /// Creates a `StoreFactory` backed by the given connection

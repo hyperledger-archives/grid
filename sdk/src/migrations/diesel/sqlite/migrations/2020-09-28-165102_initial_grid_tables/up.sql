@@ -363,3 +363,9 @@ CREATE TABLE location_attribute (
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL
 );
+
+CREATE TABLE batches (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    status TEXT NOT NULL
+);
