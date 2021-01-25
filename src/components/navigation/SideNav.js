@@ -68,6 +68,7 @@ function ProfileTab() {
       <div className="icon">
         <Icon>person_icon</Icon>
       </div>
+      <div className="label">Profile</div>
     </a>
   );
 }
