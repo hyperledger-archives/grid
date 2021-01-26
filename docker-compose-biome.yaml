@@ -16,6 +16,8 @@
 version: '3.6'
 
 volumes:
+  alpha-keys:
+  beta-keys:
   contracts:
   registry:
 
@@ -33,8 +35,14 @@ services:
     ports:
       - "8044:8044"
       - "8085:8085"
+    volumes:
+      - alpha-keys:/keys
     entrypoint: |
       bash -c "
+        if [ ! -f /keys/alpha.priv ]
+        then
+          splinter admin keygen alpha -d /keys
+        fi && \
         until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
@@ -97,8 +105,14 @@ services:
       - 8055
     ports:
       - "8045:8044"
+    volumes:
+      - beta-keys:/keys
     entrypoint: |
       bash -c "
+        if [ ! -f /keys/beta.priv ]
+        then
+          splinter admin keygen beta -d /keys
+        fi && \
         until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
@@ -156,6 +170,8 @@ services:
     image: splintercommunity/splinter-cli:master
     volumes:
       - registry:/registry
+      - alpha-keys:/alpha_keys
+      - beta-keys:/beta_keys
     command: |
       bash -c "
         if [ ! -f /registry/registry.yaml ]
@@ -163,13 +179,13 @@ services:
           # generate keys
           splinter admin keygen alice -d /registry
           splinter admin keygen bob -d /registry
-          # check if splinterd-alpha is available
-          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 200 ]] ; do
+          # check if splinterd-alpha is available (will get 401 because no auth is provided)
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 401 ]] ; do
              >&2 echo \"splinterd is unavailable - sleeping\"
              sleep 1
           done
-          # check if splinterd-beta is available
-          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 200 ]] ; do
+          # check if splinterd-beta is available (will get 401 because no auth is provided)
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 401 ]] ; do
              >&2 echo \"splinterd is unavailable - sleeping\"
              sleep 1
           done
@@ -177,11 +193,13 @@ services:
           splinter registry build \
             http://splinterd-alpha:8085 \
             --file /registry/registry.yaml \
+            --key /alpha_keys/alpha.priv \
             --key-file /registry/alice.pub \
             --metadata organization='Alpha'
           splinter registry build \
             http://splinterd-beta:8085 \
             --file /registry/registry.yaml \
+            --key /beta_keys/beta.priv \
             --key-file /registry/bob.pub \
             --metadata organization='Beta'
         fi
