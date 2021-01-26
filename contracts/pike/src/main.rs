@@ -41,6 +41,7 @@ cfg_if! {
 
 pub mod addresser;
 pub mod handler;
+pub mod permissions;
 
 //use sawtooth_sdk::processor::TransactionProcessor;
 //use handler::PikeTransactionHandler;

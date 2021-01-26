@@ -15,6 +15,6 @@
 name: pike
 version: '1'
 inputs:
-  - 'cad11d'
+  - '621dee05'
 outputs:
-  - 'cad11d'
+  - '621dee05'
