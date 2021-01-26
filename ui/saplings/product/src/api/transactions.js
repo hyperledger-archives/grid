@@ -30,7 +30,7 @@ const { gridURL } = getSharedConfig().appConfig;
 const ProductNamespace = '621dee';
 const ProductVersion = '1.0';
 
-const GridNamespace = 'cad11d';
+const GridNamespace = '621dee';
 
 const productTypeNamespaces = {
   GS1: `${ProductNamespace}0201`
