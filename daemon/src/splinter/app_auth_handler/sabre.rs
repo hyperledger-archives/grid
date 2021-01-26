@@ -39,7 +39,7 @@ const SCABBARD_SUBMISSION_WAIT_SECS: u64 = 10;
 
 // Pike constants
 #[cfg(feature = "pike")]
-const PIKE_PREFIX: &str = "cad11d";
+const PIKE_PREFIX: &str = "621dee05";
 #[cfg(feature = "pike")]
 const PIKE_CONTRACT_NAME: &str = "grid-pike";
 

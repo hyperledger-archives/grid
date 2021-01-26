@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2019-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,28 +18,30 @@ use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
 };
 
+use super::RoleSlice;
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
 use grid_sdk::agents::store::Agent;
+use grid_sdk::roles::store::Role;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentSlice {
-    pub public_key: String,
     pub org_id: String,
+    pub public_key: String,
+    pub roles: Vec<RoleSlice>,
     pub active: bool,
-    pub roles: Vec<String>,
     pub metadata: JsonValue,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
 }
 
-impl TryFrom<Agent> for AgentSlice {
+impl TryFrom<(Agent, Vec<RoleSlice>)> for AgentSlice {
     type Error = RestApiResponseError;
 
-    fn try_from(agent: Agent) -> Result<Self, Self::Error> {
+    fn try_from((agent, roles): (Agent, Vec<RoleSlice>)) -> Result<Self, Self::Error> {
         let metadata = if !agent.metadata.is_empty() {
             JsonValue::from_str(
                 &String::from_utf8(agent.metadata.clone())
@@ -51,10 +53,10 @@ impl TryFrom<Agent> for AgentSlice {
         };
 
         Ok(Self {
-            public_key: agent.public_key.clone(),
             org_id: agent.org_id.clone(),
+            public_key: agent.public_key.clone(),
+            roles,
             active: agent.active,
-            roles: agent.roles.clone(),
             metadata,
             service_id: agent.service_id,
         })
@@ -73,11 +75,41 @@ impl Handler<ListAgents> for DbExecutor {
     type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
-        self.agent_store
+        let mut agent_slices = Vec::new();
+
+        let agents = self
+            .agent_store
             .list_agents(msg.service_id.as_deref())?
-            .into_iter()
-            .map(AgentSlice::try_from)
-            .collect::<Result<Vec<AgentSlice>, RestApiResponseError>>()
+            .into_iter();
+
+        for agent in agents {
+            let mut roles = Vec::new();
+
+            let role_string = String::from_utf8(agent.roles.clone()).map_err(|err| {
+                RestApiResponseError::RequestHandlerError(format!(
+                    "Could not fetch roles for agent {}",
+                    err
+                ))
+            })?;
+
+            let byte_roles: Vec<&str> = role_string.split(",").collect();
+
+            for r in byte_roles {
+                let role: Option<Role> =
+                    self.role_store
+                        .fetch_role(r, msg.service_id.as_deref())
+                        .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?;
+
+                match role {
+                    Some(role) => roles.push(RoleSlice::try_from(role)?),
+                    None => {}
+                }
+            }
+
+            agent_slices.push(AgentSlice::try_from((agent, roles))?);
+        }
+
+        Ok(agent_slices)
     }
 }
 
@@ -112,7 +144,32 @@ impl Handler<FetchAgent> for DbExecutor {
             .agent_store
             .fetch_agent(&msg.public_key, msg.service_id.as_deref())?
         {
-            Some(agent) => AgentSlice::try_from(agent),
+            Some(agent) => {
+                let mut roles = Vec::new();
+
+                let role_string = String::from_utf8(agent.roles.clone()).map_err(|err| {
+                    RestApiResponseError::RequestHandlerError(format!(
+                        "Could not fetch roles for agent {}",
+                        err
+                    ))
+                })?;
+
+                let byte_roles: Vec<&str> = role_string.split(",").collect();
+
+                for r in byte_roles {
+                    let role: Option<Role> = self
+                        .role_store
+                        .fetch_role(r, msg.service_id.as_deref())
+                        .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?;
+
+                    match role {
+                        Some(role) => roles.push(RoleSlice::try_from(role)?),
+                        None => {}
+                    }
+                }
+
+                Ok(AgentSlice::try_from((agent, roles))?)
+            }
             None => Err(RestApiResponseError::NotFoundError(format!(
                 "Could not find agent with public key: {}",
                 msg.public_key

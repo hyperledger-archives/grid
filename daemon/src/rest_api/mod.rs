@@ -22,7 +22,10 @@ use crate::config::Endpoint;
 pub use crate::rest_api::error::RestApiServerError;
 
 #[cfg(feature = "pike")]
-use crate::rest_api::routes::{fetch_agent, fetch_organization, list_agents, list_organizations};
+use crate::rest_api::routes::{
+    fetch_agent, fetch_organization, fetch_role, list_agents, list_organizations,
+    list_roles_for_organization,
+};
 #[cfg(feature = "schema")]
 use crate::rest_api::routes::{fetch_grid_schema, list_grid_schemas};
 #[cfg(feature = "location")]
@@ -178,6 +181,17 @@ pub fn run(
                                 .service(web::resource("").route(web::get().to(list_organizations)))
                                 .service(
                                     web::resource("/{id}").route(web::get().to(fetch_organization)),
+                                ),
+                        )
+                        .service(
+                            web::scope("/role")
+                                .service(
+                                    web::resource("/{org_id}")
+                                        .route(web::get().to(list_roles_for_organization)),
+                                )
+                                .service(
+                                    web::resource("/{org_id}/{name}")
+                                        .route(web::get().to(fetch_role)),
                                 ),
                         );
                 }

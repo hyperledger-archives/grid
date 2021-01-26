@@ -20,15 +20,33 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::organizations::store::Organization;
+use grid_sdk::organizations::store::{AltID, Organization};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AlternateIDSlice {
+    pub id_type: String,
+    pub id: String,
+}
+
+impl TryFrom<AltID> for AlternateIDSlice {
+    type Error = RestApiResponseError;
+
+    fn try_from(id: AltID) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id_type: id.id_type.to_string(),
+            id: id.alternate_id.to_string(),
+        })
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrganizationSlice {
     pub org_id: String,
     pub name: String,
-    pub address: String,
+    pub locations: Vec<String>,
+    pub alternate_ids: Vec<AlternateIDSlice>,
     pub metadata: JsonValue,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -49,10 +67,31 @@ impl TryFrom<Organization> for OrganizationSlice {
             json!([])
         };
 
+        // let alternate_ids = organization.alternate_ids
+        //     .iter()
+        //     .map(|id| AlternateIDSlice::try_from(*id)?)
+        //     .collect();
+
+        let mut alternate_ids = Vec::new();
+
+        for id in organization.alternate_ids {
+            alternate_ids.push(
+                AlternateIDSlice::try_from(id)
+                    .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?,
+            );
+        }
+
+        let locations = String::from_utf8(organization.locations)
+            .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?
+            .split(",")
+            .map(String::from)
+            .collect();
+
         Ok(Self {
             org_id: organization.org_id.clone(),
             name: organization.name.clone(),
-            address: organization.address.clone(),
+            locations,
+            alternate_ids,
             metadata,
             service_id: organization.service_id,
         })

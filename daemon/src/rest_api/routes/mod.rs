@@ -19,6 +19,7 @@ use grid_sdk::{
     locations::{DieselLocationStore, LocationStore},
     organizations::{DieselOrganizationStore, OrganizationStore},
     products::{DieselProductStore, ProductStore},
+    roles::{DieselRoleStore, RoleStore},
     schemas::{DieselSchemaStore, SchemaStore},
     track_and_trace::{DieselTrackAndTraceStore, TrackAndTraceStore},
 };
@@ -34,6 +35,8 @@ mod organizations;
 mod products;
 #[cfg(feature = "track-and-trace")]
 mod records;
+#[cfg(feature = "pike")]
+mod roles;
 #[cfg(feature = "schema")]
 mod schemas;
 
@@ -48,6 +51,8 @@ pub use organizations::*;
 pub use products::*;
 #[cfg(feature = "track-and-trace")]
 pub use records::*;
+#[cfg(feature = "pike")]
+pub use roles::*;
 #[cfg(feature = "schema")]
 pub use schemas::*;
 
@@ -61,6 +66,7 @@ pub struct DbExecutor {
     location_store: Arc<dyn LocationStore>,
     organization_store: Arc<dyn OrganizationStore>,
     product_store: Arc<dyn ProductStore>,
+    role_store: Arc<dyn RoleStore>,
     schema_store: Arc<dyn SchemaStore>,
     tnt_store: Arc<dyn TrackAndTraceStore>,
 }
@@ -76,6 +82,7 @@ impl DbExecutor {
         let organization_store =
             Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
+        let role_store = Arc::new(DieselRoleStore::new(connection_pool.pool.clone()));
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
 
@@ -84,6 +91,7 @@ impl DbExecutor {
             location_store,
             organization_store,
             product_store,
+            role_store,
             schema_store,
             tnt_store,
         }
@@ -97,6 +105,7 @@ impl DbExecutor {
         let organization_store =
             Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
+        let role_store = Arc::new(DieselRoleStore::new(connection_pool.pool.clone()));
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
 
@@ -105,6 +114,7 @@ impl DbExecutor {
             location_store,
             organization_store,
             product_store,
+            role_store,
             schema_store,
             tnt_store,
         }
@@ -151,6 +161,7 @@ mod test {
         locations::store::{diesel::DieselLocationStore, Location, LocationAttribute},
         organizations::store::{diesel::DieselOrganizationStore, Organization},
         products::store::{diesel::DieselProductStore, Product, PropertyValue},
+        roles::store::Role,
         schemas::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema},
     };
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
@@ -311,7 +322,7 @@ mod test {
             match &self.response_type {
                 ResponseType::ClientBatchStatusResponseOK => {
                     let request: ClientBatchStatusRequest =
-                        protobuf::parse_from_bytes(contents).unwrap();
+                        protobuf::Message::parse_from_bytes(contents).unwrap();
                     if request.get_batch_ids().len() <= 1 {
                         mock_validator_response.set_content(get_batch_statuses_response_one_id())
                     } else {
@@ -834,7 +845,7 @@ mod test {
         let org = body.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
     }
 
     ///
@@ -866,7 +877,7 @@ mod test {
         let org = body.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
         assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
@@ -900,7 +911,7 @@ mod test {
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
-        assert_eq!(org.address, UPDATED_ADDRESS_2.to_string());
+        assert_eq!(org.locations, vec![UPDATED_ADDRESS_2.to_string()]);
     }
 
     ///
@@ -968,12 +979,13 @@ mod test {
             .send()
             .await
             .unwrap();
+
         assert!(response.status().is_success());
         let org: OrganizationSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
     }
 
     ///
@@ -1007,7 +1019,7 @@ mod test {
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
-        assert_eq!(org.address, UPDATED_ADDRESS_2.to_string());
+        assert_eq!(org.locations, vec![UPDATED_ADDRESS_2.to_string()]);
     }
 
     ///
@@ -1040,7 +1052,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
         assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
@@ -1063,7 +1075,7 @@ mod test {
             .await
             .unwrap();
 
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let agent: AgentSlice = serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
@@ -2976,7 +2988,7 @@ mod test {
                 public_key: KEY1.to_string(),
                 org_id: KEY3.to_string(),
                 active: true,
-                roles: vec!["OWNER".to_string()],
+                roles: vec!["OWNER".to_string()].join(",").into_bytes(),
                 metadata: vec![],
                 start_commit_num: 0,
                 end_commit_num: i64::MAX,
@@ -2986,7 +2998,7 @@ mod test {
                 public_key: KEY2.to_string(),
                 org_id: KEY3.to_string(),
                 active: true,
-                roles: vec!["CUSTODIAN".to_string()],
+                roles: vec!["CUSTODIAN".to_string()].join(",").into_bytes(),
                 metadata: vec![],
                 start_commit_num: 0,
                 end_commit_num: i64::MAX,
@@ -3007,11 +3019,12 @@ mod test {
         vec![Organization {
             org_id: KEY2.to_string(),
             name: ORG_NAME_1.to_string(),
-            address: ADDRESS_1.to_string(),
+            locations: vec![ADDRESS_1.to_string()].join(",").into_bytes(),
+            alternate_ids: vec![],
             metadata: vec![],
             start_commit_num: 1,
             end_commit_num: i64::MAX,
-            service_id,
+            service_id: service_id.clone(),
         }]
     }
 
@@ -3020,7 +3033,8 @@ mod test {
             Organization {
                 org_id: KEY3.to_string(),
                 name: ORG_NAME_2.to_string(),
-                address: ADDRESS_2.to_string(),
+                locations: vec![ADDRESS_2.to_string()].join(",").into_bytes(),
+                alternate_ids: vec![],
                 metadata: vec![],
                 start_commit_num: 2,
                 end_commit_num: 4,
@@ -3029,7 +3043,8 @@ mod test {
             Organization {
                 org_id: KEY3.to_string(),
                 name: ORG_NAME_2.to_string(),
-                address: UPDATED_ADDRESS_2.to_string(),
+                locations: vec![UPDATED_ADDRESS_2.to_string()].join(",").into_bytes(),
+                alternate_ids: vec![],
                 metadata: vec![],
                 start_commit_num: 4,
                 end_commit_num: i64::MAX,
@@ -3041,7 +3056,9 @@ mod test {
     fn populate_organization_table(organizations: Vec<Organization>) {
         let pool = get_connection_pool();
         let store = DieselOrganizationStore::new(pool.pool);
-        store.add_organizations(organizations).unwrap();
+        for org in organizations {
+            store.add_organization(org.clone()).unwrap();
+        }
     }
 
     fn get_grid_schema(service_id: Option<String>) -> Vec<Schema> {

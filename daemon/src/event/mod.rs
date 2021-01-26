@@ -25,13 +25,6 @@ use grid_sdk::commits::store::{CommitEvent as DbCommitEvent, StateChange as DbSt
 
 pub use self::error::{EventError, EventIoError, EventProcessorError};
 
-#[cfg(feature = "pike")]
-const PIKE_NAMESPACE: &str = "cad11d";
-#[cfg(feature = "pike")]
-const PIKE_AGENT: &str = "cad11d00";
-#[cfg(feature = "pike")]
-const PIKE_ORG: &str = "cad11d01";
-
 const GRID_NAMESPACE: &str = "621dee";
 #[cfg(feature = "schema")]
 const GRID_SCHEMA: &str = "621dee01";
@@ -39,6 +32,16 @@ const GRID_SCHEMA: &str = "621dee01";
 const GRID_PRODUCT: &str = "621dee02";
 #[cfg(feature = "location")]
 const GRID_LOCATION: &str = "621dee04";
+#[cfg(feature = "pike")]
+const PIKE_NAMESPACE: &str = "621dee05";
+#[cfg(feature = "pike")]
+const PIKE_AGENT: &str = "621dee0500";
+#[cfg(feature = "pike")]
+const PIKE_ORG: &str = "621dee0501";
+#[cfg(feature = "pike")]
+const PIKE_ROLE: &str = "621dee0502";
+#[cfg(feature = "pike")]
+const PIKE_ALTERNATE_ID_INDEX: &str = "621dee0503";
 
 #[cfg(feature = "track-and-trace")]
 const TRACK_AND_TRACE_NAMESPACE: &str = "a43b46";
