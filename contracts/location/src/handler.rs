@@ -40,7 +40,11 @@ use grid_sdk::{
 
 use grid_sdk::protos::FromBytes;
 
-use crate::{addressing::GRID_NAMESPACE, state::LocationState};
+use crate::{
+    addressing::GRID_NAMESPACE,
+    permissions::{permission_to_perm_string, Permission},
+    state::LocationState,
+};
 
 #[cfg(target_arch = "wasm32")]
 fn apply(
@@ -149,16 +153,6 @@ fn create_location(
         )));
     }
 
-    // 3) check if agent exists
-    let agent = if let Some(agent) = state.get_agent(signer)? {
-        agent
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} is not registered in Pike",
-            signer
-        )));
-    };
-
     // 4) check if organization exists
     let organization = if let Some(org) = state.get_organization(payload.owner())? {
         org
@@ -169,23 +163,20 @@ fn create_location(
         )));
     };
 
-    // 5) check if agent belongs to organization
-    if agent.org_id() != organization.org_id() {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent with public key {} is not registered to {}",
-            agent.public_key(),
-            organization.org_id()
-        )));
-    }
+    let permitted = perm_checker
+        .has_permission(
+            signer,
+            &permission_to_perm_string(Permission::CanCreateLocation),
+            payload.owner(),
+        )
+        .map_err(|err| {
+            ApplyError::InternalError(format!("Failed to check permissions: {}", err))
+        })?;
 
-    // 6) check if agent has can_create_location permission
-    if !perm_checker
-        .has_permission(agent.public_key(), "can_create_location")
-        .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
-    {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission to create locations",
-            agent.public_key()
+    if !permitted {
+        return Err(ApplyError::InternalError(format!(
+            "Agent {} does not have the correct permissions",
+            &signer
         )));
     }
 
@@ -277,43 +268,20 @@ fn update_location(
         )));
     };
 
-    // 2) check if agent exists
-    let agent = if let Some(agent) = state.get_agent(signer)? {
-        agent
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} is not registered in Pike",
-            signer
-        )));
-    };
+    let permitted = perm_checker
+        .has_permission(
+            signer,
+            &permission_to_perm_string(Permission::CanUpdateLocation),
+            location.owner(),
+        )
+        .map_err(|err| {
+            ApplyError::InternalError(format!("Failed to check permissions: {}", err))
+        })?;
 
-    // 3) check if organization exists
-    let organization = if let Some(org) = state.get_organization(location.owner())? {
-        org
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Organization {} is not registered with Pike",
-            location.owner()
-        )));
-    };
-
-    // 4) check if agent belongs to organization
-    if agent.org_id() != organization.org_id() {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent with public key {} is not registered to {}",
-            agent.public_key(),
-            organization.org_id()
-        )));
-    }
-
-    // 5) check if agent has can_update_location permission
-    if !perm_checker
-        .has_permission(agent.public_key(), "can_update_location")
-        .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
-    {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission to update locations",
-            agent.public_key()
+    if !permitted {
+        return Err(ApplyError::InternalError(format!(
+            "Agent {} does not have the correct permissions",
+            &signer
         )));
     }
 
@@ -388,43 +356,20 @@ fn delete_location(
         )));
     };
 
-    // 2) check if agent exists
-    let agent = if let Some(agent) = state.get_agent(signer)? {
-        agent
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} is not registered in Pike",
-            signer
-        )));
-    };
+    let permitted = perm_checker
+        .has_permission(
+            signer,
+            &permission_to_perm_string(Permission::CanDeleteLocation),
+            location.owner(),
+        )
+        .map_err(|err| {
+            ApplyError::InternalError(format!("Failed to check permissions: {}", err))
+        })?;
 
-    // 3) check if organization exists
-    let organization = if let Some(org) = state.get_organization(location.owner())? {
-        org
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Organization {} is not registered with Pike",
-            location.owner()
-        )));
-    };
-
-    // 4) check if agent belongs to organization
-    if agent.org_id() != organization.org_id() {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent with public key {} is not registered to {}",
-            agent.public_key(),
-            organization.org_id()
-        )));
-    }
-
-    // 5) check if agent has can_delete_location permission
-    if !perm_checker
-        .has_permission(agent.public_key(), "can_delete_location")
-        .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
-    {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission to delete locations",
-            agent.public_key()
+    if !permitted {
+        return Err(ApplyError::InternalError(format!(
+            "Agent {} does not have the correct permissions",
+            &signer
         )));
     }
 
@@ -465,12 +410,15 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
+    use crypto::digest::Digest;
+    use crypto::sha2::Sha512;
+
     use grid_sdk::protocol::location::payload::{
         LocationCreateActionBuilder, LocationDeleteActionBuilder, LocationUpdateActionBuilder,
     };
     use grid_sdk::protocol::pike::state::{
         AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
-        OrganizationListBuilder,
+        OrganizationListBuilder, RoleBuilder, RoleListBuilder,
     };
     use grid_sdk::protocol::schema::state::{
         DataType, PropertyDefinitionBuilder, PropertyValueBuilder, SchemaBuilder, SchemaListBuilder,
@@ -479,7 +427,7 @@ mod tests {
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
 
-    use crate::addressing::{compute_agent_address, compute_org_address, compute_schema_address};
+    use crate::addressing::{compute_org_address, compute_schema_address};
 
     #[derive(Default, Debug)]
     struct MockTransactionContext {
@@ -499,7 +447,7 @@ mod tests {
             let prefix_org = OrganizationBuilder::new()
                 .with_org_id("prefix_org".to_string())
                 .with_name("test_org_name".to_string())
-                .with_address("test_org_address".to_string())
+                .with_locations(vec![])
                 .with_metadata(vec![key_value.clone()])
                 .build()
                 .unwrap();
@@ -516,7 +464,7 @@ mod tests {
             let no_prefix_org = OrganizationBuilder::new()
                 .with_org_id("no_prefix_org".to_string())
                 .with_name("test_org_name".to_string())
-                .with_address("test_org_address".to_string())
+                .with_locations(vec!["test".to_string()])
                 .build()
                 .unwrap();
             let no_prefix_org_list = OrganizationListBuilder::new()
@@ -528,15 +476,54 @@ mod tests {
 
             entries.push((no_prefix_org_address, no_prefix_org_bytes));
 
+            let role_prefix = RoleBuilder::new()
+                .with_org_id("prefix_org".to_string())
+                .with_name("prefix_org.location".to_string())
+                .with_description("role description".to_string())
+                .with_permissions(vec![
+                    "location::can-create-location".to_string(),
+                    "location::can-update-location".to_string(),
+                    "location::can-delete-location".to_string(),
+                ])
+                .build()
+                .unwrap();
+            let role_prefix_list = RoleListBuilder::new()
+                .with_roles(vec![role_prefix.clone()])
+                .build()
+                .unwrap();
+            let role_prefix_bytes = role_prefix_list.into_bytes().unwrap();
+            let role_prefix_address = compute_role_address("prefix_org.location");
+
+            entries.push((role_prefix_address, role_prefix_bytes));
+
+            let role_no_prefix = RoleBuilder::new()
+                .with_org_id("no_prefix_org".to_string())
+                .with_name("no_prefix_org.location".to_string())
+                .with_description("role description".to_string())
+                .with_permissions(vec![
+                    "location::can-create-location".to_string(),
+                    "location::can-update-location".to_string(),
+                    "location::can-delete-location".to_string(),
+                ])
+                .build()
+                .unwrap();
+            let role_no_prefix_list = RoleListBuilder::new()
+                .with_roles(vec![role_no_prefix.clone()])
+                .build()
+                .unwrap();
+            let role_no_prefix_bytes = role_no_prefix_list.into_bytes().unwrap();
+            let role_no_prefix_address = compute_role_address("no_prefix_org.location");
+
+            entries.push((role_no_prefix_address, role_no_prefix_bytes));
+
             // create agent with correct permissions
             let agent_with_perms = AgentBuilder::new()
                 .with_org_id("prefix_org".to_string())
                 .with_public_key("agent_with_perms".to_string())
                 .with_active(true)
                 .with_roles(vec![
-                    "can_delete_location".to_string(),
-                    "can_create_location".to_string(),
-                    "can_update_location".to_string(),
+                    "prefix_org.location".to_string(),
+                    "no_prefix_org.location".to_string(),
                 ])
                 .build()
                 .unwrap();
@@ -571,9 +558,8 @@ mod tests {
                 .with_public_key("agent_with_perms_no_prefix".to_string())
                 .with_active(true)
                 .with_roles(vec![
-                    "can_delete_location".to_string(),
-                    "can_create_location".to_string(),
-                    "can_update_location".to_string(),
+                    "prefix_org.location".to_string(),
+                    "no_prefix_org.location".to_string(),
                 ])
                 .build()
                 .unwrap();
@@ -919,8 +905,9 @@ mod tests {
 
         match create_location(&payload, &mut state, "no_agent", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!("Agent no_agent is not registered in Pike", msg);
+            Err(ApplyError::InternalError(ref msg)) => {
+                assert_eq!("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: no_agent",
+                msg);
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
@@ -1004,10 +991,11 @@ mod tests {
             &perm_checker,
         ) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent with public key agent_with_perms_no_prefix is not registered to prefix_org",
-                    msg);
+                    "Agent agent_with_perms_no_prefix does not have the correct permissions",
+                    msg
+                );
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
@@ -1046,9 +1034,9 @@ mod tests {
 
         match create_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have permission to create locations",
+                    "Agent agent_no_perms does not have the correct permissions",
                     msg
                 );
             }
@@ -1337,9 +1325,9 @@ mod tests {
 
         match update_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have permission to update locations",
+                    "Agent agent_no_perms does not have the correct permissions",
                     msg
                 );
             }
@@ -1381,8 +1369,8 @@ mod tests {
 
         match update_location(&payload, &mut state, "no_agent", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!("Agent no_agent is not registered in Pike", msg);
+            Err(ApplyError::InternalError(ref msg)) => {
+                assert_eq!("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: no_agent", msg);
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
@@ -1427,10 +1415,11 @@ mod tests {
             &perm_checker,
         ) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent with public key agent_with_perms_no_prefix is not registered to prefix_org",
-                    msg);
+                    "Agent agent_with_perms_no_prefix does not have the correct permissions",
+                    msg
+                );
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
@@ -1601,9 +1590,9 @@ mod tests {
 
         match delete_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have permission to delete locations",
+                    "Agent agent_no_perms does not have the correct permissions",
                     msg
                 );
             }
@@ -1629,8 +1618,9 @@ mod tests {
 
         match delete_location(&payload, &mut state, "no_agent", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!("Agent no_agent is not registered in Pike", msg);
+            Err(ApplyError::InternalError(ref msg)) => {
+                assert_eq!("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: no_agent",
+                msg);
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
@@ -1659,12 +1649,29 @@ mod tests {
             &perm_checker,
         ) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent with public key agent_with_perms_no_prefix is not registered to prefix_org",
-                    msg);
+                    "Agent agent_with_perms_no_prefix does not have the correct permissions",
+                    msg
+                );
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
+    }
+
+    /// Computes the address a Pike Agent is stored at based on its public_key
+    pub fn compute_agent_address(public_key: &str) -> String {
+        let mut sha = Sha512::new();
+        sha.input(public_key.as_bytes());
+
+        // 621dee05 (pike namespace) + 00 (agent namespace)
+        String::from("621dee0500") + &sha.result_str()[..60]
+    }
+
+    fn compute_role_address(name: &str) -> String {
+        let mut sha = Sha512::new();
+        sha.input(name.as_bytes());
+
+        "621dee0502".to_string() + &sha.result_str()[..60]
     }
 }

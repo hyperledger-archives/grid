@@ -22,22 +22,13 @@ pub fn compute_gs1_location_address(gln: &str) -> String {
     String::from(GRID_NAMESPACE) + "0401000000000000000000000000000000000000000000000" + gln + "00"
 }
 
-/// Computes the address a Pike Agent is stored at based on its public_key
-pub fn compute_agent_address(public_key: &str) -> String {
-    let mut sha = Sha512::new();
-    sha.input(public_key.as_bytes());
-
-    // cad11d (pike namespace) + 00 (agent namespace)
-    String::from("cad11d00") + &sha.result_str()[..62]
-}
-
 /// Computes the address a Pike Organization is stored at based on its identifier
 pub fn compute_org_address(identifier: &str) -> String {
     let mut sha = Sha512::new();
     sha.input(identifier.as_bytes());
 
-    // cad11d (pike namespace) + 01 (organization namespace)
-    String::from("cad11d01") + &sha.result_str()[..62]
+    // 621dee05 (pike namespace) + 01 (organization namespace)
+    String::from("621dee0501") + &sha.result_str()[..60]
 }
 
 pub fn compute_schema_address(name: &str) -> String {

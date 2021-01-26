@@ -35,6 +35,7 @@ cfg_if! {
 
 mod addressing;
 pub mod handler;
+pub mod permissions;
 mod state;
 
 #[cfg(not(target_arch = "wasm32"))]
