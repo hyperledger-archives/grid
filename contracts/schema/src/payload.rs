@@ -123,6 +123,7 @@ mod tests {
         let builder = SchemaCreateBuilder::new();
         let action = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
             .unwrap();
@@ -190,6 +191,7 @@ mod tests {
         let builder = SchemaUpdateBuilder::new();
         let action = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
             .unwrap();

@@ -14,7 +14,6 @@
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
-use grid_sdk::protocol::pike::state::{Agent, AgentList};
 use grid_sdk::protocol::schema::state::{Schema, SchemaList, SchemaListBuilder};
 use grid_sdk::protos::{FromBytes, IntoBytes};
 
@@ -31,16 +30,16 @@ cfg_if! {
 pub const GRID_NAMESPACE: &str = "621dee";
 pub const GRID_SCHEMA_NAMESPACE: &str = "01";
 
-pub const PIKE_NAMESPACE: &str = "cad11d";
-pub const PIKE_AGENT_NAMESPACE: &str = "00";
+// pub const PIKE_NAMESPACE: &str = "621dee05";
+// pub const PIKE_AGENT_NAMESPACE: &str = "00";
 
 /// Computes the address a Pike Agent is stored at based on its public_key
-pub fn compute_agent_address(public_key: &str) -> String {
-    let mut sha = Sha512::new();
-    sha.input(public_key.as_bytes());
+// pub fn compute_agent_address(public_key: &str) -> String {
+//     let mut sha = Sha512::new();
+//     sha.input(public_key.as_bytes());
 
-    String::from(PIKE_NAMESPACE) + PIKE_AGENT_NAMESPACE + &sha.result_str()[..62].to_string()
-}
+//     String::from(PIKE_NAMESPACE) + PIKE_AGENT_NAMESPACE + &sha.result_str()[..60].to_string()
+// }
 
 /// Computes the address a Grid Schema is stored at based on its name
 pub fn compute_schema_address(name: &str) -> String {
@@ -58,34 +57,6 @@ pub struct GridSchemaState<'a> {
 impl<'a> GridSchemaState<'a> {
     pub fn new(context: &'a dyn TransactionContext) -> GridSchemaState {
         GridSchemaState { context }
-    }
-
-    /// Gets a Pike Agent. Handles retrieving the correct agent from an AgentList.
-    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
-        let address = compute_agent_address(public_key);
-        let d = self.context.get_state_entry(&address)?;
-        match d {
-            Some(packed) => {
-                let agents = match AgentList::from_bytes(packed.as_slice()) {
-                    Ok(agents) => agents,
-                    Err(err) => {
-                        return Err(ApplyError::InvalidTransaction(format!(
-                            "Cannot deserialize agent list: {:?}",
-                            err,
-                        )));
-                    }
-                };
-
-                // find the agent with the correct public_key
-                for agent in agents.agents() {
-                    if agent.public_key() == public_key {
-                        return Ok(Some(agent.clone()));
-                    }
-                }
-                Ok(None)
-            }
-            None => Ok(None),
-        }
     }
 
     /// Gets a Grid Schema. Handles retrieving the correct Schema from a SchemaList
@@ -182,7 +153,6 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
     use grid_sdk::protocol::schema::state::{DataType, PropertyDefinitionBuilder, SchemaBuilder};
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
 
@@ -234,47 +204,6 @@ mod tests {
         ) -> Result<(), ContextError> {
             unimplemented!()
         }
-    }
-
-    #[test]
-    // Test that if an agent does not exist in state, None is returned
-    fn test_get_agent_none() {
-        let transaction_context = MockTransactionContext::default();
-        let state = GridSchemaState::new(&transaction_context);
-
-        let result = state.get_agent("agent_public_key").unwrap();
-        assert!(result.is_none())
-    }
-
-    #[test]
-    // Test that if an agent does exists in state, Some(Agent) is returned;
-    fn test_get_agent_some() {
-        let transaction_context = MockTransactionContext::default();
-
-        let builder = AgentBuilder::new();
-        let agent = builder
-            .with_org_id("organization".to_string())
-            .with_public_key("agent_public_key".to_string())
-            .with_active(true)
-            .with_roles(vec!["Role".to_string()])
-            .build()
-            .unwrap();
-
-        let builder = AgentListBuilder::new();
-        let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
-        let agent_bytes = agent_list.into_bytes().unwrap();
-        let agent_address = compute_agent_address("agent_public_key");
-        transaction_context
-            .set_state_entry(agent_address, agent_bytes)
-            .unwrap();
-
-        let state = GridSchemaState::new(&transaction_context);
-
-        let result = state.get_agent("agent_public_key").unwrap();
-        assert!(result.is_some());
-        let agent = result.unwrap();
-
-        assert_eq!(agent.public_key(), "agent_public_key");
     }
 
     #[test]
