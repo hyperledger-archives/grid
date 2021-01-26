@@ -17,6 +17,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
+import Icon from '@material-ui/core/Icon';
 
 export const NavItem = props => {
   const { path, logo, label } = props;
@@ -27,7 +28,9 @@ export const NavItem = props => {
 
   return (
     <a href={path} className={classes}>
-      <img className="icon" src={logo} alt="logo" />
+      <div className="icon">
+        <Icon>{logo}</Icon>
+      </div>
       <div className="label">{label}</div>
     </a>
   );

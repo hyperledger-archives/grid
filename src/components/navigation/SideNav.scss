@@ -20,9 +20,9 @@
   position: relative;
   top: 0;
   left: 0;
-  width: 100px;
+  width: 75px;
   height: 100vh;
-  background: #e5e5e5;
+  background: #595C60;
 
   hr {
     margin: 0;
@@ -41,11 +41,12 @@
   flex-direction: column;
   align-items: center;
   text-decoration: none;
-  width: 100px;
-  height: 100px;
+  width: 75px;
+  height: 56px;
+  background-color: var(--color-brand-background);
   background-image: var(--brand-img-url);
-  background-size: 80px 80px;
-  background-position: center;
+  background-size: 37px 37px;
+  background-position: 50%;
   background-repeat: no-repeat;
 }
 
@@ -59,34 +60,44 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    width: 100px;
-    height: 100px;
+    width: 75px;
+    height: 75px;
     text-decoration: none;
-    color: #555555;
     transition: $transitionDuration-s;
 
     .icon {
-      width: 40px;
-      height: 40px;
+      background-color: #FFFFFF;
+      display: flex;
+      justify-content: center;
+      border: none;
+      color: var(--color-primary);
+      width: 37px;
+      height: 37px;
+      align-items: center;
+      border-radius: 10px;
+      outline: none;
+      transition: $transitionDuration-s;
     }
 
     .label {
-      margin-top: 12px;
+      margin-top: 10px;
+      font-size: 11px;
+      text-align: center;
+      color: #FFFFFF;
     }
 
     &:hover {
-      color: rgba($color: #ffffff, $alpha: 0.9);
-      background: #333333;
-      cursor: pointer;
+      .icon {
+        background-color: rgba(255, 255, 255, 0.15);
+        cursor: pointer;
+      }
     }
   }
-
-  hr {
-    background-color: #c4c4c4;
-    height: 2px;
-    width: 60%;
-    margin: 24px 0;
-    align-self: center;
+  .page-active {
+    @extend .nav-tab;
+    .icon {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
   }
 }
 
@@ -98,18 +109,46 @@
   margin-top: auto;
 
   .tab {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 75px;
+    height: 75px;
+    text-decoration: none;
+
     .icon {
-      width: 40px;
-      height: 40px;
-      margin: 30px;
-      color: #555555;
+      background-color: #FFFFFF;
+      display: flex;
+      justify-content: center;
+      border: none;
+      color: var(--color-primary);
+      width: 37px;
+      height: 37px;
+      align-items: center;
+      border-radius: 10px;
+      outline: none;
       transition: $transitionDuration-s;
+    }
+
+    .label {
+      margin-top: 10px;
+      font-size: 11px;
+      text-align: center;
+      color: #FFFFFF;
     }
 
     &:hover {
       .icon {
-        color: #333333;
+        background-color: rgba(255, 255, 255, 0.15);
       }
+    }
+  }
+
+  .page-active {
+    @extend .tab;
+    .icon {
+      background-color: rgba(255, 255, 255, 0.15);
     }
   }
 }
