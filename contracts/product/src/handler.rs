@@ -37,6 +37,7 @@ use grid_sdk::protos::FromBytes;
 
 use crate::addressing::*;
 use crate::payload::validate_payload;
+use crate::permissions::{permission_to_perm_string, Permission};
 use crate::state::ProductState;
 use crate::validation::validate_gtin;
 
@@ -90,20 +91,6 @@ impl ProductTransactionHandler {
         let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
-        // Check that the agent submitting the transactions exists in state
-        let agent = match state.get_agent(signer)? {
-            Some(agent) => agent,
-            None => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "The signing Agent does not exist: {}",
-                    signer
-                )));
-            }
-        };
-
-        // Check signing agent's permission
-        check_permission(perm_checker, signer, "can_create_product")?;
-
         // Check if product exists in state
         if state.get_product(product_id)?.is_some() {
             return Err(ApplyError::InvalidTransaction(format!(
@@ -135,12 +122,20 @@ impl ProductTransactionHandler {
             }
         };
 
-        // Check that the agent belongs to organization
-        if agent.org_id() != org.org_id() {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signing Agent {} is not associated with organization {}",
+        let permitted = perm_checker
+            .has_permission(
                 signer,
-                org.org_id()
+                &permission_to_perm_string(Permission::CanCreateProduct),
+                owner,
+            )
+            .map_err(|err| {
+                ApplyError::InternalError(format!("Failed to check permissions: {}", err))
+            })?;
+
+        if !permitted {
+            return Err(ApplyError::InternalError(format!(
+                "Agent {} does not have the correct permissions",
+                &signer
             )));
         }
 
@@ -235,20 +230,6 @@ impl ProductTransactionHandler {
         let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
-        // Check that the agent submitting the transactions exists in state
-        let agent = match state.get_agent(signer)? {
-            Some(agent) => agent,
-            None => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "The signing Agent does not exist: {}",
-                    signer
-                )));
-            }
-        };
-
-        // Check signing agent's permission
-        check_permission(perm_checker, signer, "can_update_product")?;
-
         // Check if the product namespace is a GS1 product
         if product_namespace != &ProductNamespace::GS1 {
             return Err(ApplyError::InvalidTransaction(
@@ -266,11 +247,21 @@ impl ProductTransactionHandler {
             Err(err) => Err(err),
         }?;
 
-        // Check if the agent updating the product is part of the organization associated with the product
-        if product.owner() != agent.org_id() {
-            return Err(ApplyError::InvalidTransaction(
-                "Invalid organization for the agent submitting this transaction".to_string(),
-            ));
+        let permitted = perm_checker
+            .has_permission(
+                signer,
+                &permission_to_perm_string(Permission::CanUpdateProduct),
+                product.owner(),
+            )
+            .map_err(|err| {
+                ApplyError::InternalError(format!("Failed to check permissions: {}", err))
+            })?;
+
+        if !permitted {
+            return Err(ApplyError::InternalError(format!(
+                "Agent {} does not have the correct permissions",
+                &signer
+            )));
         }
 
         // Check if product product_id is a valid gtin
@@ -344,20 +335,6 @@ impl ProductTransactionHandler {
         let product_id = payload.product_id();
         let product_namespace = payload.product_namespace();
 
-        // Check that the agent submitting the transactions exists in state
-        let agent = match state.get_agent(signer)? {
-            Some(agent) => agent,
-            None => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "The signing Agent does not exist: {}",
-                    signer
-                )));
-            }
-        };
-
-        // Check signing agent's permission
-        check_permission(perm_checker, signer, "can_delete_product")?;
-
         // Check if the product namespace is a GS1 product
         if product_namespace != &ProductNamespace::GS1 {
             return Err(ApplyError::InvalidTransaction(
@@ -380,11 +357,21 @@ impl ProductTransactionHandler {
             return Err(ApplyError::InvalidTransaction(e.to_string()));
         }
 
-        // Check that the owner of the products organization is the same as the agent trying to delete the product
-        if product.owner() != agent.org_id() {
-            return Err(ApplyError::InvalidTransaction(
-                "Invalid organization for the agent submitting this transaction".to_string(),
-            ));
+        let permitted = perm_checker
+            .has_permission(
+                signer,
+                &permission_to_perm_string(Permission::CanDeleteProduct),
+                product.owner(),
+            )
+            .map_err(|err| {
+                ApplyError::InternalError(format!("Failed to check permissions: {}", err))
+            })?;
+
+        if !permitted {
+            return Err(ApplyError::InternalError(format!(
+                "Agent {} does not have the correct permissions",
+                &signer
+            )));
         }
 
         // Delete the product
@@ -442,21 +429,6 @@ impl TransactionHandler for ProductTransactionHandler {
     }
 }
 
-fn check_permission(
-    perm_checker: &PermissionChecker,
-    signer: &str,
-    permission: &str,
-) -> Result<(), ApplyError> {
-    match perm_checker.has_permission(signer, permission) {
-        Ok(true) => Ok(()),
-        Ok(false) => Err(ApplyError::InvalidTransaction(format!(
-            "The signer does not have the {} permission: {}.",
-            permission, signer,
-        ))),
-        Err(e) => Err(ApplyError::InvalidTransaction(format!("{}", e))),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,9 +436,12 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
+    use crypto::digest::Digest;
+    use crypto::sha2::Sha512;
+
     use grid_sdk::protocol::pike::state::{
         AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
-        OrganizationListBuilder,
+        OrganizationListBuilder, RoleBuilder, RoleListBuilder,
     };
     use grid_sdk::protocol::product::payload::{
         ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
@@ -487,8 +462,11 @@ mod tests {
 
     const AGENT_ORG_ID: &str = "test_org";
     const PUBLIC_KEY: &str = "test_public_key";
+    const ROLE_NAME: &str = "test_org.product_roles";
     const PRODUCT_ID: &str = "688955434684";
     const PRODUCT_2_ID: &str = "9781981855728";
+    const PIKE_AGENT_NAMESPACE: &str = "00";
+    const PIKE_ROLE_NAMESPACE: &str = "02";
 
     #[derive(Default, Debug)]
     /// A MockTransactionContext that can be used to test ProductState
@@ -547,11 +525,7 @@ mod tests {
                 .with_org_id(AGENT_ORG_ID.to_string())
                 .with_public_key(public_key.to_string())
                 .with_active(true)
-                .with_roles(vec![
-                    "can_create_product".to_string(),
-                    "can_update_product".to_string(),
-                    "can_delete_product".to_string(),
-                ])
+                .with_roles(vec![ROLE_NAME.to_string()])
                 .build()
                 .unwrap();
 
@@ -568,7 +542,7 @@ mod tests {
                 .with_org_id(AGENT_ORG_ID.to_string())
                 .with_public_key(public_key.to_string())
                 .with_active(true)
-                .with_roles(vec![])
+                .with_roles([].to_vec())
                 .build()
                 .unwrap();
 
@@ -577,6 +551,27 @@ mod tests {
             let agent_bytes = agent_list.into_bytes().unwrap();
             let agent_address = compute_agent_address(public_key);
             self.set_state_entry(agent_address, agent_bytes).unwrap();
+        }
+
+        fn add_role(&self) {
+            let builder = RoleBuilder::new();
+            let role = builder
+                .with_org_id(AGENT_ORG_ID.to_string())
+                .with_name(ROLE_NAME.to_string())
+                .with_description("role description".to_string())
+                .with_permissions(vec![
+                    "product::can-create-product".to_string(),
+                    "product::can-update-product".to_string(),
+                    "product::can-delete-product".to_string(),
+                ])
+                .build()
+                .unwrap();
+
+            let builder = RoleListBuilder::new();
+            let role_list = builder.with_roles(vec![role.clone()]).build().unwrap();
+            let role_bytes = role_list.into_bytes().unwrap();
+            let role_address = compute_role_address(ROLE_NAME);
+            self.set_state_entry(role_address, role_bytes).unwrap();
         }
 
         fn add_org(&self, org_id: &str) {
@@ -593,7 +588,7 @@ mod tests {
             let org = builder
                 .with_org_id(org_id.to_string())
                 .with_name("test_org_name".to_string())
-                .with_address("test_org_address".to_string())
+                .with_locations(vec!["test".to_string()])
                 .with_metadata(vec![key_value.clone()])
                 .build()
                 .unwrap();
@@ -613,7 +608,7 @@ mod tests {
             let org = builder
                 .with_org_id(org_id.to_string())
                 .with_name("test_org_name".to_string())
-                .with_address("test_org_address".to_string())
+                .with_locations(vec!["test".to_string()])
                 .build()
                 .unwrap();
 
@@ -698,6 +693,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_role();
         transaction_context.add_gs1_schema();
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
@@ -705,14 +701,18 @@ mod tests {
         let transaction_handler = ProductTransactionHandler::new();
         let product_create_action = make_product_create_action();
 
-        assert!(transaction_handler
-            .create_product(
-                &product_create_action,
-                &mut state,
-                PUBLIC_KEY,
-                &perm_checker
-            )
-            .is_ok());
+        match transaction_handler.create_product(
+            &product_create_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => {}
+            Err(ApplyError::InternalError(err)) => {
+                assert_eq!("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: test_public_key", err);
+            }
+            Err(err) => panic!("Should have gotten internal error but got {}", err),
+        }
 
         let product = state
             .get_product(PRODUCT_ID)
@@ -726,6 +726,7 @@ mod tests {
     /// Test that ProductCreationAction is invalid if the signer is not an Agent.
     fn test_create_product_agent_does_not_exist() {
         let transaction_context = MockTransactionContext::default();
+        transaction_context.add_org(AGENT_ORG_ID);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
@@ -738,11 +739,11 @@ mod tests {
             PUBLIC_KEY,
             &perm_checker,
         ) {
-            Ok(()) => panic!("Agent should not exist, InvalidTransaction should be returned"),
-            Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(&format!("The signing Agent does not exist: {}", PUBLIC_KEY)));
+            Ok(()) => panic!("Agent should not exist, InternalError should be returned"),
+            Err(ApplyError::InternalError(err)) => {
+                assert_eq!("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: test_public_key", err);
             }
-            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+            Err(err) => panic!("Should have gotten internal error but got {}", err),
         }
     }
 
@@ -751,6 +752,8 @@ mod tests {
     fn test_create_product_agent_without_roles() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent_without_roles(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_gs1_schema();
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
@@ -766,9 +769,9 @@ mod tests {
             Ok(()) => panic!(
                 "Agent should not have can_create_product role, InvalidTransaction should be returned"
             ),
-            Err(ApplyError::InvalidTransaction(err)) => {
+            Err(ApplyError::InternalError(err)) => {
                 assert!(err.contains(&format!(
-                    "The signer does not have the can_create_product permission: {}",
+                    "Agent {} does not have the correct permissions",
                     PUBLIC_KEY
                 )));
             }
@@ -811,6 +814,8 @@ mod tests {
     fn test_create_product_org_without_gs1_prefix() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_role();
+        transaction_context.add_gs1_schema();
         transaction_context.add_org_without_gs1_prefix(AGENT_ORG_ID);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
@@ -866,22 +871,27 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
-        transaction_context.add_product(PRODUCT_ID);
+        transaction_context.add_role();
         transaction_context.add_gs1_schema();
+        transaction_context.add_product(PRODUCT_ID);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
         let transaction_handler = ProductTransactionHandler::new();
         let product_update_action = make_product_update_action();
 
-        assert!(transaction_handler
-            .update_product(
-                &product_update_action,
-                &mut state,
-                PUBLIC_KEY,
-                &perm_checker,
-            )
-            .is_ok());
+        match transaction_handler.update_product(
+            &product_update_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => {}
+            Err(ApplyError::InternalError(err)) => {
+                assert_eq!("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: test_public_key", err);
+            }
+            Err(err) => panic!("Should have gotten internal error but got {}", err),
+        }
 
         let product = state
             .get_product(PRODUCT_ID)
@@ -895,6 +905,8 @@ mod tests {
     /// Test that ProductUpdateAction is invalid if the signer is not an Agent.
     fn test_update_product_agent_does_not_exist() {
         let transaction_context = MockTransactionContext::default();
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_product(PRODUCT_ID);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
@@ -907,9 +919,9 @@ mod tests {
             PUBLIC_KEY,
             &perm_checker,
         ) {
-            Ok(()) => panic!("Agent should not exist, InvalidTransaction should be returned"),
-            Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(&format!("The signing Agent does not exist: {}", PUBLIC_KEY)));
+            Ok(()) => panic!("Agent should not exist, InternalError should be returned"),
+            Err(ApplyError::InternalError(err)) => {
+                assert_eq!("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: test_public_key", err);
             }
             Err(err) => panic!("Should have gotten invalid error but go {}", err),
         }
@@ -920,6 +932,9 @@ mod tests {
     fn test_update_product_agent_without_roles() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent_without_roles(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_gs1_schema();
+        transaction_context.add_product(PRODUCT_ID);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
@@ -935,9 +950,9 @@ mod tests {
             Ok(()) => panic!(
                 "Agent should not have can_update_product role, InvalidTransaction should be returned"
             ),
-            Err(ApplyError::InvalidTransaction(err)) => {
+            Err(ApplyError::InternalError(err)) => {
                 assert!(err.contains(&format!(
-                    "The signer does not have the can_update_product permission: {}",
+                    "Agent {} does not have the correct permissions",
                     PUBLIC_KEY
                 )));
             }
@@ -976,6 +991,8 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_role();
+        transaction_context.add_gs1_schema();
         transaction_context.add_products(&vec![PRODUCT_ID, PRODUCT_2_ID]);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
@@ -1004,6 +1021,8 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_role();
+        transaction_context.add_gs1_schema();
         transaction_context.add_products(&vec![PRODUCT_ID, PRODUCT_2_ID]);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
@@ -1047,9 +1066,9 @@ mod tests {
             Ok(()) => panic!(
                 "Agent should not have can_delete_product role, InvalidTransaction should be returned"
             ),
-            Err(ApplyError::InvalidTransaction(err)) => {
+            Err(ApplyError::InternalError(err)) => {
                 assert!(err.contains(&format!(
-                    "The signer does not have the can_delete_product permission: {}",
+                    "Agent {} does not have the correct permissions",
                     PUBLIC_KEY
                 )));
             }
@@ -1082,6 +1101,21 @@ mod tests {
             }
             Err(err) => panic!("Should have gotten invalid error but go {}", err),
         }
+    }
+
+    /// Computes the address a Pike Agent is stored at based on its public_key
+    fn compute_agent_address(public_key: &str) -> String {
+        let mut sha = Sha512::new();
+        sha.input(public_key.as_bytes());
+
+        String::from(PIKE_NAMESPACE) + PIKE_AGENT_NAMESPACE + &sha.result_str()[..60]
+    }
+
+    fn compute_role_address(name: &str) -> String {
+        let mut sha = Sha512::new();
+        sha.input(name.as_bytes());
+
+        String::from(PIKE_NAMESPACE) + PIKE_ROLE_NAMESPACE + &sha.result_str()[..60]
     }
 
     fn make_product() -> Product {

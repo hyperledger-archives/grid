@@ -22,7 +22,6 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protocol::pike::state::{Agent, AgentList};
 use grid_sdk::protocol::pike::state::{Organization, OrganizationList};
 use grid_sdk::protocol::product::state::{Product, ProductList, ProductListBuilder};
 use grid_sdk::protocol::schema::state::{Schema, SchemaList};
@@ -168,34 +167,6 @@ impl<'a> ProductState<'a> {
         Ok(())
     }
 
-    /// Gets a Pike Agent. Handles retrieving the correct agent from an AgentList.
-    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
-        let address = compute_agent_address(public_key);
-        let d = self.context.get_state_entry(&address)?;
-        match d {
-            Some(packed) => {
-                let agents: AgentList = match AgentList::from_bytes(packed.as_slice()) {
-                    Ok(agents) => agents,
-                    Err(err) => {
-                        return Err(ApplyError::InvalidTransaction(format!(
-                            "Cannot deserialize agent list: {:?}",
-                            err,
-                        )));
-                    }
-                };
-
-                // find the agent with the correct public_key
-                for agent in agents.agents() {
-                    if agent.public_key() == public_key {
-                        return Ok(Some(agent.clone()));
-                    }
-                }
-                Ok(None)
-            }
-            None => Ok(None),
-        }
-    }
-
     pub fn get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
         let address = compute_org_address(id);
         let d = self.context.get_state_entry(&address)?;
@@ -254,12 +225,10 @@ impl<'a> ProductState<'a> {
 mod tests {
     use super::*;
 
-    use std::cell::RefCell;
-    use std::collections::HashMap;
-
-    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
     use grid_sdk::protocol::product::state::{ProductBuilder, ProductNamespace};
     use grid_sdk::protocol::schema::state::{DataType, PropertyValue, PropertyValueBuilder};
+    use std::cell::RefCell;
+    use std::collections::HashMap;
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
 
@@ -315,37 +284,7 @@ mod tests {
         }
     }
 
-    impl MockTransactionContext {
-        fn add_agent(&self, public_key: &str) {
-            let agent_list = AgentListBuilder::new()
-                .with_agents(vec![make_agent(public_key)])
-                .build()
-                .unwrap();
-            let agent_bytes = agent_list.into_bytes().unwrap();
-            let agent_address = compute_agent_address(public_key);
-            self.set_state_entry(agent_address, agent_bytes).unwrap();
-        }
-    }
-
-    #[test]
-    // Test that if an agent does not exist in state, None is returned
-    fn test_get_agent_none() {
-        let mut transaction_context = MockTransactionContext::default();
-        let state = ProductState::new(&mut transaction_context);
-
-        let result = state.get_agent("agent_public_key").unwrap();
-        assert!(result.is_none())
-    }
-
-    #[test]
-    // Test that if an agent exist in state, Some(agent) is returned
-    fn test_get_agent_some() {
-        let mut transaction_context = MockTransactionContext::default();
-        transaction_context.add_agent("agent_public_key");
-        let state = ProductState::new(&mut transaction_context);
-        let result = state.get_agent("agent_public_key").unwrap();
-        assert_eq!(result, Some(make_agent("agent_public_key")))
-    }
+    impl MockTransactionContext {}
 
     #[test]
     // Test that if a product does not exist in state, None is returned
@@ -366,16 +305,6 @@ mod tests {
         assert!(state.set_product(PRODUCT_ID, make_product()).is_ok());
         let result = state.get_product(PRODUCT_ID).unwrap();
         assert_eq!(result, Some(make_product()));
-    }
-
-    fn make_agent(public_key: &str) -> Agent {
-        AgentBuilder::new()
-            .with_org_id("test_org".to_string())
-            .with_public_key(public_key.to_string())
-            .with_active(true)
-            .with_roles(vec![])
-            .build()
-            .expect("Failed to build agent")
     }
 
     fn make_product() -> Product {

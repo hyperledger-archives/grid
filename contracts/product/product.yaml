@@ -18,6 +18,6 @@ wasm: /tmp/grid-product-tp.wasm
 inputs:
   - '621dee01'
   - '621dee02'
-  - 'cad11d'
+  - '621dee05'
 outputs:
   - '621dee02'
