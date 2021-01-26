@@ -27,18 +27,43 @@ message AgentList {
   repeated Agent agents = 1;
 }
 
+message Organization {
+  string org_id = 1;
+  string name = 2;
+  repeated string locations = 3;
+  repeated AlternateID alternate_id = 4;
+  repeated KeyValueEntry metadata = 5;
+}
+
+message OrganizationList {
+  repeated Organization organizations = 1;
+}
+
+message Role {
+  string org_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string permissions = 4;
+  repeated string allowed_organizations = 5;
+  repeated string inherit_from= 6;
+}
+
+message RoleList {
+  repeated Role roles = 1;
+}
+
+message AlternateIDIndexEntry {
+  string id_type = 1;
+  string id = 2;
+  string grid_identity_id = 3;
+}
+
 message KeyValueEntry {
   string key = 1;
   string value = 2;
 }
 
-message Organization {
-  string org_id = 1;
-  string name = 2;
-  string address = 3;
-  repeated KeyValueEntry metadata = 4;
-}
-
-message OrganizationList {
-  repeated Organization organizations = 1;
+message AlternateID {
+  string type = 1;
+  string id = 2;
 }
