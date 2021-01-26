@@ -30,7 +30,7 @@ export const getNodeID = async token => {
   if (result.ok) {
     return result.json.node_id;
   }
-  throw Error(result.data);
+  throw Error(result.json.message);
 };
 
 export const listProposals = async token => {
@@ -42,7 +42,7 @@ export const listProposals = async token => {
   if (result.ok) {
     return result.json;
   }
-  throw Error(result.data);
+  throw Error(result.json.message);
 };
 
 export const getProposal = async (circuitId, token) => {
@@ -54,7 +54,7 @@ export const getProposal = async (circuitId, token) => {
   if (result.ok) {
     return result.json;
   }
-  throw Error(result.data);
+  throw Error(result.json.message);
 };
 
 export const listCircuits = async token => {
@@ -66,7 +66,7 @@ export const listCircuits = async token => {
   if (result.ok) {
     return result.json;
   }
-  throw Error(result.data);
+  throw Error(result.json.message);
 };
 
 export const getCircuit = async (circuitId, token) => {
@@ -78,7 +78,7 @@ export const getCircuit = async (circuitId, token) => {
   if (result.ok) {
     return result.json;
   }
-  throw Error(result.data);
+  throw Error(result.json.message);
 };
 
 export const getNodeRegistry = async token => {
@@ -91,7 +91,7 @@ export const getNodeRegistry = async token => {
     const response = new NodeRegistryResponse(result.json);
     return response.data;
   }
-  throw Error(result.data);
+  throw Error(result.json.message);
 };
 
 export const postNode = async (node, token) => {

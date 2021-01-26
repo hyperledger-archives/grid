@@ -32,7 +32,7 @@ function LocalNodeProvider({ children }) {
           const node = await getNodeID(user.token);
           setNodeID({ nodeID: node });
         } catch (e) {
-          throw Error(`Error fetching node information: ${e}`);
+          throw Error(`Error fetching node information: ${e.json.message}`);
         }
       }
     };

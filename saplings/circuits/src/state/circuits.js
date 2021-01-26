@@ -270,8 +270,10 @@ function useCircuitsState() {
             type: 'set',
             circuits: circuits.data.concat(proposals.data)
           });
-        } catch (e) {
-          throw Error(`Error fetching circuits from the splinter daemon: ${e}`);
+        } catch (error) {
+          throw Error(
+            `Error fetching circuits from the splinter daemon: ${error.json.message}`
+          );
         }
       }
     };
@@ -288,25 +290,40 @@ function useCircuitsState() {
 function useCircuitState(circuitId) {
   const user = getUser();
   const [stateCircuitId, setCircuitId] = useState(circuitId);
-  const [circuit, setCircuit] = useState(null);
+  const [circuitState, setCircuit] = useState({
+    circuit: null,
+    error: ''
+  });
 
   useEffect(() => {
     const loadCircuit = async () => {
-      if (user && stateCircuitId) {
+      if (user && stateCircuitId && !circuitState.error) {
         let apiCircuit = null;
         try {
           apiCircuit = await getCircuit(stateCircuitId, user.token);
         } catch (circuitError) {
-          try {
-            apiCircuit = await getProposal(stateCircuitId, user.token);
-          } catch (proposalError) {
-            throw Error(
-              `Unable to fetch ${stateCircuitId} from the splinter daemon`
-            );
+          if (circuitError.code === '401') {
+            setCircuit({
+              circuit: null,
+              error: `User is not authorized to access this resource: ${circuitError.json.message}`
+            });
+          } else {
+            try {
+              apiCircuit = await getProposal(stateCircuitId, user.token);
+            } catch (proposalError) {
+              setCircuit({
+                circuit: null,
+                error: `Unable to fetch circuit from splinterd: ${proposalError.json.message}`
+              });
+            }
           }
         }
-
-        setCircuit(new Circuit(apiCircuit));
+        if (apiCircuit && !circuitState.error) {
+          setCircuit({
+            circuit: new Circuit(apiCircuit),
+            error: ''
+          });
+        }
       }
     };
     const intervalId = setInterval(() => loadCircuit(), REFREST_INTERVAL);
@@ -319,7 +336,7 @@ function useCircuitState(circuitId) {
     };
   }, [stateCircuitId, user]);
 
-  return [circuit, setCircuitId];
+  return [circuitState, setCircuitId];
 }
 
 export { useCircuitsState, useCircuitState };

@@ -417,7 +417,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
       successCallback(new Node(node));
       addToast('Node submitted successfully', { appearance: 'success' });
     } catch (e) {
-      addToast(`${e}`, { appearance: 'error' });
+      addToast(`${e.json.message}`, { appearance: 'error' });
     }
   };
 

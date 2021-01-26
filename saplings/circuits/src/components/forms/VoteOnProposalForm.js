@@ -82,7 +82,7 @@ const VoteOnProposalForm = ({ proposal, nodes, closeFn }) => {
         history.push(`/circuits`);
       }
     } catch (e) {
-      addToast(`${e}`, { appearance: 'error' });
+      addToast(`${e.json.message}`, { appearance: 'error' });
     }
   };
 

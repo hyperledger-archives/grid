@@ -58,18 +58,18 @@ Label.defaultProps = {
 const CircuitDetails = () => {
   const user = getUser();
   const { circuitId } = useParams();
-  const [circuit] = useCircuitState(circuitId);
+  const [circuitState] = useCircuitState(circuitId);
   const localNodeID = useLocalNodeState();
   const [modalActive, setModalActive] = React.useState(false);
   const [nodes, setNodes] = React.useState([]);
-
   React.useEffect(() => {
     const fetchNodes = async () => {
-      if (user) {
+      if (user && circuitState.circuit) {
         try {
           const apiNodes = await getNodeRegistry();
           const filteredNodes = apiNodes.filter(
-            node => !!circuit.members.find(id => id === node.identity)
+            node =>
+              !!circuitState.circuit.members.find(id => id === node.identity)
           );
           setNodes(filteredNodes);
         } catch (e) {
@@ -77,19 +77,19 @@ const CircuitDetails = () => {
         }
       }
     };
-    if (circuit) {
+    if (circuitState.circuit) {
       fetchNodes();
     }
-  }, [circuit, user]);
+  }, [circuitState, user]);
 
   const getCircuitTitle = () => {
-    if (circuit.displayName) {
+    if (circuitState.circuit.displayName) {
       return (
         <div className="circuit-title">
-          <h4>{`${circuit.displayName}`}</h4>
+          <h4>{`${circuitState.circuit.displayName}`}</h4>
           <h6>{`Circuit ${circuitId}`}</h6>
           <div className="managementType">
-            {circuit.managementType}
+            {circuitState.circuit.managementType}
             <span>
               <FontAwesomeIcon icon={faQuestionCircle} />
             </span>
@@ -102,7 +102,7 @@ const CircuitDetails = () => {
       <div className="circuit-title">
         <h4>{`Circuit ${circuitId}`}</h4>
         <div className="managementType">
-          {circuit.managementType}
+          {circuitState.circuit.managementType}
           <span>
             <FontAwesomeIcon icon={faQuestionCircle} />
           </span>
@@ -111,12 +111,8 @@ const CircuitDetails = () => {
     );
   };
 
-  if (!circuit) {
-    return <div />;
-  }
-
   let requiresAction = '';
-  if (circuit.awaitingApproval()) {
+  if (circuitState.circuit && circuitState.circuit.awaitingApproval()) {
     requiresAction = (
       <div className="requires-action">
         <FontAwesomeIcon icon={faExclamationTriangle} />
@@ -127,59 +123,71 @@ const CircuitDetails = () => {
 
   return (
     <div>
-      <div className="main-header">
-        <div className="circuit-header">
-          <div className="back-button">
-            <Link to="/circuits">
-              <FontAwesomeIcon icon={faArrowLeft} />
-              <span>Circuits</span>
-            </Link>
-          </div>
-          {requiresAction}
-          <div className="mid-header-wrapper">
-            {getCircuitTitle()}
-            {circuit.actionRequired(localNodeID) && (
-              <VoteButton
-                onClickFn={() => {
-                  setModalActive(true);
-                }}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="detail-content">
-        <div className="main-content">
-          <div className="midContent">
-            <div className="circuit-stats">
-              <div className="stat total-circuits">
-                <span className="stat-count circuits-count">
-                  {circuit.members.length}
-                </span>
-                Nodes
+      {circuitState.circuit && (
+        <div>
+          <div className="main-header">
+            <div className="circuit-header">
+              <div className="back-button">
+                <Link to="/circuits">
+                  <FontAwesomeIcon icon={faArrowLeft} />
+                  <span>Circuits</span>
+                </Link>
               </div>
-              <div className="stat action-required">
-                <span className="stat-count action-required-count">
-                  {circuit.roster.length}
-                </span>
-                Services
+              {requiresAction}
+              <div className="mid-header-wrapper">
+                {getCircuitTitle()}
+                {circuitState.circuit.actionRequired(localNodeID) && (
+                  <VoteButton
+                    onClickFn={() => {
+                      setModalActive(true);
+                    }}
+                  />
+                )}
               </div>
             </div>
           </div>
+          <div className="detail-content">
+            <div className="main-content">
+              <div className="midContent">
+                <div className="circuit-stats">
+                  <div className="stat total-circuits">
+                    <span className="stat-count circuits-count">
+                      {circuitState.circuit.members.length}
+                    </span>
+                    Nodes
+                  </div>
+                  <div className="stat action-required">
+                    <span className="stat-count action-required-count">
+                      {circuitState.circuit.roster.length}
+                    </span>
+                    Services
+                  </div>
+                </div>
+              </div>
 
-          <NodesTable circuit={circuit} nodes={nodes} />
+              <NodesTable circuit={circuitState.circuit} nodes={nodes} />
+            </div>
+            <CircuitMetaData circuit={circuitState.circuit} />
+          </div>
+          <OverlayModal open={modalActive}>
+            <VoteOnProposalForm
+              proposal={circuitState.circuit}
+              nodes={nodes}
+              closeFn={() => {
+                setModalActive(false);
+              }}
+            />
+          </OverlayModal>
         </div>
-        <CircuitMetaData circuit={circuit} />
-      </div>
-      <OverlayModal open={modalActive}>
-        <VoteOnProposalForm
-          proposal={circuit}
-          nodes={nodes}
-          closeFn={() => {
-            setModalActive(false);
-          }}
-        />
-      </OverlayModal>
+      )}
+      {circuitState.error && (
+        <div className="error-message">
+          <h4>
+            <FontAwesomeIcon icon={faExclamationTriangle} />
+            {circuitState.error}
+          </h4>
+        </div>
+      )}
     </div>
   );
 };
