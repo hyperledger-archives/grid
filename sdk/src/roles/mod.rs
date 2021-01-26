@@ -12,16 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-table! {
-    agent (id) {
-        id -> Int8,
-        public_key -> Varchar,
-        org_id -> Varchar,
-        active -> Bool,
-        roles -> Binary,
-        metadata -> Binary,
-        start_commit_num -> Int8,
-        end_commit_num -> Int8,
-        service_id -> Nullable<Text>,
-    }
-}
+pub mod store;
+
+#[cfg(feature = "diesel")]
+pub use store::diesel::DieselRoleStore;
+pub use store::RoleStore;

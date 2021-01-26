@@ -13,13 +13,14 @@
 // limitations under the License.
 
 table! {
-    agent (id) {
+    role (id) {
         id -> Int8,
-        public_key -> Varchar,
         org_id -> Varchar,
-        active -> Bool,
-        roles -> Binary,
-        metadata -> Binary,
+        name -> Varchar,
+        description -> Varchar,
+        permissions -> Binary,
+        allowed_orgs -> Binary,
+        inherit_from -> Binary,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,

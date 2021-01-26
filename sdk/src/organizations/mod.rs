@@ -16,5 +16,4 @@ pub mod store;
 
 #[cfg(feature = "diesel")]
 pub use store::diesel::DieselOrganizationStore;
-pub use store::memory::MemoryOrganizationStore;
 pub use store::OrganizationStore;

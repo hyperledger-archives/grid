@@ -33,6 +33,9 @@ pub trait StoreFactory {
     /// Get a new `OrganizationStore`
     #[cfg(feature = "pike")]
     fn get_grid_organization_store(&self) -> Box<dyn crate::organizations::OrganizationStore>;
+    /// Get a new `RoleStore`
+    #[cfg(feature = "pike")]
+    fn get_grid_role_store(&self) -> Box<dyn crate::roles::RoleStore>;
     /// Get a new `LocationStore`
     #[cfg(feature = "location")]
     fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore>;

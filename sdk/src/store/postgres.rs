@@ -47,6 +47,11 @@ impl StoreFactory for PgStoreFactory {
         ))
     }
 
+    #[cfg(feature = "pike")]
+    fn get_grid_role_store(&self) -> Box<dyn crate::roles::RoleStore> {
+        Box::new(crate::roles::DieselRoleStore::new(self.pool.clone()))
+    }
+
     #[cfg(feature = "location")]
     fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore> {
         Box::new(crate::locations::DieselLocationStore::new(

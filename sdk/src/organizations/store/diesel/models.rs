@@ -19,9 +19,8 @@ use crate::organizations::store::diesel::schema::*;
 pub struct NewOrganizationModel {
     pub org_id: String,
     pub name: String,
-    pub address: String,
+    pub locations: Vec<u8>,
     pub metadata: Vec<u8>,
-
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,
     pub end_commit_num: i64,
@@ -36,12 +35,37 @@ pub struct OrganizationModel {
     pub id: i64,
     pub org_id: String,
     pub name: String,
-    pub address: String,
+    pub locations: Vec<u8>,
     pub metadata: Vec<u8>,
-
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
+    pub service_id: Option<String>,
+}
+
+#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[table_name = "alternate_identifier"]
+pub struct NewAltIDModel {
+    pub alternate_id: String,
+    pub id_type: String,
+    pub org_id: String,
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
+}
+
+#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[table_name = "alternate_identifier"]
+pub struct AltIDModel {
+    ///  This is the record id for the slowly-changing-dimensions table.
+    pub id: i64,
+    pub alternate_id: String,
+    pub id_type: String,
+    pub org_id: String,
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub service_id: Option<String>,
 }

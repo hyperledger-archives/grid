@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-table! {
-    agent (id) {
-        id -> Int8,
-        public_key -> Varchar,
-        org_id -> Varchar,
-        active -> Bool,
-        roles -> Binary,
-        metadata -> Binary,
-        start_commit_num -> Int8,
-        end_commit_num -> Int8,
-        service_id -> Nullable<Text>,
+pub(super) mod add_roles;
+pub(super) mod fetch_role;
+pub(super) mod list_roles_for_organization;
+pub(super) mod update_role;
+
+pub(super) struct RoleStoreOperations<'a, C> {
+    conn: &'a C,
+}
+
+impl<'a, C> RoleStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        RoleStoreOperations { conn }
     }
 }

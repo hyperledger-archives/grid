@@ -44,6 +44,8 @@ pub mod permissions;
 pub mod products;
 pub mod protocol;
 pub mod protos;
+#[cfg(feature = "pike")]
+pub mod roles;
 #[cfg(feature = "schema")]
 pub mod schemas;
 pub mod store;

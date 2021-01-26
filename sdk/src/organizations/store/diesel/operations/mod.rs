@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(super) mod add_organizations;
+pub(super) mod add_organization;
 pub(super) mod fetch_organization;
 pub(super) mod list_organizations;
 

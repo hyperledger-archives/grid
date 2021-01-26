@@ -13,12 +13,9 @@
 // limitations under the License.
 
 use super::AgentStoreOperations;
-use crate::agents::store::diesel::{
-    schema::{agent, role},
-    Agent, AgentStoreError,
-};
+use crate::agents::store::diesel::{schema::agent, Agent, AgentStoreError};
 
-use crate::agents::store::diesel::models::{AgentModel, RoleModel};
+use crate::agents::store::diesel::models::AgentModel;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use diesel::{prelude::*, result::Error::NotFound};
@@ -54,35 +51,14 @@ impl<'a> AgentStoreFetchAgentOperation for AgentStoreOperations<'a, diesel::pg::
                     query = query.filter(agent::service_id.is_null());
                 }
 
-                let agent = query
+                query
                     .first::<AgentModel>(self.conn)
+                    .map(Agent::from)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
                     .map_err(|err| {
                         AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                let mut query = role::table
-                    .select(role::all_columns)
-                    .into_boxed()
-                    .select(role::all_columns)
-                    .filter(
-                        role::public_key
-                            .eq(&pub_key)
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
-
-                if let Some(service_id) = service_id {
-                    query = query.filter(role::service_id.eq(service_id));
-                } else {
-                    query = query.filter(role::service_id.is_null());
-                }
-
-                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
-
-                Ok(agent.map(|agent| Agent::from((agent, roles))))
+                    })
             })
     }
 }
@@ -110,35 +86,14 @@ impl<'a> AgentStoreFetchAgentOperation
                     query = query.filter(agent::service_id.is_null());
                 }
 
-                let agent = query
+                query
                     .first::<AgentModel>(self.conn)
+                    .map(Agent::from)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
                     .map_err(|err| {
                         AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                let mut query = role::table
-                    .select(role::all_columns)
-                    .into_boxed()
-                    .select(role::all_columns)
-                    .filter(
-                        role::public_key
-                            .eq(&pub_key)
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
-
-                if let Some(service_id) = service_id {
-                    query = query.filter(role::service_id.eq(service_id));
-                } else {
-                    query = query.filter(role::service_id.is_null());
-                }
-
-                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
-
-                Ok(agent.map(|agent| Agent::from((agent, roles))))
+                    })
             })
     }
 }

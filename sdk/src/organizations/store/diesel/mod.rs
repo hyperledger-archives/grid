@@ -18,13 +18,13 @@ pub(in crate) mod schema;
 
 use diesel::r2d2::{ConnectionManager, Pool};
 
-use super::diesel::models::{NewOrganizationModel, OrganizationModel};
-use super::{Organization, OrganizationStore, OrganizationStoreError};
+use super::diesel::models::{AltIDModel, NewAltIDModel, NewOrganizationModel, OrganizationModel};
+use super::{AltID, Organization, OrganizationStore, OrganizationStoreError};
 use crate::error::{
     ConstraintViolationError, ConstraintViolationType, InternalError,
     ResourceTemporarilyUnavailableError,
 };
-use operations::add_organizations::OrganizationStoreAddOrganizationsOperation as _;
+use operations::add_organization::OrganizationStoreAddOrganizationOperation as _;
 use operations::fetch_organization::OrganizationStoreFetchOrganizationOperation as _;
 use operations::list_organizations::OrganizationStoreListOrganizationsOperation as _;
 use operations::OrganizationStoreOperations;
@@ -50,13 +50,16 @@ impl<C: diesel::Connection> DieselOrganizationStore<C> {
 
 #[cfg(feature = "postgres")]
 impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
+    fn add_organization(&self, org: Organization) -> Result<(), OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             OrganizationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_organizations(orgs.iter().map(|org| org.clone().into()).collect())
+        .add_organization(
+            NewOrganizationModel::from(&org),
+            org.alternate_ids.iter().map(NewAltIDModel::from).collect(),
+        )
     }
 
     fn list_organizations(
@@ -87,13 +90,16 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
 
 #[cfg(feature = "sqlite")]
 impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnection> {
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
+    fn add_organization(&self, org: Organization) -> Result<(), OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             OrganizationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_organizations(orgs.iter().map(|org| org.clone().into()).collect())
+        .add_organization(
+            NewOrganizationModel::from(&org),
+            org.alternate_ids.iter().map(NewAltIDModel::from).collect(),
+        )
     }
 
     fn list_organizations(
@@ -122,12 +128,13 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
     }
 }
 
-impl From<OrganizationModel> for Organization {
-    fn from(org: OrganizationModel) -> Self {
+impl From<(OrganizationModel, Vec<AltIDModel>)> for Organization {
+    fn from((org, alternate_ids): (OrganizationModel, Vec<AltIDModel>)) -> Self {
         Self {
             org_id: org.org_id,
             name: org.name,
-            address: org.address,
+            locations: org.locations,
+            alternate_ids: alternate_ids.iter().map(AltID::from).collect(),
             metadata: org.metadata,
             start_commit_num: org.start_commit_num,
             end_commit_num: org.end_commit_num,
@@ -136,12 +143,13 @@ impl From<OrganizationModel> for Organization {
     }
 }
 
-impl From<NewOrganizationModel> for Organization {
-    fn from(org: NewOrganizationModel) -> Self {
+impl From<(NewOrganizationModel, Vec<AltIDModel>)> for Organization {
+    fn from((org, alternate_ids): (NewOrganizationModel, Vec<AltIDModel>)) -> Self {
         Self {
             org_id: org.org_id,
             name: org.name,
-            address: org.address,
+            locations: org.locations,
+            alternate_ids: alternate_ids.iter().map(AltID::from).collect(),
             metadata: org.metadata,
             start_commit_num: org.start_commit_num,
             end_commit_num: org.end_commit_num,
@@ -150,16 +158,42 @@ impl From<NewOrganizationModel> for Organization {
     }
 }
 
-impl Into<NewOrganizationModel> for Organization {
-    fn into(self) -> NewOrganizationModel {
+impl From<&Organization> for NewOrganizationModel {
+    fn from(org: &Organization) -> NewOrganizationModel {
         NewOrganizationModel {
-            org_id: self.org_id,
-            name: self.name,
-            address: self.address,
-            metadata: self.metadata,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+            org_id: org.org_id.clone(),
+            name: org.name.clone(),
+            locations: org.locations.clone(),
+            metadata: org.metadata.clone(),
+            start_commit_num: org.start_commit_num,
+            end_commit_num: org.end_commit_num,
+            service_id: org.service_id.clone(),
+        }
+    }
+}
+
+impl From<&AltIDModel> for AltID {
+    fn from(id: &AltIDModel) -> AltID {
+        AltID {
+            alternate_id: id.alternate_id.clone(),
+            id_type: id.id_type.clone(),
+            org_id: id.org_id.clone(),
+            start_commit_num: id.start_commit_num,
+            end_commit_num: id.end_commit_num,
+            service_id: id.service_id.clone(),
+        }
+    }
+}
+
+impl From<&AltID> for NewAltIDModel {
+    fn from(id: &AltID) -> NewAltIDModel {
+        NewAltIDModel {
+            alternate_id: id.alternate_id.clone(),
+            id_type: id.id_type.clone(),
+            org_id: id.org_id.clone(),
+            start_commit_num: id.start_commit_num,
+            end_commit_num: id.end_commit_num,
+            service_id: id.service_id.clone(),
         }
     }
 }
