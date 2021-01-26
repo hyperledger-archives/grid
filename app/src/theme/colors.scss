@@ -21,6 +21,7 @@ $color-primary-dark: darken($color-primary, 15%) !default;
 $color-secondary: #ff8f6b !default;
 $color-secondary-light: lighten($color-secondary, 15%);
 $color-secondary-dark: darken($color-secondary, 15%);
+$color-brand-background: #EEEEEE;
 
 :root {
   --color-primary: #{$color-primary};
@@ -30,6 +31,7 @@ $color-secondary-dark: darken($color-secondary, 15%);
   --color-secondary: #{$color-secondary};
   --color-secondary-light: #{$color-secondary-light};
   --color-secondary-dark: #{$color-secondary-dark};
+  --color-brand-background: #{$color-brand-background};
   --color-dark-grey: #333333;
   --color-grey: #555555;
   --color-light-grey: #DDDDDD;

@@ -15,16 +15,11 @@
  */
 
 import React from 'react';
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { faLeaf, faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import { CanopyProvider, SideNav } from 'splinter-canopyjs';
 
 import './App.scss';
 
 window.$CANOPY = {};
-
-library.add(faLeaf);
-library.add(faUserCircle);
 
 function AppWithProvider() {
   return (

@@ -9,6 +9,6 @@
       "localhost:3030/sapling-dev-server/circuits/static/css/circuits.css"
     ],
     "workerFiles": [],
-    "icon": "http://localhost:3030/sapling-dev-server/circuits/images/circuits_logo.svg"
+    "icon": "device_hub_icon"
   }
 ]
