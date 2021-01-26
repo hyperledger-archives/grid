@@ -21,7 +21,7 @@ const PROPOSAL: &str = "aa";
 const RECORD: &str = "ec";
 const GRID_NAMESPACE: &str = "621dee";
 const GRID_SCHEMA_NAMESPACE: &str = "01";
-const PIKE_NAMESPACE: &str = "cad11d";
+const PIKE_NAMESPACE: &str = "621dee05";
 const PIKE_AGENT_NAMESPACE: &str = "00";
 
 pub fn get_track_and_trace_prefix() -> String {
@@ -70,7 +70,7 @@ pub fn make_agent_address(public_key: &str) -> String {
     let mut sha = Sha512::new();
     sha.input(public_key.as_bytes());
 
-    String::from(PIKE_NAMESPACE) + PIKE_AGENT_NAMESPACE + &sha.result_str()[..62].to_string()
+    String::from(PIKE_NAMESPACE) + PIKE_AGENT_NAMESPACE + &sha.result_str()[..60].to_string()
 }
 
 pub fn num_to_page_number(page: u32) -> String {
