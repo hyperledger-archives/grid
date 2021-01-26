@@ -43,4 +43,5 @@ pub mod keygen;
 pub mod locations;
 pub mod organizations;
 pub mod products;
+pub mod roles;
 pub mod schemas;

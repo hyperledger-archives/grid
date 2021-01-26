@@ -35,7 +35,7 @@ use crate::key;
 
 use crate::CliError;
 
-pub const PIKE_NAMESPACE: &str = "cad11d";
+pub const PIKE_NAMESPACE: &str = "621dee05";
 const PIKE_FAMILY_NAME: &str = "pike";
 const PIKE_FAMILY_VERSION: &str = "1";
 

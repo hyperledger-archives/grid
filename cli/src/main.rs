@@ -41,10 +41,10 @@ use grid_sdk::protocol::{
     },
     pike::{
         payload::{
-            CreateAgentActionBuilder, CreateOrganizationActionBuilder, UpdateAgentActionBuilder,
-            UpdateOrganizationActionBuilder,
+            CreateAgentActionBuilder, CreateOrganizationActionBuilder, CreateRoleActionBuilder,
+            UpdateAgentActionBuilder, UpdateOrganizationActionBuilder, UpdateRoleActionBuilder,
         },
-        state::{KeyValueEntry, KeyValueEntryBuilder},
+        state::{AlternateID, AlternateIDBuilder, KeyValueEntry, KeyValueEntryBuilder},
     },
     product::{
         payload::{
@@ -58,7 +58,9 @@ use log::Record;
 
 use crate::error::CliError;
 
-use actions::{agents, database, keygen, locations, organizations as orgs, products, schemas};
+use actions::{
+    agents, database, keygen, locations, organizations as orgs, products, roles, schemas,
+};
 
 #[cfg(feature = "admin-keygen")]
 use actions::admin;
@@ -324,9 +326,18 @@ fn run() -> Result<(), CliError> {
                                 .help("Name of organization"),
                         )
                         .arg(
-                            Arg::with_name("address")
+                            Arg::with_name("locations")
                                 .takes_value(true)
-                                .help("Physical address for organization"),
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("Locations for organization"),
+                        )
+                        .arg(
+                            Arg::with_name("alternate_ids")
+                                .long("alternate-ids")
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("Alternate IDs for organization"),
                         )
                         .arg(
                             Arg::with_name("metadata")
@@ -392,6 +403,168 @@ fn run() -> Result<(), CliError> {
                                 .help("How long to wait for transaction to be committed")
                         ),
                 )
+        )
+        .subcommand(
+            SubCommand::with_name("role")
+                .about("Create or update a role")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .arg(
+                    Arg::with_name("service_id")
+                        .long("service-id")
+                        .takes_value(true)
+                        .help(
+                            "The ID of the service the payload should be \
+                         sent to; required if running on Splinter. Format \
+                         <circuit-id>::<service-id>",
+                        ),
+                )
+                .arg(Arg::with_name("url")
+                    .long("url")
+                    .takes_value(true)
+                    .help("URL for the REST API")
+                )
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create a Role")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Unique ID for owning organization"),
+                        )
+                        .arg(
+                            Arg::with_name("name")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Name for the role"),
+                        )
+                        .arg(
+                            Arg::with_name("description")
+                                .takes_value(true)
+                                .required(false)
+                                .help("Description of the role"),
+                        )
+                        .arg(
+                            Arg::with_name("permissions")
+                                .long("permissions")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("List of permissions belonging to the role"),
+                        )
+                        .arg(
+                            Arg::with_name("allowed_orgs")
+                                .long("allowed-orgs")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("List of organizations allowed use of the role"),
+                        )
+                        .arg(
+                            Arg::with_name("inherit_from")
+                                .long("inherit-from")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("List of roles to inherit permissions from"),
+                        )
+                        .arg(
+                            Arg::with_name("active")
+                                .long("active")
+                                .conflicts_with("inactive")
+                                .help("Set role as active"),
+                        )
+                        .arg(
+                            Arg::with_name("inactive")
+                                .long("inactive")
+                                .conflicts_with("active")
+                                .help("Set role as inactive"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file")
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed")
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Update a Role")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .required(true)
+                                .help("Unique ID for owning organization"),
+                        )
+                        .arg(
+                            Arg::with_name("name")
+                                .required(true)
+                                .help("Name for the role"),
+                        )
+                        .arg(
+                            Arg::with_name("description")
+                                .short("d")
+                                .takes_value(true)
+                                .required(false)
+                                .help("Description of the role"),
+                        )
+                        .arg(
+                            Arg::with_name("permissions")
+                                .long("permissions")
+                                .short("p")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("List of permissions belonging to the role"),
+                        )
+                        .arg(
+                            Arg::with_name("allowed_orgs")
+                                .long("allowed-orgs")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("List of organizations allowed use of the role"),
+                        )
+                        .arg(
+                            Arg::with_name("inherit_from")
+                                .long("inherit-from")
+                                .takes_value(true)
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("List of roles to inherit permissions from"),
+                        )
+                        .arg(
+                            Arg::with_name("active")
+                                .long("active")
+                                .conflicts_with("inactive")
+                                .help("Set role as active"),
+                        )
+                        .arg(
+                            Arg::with_name("inactive")
+                                .long("inactive")
+                                .conflicts_with("active")
+                                .help("Set role as inactive"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file")
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed")
+                        ),
+                ),
         );
     }
 
@@ -959,7 +1132,13 @@ fn run() -> Result<(), CliError> {
                     let create_org = CreateOrganizationActionBuilder::new()
                         .with_org_id(m.value_of("org_id").unwrap().into())
                         .with_name(m.value_of("name").unwrap().into())
-                        .with_address(m.value_of("address").unwrap().into())
+                        .with_locations(
+                            m.values_of("locations")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_alternate_ids(parse_alternate_ids(&m)?)
                         .with_metadata(parse_metadata(&m)?)
                         .build()
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
@@ -978,13 +1157,121 @@ fn run() -> Result<(), CliError> {
                     let update_org = UpdateOrganizationActionBuilder::new()
                         .with_org_id(m.value_of("org_id").unwrap().into())
                         .with_name(m.value_of("name").unwrap().into())
-                        .with_address(m.value_of("address").unwrap().into())
+                        .with_locations(
+                            m.values_of("locations")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_alternate_ids(parse_alternate_ids(&m)?)
                         .with_metadata(parse_metadata(&m)?)
                         .build()
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to update organization...");
                     orgs::do_update_organization(&url, key, wait, update_org, service_id)?;
+                }
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+            }
+        }
+        ("role", Some(m)) => {
+            let url = m
+                .value_of("url")
+                .map(String::from)
+                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+            let service_id = m
+                .value_of("service_id")
+                .map(String::from)
+                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+            match m.subcommand() {
+                ("create", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let active = if m.is_present("inactive") {
+                        false
+                    } else {
+                        m.is_present("active")
+                    };
+
+                    let create_role = CreateRoleActionBuilder::new()
+                        .with_org_id(m.value_of("org_id").unwrap().into())
+                        .with_name(m.value_of("name").unwrap().into())
+                        .with_description(m.value_of("description").unwrap_or("").into())
+                        .with_permissions(
+                            m.values_of("permissions")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_allowed_organizations(
+                            m.values_of("allowed_orgs")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_inherit_from(
+                            m.values_of("inherit_from")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_active(active)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to create role...");
+                    roles::do_create_role(&url, key, wait, create_role, service_id)?;
+                }
+                ("update", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let active = if m.is_present("inactive") {
+                        false
+                    } else {
+                        m.is_present("active")
+                    };
+
+                    let update_role = UpdateRoleActionBuilder::new()
+                        .with_org_id(m.value_of("org_id").unwrap().into())
+                        .with_name(m.value_of("name").unwrap().into())
+                        .with_description(m.value_of("description").unwrap_or("").into())
+                        .with_permissions(
+                            m.values_of("permissions")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_allowed_organizations(
+                            m.values_of("allowed_orgs")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_inherit_from(
+                            m.values_of("inherit_from")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_active(active)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to update role...");
+                    roles::do_update_role(&url, key, wait, update_role, service_id)?;
                 }
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
@@ -1393,6 +1680,39 @@ fn run() -> Result<(), CliError> {
     }
 
     Ok(())
+}
+
+fn parse_alternate_ids(matches: &ArgMatches) -> Result<Vec<AlternateID>, CliError> {
+    let ids = matches
+        .values_of("alternate_ids")
+        .unwrap_or_default()
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    let mut alternate_ids = Vec::new();
+
+    for id in ids {
+        let entries = id.split(':').map(String::from).collect::<Vec<String>>();
+
+        let (id_type, alt_id) = if entries.len() != 2 {
+            return Err(CliError::UserError(format!(
+                "Alternate ID malformed: {}",
+                id
+            )));
+        } else {
+            (entries[0].clone(), entries[1].clone())
+        };
+
+        alternate_ids.push(
+            AlternateIDBuilder::new()
+                .with_id_type(id_type)
+                .with_id(alt_id)
+                .build()
+                .map_err(|err| CliError::UserError(format!("Alternate ID malformed: {}", err)))?,
+        )
+    }
+
+    Ok(alternate_ids)
 }
 
 fn parse_metadata(matches: &ArgMatches) -> Result<Vec<KeyValueEntry>, CliError> {
