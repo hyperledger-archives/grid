@@ -39,6 +39,7 @@ message SchemaCreateAction {
     // The name of the Schema.  This is also the unique identifier for the
     // new Schema.
     string schema_name = 1;
+    string owner = 3;
      // An optional description of the schema.
     string description = 2;
     // The property definitions that make up the Schema; must not be empty.
@@ -50,6 +51,7 @@ message SchemaCreateAction {
 message SchemaUpdateAction {
     // The name of the Schema to be updated.
     string schema_name = 1;
+    string owner = 3;
     // The property definitions to be added to the Schema; must not be empty.
     repeated PropertyDefinition properties = 2;
 }
