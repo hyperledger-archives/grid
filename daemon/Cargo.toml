@@ -66,12 +66,12 @@ stable = [
     "pike",
     "schema",
     "product",
-    "location"
+    "location",
+    "splinter-support"
 ]
 
 experimental = [
     "stable",
-    "splinter-support",
     "track-and-trace"
 ]
 
