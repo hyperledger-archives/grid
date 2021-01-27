@@ -46,8 +46,17 @@ export function CanopyProvider({
   appConfig,
   children
 }) {
-  const [userSaplings, setUserSaplings] = useState([]);
-  const [configSaplings, setConfigSaplings] = useState({});
+  const initialUserSaplings = window.sessionStorage.getItem('USER_SAPLINGS');
+  const initialConfigSaplings = window.sessionStorage.getItem(
+    'CONFIG_SAPLINGS'
+  );
+
+  const [userSaplings, setUserSaplings] = useState(
+    initialUserSaplings ? JSON.parse(initialUserSaplings) : []
+  );
+  const [configSaplings, setConfigSaplings] = useState(
+    initialConfigSaplings ? JSON.parse(initialConfigSaplings) : []
+  );
 
   const sessionUser = window.sessionStorage.getItem('CANOPY_USER');
   const [user, setUser] = useState(
@@ -99,6 +108,10 @@ export function CanopyProvider({
     fetchConfigSaplings(saplingURL).then(saplings => {
       mountConfigSaplings(saplings);
       mountConfigSaplingStyles(saplings);
+      window.sessionStorage.setItem(
+        'CONFIG_SAPLINGS',
+        JSON.stringify(saplings)
+      );
     });
   }, [saplingURL]);
 
@@ -116,6 +129,10 @@ export function CanopyProvider({
       fetchUserSaplings(saplingURL).then(saplings => {
         mountCurrentSapling(saplings);
         setUserSaplings(saplings);
+        window.sessionStorage.setItem(
+          'USER_SAPLINGS',
+          JSON.stringify(saplings)
+        );
       });
     } else {
       window.$CANOPY.hideCanopy();
