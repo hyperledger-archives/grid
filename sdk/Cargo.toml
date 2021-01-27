@@ -55,10 +55,13 @@ glob = "0.2"
 default = []
 
 stable = [
+    # The stable feature extends default:
+    "default",
+    # The following features are stable:
+    "location",
     "pike",
-    "schema",
     "product",
-    "location"
+    "schema",
 ]
 
 experimental = [
@@ -70,19 +73,11 @@ experimental = [
     "workflow"
 ]
 
-database = [
-    # The experimental feature extends stable:
-    "stable",
-    # The following features are experimental:
-    "grid_db",
-    "postgres",
-    "sqlite"
-]
-
-pike = []
-schema = ["pike"]
-product = ["pike", "schema"]
+database = ["grid_db", "postgres", "sqlite" ]
 location = ["pike", "schema"]
+pike = []
+product = ["pike", "schema"]
+schema = ["pike"]
 track-and-trace = []
 
 grid_db = ["sawtooth-compat"]

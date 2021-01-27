@@ -59,29 +59,35 @@ optional = true
 features = [ "events" ]
 
 [features]
-default = ["sawtooth-support"]
+default = [
+    "sawtooth-support",
+]
 
 stable = [
-    "sawtooth-support",
+    # The stable feature extends default:
+    "default",
+    # The following features are stable:
+    "location",
     "pike",
-    "schema",
     "product",
-    "location"
+    "schema",
 ]
 
 experimental = [
+    # The experimental feature extends stable:
     "stable",
+    # The following features are experimental:
     "splinter-support",
-    "track-and-trace"
+    "track-and-trace",
 ]
 
+location = ["pike", "schema"]
+pike = []
+product = ["pike", "schema"]
 sawtooth-support = []
+schema = ["pike"]
 splinter-support = ["scabbard", "splinter", "reqwest", "sabre-sdk", "transact", "transact/contract-archive"]
 test-postgres = []
-pike = []
-schema = ["pike"]
-product = ["pike", "schema"]
-location = ["pike", "schema"]
 track-and-trace = []
 
 
