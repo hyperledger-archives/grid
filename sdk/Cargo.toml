@@ -58,14 +58,14 @@ stable = [
     "pike",
     "schema",
     "product",
-    "location"
+    "location",
+    "database"
 ]
 
 experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
-    "database",
     "track-and-trace"
 ]
 
