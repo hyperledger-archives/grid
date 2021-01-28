@@ -41,7 +41,6 @@ pub struct DieselSchemaStore<C: diesel::Connection + 'static> {
 }
 
 impl<C: diesel::Connection> DieselSchemaStore<C> {
-    #[allow(dead_code)]
     pub fn new(connection_pool: Pool<ConnectionManager<C>>) -> Self {
         DieselSchemaStore { connection_pool }
     }
