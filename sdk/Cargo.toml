@@ -32,7 +32,7 @@ byteorder = "1"
 cfg-if = "0.1"
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
-log = "0.4"
+log = { version = "0.4", optional = true }
 protobuf = "2.19"
 sabre-sdk = { version = "0.5", optional = true }
 sawtooth-sdk = { version = "0.4", features = ["transact-compat"], optional=true }
@@ -81,7 +81,7 @@ schema = ["pike"]
 track-and-trace = []
 
 grid_db = ["sawtooth-compat"]
-postgres = ["diesel/postgres", "diesel_migrations"]
+postgres = ["diesel/postgres", "diesel_migrations", "log"]
 sawtooth-compat = [
     "sabre-sdk",
     "sawtooth-sdk"
