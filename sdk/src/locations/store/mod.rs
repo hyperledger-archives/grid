@@ -86,14 +86,14 @@ pub trait LocationStore: Send + Sync {
     fn list_locations(&self, service_id: Option<&str>)
         -> Result<Vec<Location>, LocationStoreError>;
 
-    /// Gets locations from the underlying storage
+    /// Updates a location in the underlying storage
     ///
     /// # Arguments
     ///
     ///  * `location` - The updated location
     fn update_location(&self, location: Location) -> Result<(), LocationStoreError>;
 
-    /// Gets locations from the underlying storage
+    /// Deletes a location from the underlying storage
     ///
     /// # Arguments
     ///

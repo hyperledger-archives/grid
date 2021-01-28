@@ -271,7 +271,8 @@ pub trait TrackAndTraceStore: Send + Sync {
         service_id: Option<&str>,
     ) -> Result<Vec<Record>, TrackAndTraceStoreError>;
 
-    /// Fetches a list of reported value reported to agent metadata objects from the underlying storage
+    /// Fetches a list of reported value reported to agent metadata objects from the underlying
+    /// storage
     ///
     /// # Arguments
     ///

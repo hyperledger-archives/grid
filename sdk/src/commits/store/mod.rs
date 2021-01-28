@@ -41,7 +41,7 @@ pub enum StateChange {
     Delete { key: String },
 }
 
-// /// A notification that some source has committed a set of changes to state
+/// A notification that some source has committed a set of changes to state
 #[derive(Clone)]
 pub struct CommitEvent {
     /// An identifier for specifying where the event came from
@@ -72,15 +72,9 @@ pub trait CommitStore: Send + Sync {
         -> Result<Option<Commit>, CommitStoreError>;
 
     /// Gets the current commit ID from the underlying storage
-    ///
-    /// # Arguments
-    ///
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError>;
 
     /// Gets the next commit number from the underlying storage
-    ///
-    /// # Arguments
-    ///
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError>;
 
     /// Resolves a fork

@@ -24,8 +24,8 @@ use crate::commits::store::{
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 
-///Implementation of CommitStore that stores Commits in memory. Useful for when
-///persistence isn't necessary.
+/// Implementation of CommitStore that stores Commits in memory. Useful for when persistence isn't
+/// necessary.
 #[derive(Clone, Default)]
 pub struct MemoryCommitStore {
     inner_commit: Arc<Mutex<HashMap<String, Commit>>>,
