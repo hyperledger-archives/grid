@@ -140,7 +140,7 @@ impl fmt::Display for HexError {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, features = "pike"))]
 mod tests {
     use super::*;
 
