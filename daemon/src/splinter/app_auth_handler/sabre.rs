@@ -18,17 +18,26 @@
 use std::convert::TryInto;
 use std::time::Duration;
 
+#[cfg(feature = "pike")]
+use sabre_sdk::protocol::payload::CreateContractActionBuilder;
 use sabre_sdk::protocol::payload::{
-    CreateContractActionBuilder, CreateContractRegistryActionBuilder,
-    CreateNamespaceRegistryActionBuilder, CreateNamespaceRegistryPermissionActionBuilder,
+    CreateContractRegistryActionBuilder, CreateNamespaceRegistryActionBuilder,
+    CreateNamespaceRegistryPermissionActionBuilder,
 };
 use sawtooth_sdk::signing::{
     create_context, secp256k1::Secp256k1PrivateKey, transact::TransactSigner,
     Signer as SawtoothSigner,
 };
 use scabbard::client::{ScabbardClient, ServiceId};
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema"
+))]
+use transact::contract::archive::default_scar_path;
 use transact::{
-    contract::archive::{default_scar_path, SmartContractArchive},
+    contract::archive::SmartContractArchive,
     protocol::{batch::BatchBuilder, transaction::Transaction},
     signing::Signer,
 };
@@ -68,6 +77,12 @@ pub fn setup_grid(
     service_id: &str,
     circuit_id: &str,
 ) -> Result<(), AppAuthHandlerError> {
+    #[cfg(any(
+        feature = "location",
+        feature = "pike",
+        feature = "product",
+        feature = "schema"
+    ))]
     let version = env!("CARGO_PKG_VERSION");
 
     let signer = new_signer(&scabbard_admin_key)?;
@@ -228,6 +243,12 @@ fn new_signer(private_key: &str) -> Result<TransactSigner, AppAuthHandlerError> 
     Ok(SawtoothSigner::new_boxed(context, private_key).try_into()?)
 }
 
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema"
+))]
 fn make_contract_registry_txn(
     signer: &dyn Signer,
     name: &str,
@@ -258,6 +279,12 @@ fn make_upload_contract_txn(
         .build(signer)?)
 }
 
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema"
+))]
 fn make_namespace_registry_txn(
     signer: &dyn Signer,
     contract_prefix: &str,
@@ -270,6 +297,12 @@ fn make_namespace_registry_txn(
         .build(signer)?)
 }
 
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema"
+))]
 fn make_namespace_permissions_txn(
     signer: &dyn Signer,
     contract: &SmartContractArchive,

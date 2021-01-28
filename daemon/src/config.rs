@@ -31,10 +31,16 @@ impl GridConfig {
         &self.endpoint
     }
 
+    // dead_code allowed because this isn't used when splinter and sawtooth
+    // features are both off, as is the case with --no-default-features
+    #[allow(dead_code)]
     pub fn rest_api_endpoint(&self) -> &str {
         &self.rest_api_endpoint
     }
 
+    // dead_code allowed because this isn't used when splinter and sawtooth
+    // features are both off, as is the case with --no-default-features
+    #[allow(dead_code)]
     pub fn database_url(&self) -> &str {
         &self.database_url
     }
@@ -56,12 +62,13 @@ impl Endpoint {
         self.url.clone()
     }
 
+    #[cfg(feature = "rest-api")]
     pub fn is_sawtooth(&self) -> bool {
         self.backend == Backend::Sawtooth
     }
 
-    pub fn is_splinter(&self) -> bool {
-        self.backend == Backend::Splinter
+    pub fn backend(&self) -> &Backend {
+        &self.backend
     }
 }
 

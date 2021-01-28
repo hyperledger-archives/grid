@@ -35,20 +35,24 @@ extern crate serde_json;
 extern crate serde;
 
 mod config;
+#[cfg(feature = "database")]
 mod database;
 mod error;
+#[cfg(feature = "event")]
 #[macro_use]
 mod event;
+#[cfg(feature = "rest-api")]
 mod rest_api;
 #[cfg(feature = "sawtooth-support")]
 mod sawtooth;
 #[cfg(feature = "splinter-support")]
 mod splinter;
+#[cfg(feature = "submitter")]
 mod submitter;
 
 use flexi_logger::{LogSpecBuilder, Logger};
 
-use crate::config::GridConfigBuilder;
+use crate::config::{Backend, GridConfigBuilder};
 use crate::error::DaemonError;
 #[cfg(feature = "sawtooth-support")]
 use crate::sawtooth::run_sawtooth;
@@ -89,30 +93,32 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
-    if config.endpoint().is_sawtooth() {
-        #[cfg(feature = "sawtooth-support")]
-        run_sawtooth(config)?;
-        #[cfg(not(feature = "sawtooth-support"))]
-        return Err(DaemonError::UnsupportedEndpoint(format!(
-            "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not enabled for this binary.",
-            config.endpoint().url()
-        )));
-    } else if config.endpoint().is_splinter() {
-        #[cfg(feature = "splinter-support")]
-        run_splinter(config)?;
-        #[cfg(not(feature = "splinter-support"))]
-        return Err(DaemonError::UnsupportedEndpoint(format!(
-            "A Splinter connection endpoint ({}) was provided but Splinter support is not enabled for this binary.",
-            config.endpoint().url()
-        )));
-    } else {
-        return Err(DaemonError::UnsupportedEndpoint(format!(
-            "Unsupported endpoint type: {}",
-            config.endpoint().url()
-        )));
-    };
-
-    Ok(())
+    match config.endpoint().backend() {
+        Backend::Sawtooth => {
+            #[cfg(feature = "sawtooth-support")]
+            {
+                run_sawtooth(config)?;
+                Ok(())
+            }
+            #[cfg(not(feature = "sawtooth-support"))]
+            Err(DaemonError::UnsupportedEndpoint(format!(
+                "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not enabled for this binary.",
+                config.endpoint().url()
+            )))
+        }
+        Backend::Splinter => {
+            #[cfg(feature = "splinter-support")]
+            {
+                run_splinter(config)?;
+                Ok(())
+            }
+            #[cfg(not(feature = "splinter-support"))]
+            Err(DaemonError::UnsupportedEndpoint(format!(
+                "A Splinter connection endpoint ({}) was provided but Splinter support is not enabled for this binary.",
+                config.endpoint().url()
+            )))
+        }
+    }
 }
 
 fn main() {

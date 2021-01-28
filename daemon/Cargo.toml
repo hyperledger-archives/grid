@@ -60,7 +60,11 @@ features = [ "events" ]
 
 [features]
 default = [
+    "database",
+    "event",
+    "rest-api",
     "sawtooth-support",
+    "submitter",
 ]
 
 stable = [
@@ -81,12 +85,16 @@ experimental = [
     "track-and-trace",
 ]
 
+event = ["database"]
+database = []
 location = ["pike", "schema"]
 pike = []
 product = ["pike", "schema"]
-sawtooth-support = []
+rest-api = ["database", "submitter"]
+sawtooth-support = ["database", "event", "rest-api"]
 schema = ["pike"]
-splinter-support = ["scabbard", "splinter", "reqwest", "sabre-sdk", "transact", "transact/contract-archive"]
+splinter-support = ["database", "event", "rest-api", "reqwest", "scabbard", "sabre-sdk", "splinter", "transact/contract-archive"]
+submitter = ["rest-api"]
 test-postgres = []
 track-and-trace = []
 
