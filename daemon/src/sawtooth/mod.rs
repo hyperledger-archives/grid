@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Cargill Incorporated
+ * Copyright 2019-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,3 +18,6 @@
 pub mod batch_submitter;
 pub mod connection;
 mod event;
+mod run;
+
+pub use run::run_sawtooth;
