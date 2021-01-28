@@ -13,11 +13,12 @@
 // limitations under the License.
 
 use crate::http::submit_batches;
-use crate::transaction::{schema_batch_builder, GRID_SCHEMA_NAMESPACE, PIKE_NAMESPACE};
+use crate::transaction::schema_batch_builder;
 use crate::yaml_parser::{
     parse_value_as_boolean, parse_value_as_data_type, parse_value_as_i32, parse_value_as_sequence,
     parse_value_as_string, parse_value_as_vec_string,
 };
+use grid_sdk::agents::addressing::PIKE_NAMESPACE;
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
     SchemaUpdateAction, SchemaUpdateBuilder,
@@ -26,6 +27,7 @@ use grid_sdk::protocol::schema::state::{
     DataType as StateDataType, PropertyDefinition, PropertyDefinitionBuilder,
 };
 use grid_sdk::protos::IntoProto;
+use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
 use reqwest::Client;
 
 use crate::error::CliError;

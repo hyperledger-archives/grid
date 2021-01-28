@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha512;
 use protobuf;
 
 cfg_if! {
@@ -31,26 +29,22 @@ cfg_if! {
     }
 }
 
-use addresser::{resource_to_byte, Resource};
-use grid_sdk::protos::pike_payload::{
-    CreateAgentAction, CreateOrganizationAction, PikePayload, PikePayload_Action as Action,
-    UpdateAgentAction, UpdateOrganizationAction,
+use grid_sdk::{
+    agents::addressing::{compute_agent_address, PIKE_NAMESPACE},
+    organizations::addressing::compute_organization_address,
+    protos::{
+        pike_payload::{
+            CreateAgentAction, CreateOrganizationAction, PikePayload, PikePayload_Action as Action,
+            UpdateAgentAction, UpdateOrganizationAction,
+        },
+        pike_state::{Agent, AgentList, Organization, OrganizationList},
+    },
 };
-use grid_sdk::protos::pike_state::{Agent, AgentList, Organization, OrganizationList};
 
 pub struct PikeTransactionHandler {
     family_name: String,
     family_versions: Vec<String>,
     namespaces: Vec<String>,
-}
-
-const NAMESPACE: &str = "cad11d";
-
-fn compute_address(name: &str, resource: Resource) -> String {
-    let mut sha = Sha512::new();
-    sha.input(name.as_bytes());
-
-    String::from(NAMESPACE) + &resource_to_byte(resource) + &sha.result_str()[..62].to_string()
 }
 
 pub struct PikeState<'a> {
@@ -63,7 +57,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
-        let address = compute_address(public_key, Resource::AGENT);
+        let address = compute_agent_address(public_key);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -90,7 +84,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn set_agent(&mut self, public_key: &str, new_agent: Agent) -> Result<(), ApplyError> {
-        let address = compute_address(public_key, Resource::AGENT);
+        let address = compute_agent_address(public_key);
         let d = self.context.get_state_entry(&address)?;
         let mut agent_list = match d {
             Some(packed) => match protobuf::Message::parse_from_bytes(packed.as_slice()) {
@@ -134,7 +128,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn get_organization(&mut self, id: &str) -> Result<Option<Organization>, ApplyError> {
-        let address = compute_address(id, Resource::ORG);
+        let address = compute_organization_address(id);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -165,7 +159,7 @@ impl<'a> PikeState<'a> {
         id: &str,
         new_organization: Organization,
     ) -> Result<(), ApplyError> {
-        let address = compute_address(id, Resource::ORG);
+        let address = compute_organization_address(id);
         let d = self.context.get_state_entry(&address)?;
         let mut organization_list = match d {
             Some(packed) => match protobuf::Message::parse_from_bytes(packed.as_slice()) {
@@ -218,7 +212,7 @@ impl PikeTransactionHandler {
         PikeTransactionHandler {
             family_name: "pike".to_string(),
             family_versions: vec!["1".to_string()],
-            namespaces: vec![NAMESPACE.to_string()],
+            namespaces: vec![PIKE_NAMESPACE.to_string()],
         }
     }
 }

@@ -29,20 +29,29 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protocol::errors::BuilderError;
-use grid_sdk::protocol::schema::state::{PropertyDefinition, PropertyValue};
-use grid_sdk::protocol::track_and_trace::payload::{
-    Action, AnswerProposalAction, CreateProposalAction, CreateRecordAction, FinalizeRecordAction,
-    Response, RevokeReporterAction, TrackAndTracePayload, UpdatePropertiesAction,
-};
-use grid_sdk::protocol::track_and_trace::state::{
-    AssociatedAgentBuilder, PropertyBuilder, PropertyPageBuilder, ProposalBuilder,
-    ProposalListBuilder, RecordBuilder, ReportedValueBuilder, ReporterBuilder, Role, Status,
+use grid_sdk::{
+    agents::addressing::PIKE_NAMESPACE,
+    protocol::{
+        errors::BuilderError,
+        schema::state::{PropertyDefinition, PropertyValue},
+        track_and_trace::{
+            payload::{
+                Action, AnswerProposalAction, CreateProposalAction, CreateRecordAction,
+                FinalizeRecordAction, Response, RevokeReporterAction, TrackAndTracePayload,
+                UpdatePropertiesAction,
+            },
+            state::{
+                AssociatedAgentBuilder, PropertyBuilder, PropertyPageBuilder, ProposalBuilder,
+                ProposalListBuilder, RecordBuilder, ReportedValueBuilder, ReporterBuilder, Role,
+                Status,
+            },
+        },
+    },
+    protos::FromBytes,
+    schemas::addressing::GRID_NAMESPACE,
+    track_and_trace::addressing::TRACK_AND_TRACE_NAMESPACE,
 };
 
-use grid_sdk::protos::FromBytes;
-
-use crate::addressing::*;
 use crate::payload::validate_payload;
 use crate::state::TrackAndTraceState;
 
@@ -61,9 +70,9 @@ impl TrackAndTraceTransactionHandler {
             family_name: "grid_track_and_trace".to_string(),
             family_versions: vec!["1".to_string()],
             namespaces: vec![
-                get_track_and_trace_prefix(),
-                get_pike_prefix(),
-                get_grid_prefix(),
+                TRACK_AND_TRACE_NAMESPACE.to_string(),
+                PIKE_NAMESPACE.to_string(),
+                GRID_NAMESPACE.to_string(),
             ],
         }
     }
@@ -1067,20 +1076,34 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
-    use grid_sdk::protocol::schema::state::{
-        DataType, PropertyDefinitionBuilder, PropertyValueBuilder, SchemaBuilder, SchemaListBuilder,
+    use grid_sdk::{
+        agents::addressing::compute_agent_address,
+        protocol::{
+            pike::state::{AgentBuilder, AgentListBuilder},
+            schema::state::{
+                DataType, PropertyDefinitionBuilder, PropertyValueBuilder, SchemaBuilder,
+                SchemaListBuilder,
+            },
+            track_and_trace::{
+                payload::{
+                    AnswerProposalActionBuilder, CreateProposalActionBuilder,
+                    CreateRecordActionBuilder, FinalizeRecordActionBuilder,
+                    RevokeReporterActionBuilder, UpdatePropertiesAction,
+                    UpdatePropertiesActionBuilder,
+                },
+                state::{
+                    Property, PropertyListBuilder, PropertyPage, PropertyPageListBuilder, Proposal,
+                    Record, RecordListBuilder, Role, Status,
+                },
+            },
+        },
+        protos::IntoBytes,
+        schemas::addressing::compute_schema_address,
+        track_and_trace::addressing::{
+            make_property_address, make_proposal_address, make_record_address,
+        },
     };
-    use grid_sdk::protocol::track_and_trace::payload::{
-        AnswerProposalActionBuilder, CreateProposalActionBuilder, CreateRecordActionBuilder,
-        FinalizeRecordActionBuilder, RevokeReporterActionBuilder, UpdatePropertiesAction,
-        UpdatePropertiesActionBuilder,
-    };
-    use grid_sdk::protocol::track_and_trace::state::{
-        Property, PropertyListBuilder, PropertyPage, PropertyPageListBuilder, Proposal, Record,
-        RecordListBuilder, Role, Status,
-    };
-    use grid_sdk::protos::IntoBytes;
+
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
 
     const TIMESTAMP: u64 = 1;
@@ -1154,7 +1177,7 @@ mod tests {
             let builder = AgentListBuilder::new();
             let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
             let agent_bytes = agent_list.into_bytes().unwrap();
-            let agent_address = make_agent_address(public_key);
+            let agent_address = compute_agent_address(public_key);
             self.set_state_entry(agent_address, agent_bytes).unwrap();
         }
 
@@ -1174,7 +1197,7 @@ mod tests {
             let builder = SchemaListBuilder::new();
             let schema_list = builder.with_schemas(vec![schema]).build().unwrap();
             let schema_bytes = schema_list.into_bytes().unwrap();
-            let schema_address = make_schema_address(SCHEMA_NAME);
+            let schema_address = compute_schema_address(SCHEMA_NAME);
             self.set_state_entry(schema_address, schema_bytes).unwrap();
         }
 

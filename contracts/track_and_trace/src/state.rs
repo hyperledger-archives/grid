@@ -22,16 +22,20 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protocol::pike::state::{Agent, AgentList};
-use grid_sdk::protocol::schema::state::{Schema, SchemaList};
-use grid_sdk::protocol::track_and_trace::state::{
-    Property, PropertyList, PropertyListBuilder, PropertyPage, PropertyPageList,
-    PropertyPageListBuilder, ProposalList, Record, RecordList, RecordListBuilder,
+use grid_sdk::{
+    agents::addressing::compute_agent_address,
+    protocol::{
+        pike::state::{Agent, AgentList},
+        schema::state::{Schema, SchemaList},
+        track_and_trace::state::{
+            Property, PropertyList, PropertyListBuilder, PropertyPage, PropertyPageList,
+            PropertyPageListBuilder, ProposalList, Record, RecordList, RecordListBuilder,
+        },
+    },
+    protos::{FromBytes, IntoBytes},
+    schemas::addressing::compute_schema_address,
+    track_and_trace::addressing::*,
 };
-
-use grid_sdk::protos::{FromBytes, IntoBytes};
-
-use crate::addressing::*;
 
 pub struct TrackAndTraceState<'a> {
     context: &'a mut dyn TransactionContext,
@@ -121,7 +125,7 @@ impl<'a> TrackAndTraceState<'a> {
     }
 
     pub fn get_schema(&self, schema_name: &str) -> Result<Option<Schema>, ApplyError> {
-        let address = make_schema_address(schema_name);
+        let address = compute_schema_address(schema_name);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -149,7 +153,7 @@ impl<'a> TrackAndTraceState<'a> {
 
     /// Gets a Pike Agent. Handles retrieving the correct agent from an AgentList.
     pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
-        let address = make_agent_address(public_key);
+        let address = compute_agent_address(public_key);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -482,7 +486,7 @@ mod tests {
                 .build()
                 .unwrap();
             let agent_bytes = agent_list.into_bytes().unwrap();
-            let agent_address = make_agent_address(public_key);
+            let agent_address = compute_agent_address(public_key);
             self.set_state_entry(agent_address, agent_bytes).unwrap();
         }
     }

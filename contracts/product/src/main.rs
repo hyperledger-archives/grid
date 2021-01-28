@@ -11,8 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #[macro_use]
 extern crate cfg_if;
+extern crate grid_sdk;
+
 cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
         #[macro_use]
@@ -32,7 +35,6 @@ cfg_if! {
     }
 }
 
-mod addressing;
 pub mod handler;
 mod payload;
 mod state;

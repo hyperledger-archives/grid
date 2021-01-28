@@ -27,15 +27,18 @@ cfg_if! {
     }
 }
 
-use grid_sdk::permissions::PermissionChecker;
-use grid_sdk::protocol::product::payload::{
-    Action, ProductCreateAction, ProductDeleteAction, ProductPayload, ProductUpdateAction,
+use grid_sdk::{
+    permissions::PermissionChecker,
+    products::addressing::GRID_NAMESPACE,
+    protocol::product::{
+        payload::{
+            Action, ProductCreateAction, ProductDeleteAction, ProductPayload, ProductUpdateAction,
+        },
+        state::{ProductBuilder, ProductNamespace},
+    },
+    protos::FromBytes,
 };
-use grid_sdk::protocol::product::state::{ProductBuilder, ProductNamespace};
 
-use grid_sdk::protos::FromBytes;
-
-use crate::addressing::*;
 use crate::payload::validate_payload;
 use crate::state::ProductState;
 use crate::validation::validate_gtin;
@@ -74,7 +77,7 @@ impl ProductTransactionHandler {
         ProductTransactionHandler {
             family_name: "grid_product".to_string(),
             family_versions: vec!["1".to_string()],
-            namespaces: vec![get_product_prefix()],
+            namespaces: vec![GRID_NAMESPACE.to_string()],
         }
     }
 
@@ -464,24 +467,30 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use grid_sdk::protocol::pike::state::{
-        AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
-        OrganizationListBuilder,
+    use grid_sdk::{
+        agents::addressing::compute_agent_address,
+        organizations::addressing::compute_organization_address,
+        products::addressing::compute_gs1_product_address,
+        protocol::{
+            pike::state::{
+                AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
+                OrganizationListBuilder,
+            },
+            product::{
+                payload::{
+                    ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
+                    ProductDeleteActionBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
+                },
+                state::{Product, ProductBuilder, ProductListBuilder, ProductNamespace},
+            },
+            schema::state::{
+                DataType, PropertyDefinitionBuilder, PropertyValue, PropertyValueBuilder,
+                SchemaBuilder, SchemaListBuilder,
+            },
+        },
+        protos::IntoBytes,
+        schemas::addressing::compute_schema_address,
     };
-    use grid_sdk::protocol::product::payload::{
-        ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
-        ProductDeleteActionBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
-    };
-    use grid_sdk::protocol::product::state::{
-        Product, ProductBuilder, ProductListBuilder, ProductNamespace,
-    };
-    use grid_sdk::protocol::schema::state::{
-        DataType, PropertyDefinitionBuilder, SchemaBuilder, SchemaListBuilder,
-    };
-    use grid_sdk::protocol::schema::state::{
-        DataType as SchemaDataType, PropertyValue, PropertyValueBuilder,
-    };
-    use grid_sdk::protos::IntoBytes;
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
 
@@ -604,7 +613,7 @@ mod tests {
                 .build()
                 .unwrap();
             let org_bytes = org_list.into_bytes().unwrap();
-            let org_address = compute_org_address(org_id);
+            let org_address = compute_organization_address(org_id);
             self.set_state_entry(org_address, org_bytes).unwrap();
         }
 
@@ -623,7 +632,7 @@ mod tests {
                 .build()
                 .unwrap();
             let org_bytes = org_list.into_bytes().unwrap();
-            let org_address = compute_org_address(org_id);
+            let org_address = compute_organization_address(org_id);
             self.set_state_entry(org_address, org_bytes).unwrap();
         }
 
@@ -658,14 +667,14 @@ mod tests {
             let properties = vec![
                 PropertyDefinitionBuilder::new()
                     .with_name("counter".into())
-                    .with_data_type(SchemaDataType::Number)
+                    .with_data_type(DataType::Number)
                     .with_number_exponent(1)
                     .with_required(true)
                     .build()
                     .unwrap(),
                 PropertyDefinitionBuilder::new()
                     .with_name("description".into())
-                    .with_data_type(SchemaDataType::String)
+                    .with_data_type(DataType::String)
                     .with_required(true)
                     .build()
                     .unwrap(),

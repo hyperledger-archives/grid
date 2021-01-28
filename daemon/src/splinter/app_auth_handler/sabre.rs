@@ -19,10 +19,17 @@ use std::convert::TryInto;
 use std::time::Duration;
 
 #[cfg(feature = "pike")]
-use sabre_sdk::protocol::payload::CreateContractActionBuilder;
+use grid_sdk::agents::addressing::PIKE_NAMESPACE;
+#[cfg(feature = "location")]
+use grid_sdk::locations::addressing::GRID_LOCATION_NAMESPACE;
+#[cfg(feature = "product")]
+use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+#[cfg(feature = "schema")]
+use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
+
 use sabre_sdk::protocol::payload::{
-    CreateContractRegistryActionBuilder, CreateNamespaceRegistryActionBuilder,
-    CreateNamespaceRegistryPermissionActionBuilder,
+    CreateContractActionBuilder, CreateContractRegistryActionBuilder,
+    CreateNamespaceRegistryActionBuilder, CreateNamespaceRegistryPermissionActionBuilder,
 };
 use sawtooth_sdk::signing::{
     create_context, secp256k1::Secp256k1PrivateKey, transact::TransactSigner,
@@ -48,25 +55,17 @@ const SCABBARD_SUBMISSION_WAIT_SECS: u64 = 10;
 
 // Pike constants
 #[cfg(feature = "pike")]
-const PIKE_PREFIX: &str = "cad11d";
-#[cfg(feature = "pike")]
 const PIKE_CONTRACT_NAME: &str = "grid-pike";
 
 // Product constants
-#[cfg(feature = "product")]
-const PRODUCT_PREFIX: &str = "621dee02";
 #[cfg(feature = "product")]
 const PRODUCT_CONTRACT_NAME: &str = "grid-product";
 
 // Schema constants
 #[cfg(feature = "schema")]
-const SCHEMA_PREFIX: &str = "621dee01";
-#[cfg(feature = "schema")]
 const SCHEMA_CONTRACT_NAME: &str = "grid-schema";
 
 // Location constants
-#[cfg(feature = "location")]
-const LOCATION_PREFIX: &str = "621dee04";
 #[cfg(feature = "location")]
 const LOCATION_CONTRACT_NAME: &str = "grid-location";
 
@@ -105,12 +104,12 @@ pub fn setup_grid(
     let pike_contract_registry_txn =
         make_contract_registry_txn(&signer, &pike_contract.metadata.name)?;
     #[cfg(feature = "pike")]
-    let pike_contract_txn = make_upload_contract_txn(&signer, &pike_contract, PIKE_PREFIX)?;
+    let pike_contract_txn = make_upload_contract_txn(&signer, &pike_contract, PIKE_NAMESPACE)?;
     #[cfg(feature = "pike")]
-    let pike_namespace_registry_txn = make_namespace_registry_txn(&signer, PIKE_PREFIX)?;
+    let pike_namespace_registry_txn = make_namespace_registry_txn(&signer, PIKE_NAMESPACE)?;
     #[cfg(feature = "pike")]
     let pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &pike_contract, PIKE_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &pike_contract, PIKE_NAMESPACE)?;
 
     // Make Product transactions
     #[cfg(feature = "product")]
@@ -124,18 +123,19 @@ pub fn setup_grid(
         make_contract_registry_txn(&signer, &product_contract.metadata.name)?;
     #[cfg(feature = "product")]
     let product_contract_txn =
-        make_upload_contract_txn(&signer, &product_contract, PRODUCT_PREFIX)?;
+        make_upload_contract_txn(&signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
     #[cfg(feature = "product")]
-    let product_namespace_registry_txn = make_namespace_registry_txn(&signer, PRODUCT_PREFIX)?;
+    let product_namespace_registry_txn =
+        make_namespace_registry_txn(&signer, GRID_PRODUCT_NAMESPACE)?;
     #[cfg(feature = "product")]
     let product_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &product_contract, PRODUCT_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
     #[cfg(feature = "product")]
     let product_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &product_contract, PIKE_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &product_contract, PIKE_NAMESPACE)?;
     #[cfg(feature = "product")]
     let product_schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &product_contract, SCHEMA_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &product_contract, GRID_SCHEMA_NAMESPACE)?;
 
     // Make Location transactions
     #[cfg(feature = "location")]
@@ -149,18 +149,19 @@ pub fn setup_grid(
         make_contract_registry_txn(&signer, &location_contract.metadata.name)?;
     #[cfg(feature = "location")]
     let location_contract_txn =
-        make_upload_contract_txn(&signer, &location_contract, LOCATION_PREFIX)?;
+        make_upload_contract_txn(&signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
     #[cfg(feature = "location")]
-    let location_namespace_registry_txn = make_namespace_registry_txn(&signer, LOCATION_PREFIX)?;
+    let location_namespace_registry_txn =
+        make_namespace_registry_txn(&signer, GRID_LOCATION_NAMESPACE)?;
     #[cfg(feature = "location")]
     let location_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &location_contract, LOCATION_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
     #[cfg(feature = "location")]
     let location_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &location_contract, PIKE_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &location_contract, PIKE_NAMESPACE)?;
     #[cfg(feature = "location")]
     let location_schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &location_contract, SCHEMA_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &location_contract, GRID_SCHEMA_NAMESPACE)?;
 
     // Make schema transactions
     #[cfg(feature = "schema")]
@@ -170,15 +171,17 @@ pub fn setup_grid(
     let schema_contract_registry_txn =
         make_contract_registry_txn(&signer, &schema_contract.metadata.name)?;
     #[cfg(feature = "schema")]
-    let schema_contract_txn = make_upload_contract_txn(&signer, &schema_contract, SCHEMA_PREFIX)?;
+    let schema_contract_txn =
+        make_upload_contract_txn(&signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
     #[cfg(feature = "schema")]
-    let schema_namespace_registry_txn = make_namespace_registry_txn(&signer, SCHEMA_PREFIX)?;
+    let schema_namespace_registry_txn =
+        make_namespace_registry_txn(&signer, GRID_SCHEMA_NAMESPACE)?;
     #[cfg(feature = "schema")]
     let schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &schema_contract, SCHEMA_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
     #[cfg(feature = "schema")]
     let schema_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &schema_contract, PIKE_PREFIX)?;
+        make_namespace_permissions_txn(&signer, &schema_contract, PIKE_NAMESPACE)?;
 
     let txns = vec![
         #[cfg(feature = "pike")]
@@ -267,7 +270,7 @@ fn make_upload_contract_txn(
     contract: &SmartContractArchive,
     contract_prefix: &str,
 ) -> Result<Transaction, AppAuthHandlerError> {
-    let action_addresses = vec![PIKE_PREFIX.into(), contract_prefix.into()];
+    let action_addresses = vec![PIKE_NAMESPACE.into(), contract_prefix.into()];
     Ok(CreateContractActionBuilder::new()
         .with_name(contract.metadata.name.clone())
         .with_version(contract.metadata.version.clone())

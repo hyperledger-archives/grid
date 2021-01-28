@@ -20,6 +20,8 @@ use std::{
 };
 
 use grid_sdk::{
+    agents::addressing::PIKE_NAMESPACE,
+    locations::addressing::GRID_LOCATION_NAMESPACE,
     protocol::{
         location::payload::{
             Action, LocationCreateAction, LocationCreateActionBuilder, LocationDeleteAction,
@@ -37,7 +39,7 @@ use crate::error::CliError;
 use crate::http::submit_batches;
 use crate::{
     actions::schemas::{self, get_schema, GridPropertyDefinitionSlice},
-    transaction::{location_batch_builder, GRID_LOCATION_NAMESPACE, PIKE_NAMESPACE},
+    transaction::location_batch_builder,
 };
 
 pub fn do_create_location(

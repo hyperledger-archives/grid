@@ -38,7 +38,7 @@ log = "0.4"
 flexi_logger = "0.14"
 sawtooth-sdk = "0.4"
 sabre-sdk = "0.5"
-grid-sdk = { path = "../sdk", features = ["database"] }
+grid-sdk = { path = "../sdk", features = ["database", "pike", "schema", "product", "location"] }
 rust-crypto = "0.2"
 protobuf = "2.19"
 users = "0.9"

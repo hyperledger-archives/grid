@@ -13,6 +13,7 @@
 // limitations under the License.
 #[macro_use]
 extern crate cfg_if;
+extern crate grid_sdk;
 cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
         #[macro_use]

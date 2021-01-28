@@ -23,17 +23,16 @@ cfg_if! {
 }
 
 use grid_sdk::{
+    agents::addressing::compute_agent_address,
+    locations::addressing::compute_gs1_location_address,
+    organizations::addressing::compute_organization_address,
     protocol::{
         location::state::{Location, LocationList, LocationListBuilder},
         pike::state::{Agent, AgentList, Organization, OrganizationList},
         schema::state::{Schema, SchemaList},
     },
     protos::{FromBytes, IntoBytes},
-};
-
-use crate::addressing::{
-    compute_agent_address, compute_gs1_location_address, compute_org_address,
-    compute_schema_address,
+    schemas::addressing::compute_schema_address,
 };
 
 pub struct LocationState<'a> {
@@ -197,7 +196,7 @@ impl<'a> LocationState<'a> {
     }
 
     pub fn get_organization(&self, org_id: &str) -> Result<Option<Organization>, ApplyError> {
-        let address = compute_org_address(org_id);
+        let address = compute_organization_address(org_id);
         match self.context.get_state_entry(&address)? {
             Some(packed) => {
                 let orgs: OrganizationList = match OrganizationList::from_bytes(packed.as_slice()) {

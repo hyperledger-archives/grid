@@ -393,8 +393,6 @@ mod tests {
 
     use sawtooth_sdk::messages::events::Event_Attribute;
 
-    const GRID_NAMESPACE: &str = "621dee";
-
     /// Verify that a valid set of Sawtooth events can be converted to a `CommitEvent`.
     #[test]
     fn sawtooth_events_to_commit_event() {
@@ -402,16 +400,18 @@ mod tests {
         let block_num = 1;
 
         let grid_state_changes = vec![
+            #[cfg(feature = "schema")]
             create_state_change(format!("{}01", GRID_NAMESPACE), Some(vec![0x01])),
+            #[cfg(feature = "product")]
             create_state_change(format!("{}02", GRID_NAMESPACE), Some(vec![0x02])),
-            create_state_change(format!("{}03", GRID_NAMESPACE), None),
+            #[cfg(feature = "location")]
+            create_state_change(format!("{}04", GRID_NAMESPACE), None),
         ];
         let non_grid_state_changes = vec![create_state_change("ef".into(), None)];
 
         let sawtooth_events = vec![
             create_block_event(block_id, block_num),
-            create_state_change_event(&grid_state_changes[0..2]),
-            create_state_change_event(&grid_state_changes[2..]),
+            create_state_change_event(&grid_state_changes[0..]),
             create_state_change_event(&non_grid_state_changes[..]),
         ];
 
@@ -462,7 +462,8 @@ mod tests {
 
     fn create_state_change(address: String, value: Option<Vec<u8>>) -> SawtoothStateChange {
         let mut state_change = SawtoothStateChange::new();
-        state_change.set_address(address);
+        state_change.set_address(address.clone());
+
         match value {
             Some(value) => {
                 state_change.set_field_type(SawtoothStateChange_Type::SET);

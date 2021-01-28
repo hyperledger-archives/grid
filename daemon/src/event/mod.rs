@@ -21,37 +21,30 @@ mod error;
 use std::cell::RefCell;
 use std::thread;
 
+#[cfg(feature = "pike")]
+use grid_sdk::agents::addressing::PIKE_NAMESPACE;
+
+cfg_if! {
+    if #[cfg(feature = "schema")] {
+        use grid_sdk::schemas::addressing::GRID_NAMESPACE;
+    } else if #[cfg(feature = "product")] {
+        use grid_sdk::products::addressing::GRID_NAMESPACE;
+    } else if #[cfg(feature = "location")] {
+        use grid_sdk::locations::addressing::GRID_NAMESPACE;
+    }
+}
+
+#[cfg(feature = "track-and-trace")]
+use grid_sdk::track_and_trace::addressing::TRACK_AND_TRACE_NAMESPACE;
+
 use grid_sdk::commits::store::{CommitEvent as DbCommitEvent, StateChange as DbStateChange};
 
 pub use self::error::{EventError, EventIoError, EventProcessorError};
 
-#[cfg(feature = "pike")]
-const PIKE_NAMESPACE: &str = "cad11d";
-#[cfg(feature = "pike")]
-const PIKE_AGENT: &str = "cad11d00";
-#[cfg(feature = "pike")]
-const PIKE_ORG: &str = "cad11d01";
-
-const GRID_NAMESPACE: &str = "621dee";
-#[cfg(feature = "schema")]
-const GRID_SCHEMA: &str = "621dee01";
-#[cfg(feature = "product")]
-const GRID_PRODUCT: &str = "621dee02";
-#[cfg(feature = "location")]
-const GRID_LOCATION: &str = "621dee04";
-
-#[cfg(feature = "track-and-trace")]
-const TRACK_AND_TRACE_NAMESPACE: &str = "a43b46";
-#[cfg(feature = "track-and-trace")]
-const TRACK_AND_TRACE_PROPERTY: &str = "a43b46ea";
-#[cfg(feature = "track-and-trace")]
-const TRACK_AND_TRACE_PROPOSAL: &str = "a43b46aa";
-#[cfg(feature = "track-and-trace")]
-const TRACK_AND_TRACE_RECORD: &str = "a43b46ec";
-
 const ALL_GRID_NAMESPACES: &[&str] = &[
     #[cfg(feature = "pike")]
     PIKE_NAMESPACE,
+    #[cfg(any(feature = "schema", feature = "product", feature = "location"))]
     GRID_NAMESPACE,
     #[cfg(feature = "track-and-trace")]
     TRACK_AND_TRACE_NAMESPACE,

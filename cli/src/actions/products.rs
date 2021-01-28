@@ -14,9 +14,9 @@
 
 use crate::actions::schemas::{self, get_schema, GridPropertyDefinitionSlice};
 use crate::http::submit_batches;
-use crate::transaction::{
-    product_batch_builder, GRID_PRODUCT_NAMESPACE, GRID_SCHEMA_NAMESPACE, PIKE_NAMESPACE,
-};
+use crate::transaction::product_batch_builder;
+use grid_sdk::agents::addressing::PIKE_NAMESPACE;
+use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
     ProductPayloadBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
@@ -24,6 +24,7 @@ use grid_sdk::protocol::product::payload::{
 use grid_sdk::protocol::product::state::ProductNamespace;
 use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder};
 use grid_sdk::protos::IntoProto;
+use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
 use reqwest::Client;
 
 use crate::error::CliError;

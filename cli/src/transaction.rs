@@ -35,19 +35,14 @@ use crate::key;
 
 use crate::CliError;
 
-pub const PIKE_NAMESPACE: &str = "cad11d";
 const PIKE_FAMILY_NAME: &str = "pike";
 const PIKE_FAMILY_VERSION: &str = "1";
 
-pub const GRID_SCHEMA_NAMESPACE: &str = "621dee01";
 const GRID_SCHEMA_FAMILY_NAME: &str = "grid_schema";
 const GRID_SCHEMA_FAMILY_VERSION: &str = "1";
 
-pub const GRID_PRODUCT_NAMESPACE: &str = "621dee02";
 const GRID_PRODUCT_FAMILY_NAME: &str = "grid_product";
 const GRID_PRODUCT_FAMILY_VERSION: &str = "1";
-
-pub const GRID_LOCATION_NAMESPACE: &str = "621dee04";
 
 const SABRE_FAMILY_NAME: &str = "sabre";
 const SABRE_FAMILY_VERSION: &str = "0.5";
