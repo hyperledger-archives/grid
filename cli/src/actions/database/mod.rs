@@ -64,13 +64,18 @@ impl FromStr for ConnectionUri {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            #[cfg(feature = "postgres")]
-            _ if s.starts_with("postgres://") => Ok(ConnectionUri::Postgres(s.into())),
-            #[cfg(feature = "sqlite")]
-            _ => Ok(ConnectionUri::Sqlite(s.into())),
-            #[cfg(not(feature = "sqlite"))]
-            _ => Err(format!("No compatible connection type: {}", s)),
+        #[cfg(feature = "postgres")]
+        if s.starts_with("postgres://") {
+            return Ok(ConnectionUri::Postgres(s.into()));
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            Ok(ConnectionUri::Sqlite(s.into()))
+        }
+        #[cfg(not(feature = "sqlite"))]
+        {
+            Err(format!("No compatible connection type: {}", s))
         }
     }
 }
