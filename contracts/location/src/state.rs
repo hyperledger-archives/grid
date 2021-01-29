@@ -23,12 +23,11 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    agents::addressing::compute_agent_address,
     locations::addressing::compute_gs1_location_address,
     organizations::addressing::compute_organization_address,
     protocol::{
         location::state::{Location, LocationList, LocationListBuilder},
-        pike::state::{Agent, AgentList, Organization, OrganizationList},
+        pike::state::{Organization, OrganizationList},
         schema::state::{Schema, SchemaList},
     },
     protos::{FromBytes, IntoBytes},
@@ -168,31 +167,6 @@ impl<'a> LocationState<'a> {
         }
 
         Ok(())
-    }
-
-    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
-        let address = compute_agent_address(public_key);
-        match self.context.get_state_entry(&address)? {
-            Some(packed) => {
-                let agents: AgentList = match AgentList::from_bytes(packed.as_slice()) {
-                    Ok(agents) => agents,
-                    Err(err) => {
-                        return Err(ApplyError::InvalidTransaction(format!(
-                            "Cannot deserialize agent list: {:?}",
-                            err,
-                        )));
-                    }
-                };
-
-                for agent in agents.agents() {
-                    if agent.public_key() == public_key {
-                        return Ok(Some(agent.clone()));
-                    }
-                }
-                Ok(None)
-            }
-            None => Ok(None),
-        }
     }
 
     pub fn get_organization(&self, org_id: &str) -> Result<Option<Organization>, ApplyError> {
