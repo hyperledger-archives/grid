@@ -20,6 +20,7 @@ use std::io;
 #[derive(Debug)]
 pub enum CliError {
     /// A general error encountered by a subcommand.
+    #[cfg(any(feature = "postgres", feature = "sqlite"))]
     ActionError(String),
     LoggingInitializationError(Box<flexi_logger::FlexiLoggerError>),
     InvalidYamlError(String),
@@ -37,6 +38,7 @@ pub enum CliError {
 impl StdError for CliError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
+            #[cfg(any(feature = "postgres", feature = "sqlite"))]
             CliError::ActionError(_) => None,
             CliError::LoggingInitializationError(err) => Some(err),
             CliError::InvalidYamlError(_) => None,
@@ -56,6 +58,7 @@ impl StdError for CliError {
 impl std::fmt::Display for CliError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
+            #[cfg(any(feature = "postgres", feature = "sqlite"))]
             CliError::ActionError(ref err) => write!(f, "Subcommand encountered an error: {}", err),
             CliError::UserError(ref err) => write!(f, "Error: {}", err),
             CliError::InvalidYamlError(ref err) => write!(f, "InvalidYamlError: {}", err),

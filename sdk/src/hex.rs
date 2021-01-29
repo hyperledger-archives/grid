@@ -13,17 +13,22 @@
 // limitations under the License.
 
 use std::error::Error;
-use std::fmt::{self, Write};
+use std::fmt;
+#[cfg(feature = "pike")]
+use std::fmt::Write;
 
 use serde::de;
-use serde::{Deserializer, Serializer};
+use serde::Deserializer;
+#[cfg(feature = "pike")]
+use serde::Serializer;
 
 /// Converts a byte array into a hex string
 ///
 /// # Arguments
 ///
 ///  * `bytes`: the byte array to convert
-pub fn to_hex(bytes: &[u8]) -> String {
+#[cfg(feature = "pike")]
+fn to_hex(bytes: &[u8]) -> String {
     let mut buf = String::new();
     for b in bytes {
         write!(&mut buf, "{:02x}", b).expect("Unable to write to string");
@@ -64,6 +69,7 @@ pub fn parse_hex(hex: &str) -> Result<Vec<u8>, HexError> {
 ///
 ///  * `data`: the byte array to convert
 ///  * `serializer`: the serializer to use
+#[cfg(feature = "pike")]
 pub fn as_hex<S>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -134,7 +140,7 @@ impl fmt::Display for HexError {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, features = "pike"))]
 mod tests {
     use super::*;
 

@@ -56,9 +56,23 @@ default = [
     "postgres",
 ]
 
-stable = ["location", "pike", "product", "schema", "default"]
+stable = [
+    # The stable feature extends default:
+    "default",
+    # The following features are stable:
+    "location",
+    "pike",
+    "product",
+    "schema",
+]
 
-experimental = ["splinter", "stable", "sqlite"]
+experimental = [
+    # The experimental feature extends stable:
+    "stable",
+    # The following features are experimental:
+    "splinter",
+    "sqlite",
+]
 
 database = ["diesel"]
 postgres = [
@@ -68,10 +82,10 @@ sqlite = [
     "diesel/sqlite",
 ]
 
-pike = []
-schema = ["pike"]
-product = ["pike", "schema"]
-location = ["pike", "schema"]
-sawtooth = []
-splinter = ["admin-keygen"]
 admin-keygen = []
+location = ["pike", "schema"]
+pike = []
+product = ["pike", "schema"]
+sawtooth = []
+schema = ["pike"]
+splinter = ["admin-keygen"]

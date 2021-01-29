@@ -15,9 +15,11 @@
 #[cfg(feature = "sqlite")]
 mod sqlite;
 
+#[cfg(feature = "postgres")]
 use diesel::{connection::Connection as _, pg::PgConnection};
 use std::str::FromStr;
 
+#[cfg(feature = "postgres")]
 use grid_sdk::migrations::run_postgres_migrations;
 
 use crate::error::CliError;
@@ -25,8 +27,12 @@ use crate::error::CliError;
 #[cfg(feature = "sqlite")]
 use self::sqlite::sqlite_migrations;
 
+// Allow unused_variables here because database_url is not used if no database is configured
+#[allow(unused_variables)]
 pub fn run_migrations(database_url: &str) -> Result<(), CliError> {
+    #[cfg(any(feature = "postgres", feature = "sqlite"))]
     match ConnectionUri::from_str(&database_url).map_err(CliError::ActionError)? {
+        #[cfg(feature = "postgres")]
         ConnectionUri::Postgres(database_url) => {
             let connection = PgConnection::establish(&database_url).map_err(|err| {
                 CliError::ActionError(format!(
@@ -58,13 +64,18 @@ impl FromStr for ConnectionUri {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            #[cfg(feature = "postgres")]
-            _ if s.starts_with("postgres://") => Ok(ConnectionUri::Postgres(s.into())),
-            #[cfg(feature = "sqlite")]
-            _ => Ok(ConnectionUri::Sqlite(s.into())),
-            #[cfg(not(feature = "sqlite"))]
-            _ => Err(format!("No compatible connection type: {}", s)),
+        #[cfg(feature = "postgres")]
+        if s.starts_with("postgres://") {
+            return Ok(ConnectionUri::Postgres(s.into()));
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            Ok(ConnectionUri::Sqlite(s.into()))
+        }
+        #[cfg(not(feature = "sqlite"))]
+        {
+            Err(format!("No compatible connection type: {}", s))
         }
     }
 }
