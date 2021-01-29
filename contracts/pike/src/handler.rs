@@ -32,6 +32,7 @@ cfg_if! {
 use grid_sdk::{
     agents::addressing::{compute_agent_address, PIKE_NAMESPACE},
     organizations::addressing::compute_organization_address,
+    permissions::PermissionChecker,
     protos::{
         pike_payload::{
             CreateAgentAction, CreateOrganizationAction, PikePayload, PikePayload_Action as Action,
@@ -48,12 +49,12 @@ pub struct PikeTransactionHandler {
 }
 
 pub struct PikeState<'a> {
-    context: &'a mut dyn TransactionContext,
+    context: &'a dyn TransactionContext,
 }
 
 impl<'a> PikeState<'a> {
-    pub fn new(context: &'a mut dyn TransactionContext) -> PikeState {
-        PikeState { context }
+    pub fn new(context: &'a dyn TransactionContext) -> Self {
+        Self { context }
     }
 
     pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
@@ -240,18 +241,32 @@ impl TransactionHandler for PikeTransactionHandler {
 
         let signer = request.get_header().get_signer_public_key();
         let mut state = PikeState::new(context);
+        let perm_checker = PermissionChecker::new(context);
 
         info!("Pike Payload {:?}", payload.get_action(),);
 
         match payload.action {
-            Action::CREATE_AGENT => create_agent(payload.get_create_agent(), signer, &mut state),
-            Action::UPDATE_AGENT => update_agent(payload.get_update_agent(), signer, &mut state),
+            Action::CREATE_AGENT => create_agent(
+                payload.get_create_agent(),
+                signer,
+                &mut state,
+                &perm_checker,
+            ),
+            Action::UPDATE_AGENT => update_agent(
+                payload.get_update_agent(),
+                signer,
+                &mut state,
+                &perm_checker,
+            ),
             Action::CREATE_ORGANIZATION => {
                 create_org(payload.get_create_organization(), signer, &mut state)
             }
-            Action::UPDATE_ORGANIZATION => {
-                update_org(payload.get_update_organization(), signer, &mut state)
-            }
+            Action::UPDATE_ORGANIZATION => update_org(
+                payload.get_update_organization(),
+                signer,
+                &mut state,
+                &perm_checker,
+            ),
             _ => Err(ApplyError::InvalidTransaction("Invalid action".into())),
         }
     }
@@ -261,6 +276,7 @@ fn create_agent(
     payload: &CreateAgentAction,
     signer: &str,
     state: &mut PikeState,
+    perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     if payload.get_public_key().is_empty() {
         return Err(ApplyError::InvalidTransaction("Public key required".into()));
@@ -273,7 +289,7 @@ fn create_agent(
     }
 
     // verify the signer of the transaction is authorized to create agent
-    is_admin(signer, payload.get_org_id(), state)?;
+    is_admin(signer, payload.get_org_id(), perm_checker)?;
 
     // Check if agent already exists
     match state.get_agent(payload.get_public_key()) {
@@ -312,6 +328,7 @@ fn update_agent(
     payload: &UpdateAgentAction,
     signer: &str,
     state: &mut PikeState,
+    perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     if payload.get_public_key().is_empty() {
         return Err(ApplyError::InvalidTransaction("Public key required".into()));
@@ -322,8 +339,6 @@ fn update_agent(
             "Organization ID required".into(),
         ));
     }
-    // verify the signer of the transaction is authorized to update agent
-    is_admin(signer, payload.get_org_id(), state)?;
 
     // make sure agent already exists
     let mut agent = match state.get_agent(payload.get_public_key()) {
@@ -341,6 +356,8 @@ fn update_agent(
             )))
         }
     };
+
+    is_admin(signer, payload.get_org_id(), perm_checker)?;
 
     if !payload.get_roles().is_empty() {
         // verify that an admin is not removing the role admin from themselves.
@@ -458,6 +475,7 @@ fn update_org(
     payload: &UpdateOrganizationAction,
     signer: &str,
     state: &mut PikeState,
+    perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     if payload.get_id().is_empty() {
         return Err(ApplyError::InvalidTransaction(
@@ -466,7 +484,7 @@ fn update_org(
     }
 
     // verify the signer of the transaction is authorized to update organization
-    is_admin(signer, payload.get_id(), state)?;
+    is_admin(signer, payload.get_id(), perm_checker)?;
 
     // Make sure the organization already exists
     let mut organization = match state.get_organization(payload.get_id()) {
@@ -499,40 +517,20 @@ fn update_org(
     state.set_organization(payload.get_id(), organization)
 }
 
-pub fn is_admin(signer: &str, org_id: &str, state: &mut PikeState) -> Result<(), ApplyError> {
-    let admin = match state.get_agent(signer) {
-        Ok(None) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Signer is not an agent: {}",
-                signer,
-            )))
-        }
-        Ok(Some(admin)) => admin,
-        Err(err) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Failed to retrieve state: {}",
-                err,
-            )))
-        }
-    };
-
-    if admin.get_org_id() != org_id {
+pub fn is_admin(
+    signer: &str,
+    org_id: &str,
+    perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    let has_perm = perm_checker
+        .has_permission(signer, "admin", org_id)
+        .map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Permission check failed: {}", err))
+        })?;
+    if !has_perm {
         return Err(ApplyError::InvalidTransaction(format!(
-            "Signer is not associated with the organization: {}",
-            signer,
-        )));
-    }
-    if !admin.roles.contains(&"admin".to_string()) {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Signer is not an admin: {}",
-            signer,
-        )));
-    };
-
-    if !admin.active {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Admin is not currently an active agent: {}",
-            signer,
+            "The signer \"{}\" does not have the \"admin\" permission for org \"{}\"",
+            signer, org_id
         )));
     }
     Ok(())
