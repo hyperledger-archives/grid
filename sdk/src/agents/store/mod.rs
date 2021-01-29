@@ -71,7 +71,7 @@ pub trait AgentStore: Send + Sync {
         service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError>;
 
-    ///  Updates an agent in the underlying storage
+    /// Updates an agent in the underlying storage
     ///
     /// # Arguments
     ///

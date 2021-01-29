@@ -49,7 +49,7 @@ pub trait OrganizationStore: Send + Sync {
     ///
     /// # Arguments
     ///
-    ///  * `service_id` - The service id to list organizations for
+    ///  * `service_id` - The service ID to list organizations for
     fn list_organizations(
         &self,
         service_id: Option<&str>,
@@ -59,8 +59,8 @@ pub trait OrganizationStore: Send + Sync {
     ///
     /// # Arguments
     ///
-    ///  * `org_id` - This organization id to fetch
-    ///  * `service_id` - The service id of the organization to fetch
+    ///  * `org_id` - This organization ID to fetch
+    ///  * `service_id` - The service ID of the organization to fetch
     fn fetch_organization(
         &self,
         org_id: &str,

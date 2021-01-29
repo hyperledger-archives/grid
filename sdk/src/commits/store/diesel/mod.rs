@@ -44,8 +44,6 @@ impl<C: diesel::Connection> DieselCommitStore<C> {
     /// # Arguments
     ///
     ///  * `connection_pool`: connection pool to the database
-    // Allow dead code if diesel feature is not enabled
-    #[allow(dead_code)]
     pub fn new(connection_pool: Pool<ConnectionManager<C>>) -> Self {
         DieselCommitStore { connection_pool }
     }
