@@ -22,13 +22,18 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protocol::pike::state::{Agent, AgentList};
-use grid_sdk::protocol::pike::state::{Organization, OrganizationList};
-use grid_sdk::protocol::product::state::{Product, ProductList, ProductListBuilder};
-use grid_sdk::protocol::schema::state::{Schema, SchemaList};
-use grid_sdk::protos::{FromBytes, IntoBytes};
-
-use crate::addressing::*;
+use grid_sdk::{
+    agents::addressing::compute_agent_address,
+    organizations::addressing::compute_organization_address,
+    products::addressing::compute_gs1_product_address,
+    protocol::{
+        pike::state::{Agent, AgentList, Organization, OrganizationList},
+        product::state::{Product, ProductList, ProductListBuilder},
+        schema::state::{Schema, SchemaList},
+    },
+    protos::{FromBytes, IntoBytes},
+    schemas::addressing::compute_schema_address,
+};
 
 pub struct ProductState<'a> {
     context: &'a dyn TransactionContext,
@@ -197,7 +202,7 @@ impl<'a> ProductState<'a> {
     }
 
     pub fn get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
-        let address = compute_org_address(id);
+        let address = compute_organization_address(id);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {

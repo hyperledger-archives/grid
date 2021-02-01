@@ -33,12 +33,10 @@ use grid_sdk::protocol::schema::payload::{
 };
 use grid_sdk::protocol::schema::state::SchemaBuilder;
 use grid_sdk::protos::FromBytes;
+use grid_sdk::schemas::addressing::GRID_NAMESPACE;
 
 use crate::payload::validate_payload;
 use crate::state::GridSchemaState;
-
-pub const GRID_NAMESPACE: &str = "621dee";
-pub const PIKE_NAMESPACE: &str = "cad11d";
 
 #[cfg(target_arch = "wasm32")]
 // Sabre apply must return a bool
@@ -262,16 +260,21 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
-    use grid_sdk::protocol::schema::payload::{SchemaCreateBuilder, SchemaUpdateBuilder};
-    use grid_sdk::protocol::schema::state::{
-        DataType, PropertyDefinitionBuilder, SchemaBuilder, SchemaListBuilder,
+    use grid_sdk::{
+        agents::addressing::compute_agent_address,
+        protocol::{
+            pike::state::{AgentBuilder, AgentListBuilder},
+            schema::{
+                payload::{SchemaCreateBuilder, SchemaUpdateBuilder},
+                state::{DataType, PropertyDefinitionBuilder, SchemaBuilder, SchemaListBuilder},
+            },
+        },
+        protos::IntoBytes,
+        schemas::addressing::compute_schema_address,
     };
-    use grid_sdk::protos::IntoBytes;
+
     use sawtooth_sdk::processor::handler::ApplyError;
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
-
-    use crate::state::{compute_agent_address, compute_schema_address};
 
     #[derive(Default)]
     /// A MockTransactionContext that can be used to test GridSchemaState

@@ -28,6 +28,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
+    locations::addressing::GRID_NAMESPACE,
     permissions::PermissionChecker,
     protocol::location::{
         payload::{
@@ -40,7 +41,7 @@ use grid_sdk::{
 
 use grid_sdk::protos::FromBytes;
 
-use crate::{addressing::GRID_NAMESPACE, state::LocationState};
+use crate::state::LocationState;
 
 #[cfg(target_arch = "wasm32")]
 fn apply(
@@ -465,21 +466,28 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use grid_sdk::protocol::location::payload::{
-        LocationCreateActionBuilder, LocationDeleteActionBuilder, LocationUpdateActionBuilder,
+    use grid_sdk::{
+        agents::addressing::compute_agent_address,
+        organizations::addressing::compute_organization_address,
+        protocol::{
+            location::payload::{
+                LocationCreateActionBuilder, LocationDeleteActionBuilder,
+                LocationUpdateActionBuilder,
+            },
+            pike::state::{
+                AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
+                OrganizationListBuilder,
+            },
+            schema::state::{
+                DataType, PropertyDefinitionBuilder, PropertyValueBuilder, SchemaBuilder,
+                SchemaListBuilder,
+            },
+        },
+        protos::IntoBytes,
+        schemas::addressing::compute_schema_address,
     };
-    use grid_sdk::protocol::pike::state::{
-        AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
-        OrganizationListBuilder,
-    };
-    use grid_sdk::protocol::schema::state::{
-        DataType, PropertyDefinitionBuilder, PropertyValueBuilder, SchemaBuilder, SchemaListBuilder,
-    };
-    use grid_sdk::protos::IntoBytes;
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
-
-    use crate::addressing::{compute_agent_address, compute_org_address, compute_schema_address};
 
     #[derive(Default, Debug)]
     struct MockTransactionContext {
@@ -508,7 +516,7 @@ mod tests {
                 .build()
                 .unwrap();
             let prefix_org_bytes = prefix_org_list.into_bytes().unwrap();
-            let prefix_org_address = compute_org_address("prefix_org");
+            let prefix_org_address = compute_organization_address("prefix_org");
 
             entries.push((prefix_org_address, prefix_org_bytes));
 
@@ -524,7 +532,7 @@ mod tests {
                 .build()
                 .unwrap();
             let no_prefix_org_bytes = no_prefix_org_list.into_bytes().unwrap();
-            let no_prefix_org_address = compute_org_address("no_prefix_org");
+            let no_prefix_org_address = compute_organization_address("no_prefix_org");
 
             entries.push((no_prefix_org_address, no_prefix_org_bytes));
 

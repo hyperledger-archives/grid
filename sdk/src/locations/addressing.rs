@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod addressing;
-pub mod store;
+pub const GRID_NAMESPACE: &str = "621dee";
+pub const LOCATION_PREFIX: &str = "04";
+pub const GRID_LOCATION_NAMESPACE: &str = "621dee04";
 
-#[cfg(feature = "diesel")]
-pub use store::diesel::DieselOrganizationStore;
-pub use store::memory::MemoryOrganizationStore;
-pub use store::OrganizationStore;
+pub fn compute_gs1_location_address(gln: &str) -> String {
+    //621ddee (grid namespace) + 04 (location namespace) + 01 (gs1 namespace)
+    String::from(GRID_NAMESPACE)
+        + LOCATION_PREFIX
+        + "01000000000000000000000000000000000000000000000"
+        + gln
+        + "00"
+}

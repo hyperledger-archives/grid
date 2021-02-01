@@ -17,6 +17,9 @@
  */
 
 #[macro_use]
+#[cfg(feature = "event")]
+extern crate cfg_if;
+#[macro_use]
 extern crate clap;
 extern crate diesel;
 extern crate diesel_migrations;

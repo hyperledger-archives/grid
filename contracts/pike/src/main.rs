@@ -39,7 +39,6 @@ cfg_if! {
     }
 }
 
-pub mod addresser;
 pub mod handler;
 
 //use sawtooth_sdk::processor::TransactionProcessor;

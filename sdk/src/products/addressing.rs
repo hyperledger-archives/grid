@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod addressing;
-pub mod store;
+pub const GRID_NAMESPACE: &str = "621dee";
+pub const PRODUCT_PREFIX: &str = "02";
+pub const GRID_PRODUCT_NAMESPACE: &str = "621dee02";
 
-#[cfg(feature = "diesel")]
-pub use store::diesel::DieselOrganizationStore;
-pub use store::memory::MemoryOrganizationStore;
-pub use store::OrganizationStore;
+/// Computes the address of a GS1 product based on its GTIN
+pub fn compute_gs1_product_address(gtin: &str) -> String {
+    // 621ddee (grid namespace) + 02 (product namespace) + 01 (gs1 namespace)
+    String::from(GRID_NAMESPACE)
+        + PRODUCT_PREFIX
+        + "01"
+        + "00000000000000000000000000000000000000000000"
+        + &format!("{:0>14}", gtin)
+        + "00"
+}

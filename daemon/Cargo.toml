@@ -34,6 +34,7 @@ actix-rt = "1.0"
 actix-web = "2.0"
 base64 = "0.10"
 byteorder = "1"
+cfg-if = "0.1"
 clap = "2"
 ctrlc = "3.0"
 diesel = { version = "1.0.0", features = ["r2d2", "serde_json"] }

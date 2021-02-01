@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha512;
 use std::error::Error;
 use std::fmt;
 
@@ -27,17 +25,9 @@ cfg_if! {
     }
 }
 
+use crate::agents::addressing::compute_agent_address;
 use crate::protocol::pike::state::{Agent, AgentList};
 use crate::protos::{FromBytes, ProtoConversionError};
-
-const PIKE_NAMESPACE: &str = "cad11d";
-const PIKE_AGENT_RESOURCE: &str = "00";
-
-fn compute_agent_address(public_key: &str) -> String {
-    let mut sha = Sha512::new();
-    sha.input(public_key.as_bytes());
-    String::from(PIKE_NAMESPACE) + PIKE_AGENT_RESOURCE + &sha.result_str()[..62].to_string()
-}
 
 #[derive(Debug)]
 pub enum PermissionCheckerError {

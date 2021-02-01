@@ -21,7 +21,7 @@ authors = ["Cargill Incorporated"]
 protobuf = "2.19"
 cfg-if = "0.1"
 hex = "0.3.1"
-grid-sdk = {path = "../../sdk"}
+grid-sdk = {path = "../../sdk", features = ["pike"]}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rust-crypto-wasm = "0.3"

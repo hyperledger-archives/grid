@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha512;
-use grid_sdk::protocol::pike::state::{Agent, AgentList};
-use grid_sdk::protocol::schema::state::{Schema, SchemaList, SchemaListBuilder};
-use grid_sdk::protos::{FromBytes, IntoBytes};
+use grid_sdk::{
+    agents::addressing::compute_agent_address,
+    protocol::{
+        pike::state::{Agent, AgentList},
+        schema::state::{Schema, SchemaList, SchemaListBuilder},
+    },
+    protos::{FromBytes, IntoBytes},
+    schemas::addressing::compute_schema_address,
+};
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -26,28 +30,6 @@ cfg_if! {
         use sawtooth_sdk::processor::handler::ApplyError;
         use sawtooth_sdk::processor::handler::TransactionContext;
     }
-}
-
-pub const GRID_NAMESPACE: &str = "621dee";
-pub const GRID_SCHEMA_NAMESPACE: &str = "01";
-
-pub const PIKE_NAMESPACE: &str = "cad11d";
-pub const PIKE_AGENT_NAMESPACE: &str = "00";
-
-/// Computes the address a Pike Agent is stored at based on its public_key
-pub fn compute_agent_address(public_key: &str) -> String {
-    let mut sha = Sha512::new();
-    sha.input(public_key.as_bytes());
-
-    String::from(PIKE_NAMESPACE) + PIKE_AGENT_NAMESPACE + &sha.result_str()[..62].to_string()
-}
-
-/// Computes the address a Grid Schema is stored at based on its name
-pub fn compute_schema_address(name: &str) -> String {
-    let mut sha = Sha512::new();
-    sha.input(name.as_bytes());
-
-    String::from(GRID_NAMESPACE) + GRID_SCHEMA_NAMESPACE + &sha.result_str()[..62].to_string()
 }
 
 /// GridSchemaState is in charge of handling getting and setting state.

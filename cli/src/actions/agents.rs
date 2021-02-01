@@ -17,8 +17,9 @@
 
 use crate::error::CliError;
 use crate::http::submit_batches;
-use crate::transaction::{pike_batch_builder, PIKE_NAMESPACE};
+use crate::transaction::pike_batch_builder;
 use grid_sdk::{
+    agents::addressing::PIKE_NAMESPACE,
     protocol::pike::payload::{Action, CreateAgentAction, PikePayloadBuilder, UpdateAgentAction},
     protos::IntoProto,
 };

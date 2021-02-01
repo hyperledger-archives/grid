@@ -28,13 +28,17 @@ use grid_sdk::protocol::schema::state::PropertyValue;
 use grid_sdk::protos::FromBytes;
 #[cfg(feature = "pike")]
 use grid_sdk::{
-    agents::{store::Agent, AgentStore, DieselAgentStore},
-    organizations::{store::Organization, DieselOrganizationStore, OrganizationStore},
+    agents::{addressing::PIKE_AGENT_NAMESPACE, store::Agent, AgentStore, DieselAgentStore},
+    organizations::{
+        addressing::PIKE_ORGANIZATION_NAMESPACE, store::Organization, DieselOrganizationStore,
+        OrganizationStore,
+    },
     protocol::pike::state::{AgentList, OrganizationList},
 };
 #[cfg(feature = "location")]
 use grid_sdk::{
     locations::{
+        addressing::GRID_LOCATION_NAMESPACE,
         store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute},
         DieselLocationStore, LocationStore,
     },
@@ -43,6 +47,7 @@ use grid_sdk::{
 #[cfg(feature = "product")]
 use grid_sdk::{
     products::{
+        addressing::GRID_PRODUCT_NAMESPACE,
         store::{
             LatLongValue as ProductLatLongValue, Product, PropertyValue as ProductPropertyValue,
         },
@@ -57,6 +62,10 @@ use grid_sdk::{
         PropertyList, PropertyPageList, ProposalList, RecordList, ReportedValue,
     },
     track_and_trace::{
+        addressing::{
+            TRACK_AND_TRACE_PROPERTY_NAMESPACE, TRACK_AND_TRACE_PROPOSAL_NAMESPACE,
+            TRACK_AND_TRACE_RECORD_NAMESPACE,
+        },
         store::{
             AssociatedAgent, LatLongValue as TntLatLongValue, Property, Proposal, Record,
             ReportedValue as StoreReportedValue, Reporter,
@@ -68,6 +77,7 @@ use grid_sdk::{
 use grid_sdk::{
     protocol::schema::state::{PropertyDefinition, SchemaList},
     schemas::{
+        addressing::GRID_SCHEMA_NAMESPACE,
         store::{PropertyDefinition as StorePropertyDefinition, Schema},
         DieselSchemaStore, SchemaStore,
     },
@@ -78,17 +88,7 @@ use std::i64;
 
 use crate::database::ConnectionPool;
 
-#[cfg(feature = "location")]
-use super::GRID_LOCATION;
-#[cfg(feature = "product")]
-use super::GRID_PRODUCT;
-#[cfg(feature = "schema")]
-use super::GRID_SCHEMA;
 use super::{CommitEvent, EventError, EventHandler, StateChange, IGNORED_NAMESPACES};
-#[cfg(feature = "pike")]
-use super::{PIKE_AGENT, PIKE_ORG};
-#[cfg(feature = "track-and-trace")]
-use super::{TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD};
 
 #[cfg(any(
     feature = "pike",
@@ -485,7 +485,7 @@ fn state_change_to_db_operation(
     match state_change {
         StateChange::Set { key, value } => match &key[0..8] {
             #[cfg(feature = "pike")]
-            PIKE_AGENT => {
+            PIKE_AGENT_NAMESPACE => {
                 let agents = AgentList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                     .agents()
@@ -513,7 +513,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::Agents(agents)))
             }
             #[cfg(feature = "pike")]
-            PIKE_ORG => {
+            PIKE_ORGANIZATION_NAMESPACE => {
                 let orgs = OrganizationList::from_bytes(&value)
                     .map_err(|err| {
                         EventError(format!("Failed to parse organization list {}", err))
@@ -542,7 +542,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::Organizations(orgs)))
             }
             #[cfg(feature = "schema")]
-            GRID_SCHEMA => {
+            GRID_SCHEMA_NAMESPACE => {
                 let schemas = SchemaList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
                     .schemas()
@@ -566,7 +566,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::GridSchemas(schemas)))
             }
             #[cfg(feature = "track-and-trace")]
-            TRACK_AND_TRACE_PROPERTY if &key[66..] == "0000" => {
+            TRACK_AND_TRACE_PROPERTY_NAMESPACE if &key[66..] == "0000" => {
                 let properties = PropertyList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse property list {}", err)))?
                     .properties()
@@ -615,7 +615,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::Properties(properties, reporters)))
             }
             #[cfg(feature = "track-and-trace")]
-            TRACK_AND_TRACE_PROPERTY => {
+            TRACK_AND_TRACE_PROPERTY_NAMESPACE => {
                 let property_pages = PropertyPageList::from_bytes(&value)
                     .map_err(|err| {
                         EventError(format!("Failed to parse property page list {}", err))
@@ -645,7 +645,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::ReportedValues(reported_values)))
             }
             #[cfg(feature = "track-and-trace")]
-            TRACK_AND_TRACE_PROPOSAL => {
+            TRACK_AND_TRACE_PROPOSAL_NAMESPACE => {
                 let proposals = ProposalList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
                     .proposals()
@@ -669,7 +669,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::Proposals(proposals)))
             }
             #[cfg(feature = "track-and-trace")]
-            TRACK_AND_TRACE_RECORD => {
+            TRACK_AND_TRACE_RECORD_NAMESPACE => {
                 let record_list = RecordList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse record list {}", err)))?
                     .records()
@@ -738,7 +738,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::Records(records, associated_agents)))
             }
             #[cfg(feature = "location")]
-            GRID_LOCATION => {
+            GRID_LOCATION_NAMESPACE => {
                 let locations = LocationList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse location list {}", err)))?
                     .locations()
@@ -764,7 +764,7 @@ fn state_change_to_db_operation(
                 Ok(Some(DbInsertOperation::Locations(locations)))
             }
             #[cfg(feature = "product")]
-            GRID_PRODUCT => {
+            GRID_PRODUCT_NAMESPACE => {
                 let products = ProductList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
                     .products()
@@ -801,12 +801,12 @@ fn state_change_to_db_operation(
         },
         StateChange::Delete { key } => match &key[0..8] {
             #[cfg(feature = "product")]
-            GRID_PRODUCT => Ok(Some(DbInsertOperation::RemoveProduct(
+            GRID_PRODUCT_NAMESPACE => Ok(Some(DbInsertOperation::RemoveProduct(
                 key.to_string(),
                 commit_num,
             ))),
             #[cfg(feature = "location")]
-            GRID_LOCATION => Ok(Some(DbInsertOperation::RemoveLocation(
+            GRID_LOCATION_NAMESPACE => Ok(Some(DbInsertOperation::RemoveLocation(
                 key.to_string(),
                 commit_num,
             ))),

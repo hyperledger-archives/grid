@@ -19,6 +19,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
+#[cfg(feature = "pike")]
 extern crate cfg_if;
 #[macro_use]
 #[cfg(feature = "diesel")]
@@ -26,8 +27,8 @@ extern crate diesel;
 #[macro_use]
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
-#[cfg(feature = "log")]
 #[macro_use]
+#[cfg(feature = "diesel")]
 extern crate log;
 
 #[cfg(feature = "pike")]
@@ -40,6 +41,7 @@ pub mod locations;
 pub mod migrations;
 #[cfg(feature = "pike")]
 pub mod organizations;
+#[cfg(feature = "pike")]
 pub mod permissions;
 #[cfg(feature = "product")]
 pub mod products;
