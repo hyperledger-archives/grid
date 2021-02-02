@@ -13,25 +13,8 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-DROP TABLE commits;
-DROP TABLE chain_record;
-DROP TABLE grid_circuit;
-DROP TABLE grid_circuit_member;
-DROP TABLE grid_circuit_proposal_vote_record;
-DROP TABLE agent;
-DROP TABLE role;
-DROP TABLE organization;
-DROP TABLE associated_agent;
-DROP TABLE property;
-DROP TABLE proposal;
-DROP TABLE record;
-DROP TABLE reported_value;
-DROP TABLE reporter;
-DROP VIEW reporter_to_agent_metadata;
-DROP VIEW reported_value_reporter_to_agent_metadata;
-DROP TABLE grid_schema;
-DROP TABLE grid_property_definition;
-DROP TABLE product;
-DROP TABLE product_property_value;
-DROP TABLE location;
-DROP TABLE location_attribute;
+CREATE TABLE batches (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    status TEXT NOT NULL
+);
