@@ -35,3 +35,4 @@ DROP TABLE product;
 DROP TABLE product_property_value;
 DROP TABLE location;
 DROP TABLE location_attribute;
+DROP TABLE batches;

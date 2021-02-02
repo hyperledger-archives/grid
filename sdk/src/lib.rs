@@ -33,6 +33,8 @@ extern crate log;
 
 #[cfg(feature = "pike")]
 pub mod agents;
+#[cfg(feature = "batch-store")]
+pub mod batches;
 pub mod commits;
 pub mod error;
 mod hex;
@@ -47,6 +49,7 @@ pub mod permissions;
 pub mod products;
 pub mod protocol;
 pub mod protos;
+pub mod rest_api;
 #[cfg(feature = "schema")]
 pub mod schemas;
 pub mod store;

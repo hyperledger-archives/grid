@@ -29,6 +29,7 @@ COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo
 # Copy over build files
 COPY contracts/schema /build/contracts/schema
 COPY sdk/ /build/sdk/
+COPY griddle/ /build/griddle/
 
 WORKDIR /build/contracts/schema
 

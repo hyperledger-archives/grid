@@ -501,11 +501,12 @@ pub async fn fetch_record_property(
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
+    let (record_id, property_name) = params.into_inner();
     state
         .database_connection
         .send(FetchRecordProperty {
-            record_id: params.0.clone(),
-            property_name: params.1.clone(),
+            record_id,
+            property_name,
             service_id: query.into_inner().service_id,
         })
         .await?

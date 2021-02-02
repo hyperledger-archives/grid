@@ -334,3 +334,9 @@ CREATE TABLE location_attribute (
     longitude_value BIGINT,
     service_id TEXT
 ) INHERITS (chain_record);
+
+CREATE TABLE batches (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    status TEXT NOT NULL
+);

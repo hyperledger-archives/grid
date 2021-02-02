@@ -311,7 +311,7 @@ mod test {
             match &self.response_type {
                 ResponseType::ClientBatchStatusResponseOK => {
                     let request: ClientBatchStatusRequest =
-                        protobuf::parse_from_bytes(contents).unwrap();
+                        protobuf::Message::parse_from_bytes(contents).unwrap();
                     if request.get_batch_ids().len() <= 1 {
                         mock_validator_response.set_content(get_batch_statuses_response_one_id())
                     } else {

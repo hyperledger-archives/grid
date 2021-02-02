@@ -43,6 +43,8 @@ use actix_web::{
 };
 use futures::executor::block_on;
 use futures::future;
+#[cfg(feature = "integration")]
+use grid_sdk::rest_api::actix_web_3::{routes::submit, State as IntegrationState};
 use serde::{Deserialize, Serialize};
 
 pub use self::routes::DbExecutor;
@@ -81,6 +83,7 @@ impl Clone for AppState {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryServiceId {
     pub service_id: Option<String>,
+    pub wait: Option<u64>,
 }
 
 pub struct AcceptServiceIdParam;
@@ -133,6 +136,7 @@ pub fn run(
     db_executor: DbExecutor,
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
     endpoint: Endpoint,
+    #[cfg(feature = "integration")] integration_state: IntegrationState,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -225,6 +229,13 @@ pub fn run(
                                     ),
                             ),
                     );
+                }
+
+                #[cfg(feature = "integration")]
+                {
+                    app = app
+                        .data(integration_state.clone())
+                        .service(web::scope("/integration").service(submit));
                 }
 
                 app

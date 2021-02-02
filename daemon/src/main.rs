@@ -66,7 +66,8 @@ const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn run() -> Result<(), DaemonError> {
-    let matches = clap_app!(myapp =>
+    #[allow(unused_mut)]
+    let mut app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
         (author: "Contributors to Hyperledger Grid")
@@ -76,8 +77,21 @@ fn run() -> Result<(), DaemonError> {
         (@arg database_url: --("database-url") +takes_value
          "specifies the database URL to connect to.")
         (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
-        (@arg admin_key_dir: --("admin-key-dir") +takes_value "directory containing the Scabbard admin key files"))
-    .get_matches();
+        (@arg admin_key_dir: --("admin-key-dir") +takes_value "directory containing the Scabbard admin key files"));
+
+    #[cfg(feature = "integration")]
+    {
+        use clap::Arg;
+        app = app.arg(
+            Arg::with_name("key")
+                .short("k")
+                .long("key")
+                .takes_value(true)
+                .help("Base name for private signing key file"),
+        );
+    }
+
+    let matches = app.get_matches();
 
     let log_level = match matches.occurrences_of("verbose") {
         0 => log::LevelFilter::Warn,

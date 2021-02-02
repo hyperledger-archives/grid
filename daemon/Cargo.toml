@@ -31,7 +31,7 @@ path = "src/main.rs"
 [dependencies]
 actix = "0.9"
 actix-rt = "1.0"
-actix-web = "2.0"
+actix-web = "3.0"
 base64 = "0.10"
 byteorder = "1"
 cfg-if = "0.1"
@@ -82,6 +82,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "integration",
     "splinter-support",
     "track-and-trace",
 ]
@@ -98,6 +99,7 @@ splinter-support = ["database", "event", "rest-api", "reqwest", "scabbard", "sab
 submitter = ["rest-api"]
 test-postgres = []
 track-and-trace = []
+integration = []
 
 
 [package.metadata.deb]
