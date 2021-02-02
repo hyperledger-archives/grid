@@ -393,6 +393,15 @@ mod tests {
 
     use sawtooth_sdk::messages::events::Event_Attribute;
 
+    #[cfg(feature = "schema")]
+    use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
+
+    #[cfg(feature = "product")]
+    use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+
+    #[cfg(feature = "location")]
+    use grid_sdk::locations::addressing::GRID_LOCATION_NAMESPACE;
+
     /// Verify that a valid set of Sawtooth events can be converted to a `CommitEvent`.
     #[test]
     fn sawtooth_events_to_commit_event() {
@@ -401,11 +410,11 @@ mod tests {
 
         let grid_state_changes = vec![
             #[cfg(feature = "schema")]
-            create_state_change(format!("{}01", GRID_NAMESPACE), Some(vec![0x01])),
+            create_state_change(GRID_SCHEMA_NAMESPACE.to_string(), Some(vec![0x01])),
             #[cfg(feature = "product")]
-            create_state_change(format!("{}02", GRID_NAMESPACE), Some(vec![0x02])),
+            create_state_change(GRID_PRODUCT_NAMESPACE.to_string(), Some(vec![0x02])),
             #[cfg(feature = "location")]
-            create_state_change(format!("{}04", GRID_NAMESPACE), None),
+            create_state_change(GRID_LOCATION_NAMESPACE.to_string(), None),
         ];
         let non_grid_state_changes = vec![create_state_change("ef".into(), None)];
 
