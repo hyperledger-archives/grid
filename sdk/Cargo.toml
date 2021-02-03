@@ -72,14 +72,15 @@ experimental = [
     "stable",
     # The following features are experimental:
     "batch-store",
-    "database",
+    "postgres",
     "rest-api-resources",
     "rest-api-actix-web-3",
+    "sawtooth-compat",
+    "sqlite",
     "track-and-trace",
     "workflow"
 ]
 
-database = ["grid_db", "postgres", "sqlite" ]
 location = ["pike", "schema"]
 pike = []
 product = ["pike", "schema"]
@@ -87,7 +88,6 @@ schema = ["pike"]
 track-and-trace = []
 batch-store = []
 
-grid_db = ["sawtooth-compat"]
 postgres = ["diesel/postgres", "diesel_migrations", "log"]
 rest-api-actix-web-3 = ["actix-web", "futures-util", "rest-api-resources", "sqlite", "postgres"]
 rest-api-resources = ["cylinder", "sabre-sdk", "log"]
