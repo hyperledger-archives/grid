@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod memory;
 #[cfg(feature = "postgres")]
 pub mod postgres;
 #[cfg(feature = "sqlite")]
@@ -59,8 +58,11 @@ pub trait StoreFactory {
 pub fn create_store_factory(
     connection_uri: &ConnectionUri,
 ) -> Result<Box<dyn StoreFactory>, StoreFactoryCreationError> {
+    // disable clippy warning caused for some combinations of features
+    // this warning is intended to reduce "needless complexity" but
+    // adding blocks for every combination has the opposite effect
+    #[allow(clippy::match_single_binding)]
     match connection_uri {
-        ConnectionUri::Memory => Ok(Box::new(memory::MemoryStoreFactory::new())),
         #[cfg(feature = "postgres")]
         ConnectionUri::Postgres(url) => {
             let connection_manager = ConnectionManager::<diesel::pg::PgConnection>::new(url);
@@ -85,6 +87,10 @@ pub fn create_store_factory(
             })?;
             Ok(Box::new(sqlite::SqliteStoreFactory::new(pool)))
         }
+        #[cfg(all(not(feature = "sqlite"), not(feature = "postgres")))]
+        _ => Err(StoreFactoryCreationError(
+            "No valid database connection URI".to_string(),
+        )),
     }
 }
 
@@ -103,7 +109,6 @@ impl std::fmt::Display for StoreFactoryCreationError {
 /// The possible connection types and identifiers for a `StoreFactory`
 #[derive(Clone)]
 pub enum ConnectionUri {
-    Memory,
     #[cfg(feature = "postgres")]
     Postgres(String),
     #[cfg(feature = "sqlite")]
@@ -113,9 +118,12 @@ pub enum ConnectionUri {
 impl FromStr for ConnectionUri {
     type Err = ParseConnectionUriError;
 
+    // disable clippy warning caused for some combinations of features
+    // this warning is intended to reduce "needless complexity" but
+    // adding blocks for every combination has the opposite effect
+    #[allow(clippy::match_single_binding)]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "memory" => Ok(ConnectionUri::Memory),
             #[cfg(feature = "postgres")]
             _ if s.starts_with("postgres://") => Ok(ConnectionUri::Postgres(s.into())),
             #[cfg(feature = "sqlite")]
