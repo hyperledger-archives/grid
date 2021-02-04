@@ -18,10 +18,10 @@
 use std::convert::TryInto;
 use std::time::Duration;
 
-#[cfg(feature = "pike")]
-use grid_sdk::agents::addressing::PIKE_NAMESPACE;
 #[cfg(feature = "location")]
 use grid_sdk::locations::addressing::GRID_LOCATION_NAMESPACE;
+#[cfg(feature = "pike")]
+use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 #[cfg(feature = "product")]
 use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "schema")]

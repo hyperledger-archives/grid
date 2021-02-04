@@ -12,33 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::OrganizationStoreOperations;
-use crate::organizations::store::diesel::{schema::organization, OrganizationStoreError};
+use super::PikeStoreOperations;
+use crate::pike::store::diesel::{schema::organization, PikeStoreError};
 
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
-use crate::organizations::store::diesel::models::{NewOrganizationModel, OrganizationModel};
+use crate::pike::store::diesel::models::{NewOrganizationModel, OrganizationModel};
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
     result::{DatabaseErrorKind, Error as dsl_error},
 };
 
-pub(in crate::organizations::store::diesel) trait OrganizationStoreAddOrganizationsOperation {
-    fn add_organizations(
-        &self,
-        orgs: Vec<NewOrganizationModel>,
-    ) -> Result<(), OrganizationStoreError>;
+pub(in crate::pike::store::diesel) trait PikeStoreAddOrganizationsOperation {
+    fn add_organizations(&self, orgs: Vec<NewOrganizationModel>) -> Result<(), PikeStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> OrganizationStoreAddOrganizationsOperation
-    for OrganizationStoreOperations<'a, diesel::pg::PgConnection>
-{
-    fn add_organizations(
-        &self,
-        orgs: Vec<NewOrganizationModel>,
-    ) -> Result<(), OrganizationStoreError> {
+impl<'a> PikeStoreAddOrganizationsOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
+    fn add_organizations(&self, orgs: Vec<NewOrganizationModel>) -> Result<(), PikeStoreError> {
         for org in orgs {
             let duplicate_org = organization::table
                 .filter(
@@ -57,7 +49,7 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                     }
                 })
                 .map_err(|err| {
-                    OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
             if duplicate_org.is_some() {
                 update(organization::table)
@@ -72,7 +64,7 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                     .map(|_| ())
                     .map_err(|err| match err {
                         dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            OrganizationStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::Unique,
                                     Box::new(err),
@@ -80,16 +72,16 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                             )
                         }
                         dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            OrganizationStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::ForeignKey,
                                     Box::new(err),
                                 ),
                             )
                         }
-                        _ => OrganizationStoreError::InternalError(InternalError::from_source(
-                            Box::new(err),
-                        )),
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
                     })?;
             }
             insert_into(organization::table)
@@ -98,7 +90,7 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                 .map(|_| ())
                 .map_err(|err| match err {
                     dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                        OrganizationStoreError::ConstraintViolationError(
+                        PikeStoreError::ConstraintViolationError(
                             ConstraintViolationError::from_source_with_violation_type(
                                 ConstraintViolationType::Unique,
                                 Box::new(err),
@@ -106,16 +98,14 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                         )
                     }
                     dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                        OrganizationStoreError::ConstraintViolationError(
+                        PikeStoreError::ConstraintViolationError(
                             ConstraintViolationError::from_source_with_violation_type(
                                 ConstraintViolationType::ForeignKey,
                                 Box::new(err),
                             ),
                         )
                     }
-                    _ => OrganizationStoreError::InternalError(InternalError::from_source(
-                        Box::new(err),
-                    )),
+                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
                 })?;
         }
 
@@ -124,13 +114,10 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> OrganizationStoreAddOrganizationsOperation
-    for OrganizationStoreOperations<'a, diesel::sqlite::SqliteConnection>
+impl<'a> PikeStoreAddOrganizationsOperation
+    for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn add_organizations(
-        &self,
-        orgs: Vec<NewOrganizationModel>,
-    ) -> Result<(), OrganizationStoreError> {
+    fn add_organizations(&self, orgs: Vec<NewOrganizationModel>) -> Result<(), PikeStoreError> {
         for org in orgs {
             let duplicate_org = organization::table
                 .filter(
@@ -149,10 +136,10 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                     }
                 })
                 .map_err(|err| {
-                    OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
             if duplicate_org.is_some() {
-                return Err(OrganizationStoreError::ConstraintViolationError(
+                return Err(PikeStoreError::ConstraintViolationError(
                     ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
                 ));
             }
@@ -163,7 +150,7 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                 .map(|_| ())
                 .map_err(|err| match err {
                     dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                        OrganizationStoreError::ConstraintViolationError(
+                        PikeStoreError::ConstraintViolationError(
                             ConstraintViolationError::from_source_with_violation_type(
                                 ConstraintViolationType::Unique,
                                 Box::new(err),
@@ -171,16 +158,14 @@ impl<'a> OrganizationStoreAddOrganizationsOperation
                         )
                     }
                     dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                        OrganizationStoreError::ConstraintViolationError(
+                        PikeStoreError::ConstraintViolationError(
                             ConstraintViolationError::from_source_with_violation_type(
                                 ConstraintViolationType::ForeignKey,
                                 Box::new(err),
                             ),
                         )
                     }
-                    _ => OrganizationStoreError::InternalError(InternalError::from_source(
-                        Box::new(err),
-                    )),
+                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
                 })?;
         }
 

@@ -20,8 +20,8 @@ use std::{
 };
 
 use grid_sdk::{
-    agents::addressing::PIKE_NAMESPACE,
     locations::addressing::GRID_LOCATION_NAMESPACE,
+    pike::addressing::PIKE_NAMESPACE,
     protocol::{
         location::payload::{
             Action, LocationCreateAction, LocationCreateActionBuilder, LocationDeleteAction,

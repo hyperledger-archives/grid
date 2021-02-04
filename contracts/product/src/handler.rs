@@ -416,8 +416,7 @@ mod tests {
     use std::collections::HashMap;
 
     use grid_sdk::{
-        agents::addressing::compute_agent_address,
-        organizations::addressing::compute_organization_address,
+        pike::addressing::{compute_agent_address, compute_organization_address},
         products::addressing::compute_gs1_product_address,
         protocol::{
             pike::state::{

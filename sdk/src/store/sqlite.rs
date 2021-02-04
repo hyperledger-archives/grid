@@ -31,20 +31,13 @@ impl SqliteStoreFactory {
 }
 
 impl StoreFactory for SqliteStoreFactory {
-    #[cfg(feature = "pike")]
-    fn get_grid_agent_store(&self) -> Box<dyn crate::agents::AgentStore> {
-        Box::new(crate::agents::DieselAgentStore::new(self.pool.clone()))
-    }
-
     fn get_grid_commit_store(&self) -> Box<dyn crate::commits::CommitStore> {
         Box::new(crate::commits::DieselCommitStore::new(self.pool.clone()))
     }
 
     #[cfg(feature = "pike")]
-    fn get_grid_organization_store(&self) -> Box<dyn crate::organizations::OrganizationStore> {
-        Box::new(crate::organizations::DieselOrganizationStore::new(
-            self.pool.clone(),
-        ))
+    fn get_grid_pike_store(&self) -> Box<dyn crate::pike::PikeStore> {
+        Box::new(crate::pike::DieselPikeStore::new(self.pool.clone()))
     }
 
     #[cfg(feature = "location")]

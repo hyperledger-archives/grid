@@ -20,7 +20,7 @@ use crate::yaml_parser::{
     parse_value_as_boolean, parse_value_as_data_type, parse_value_as_i32, parse_value_as_sequence,
     parse_value_as_string, parse_value_as_vec_string,
 };
-use grid_sdk::agents::addressing::PIKE_NAMESPACE;
+use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
     SchemaUpdateAction, SchemaUpdateBuilder,

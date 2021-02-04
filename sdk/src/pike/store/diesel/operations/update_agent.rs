@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::AgentStoreOperations;
-use crate::agents::store::diesel::{
+use super::PikeStoreOperations;
+use crate::pike::store::diesel::{
     schema::{agent, role},
-    AgentStoreError,
+    PikeStoreError,
 };
 
-use crate::agents::store::diesel::models::{AgentModel, NewAgentModel, NewRoleModel};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
+use crate::pike::store::diesel::models::{AgentModel, NewAgentModel, NewRoleModel};
 
 use diesel::{
     dsl::{insert_into, update},
@@ -28,25 +28,25 @@ use diesel::{
     result::{DatabaseErrorKind, Error as dsl_error},
 };
 
-pub(in crate::agents) trait AgentStoreUpdateAgentOperation {
+pub(in crate::pike) trait PikeStoreUpdateAgentOperation {
     fn update_agent(
         &self,
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
-    ) -> Result<(), AgentStoreError>;
+    ) -> Result<(), PikeStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg::PgConnection> {
+impl<'a> PikeStoreUpdateAgentOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
     fn update_agent(
         &self,
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
-    ) -> Result<(), AgentStoreError> {
+    ) -> Result<(), PikeStoreError> {
         self.conn
             .build_transaction()
             .read_write()
-            .run::<_, AgentStoreError, _>(|| {
+            .run::<_, PikeStoreError, _>(|| {
                 let agt = agent::table
                     .filter(
                         agent::public_key
@@ -64,7 +64,7 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                         }
                     })
                     .map_err(|err| {
-                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 if agt.is_some() {
@@ -80,7 +80,7 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                         .map(|_| ())
                         .map_err(|err| match err {
                             dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::Unique,
                                         Box::new(err),
@@ -88,14 +88,14 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                                 )
                             }
                             dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
                                 )
                             }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                            _ => PikeStoreError::InternalError(InternalError::from_source(
                                 Box::new(err),
                             )),
                         })?;
@@ -107,7 +107,7 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                     .map(|_| ())
                     .map_err(|err| match err {
                         dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::Unique,
                                     Box::new(err),
@@ -115,16 +115,16 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                             )
                         }
                         dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::ForeignKey,
                                     Box::new(err),
                                 ),
                             )
                         }
-                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                            err,
-                        ))),
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
                     })?;
 
                 update(role::table)
@@ -139,7 +139,7 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                     .map(|_| ())
                     .map_err(|err| match err {
                         dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::Unique,
                                     Box::new(err),
@@ -147,16 +147,16 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                             )
                         }
                         dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::ForeignKey,
                                     Box::new(err),
                                 ),
                             )
                         }
-                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                            err,
-                        ))),
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
                     })?;
 
                 for role in roles {
@@ -166,7 +166,7 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                         .map(|_| ())
                         .map_err(|err| match err {
                             dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::Unique,
                                         Box::new(err),
@@ -174,14 +174,14 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
                                 )
                             }
                             dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
                                 )
                             }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                            _ => PikeStoreError::InternalError(InternalError::from_source(
                                 Box::new(err),
                             )),
                         })?;
@@ -193,77 +193,131 @@ impl<'a> AgentStoreUpdateAgentOperation for AgentStoreOperations<'a, diesel::pg:
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> AgentStoreUpdateAgentOperation
-    for AgentStoreOperations<'a, diesel::sqlite::SqliteConnection>
+impl<'a> PikeStoreUpdateAgentOperation
+    for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn update_agent(
         &self,
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
-    ) -> Result<(), AgentStoreError> {
-        self.conn
-            .immediate_transaction::<_, AgentStoreError, _>(|| {
-                let agt = agent::table
+    ) -> Result<(), PikeStoreError> {
+        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+            let agt = agent::table
+                .filter(
+                    agent::public_key
+                        .eq(&agent.public_key)
+                        .and(agent::service_id.eq(&agent.service_id))
+                        .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                )
+                .first::<AgentModel>(self.conn)
+                .map(Some)
+                .or_else(|err| {
+                    if err == dsl_error::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
+                })
+                .map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            if agt.is_some() {
+                update(agent::table)
                     .filter(
                         agent::public_key
                             .eq(&agent.public_key)
                             .and(agent::service_id.eq(&agent.service_id))
                             .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
-                    .first::<AgentModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| {
-                        if err == dsl_error::NotFound {
-                            Ok(None)
-                        } else {
-                            Err(err)
+                    .set(agent::end_commit_num.eq(&agent.start_commit_num))
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
                         }
-                    })
-                    .map_err(|err| {
-                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
                     })?;
+            }
 
-                if agt.is_some() {
-                    update(agent::table)
-                        .filter(
-                            agent::public_key
-                                .eq(&agent.public_key)
-                                .and(agent::service_id.eq(&agent.service_id))
-                                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+            insert_into(agent::table)
+                .values(&agent)
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
                         )
-                        .set(agent::end_commit_num.eq(&agent.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
                                 Box::new(err),
-                            )),
-                        })?;
-                }
+                            ),
+                        )
+                    }
+                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
+                })?;
 
-                insert_into(agent::table)
-                    .values(&agent)
+            update(role::table)
+                .filter(
+                    role::public_key
+                        .eq(&agent.public_key)
+                        .and(role::service_id.eq(&agent.service_id))
+                        .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                )
+                .set(role::end_commit_num.eq(&agent.start_commit_num))
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
+                })?;
+
+            for role in roles {
+                insert_into(role::table)
+                    .values(&role)
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {
                         dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::Unique,
                                     Box::new(err),
@@ -271,79 +325,20 @@ impl<'a> AgentStoreUpdateAgentOperation
                             )
                         }
                         dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::ForeignKey,
                                     Box::new(err),
                                 ),
                             )
                         }
-                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                            err,
-                        ))),
-                    })?;
-
-                update(role::table)
-                    .filter(
-                        role::public_key
-                            .eq(&agent.public_key)
-                            .and(role::service_id.eq(&agent.service_id))
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(role::end_commit_num.eq(&agent.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                         }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                            err,
-                        ))),
                     })?;
+            }
 
-                for role in roles {
-                    insert_into(role::table)
-                        .values(&role)
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
-                                Box::new(err),
-                            )),
-                        })?;
-                }
-
-                Ok(())
-            })
+            Ok(())
+        })
     }
 }

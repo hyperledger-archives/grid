@@ -257,7 +257,7 @@ mod tests {
     use std::collections::HashMap;
 
     use grid_sdk::{
-        agents::addressing::compute_agent_address,
+        pike::addressing::compute_agent_address,
         protocol::{
             pike::state::{AgentBuilder, AgentListBuilder},
             schema::{

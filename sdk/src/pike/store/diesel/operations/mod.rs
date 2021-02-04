@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod addressing;
-pub mod store;
+pub(super) mod add_agent;
+pub(super) mod add_organizations;
+pub(super) mod fetch_agent;
+pub(super) mod fetch_organization;
+pub(super) mod list_agents;
+pub(super) mod list_organizations;
+pub(super) mod update_agent;
 
-#[cfg(feature = "diesel")]
-pub use store::diesel::DieselOrganizationStore;
-pub use store::memory::MemoryOrganizationStore;
-pub use store::OrganizationStore;
+pub(super) struct PikeStoreOperations<'a, C> {
+    conn: &'a C,
+}
+
+impl<'a, C> PikeStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        PikeStoreOperations { conn }
+    }
+}

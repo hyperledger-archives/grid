@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,35 +17,33 @@ use std::fmt;
 
 use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
 
-/// Represents OrganizationStore errors
+/// Represents PikeStore errors
 #[derive(Debug)]
-pub enum OrganizationStoreError {
+pub enum PikeStoreError {
     InternalError(InternalError),
     ConstraintViolationError(ConstraintViolationError),
     ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
     NotFoundError(String),
 }
 
-impl Error for OrganizationStoreError {
+impl Error for PikeStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            OrganizationStoreError::InternalError(err) => Some(err),
-            OrganizationStoreError::ConstraintViolationError(err) => Some(err),
-            OrganizationStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
-            OrganizationStoreError::NotFoundError(_) => None,
+            PikeStoreError::InternalError(err) => Some(err),
+            PikeStoreError::ConstraintViolationError(err) => Some(err),
+            PikeStoreError::ResourceTemporarilyUnavailableError(err) => Some(err),
+            PikeStoreError::NotFoundError(_) => None,
         }
     }
 }
 
-impl fmt::Display for OrganizationStoreError {
+impl fmt::Display for PikeStoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            OrganizationStoreError::InternalError(err) => err.fmt(f),
-            OrganizationStoreError::ConstraintViolationError(err) => err.fmt(f),
-            OrganizationStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
-            OrganizationStoreError::NotFoundError(ref s) => {
-                write!(f, "Organization not found: {}", s)
-            }
+            PikeStoreError::InternalError(err) => err.fmt(f),
+            PikeStoreError::ConstraintViolationError(err) => err.fmt(f),
+            PikeStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
+            PikeStoreError::NotFoundError(ref s) => write!(f, "Resource not found: {}", s),
         }
     }
 }

@@ -22,10 +22,9 @@ use actix_web::{
 };
 use futures::future::{Future, TryFutureExt};
 use grid_sdk::{
-    agents::store::AgentStoreError, commits::store::CommitStoreError,
-    locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
-    products::store::ProductStoreError, schemas::store::SchemaStoreError,
-    track_and_trace::store::TrackAndTraceStoreError,
+    commits::store::CommitStoreError, locations::store::LocationStoreError,
+    pike::store::PikeStoreError, products::store::ProductStoreError,
+    schemas::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
 };
 use std::error::Error;
 
@@ -200,20 +199,14 @@ impl From<CommitStoreError> for RestApiResponseError {
     }
 }
 
-impl From<AgentStoreError> for RestApiResponseError {
-    fn from(err: AgentStoreError) -> Self {
-        RestApiResponseError::DatabaseError(format!("{}", err))
-    }
-}
-
 impl From<LocationStoreError> for RestApiResponseError {
     fn from(err: LocationStoreError) -> Self {
         RestApiResponseError::DatabaseError(format!("{}", err))
     }
 }
 
-impl From<OrganizationStoreError> for RestApiResponseError {
-    fn from(err: OrganizationStoreError) -> Self {
+impl From<PikeStoreError> for RestApiResponseError {
+    fn from(err: PikeStoreError) -> Self {
         RestApiResponseError::DatabaseError(format!("{}", err))
     }
 }

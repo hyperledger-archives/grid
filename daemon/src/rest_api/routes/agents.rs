@@ -22,7 +22,7 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::agents::store::Agent;
+use grid_sdk::pike::store::Agent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -88,7 +88,7 @@ impl Handler<ListAgents> for DbExecutor {
         let limit = i64::try_from(msg.limit).unwrap_or(10);
 
         let agent_list = self
-            .agent_store
+            .pike_store
             .list_agents(msg.service_id.as_deref(), offset, limit)?;
 
         let data = agent_list
@@ -135,7 +135,7 @@ impl Handler<FetchAgent> for DbExecutor {
 
     fn handle(&mut self, msg: FetchAgent, _: &mut SyncContext<Self>) -> Self::Result {
         match self
-            .agent_store
+            .pike_store
             .fetch_agent(&msg.public_key, msg.service_id.as_deref())?
         {
             Some(agent) => AgentSlice::try_from(agent),

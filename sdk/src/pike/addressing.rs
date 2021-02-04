@@ -16,8 +16,21 @@ use crypto::digest::Digest;
 use crypto::sha2::Sha512;
 
 pub const PIKE_NAMESPACE: &str = "cad11d";
+
+pub const AGENT_PREFIX: &str = "00";
+pub const PIKE_AGENT_NAMESPACE: &str = "cad11d00";
+
 pub const ORG_PREFIX: &str = "01";
 pub const PIKE_ORGANIZATION_NAMESPACE: &str = "cad11d01";
+
+/// Computes the address a Pike Agent is stored at based on its public_key
+pub fn compute_agent_address(public_key: &str) -> String {
+    let mut sha = Sha512::new();
+    sha.input(public_key.as_bytes());
+    // (pike namespace) + (agent namespace) + hash
+    let hash_str = String::from(PIKE_NAMESPACE) + &String::from(AGENT_PREFIX) + &sha.result_str();
+    hash_str[..70].to_string()
+}
 
 /// Computes the address a Pike Organizaton is stored at based on its org_id
 pub fn compute_organization_address(org_id: &str) -> String {
