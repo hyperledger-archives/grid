@@ -25,8 +25,11 @@ use grid_sdk::{
     agents::store::AgentStoreError, commits::store::CommitStoreError,
     locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
     products::store::ProductStoreError, schemas::store::SchemaStoreError,
-    track_and_trace::store::TrackAndTraceStoreError,
 };
+
+#[cfg(feature = "track-and-trace")]
+use grid_sdk::track_and_trace::store::TrackAndTraceStoreError;
+
 use std::error::Error;
 
 use std::fmt;
@@ -230,6 +233,7 @@ impl From<SchemaStoreError> for RestApiResponseError {
     }
 }
 
+#[cfg(feature = "track-and-trace")]
 impl From<TrackAndTraceStoreError> for RestApiResponseError {
     fn from(err: TrackAndTraceStoreError) -> Self {
         RestApiResponseError::DatabaseError(format!("{}", err))

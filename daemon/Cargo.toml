@@ -82,7 +82,9 @@ pike = []
 schema = ["pike"]
 product = ["pike", "schema"]
 location = ["pike", "schema"]
-track-and-trace = []
+track-and-trace = [
+    "grid-sdk/track-and-trace"
+]
 
 
 [package.metadata.deb]

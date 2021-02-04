@@ -20,8 +20,10 @@ use grid_sdk::{
     organizations::{DieselOrganizationStore, OrganizationStore},
     products::{DieselProductStore, ProductStore},
     schemas::{DieselSchemaStore, SchemaStore},
-    track_and_trace::{DieselTrackAndTraceStore, TrackAndTraceStore},
 };
+
+#[cfg(feature = "track-and-trace")]
+use grid_sdk::track_and_trace::{DieselTrackAndTraceStore, TrackAndTraceStore};
 
 #[cfg(feature = "pike")]
 mod agents;
@@ -62,6 +64,7 @@ pub struct DbExecutor {
     organization_store: Arc<dyn OrganizationStore>,
     product_store: Arc<dyn ProductStore>,
     schema_store: Arc<dyn SchemaStore>,
+    #[cfg(feature = "track-and-trace")]
     tnt_store: Arc<dyn TrackAndTraceStore>,
 }
 
@@ -77,6 +80,7 @@ impl DbExecutor {
             Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
+        #[cfg(feature = "track-and-trace")]
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
 
         Self {
@@ -85,6 +89,7 @@ impl DbExecutor {
             organization_store,
             product_store,
             schema_store,
+            #[cfg(feature = "track-and-trace")]
             tnt_store,
         }
     }
@@ -98,6 +103,7 @@ impl DbExecutor {
             Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
+        #[cfg(feature = "track-and-trace")]
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
 
         Self {
@@ -106,6 +112,7 @@ impl DbExecutor {
             organization_store,
             product_store,
             schema_store,
+            #[cfg(feature = "track-and-trace")]
             tnt_store,
         }
     }
