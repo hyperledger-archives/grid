@@ -60,15 +60,6 @@ fn griddle_state(key_file_name: &str, db_url: &str) -> Result<actix_web_3::State
 
             actix_web_3::State::with_sqlite_pool(key_file_name, pool)
         }
-        ConnectionUri::Memory => {
-            let connection_manager =
-                ConnectionManager::<diesel::sqlite::SqliteConnection>::new(db_url);
-            let pool_builder = Pool::builder();
-            let pool = pool_builder
-                .build(connection_manager)
-                .map_err(|err| Error::from_message(&format!("{}", err)))?;
-            actix_web_3::State::with_sqlite_pool(key_file_name, pool)
-        }
     })
 }
 
