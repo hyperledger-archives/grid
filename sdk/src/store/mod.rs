@@ -24,14 +24,11 @@ use diesel::r2d2::{ConnectionManager, Pool};
 
 /// An abstract factory for creating Grid stores backed by the same storage
 pub trait StoreFactory {
-    /// Get a new `AgentStore`
-    #[cfg(feature = "pike")]
-    fn get_grid_agent_store(&self) -> Box<dyn crate::agents::AgentStore>;
     /// Get a new `CommitStore`
     fn get_grid_commit_store(&self) -> Box<dyn crate::commits::CommitStore>;
-    /// Get a new `OrganizationStore`
+    /// Get a new `PikeStore`
     #[cfg(feature = "pike")]
-    fn get_grid_organization_store(&self) -> Box<dyn crate::organizations::OrganizationStore>;
+    fn get_grid_pike_store(&self) -> Box<dyn crate::pike::PikeStore>;
     /// Get a new `LocationStore`
     #[cfg(feature = "location")]
     fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore>;

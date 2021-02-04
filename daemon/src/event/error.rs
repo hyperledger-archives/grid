@@ -19,10 +19,9 @@ use std::error::Error;
 use std::fmt;
 
 use grid_sdk::{
-    agents::store::AgentStoreError, commits::store::CommitStoreError,
-    locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
-    products::store::ProductStoreError, schemas::store::SchemaStoreError,
-    track_and_trace::store::TrackAndTraceStoreError,
+    commits::store::CommitStoreError, locations::store::LocationStoreError,
+    pike::store::PikeStoreError, products::store::ProductStoreError,
+    schemas::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
 };
 
 #[derive(Debug)]
@@ -53,20 +52,14 @@ impl From<CommitStoreError> for EventError {
     }
 }
 
-impl From<AgentStoreError> for EventError {
-    fn from(err: AgentStoreError) -> Self {
-        EventError(format!("{}", err))
-    }
-}
-
 impl From<LocationStoreError> for EventError {
     fn from(err: LocationStoreError) -> Self {
         EventError(format!("{}", err))
     }
 }
 
-impl From<OrganizationStoreError> for EventError {
-    fn from(err: OrganizationStoreError) -> Self {
+impl From<PikeStoreError> for EventError {
+    fn from(err: PikeStoreError) -> Self {
         EventError(format!("{}", err))
     }
 }

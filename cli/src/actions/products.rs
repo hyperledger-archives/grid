@@ -16,7 +16,7 @@ use crate::actions::schemas::{self, get_schema, GridPropertyDefinitionSlice};
 use crate::actions::Paging;
 use crate::http::submit_batches;
 use crate::transaction::product_batch_builder;
-use grid_sdk::agents::addressing::PIKE_NAMESPACE;
+use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,

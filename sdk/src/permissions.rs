@@ -25,7 +25,7 @@ cfg_if! {
     }
 }
 
-use crate::agents::addressing::compute_agent_address;
+use crate::pike::addressing::compute_agent_address;
 use crate::protocol::pike::state::{Agent, AgentList};
 use crate::protos::{FromBytes, ProtoConversionError};
 

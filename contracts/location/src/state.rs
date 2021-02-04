@@ -24,7 +24,7 @@ cfg_if! {
 
 use grid_sdk::{
     locations::addressing::compute_gs1_location_address,
-    organizations::addressing::compute_organization_address,
+    pike::addressing::compute_organization_address,
     protocol::{
         location::state::{Location, LocationList, LocationListBuilder},
         pike::state::{Organization, OrganizationList},

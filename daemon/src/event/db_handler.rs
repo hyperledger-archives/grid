@@ -26,15 +26,6 @@ use grid_sdk::protocol::schema::state::PropertyValue;
     feature = "location"
 ))]
 use grid_sdk::protos::FromBytes;
-#[cfg(feature = "pike")]
-use grid_sdk::{
-    agents::{addressing::PIKE_AGENT_NAMESPACE, store::Agent, AgentStore, DieselAgentStore},
-    organizations::{
-        addressing::PIKE_ORGANIZATION_NAMESPACE, store::Organization, DieselOrganizationStore,
-        OrganizationStore,
-    },
-    protocol::pike::state::{AgentList, OrganizationList},
-};
 #[cfg(feature = "location")]
 use grid_sdk::{
     locations::{
@@ -43,6 +34,16 @@ use grid_sdk::{
         DieselLocationStore, LocationStore,
     },
     protocol::location::state::LocationList,
+};
+
+#[cfg(feature = "pike")]
+use grid_sdk::{
+    pike::{
+        addressing::{PIKE_AGENT_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE},
+        store::{Agent, Organization},
+        DieselPikeStore, PikeStore,
+    },
+    protocol::pike::state::{AgentList, OrganizationList},
 };
 #[cfg(feature = "product")]
 use grid_sdk::{
@@ -100,11 +101,9 @@ pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 
 pub struct DatabaseEventHandler<C: diesel::Connection + 'static> {
     connection_pool: ConnectionPool<C>,
-    #[cfg(feature = "pike")]
-    agent_store: DieselAgentStore<C>,
     commit_store: DieselCommitStore<C>,
     #[cfg(feature = "pike")]
-    organization_store: DieselOrganizationStore<C>,
+    pike_store: DieselPikeStore<C>,
     #[cfg(feature = "location")]
     location_store: DieselLocationStore<C>,
     #[cfg(feature = "product")]
@@ -117,11 +116,9 @@ pub struct DatabaseEventHandler<C: diesel::Connection + 'static> {
 
 impl DatabaseEventHandler<diesel::pg::PgConnection> {
     pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> Self {
-        #[cfg(feature = "pike")]
-        let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
         let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
         #[cfg(feature = "pike")]
-        let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        let pike_store = DieselPikeStore::new(connection_pool.pool.clone());
         #[cfg(feature = "location")]
         let location_store = DieselLocationStore::new(connection_pool.pool.clone());
         #[cfg(feature = "product")]
@@ -132,12 +129,10 @@ impl DatabaseEventHandler<diesel::pg::PgConnection> {
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
 
         Self {
-            #[cfg(feature = "pike")]
-            agent_store,
             connection_pool,
             commit_store,
             #[cfg(feature = "pike")]
-            organization_store,
+            pike_store,
             #[cfg(feature = "location")]
             location_store,
             #[cfg(feature = "product")]
@@ -213,12 +208,12 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                         debug!("Inserting {} agents", agents.len());
                         agents
                             .into_iter()
-                            .try_for_each(|agent| self.agent_store.add_agent(agent))?;
+                            .try_for_each(|agent| self.pike_store.add_agent(agent))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
                         debug!("Inserting {} organizations", orgs.len());
-                        self.organization_store.add_organizations(orgs)?;
+                        self.pike_store.add_organizations(orgs)?;
                     }
                     #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
@@ -291,11 +286,9 @@ impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
     pub fn from_sqlite_pool(
         connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
     ) -> Self {
-        #[cfg(feature = "pike")]
-        let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
         let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
         #[cfg(feature = "pike")]
-        let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        let pike_store = DieselPikeStore::new(connection_pool.pool.clone());
         #[cfg(feature = "location")]
         let location_store = DieselLocationStore::new(connection_pool.pool.clone());
         #[cfg(feature = "product")]
@@ -306,12 +299,10 @@ impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
 
         Self {
-            #[cfg(feature = "pike")]
-            agent_store,
             connection_pool,
             commit_store,
             #[cfg(feature = "pike")]
-            organization_store,
+            pike_store,
             #[cfg(feature = "location")]
             location_store,
             #[cfg(feature = "product")]
@@ -387,12 +378,12 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
                         debug!("Inserting {} agents", agents.len());
                         agents
                             .into_iter()
-                            .try_for_each(|agent| self.agent_store.add_agent(agent))?;
+                            .try_for_each(|agent| self.pike_store.add_agent(agent))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
                         debug!("Inserting {} organizations", orgs.len());
-                        self.organization_store.add_organizations(orgs)?;
+                        self.pike_store.add_organizations(orgs)?;
                     }
 
                     #[cfg(feature = "schema")]

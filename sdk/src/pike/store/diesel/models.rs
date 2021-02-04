@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::agents::store::diesel::schema::*;
+use crate::pike::store::diesel::schema::*;
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "agent"]
@@ -65,6 +65,38 @@ pub struct RoleModel {
     pub id: i64,
     pub public_key: String,
     pub role_name: String,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+
+    pub service_id: Option<String>,
+}
+
+#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[table_name = "organization"]
+pub struct NewOrganizationModel {
+    pub org_id: String,
+    pub name: String,
+    pub address: String,
+    pub metadata: Vec<u8>,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+
+    pub service_id: Option<String>,
+}
+
+#[derive(Queryable, PartialEq, Identifiable, Debug)]
+#[table_name = "organization"]
+pub struct OrganizationModel {
+    ///  This is the record id for the slowly-changing-dimensions table.
+    pub id: i64,
+    pub org_id: String,
+    pub name: String,
+    pub address: String,
+    pub metadata: Vec<u8>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,

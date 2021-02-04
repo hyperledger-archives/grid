@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use grid_sdk::{
-    agents::addressing::compute_agent_address,
+    pike::addressing::compute_agent_address,
     protocol::{
         pike::state::{Agent, AgentList},
         schema::state::{Schema, SchemaList, SchemaListBuilder},
