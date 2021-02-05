@@ -46,7 +46,7 @@ then
 else
     ISOLATION_ID=$1
 fi
-echo "Publishing master images for an untagged build"
+echo "Publishing main images for an untagged build"
 echo "ISOLATION_ID is: $ISOLATION_ID"
 
 docker-compose -f docker-compose.yaml build splinter-ui-alpha
