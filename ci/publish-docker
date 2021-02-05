@@ -27,14 +27,14 @@ then
     echo "Publishing release images for a tagged build"
     echo "ISOLATION_ID is: $ISOLATION_ID"
     # Push to dockerhub with the full tag e.g. (1.2.3)
-    ISOLATION_ID=${REPO_VERSION} docker-compose -f docker-compose.yaml build splinter-ui-alpha
-    ISOLATION_ID=${REPO_VERSION} docker-compose -f docker-compose.yaml push splinter-ui-alpha
+    ISOLATION_ID=${REPO_VERSION} docker-compose -f docker-compose.yaml build
+    ISOLATION_ID=${REPO_VERSION} docker-compose -f docker-compose.yaml push
     # Push to dockerhub with just major/minor e.g. (1.2)
-    ISOLATION_ID=${REPO_VERSION%.*} docker-compose -f docker-compose.yaml build splinter-ui-alpha
-    ISOLATION_ID=${REPO_VERSION%.*} docker-compose -f docker-compose.yaml push splinter-ui-alpha
+    ISOLATION_ID=${REPO_VERSION%.*} docker-compose -f docker-compose.yaml
+    ISOLATION_ID=${REPO_VERSION%.*} docker-compose -f docker-compose.yaml
     # Push to dockerhub with "latest"
-    ISOLATION_ID="latest" docker-compose -f docker-compose.yaml build splinter-ui-alpha
-    ISOLATION_ID="latest" docker-compose -f docker-compose.yaml push splinter-ui-alpha
+    ISOLATION_ID="latest" docker-compose -f docker-compose.yaml build
+    ISOLATION_ID="latest" docker-compose -f docker-compose.yaml push
     exit 0
 fi
 
@@ -46,7 +46,7 @@ then
 else
     ISOLATION_ID=$1
 fi
-echo "Publishing master images for an untagged build"
+echo "Publishing main images for an untagged build"
 echo "ISOLATION_ID is: $ISOLATION_ID"
 
 docker-compose -f docker-compose.yaml build splinter-ui-alpha
