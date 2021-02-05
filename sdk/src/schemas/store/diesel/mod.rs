@@ -32,7 +32,7 @@ use operations::{
 
 use diesel::r2d2::{ConnectionManager, Pool};
 
-use super::{PropertyDefinition, Schema, SchemaStore, SchemaStoreError};
+use super::{PropertyDefinition, Schema, SchemaList, SchemaStore, SchemaStoreError};
 
 /// Manages creating commits in the database
 #[derive(Clone)]
@@ -70,13 +70,18 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
         .fetch_schema(name, service_id)
     }
 
-    fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, SchemaStoreError> {
+    fn list_schemas(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<SchemaList, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             SchemaStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_schemas(service_id)
+        .list_schemas(service_id, offset, limit)
     }
 
     fn list_property_definitions(
@@ -143,13 +148,18 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
         .fetch_schema(name, service_id)
     }
 
-    fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, SchemaStoreError> {
+    fn list_schemas(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<SchemaList, SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             SchemaStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_schemas(service_id)
+        .list_schemas(service_id, offset, limit)
     }
 
     fn list_property_definitions(

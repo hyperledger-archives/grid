@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use crate::rest_api::{
-    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+    error::RestApiResponseError,
+    routes::{paging::Paging, DbExecutor},
+    AcceptServiceIdParam, AppState, QueryPaging, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
@@ -30,6 +32,12 @@ pub struct GridSchemaSlice {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GridSchemaListSlice {
+    pub data: Vec<GridSchemaSlice>,
+    pub paging: Paging,
 }
 
 impl From<Schema> for GridSchemaSlice {
@@ -85,34 +93,47 @@ impl From<PropertyDefinition> for GridPropertyDefinitionSlice {
 
 struct ListGridSchemas {
     service_id: Option<String>,
+    offset: i64,
+    limit: i64,
 }
 
 impl Message for ListGridSchemas {
-    type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
+    type Result = Result<GridSchemaListSlice, RestApiResponseError>;
 }
 
 impl Handler<ListGridSchemas> for DbExecutor {
-    type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
+    type Result = Result<GridSchemaListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListGridSchemas, _: &mut SyncContext<Self>) -> Self::Result {
-        Ok(self
-            .schema_store
-            .list_schemas(msg.service_id.as_deref())?
+        let schema_list =
+            self.schema_store
+                .list_schemas(msg.service_id.as_deref(), msg.offset, msg.limit)?;
+
+        let data = schema_list
+            .data
             .into_iter()
             .map(GridSchemaSlice::from)
-            .collect())
+            .collect();
+
+        let paging = Paging::new("/schema", schema_list.paging, msg.service_id.as_deref());
+
+        Ok(GridSchemaListSlice { data, paging })
     }
 }
 
 pub async fn list_grid_schemas(
     state: web::Data<AppState>,
-    query: web::Query<QueryServiceId>,
+    query_service_id: web::Query<QueryServiceId>,
+    query_paging: web::Query<QueryPaging>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
+    let paging = query_paging.into_inner();
     state
         .database_connection
         .send(ListGridSchemas {
-            service_id: query.into_inner().service_id,
+            service_id: query_service_id.into_inner().service_id,
+            offset: paging.offset.unwrap_or(0),
+            limit: paging.limit.unwrap_or(10),
         })
         .await?
         .map(|schemas| HttpResponse::Ok().json(schemas))

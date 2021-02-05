@@ -16,6 +16,8 @@
 pub mod diesel;
 mod error;
 
+use crate::paging::Paging;
+
 pub use error::SchemaStoreError;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -48,6 +50,18 @@ pub struct PropertyDefinition {
     pub service_id: Option<String>,
 }
 
+#[derive(Clone, Debug)]
+pub struct SchemaList {
+    pub data: Vec<Schema>,
+    pub paging: Paging,
+}
+
+impl SchemaList {
+    pub fn new(data: Vec<Schema>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
+}
+
 pub trait SchemaStore: Send + Sync {
     /// Adds a new schema to underlying storage
     ///
@@ -72,8 +86,16 @@ pub trait SchemaStore: Send + Sync {
     ///
     /// # Arguments
     ///
-    ///  * `service_id` - Service ID needed for when the source of the schema is a splinter circuit
-    fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, SchemaStoreError>;
+    ///  * `service_id` - Service ID needed for when the source of the schema
+    ///  is a splinter circuit
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
+    fn list_schemas(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<SchemaList, SchemaStoreError>;
 
     /// List all property definitions in underlying storage
     ///
