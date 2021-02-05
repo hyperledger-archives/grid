@@ -74,14 +74,14 @@ impl Actor for DbExecutor {
 
 impl DbExecutor {
     pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> DbExecutor {
+        #[cfg(feature = "track-and-trace")]
+        let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool.clone()));
         let agent_store = Arc::new(DieselAgentStore::new(connection_pool.pool.clone()));
         let location_store = Arc::new(DieselLocationStore::new(connection_pool.pool.clone()));
         let organization_store =
             Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
-        let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
-        #[cfg(feature = "track-and-trace")]
-        let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
+        let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool));
 
         Self {
             agent_store,
@@ -97,14 +97,14 @@ impl DbExecutor {
     pub fn from_sqlite_pool(
         connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
     ) -> DbExecutor {
+        #[cfg(feature = "track-and-trace")]
+        let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool.clone()));
         let agent_store = Arc::new(DieselAgentStore::new(connection_pool.pool.clone()));
         let location_store = Arc::new(DieselLocationStore::new(connection_pool.pool.clone()));
         let organization_store =
             Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
-        let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
-        #[cfg(feature = "track-and-trace")]
-        let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
+        let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool));
 
         Self {
             agent_store,
