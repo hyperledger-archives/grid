@@ -58,7 +58,7 @@ jobs:
         - docker login -u splintercommunity -p $DOCKER_TOKEN
       deploy:
         - provider: script
-          script: bash ci/publish_saplings
+          script: bash ci/publish-saplings
           on:
             branch: master
         - provider: script
