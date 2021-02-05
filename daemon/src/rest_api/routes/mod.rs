@@ -120,7 +120,7 @@ mod test {
     use crate::database;
     use crate::rest_api::{
         error::RestApiResponseError,
-        routes::{AgentSlice, OrganizationSlice},
+        routes::{AgentListSlice, AgentSlice, OrganizationListSlice, OrganizationSlice},
         AppState,
     };
     use crate::sawtooth::batch_submitter::{
@@ -716,9 +716,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<AgentSlice> =
+        let body: AgentListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(body.is_empty());
+        assert!(body.data.is_empty());
 
         // Adds a single Agent to the test database
         populate_agent_table(get_agent(None));
@@ -731,10 +731,10 @@ mod test {
             .unwrap();
 
         assert!(response.status().is_success());
-        let body: Vec<AgentSlice> =
+        let body: AgentListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let agent = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let agent = body.data.first().unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
     }
@@ -762,9 +762,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<AgentSlice> =
+        let body: AgentListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(body.is_empty());
+        assert!(body.data.is_empty());
 
         // Adds a single Agent to the test database
         populate_agent_table(get_agent(Some(TEST_SERVICE_ID.to_string())));
@@ -780,10 +780,10 @@ mod test {
             .unwrap();
 
         assert!(response.status().is_success());
-        let body: Vec<AgentSlice> =
+        let body: AgentListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let agent = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let agent = body.data.first().unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
         assert_eq!(agent.service_id, Some(TEST_SERVICE_ID.to_string()));
@@ -805,9 +805,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<OrganizationSlice> =
+        let body: OrganizationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(body.is_empty());
+        assert!(body.data.is_empty());
     }
 
     ///
@@ -830,10 +830,10 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<OrganizationSlice> =
+        let body: OrganizationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let org = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
         assert_eq!(org.address, ADDRESS_1.to_string());
@@ -862,10 +862,10 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<OrganizationSlice> =
+        let body: OrganizationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let org = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
         assert_eq!(org.address, ADDRESS_1.to_string());
@@ -895,10 +895,10 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<OrganizationSlice> =
+        let body: OrganizationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let org = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
@@ -1161,9 +1161,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let empty_body: Vec<GridSchemaSlice> =
+        let empty_body: GridSchemaListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(empty_body.is_empty());
+        assert!(empty_body.data.is_empty());
 
         populate_grid_schema_table(get_grid_schema(None));
         let mut response = srv
@@ -1172,11 +1172,11 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<GridSchemaSlice> =
+        let body: GridSchemaListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
+        assert_eq!(body.data.len(), 1);
 
-        let test_schema = body.first().unwrap();
+        let test_schema = body.data.first().unwrap();
         assert_eq!(test_schema.name, "TestGridSchema".to_string());
         assert_eq!(test_schema.owner, "phillips001".to_string());
         assert_eq!(test_schema.properties.len(), 2);
@@ -1202,9 +1202,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let empty_body: Vec<GridSchemaSlice> =
+        let empty_body: GridSchemaListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(empty_body.is_empty());
+        assert!(empty_body.data.is_empty());
 
         populate_grid_schema_table(get_grid_schema(Some(TEST_SERVICE_ID.to_string())));
         let mut response = srv
@@ -1216,11 +1216,11 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<GridSchemaSlice> =
+        let body: GridSchemaListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
+        assert_eq!(body.data.len(), 1);
 
-        let test_schema = body.first().unwrap();
+        let test_schema = body.data.first().unwrap();
         assert_eq!(test_schema.name, "TestGridSchema".to_string());
         assert_eq!(test_schema.owner, "phillips001".to_string());
         assert_eq!(test_schema.properties.len(), 2);
@@ -1341,9 +1341,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let empty_body: Vec<ProductSlice> =
+        let empty_body: ProductListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(empty_body.is_empty());
+        assert!(empty_body.data.is_empty());
 
         populate_product_table(get_product(None));
         let mut response = srv
@@ -1352,11 +1352,11 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<ProductSlice> =
+        let body: ProductListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
+        assert_eq!(body.data.len(), 1);
 
-        let test_product = body.first().unwrap();
+        let test_product = body.data.first().unwrap();
         assert_eq!(test_product.product_id, "041205707820".to_string());
         assert_eq!(test_product.product_address, "test_address".to_string());
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
@@ -1382,9 +1382,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let empty_body: Vec<LocationSlice> =
+        let empty_body: LocationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(empty_body.is_empty());
+        assert!(empty_body.data.is_empty());
 
         populate_location_table(get_location(None));
 
@@ -1394,11 +1394,11 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<LocationSlice> =
+        let body: LocationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
+        assert_eq!(body.data.len(), 1);
 
-        let test_location = body.first().unwrap();
+        let test_location = body.data.first().unwrap();
         assert_eq!(
             test_location.location_namespace,
             "Grid Location".to_string()
@@ -1427,9 +1427,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let empty_body: Vec<ProductSlice> =
+        let empty_body: ProductListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(empty_body.is_empty());
+        assert!(empty_body.data.is_empty());
 
         populate_product_table(get_product(Some(TEST_SERVICE_ID.to_string())));
         let mut response = srv
@@ -1441,11 +1441,11 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<ProductSlice> =
+        let body: ProductListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
+        assert_eq!(body.data.len(), 1);
 
-        let test_product = body.first().unwrap();
+        let test_product = body.data.first().unwrap();
         assert_eq!(test_product.product_id, "041205707820".to_string());
         assert_eq!(test_product.product_address, "test_address".to_string());
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
@@ -1474,9 +1474,9 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let empty_body: Vec<LocationSlice> =
+        let empty_body: LocationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert!(empty_body.is_empty());
+        assert!(empty_body.data.is_empty());
 
         populate_location_table(get_location(Some(TEST_SERVICE_ID.to_string())));
         let mut response = srv
@@ -1488,11 +1488,11 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<LocationSlice> =
+        let body: LocationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
+        assert_eq!(body.data.len(), 1);
 
-        let test_location = body.first().unwrap();
+        let test_location = body.data.first().unwrap();
         assert_eq!(test_location.location_id, "0653114000000".to_string());
         assert_eq!(
             test_location.location_namespace,
@@ -1742,10 +1742,10 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<RecordSlice> =
+        let body: RecordListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let test_record = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let test_record = body.data.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
@@ -1874,10 +1874,10 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<RecordSlice> =
+        let body: RecordListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let test_record = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let test_record = body.data.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
@@ -2036,10 +2036,10 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<RecordSlice> =
+        let body: RecordListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
-        assert_eq!(body.len(), 1);
-        let test_record = body.first().unwrap();
+        assert_eq!(body.data.len(), 1);
+        let test_record = body.data.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.r#final, true);
@@ -2072,14 +2072,14 @@ mod test {
             .await
             .unwrap();
         assert!(response.status().is_success());
-        let body: Vec<RecordSlice> =
+        let body: RecordListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
-        assert_eq!(body.len(), 2);
-        let record_1 = &body[0];
+        assert_eq!(body.data.len(), 2);
+        let record_1 = &body.data[0];
         assert_eq!(record_1.properties.len(), 2);
 
-        let record_2 = &body[1];
+        let record_2 = &body.data[1];
         assert!(record_2.properties.is_empty());
     }
 
