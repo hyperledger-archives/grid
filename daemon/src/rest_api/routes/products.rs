@@ -16,7 +16,9 @@
  */
 
 use crate::rest_api::{
-    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+    error::RestApiResponseError,
+    routes::{paging::Paging, DbExecutor},
+    AcceptServiceIdParam, AppState, QueryPaging, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
@@ -51,6 +53,12 @@ impl From<Product> for ProductSlice {
             service_id: product.service_id,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProductListSlice {
+    pub data: Vec<ProductSlice>,
+    pub paging: Paging,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,34 +115,47 @@ impl From<LatLongValue> for LatLongSlice {
 
 struct ListProducts {
     service_id: Option<String>,
+    offset: i64,
+    limit: i64,
 }
 
 impl Message for ListProducts {
-    type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
+    type Result = Result<ProductListSlice, RestApiResponseError>;
 }
 
 impl Handler<ListProducts> for DbExecutor {
-    type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
+    type Result = Result<ProductListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListProducts, _: &mut SyncContext<Self>) -> Self::Result {
-        Ok(self
-            .product_store
-            .list_products(msg.service_id.as_deref())?
+        let product_list =
+            self.product_store
+                .list_products(msg.service_id.as_deref(), msg.offset, msg.limit)?;
+
+        let data = product_list
+            .data
             .into_iter()
             .map(ProductSlice::from)
-            .collect())
+            .collect();
+
+        let paging = Paging::new("/product", product_list.paging, msg.service_id.as_deref());
+
+        Ok(ProductListSlice { data, paging })
     }
 }
 
 pub async fn list_products(
     state: web::Data<AppState>,
-    query: web::Query<QueryServiceId>,
+    query_service_id: web::Query<QueryServiceId>,
+    query_paging: web::Query<QueryPaging>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
+    let paging = query_paging.into_inner();
     state
         .database_connection
         .send(ListProducts {
-            service_id: query.into_inner().service_id,
+            service_id: query_service_id.into_inner().service_id,
+            offset: paging.offset.unwrap_or(0),
+            limit: paging.limit.unwrap_or(10),
         })
         .await?
         .map(|products| HttpResponse::Ok().json(products))
