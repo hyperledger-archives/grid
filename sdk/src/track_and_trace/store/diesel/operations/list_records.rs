@@ -17,8 +17,9 @@ use crate::track_and_trace::store::diesel::{schema::record, TrackAndTraceStoreEr
 
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
+use crate::paging::Paging;
 use crate::track_and_trace::store::diesel::models::RecordModel;
-use crate::track_and_trace::store::Record;
+use crate::track_and_trace::store::{Record, RecordList};
 
 use diesel::prelude::*;
 
@@ -26,7 +27,9 @@ pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreListRecord
     fn list_records(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Record>, TrackAndTraceStoreError>;
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError>;
 }
 
 #[cfg(feature = "postgres")]
@@ -36,10 +39,14 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
     fn list_records(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError> {
         let mut query = record::table
             .into_boxed()
             .select(record::all_columns)
+            .offset(offset)
+            .limit(limit)
             .filter(record::end_commit_num.eq(MAX_COMMIT_NUM));
 
         if let Some(service_id) = service_id {
@@ -48,7 +55,7 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
             query = query.filter(record::service_id.is_null());
         }
 
-        let models: Vec<RecordModel> = query
+        let records = query
             .load::<RecordModel>(self.conn)
             .map(Some)
             .map_err(|err| {
@@ -60,9 +67,22 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
                 )
             })?
             .into_iter()
+            .collect::<Vec<RecordModel>>()
+            .into_iter()
+            .map(Record::from)
             .collect();
 
-        Ok(models.into_iter().map(Record::from).collect())
+        let mut count_query = record::table.into_boxed().select(record::all_columns);
+
+        if let Some(service_id) = service_id {
+            count_query = count_query.filter(record::service_id.eq(service_id));
+        } else {
+            count_query = count_query.filter(record::service_id.is_null());
+        }
+
+        let total = count_query.count().get_result(self.conn)?;
+
+        Ok(RecordList::new(records, Paging::new(offset, limit, total)))
     }
 }
 
@@ -73,10 +93,14 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
     fn list_records(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError> {
         let mut query = record::table
             .into_boxed()
             .select(record::all_columns)
+            .offset(offset)
+            .limit(limit)
             .filter(record::end_commit_num.eq(MAX_COMMIT_NUM));
 
         if let Some(service_id) = service_id {
@@ -85,7 +109,7 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
             query = query.filter(record::service_id.is_null());
         }
 
-        let models: Vec<RecordModel> = query
+        let records = query
             .load::<RecordModel>(self.conn)
             .map(Some)
             .map_err(|err| {
@@ -97,8 +121,21 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
                 )
             })?
             .into_iter()
+            .collect::<Vec<RecordModel>>()
+            .into_iter()
+            .map(Record::from)
             .collect();
 
-        Ok(models.into_iter().map(Record::from).collect())
+        let mut count_query = record::table.into_boxed().select(record::all_columns);
+
+        if let Some(service_id) = service_id {
+            count_query = count_query.filter(record::service_id.eq(service_id));
+        } else {
+            count_query = count_query.filter(record::service_id.is_null());
+        }
+
+        let total = count_query.count().get_result(self.conn)?;
+
+        Ok(RecordList::new(records, Paging::new(offset, limit, total)))
     }
 }

@@ -24,7 +24,7 @@ use super::diesel::models::{
     RecordModel, ReportedValueReporterToAgentMetadataModel, ReporterModel,
 };
 use super::{
-    AssociatedAgent, LatLongValue, Property, Proposal, Record, ReportedValue,
+    AssociatedAgent, LatLongValue, Property, Proposal, Record, RecordList, ReportedValue,
     ReportedValueReporterToAgentMetadata, Reporter, TrackAndTraceStore, TrackAndTraceStoreError,
 };
 use crate::error::{
@@ -217,13 +217,15 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
     fn list_records(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_records(service_id)
+        .list_records(service_id, offset, limit)
     }
 
     fn list_reported_value_reporter_to_agent_metadata(
@@ -410,13 +412,15 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
     fn list_records(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             TrackAndTraceStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_records(service_id)
+        .list_records(service_id, offset, limit)
     }
 
     fn list_reported_value_reporter_to_agent_metadata(
