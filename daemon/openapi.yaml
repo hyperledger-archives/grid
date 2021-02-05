@@ -186,6 +186,8 @@ paths:
       operationId: list_locations
       parameters:
         - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
       responses:
         "200":
           description: |
@@ -194,9 +196,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Location"
+                $ref: "#/components/schemas/LocationList"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
@@ -244,6 +244,8 @@ paths:
       operationId: list_agents
       parameters:
         - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
       responses:
         "200":
           description: |
@@ -252,9 +254,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Agent"
+                $ref: "#/components/schemas/AgentList"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
@@ -300,6 +300,8 @@ paths:
       operationId: list_organizations
       parameters:
         - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
       responses:
         "200":
           description: |
@@ -308,9 +310,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Organization"
+                $ref: "#/components/schemas/OrganizationList"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
@@ -358,6 +358,8 @@ paths:
       operationId: list_products
       parameters:
         - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
       responses:
         "200":
           description: |
@@ -366,9 +368,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Product"
+                $ref: "#/components/schemas/ProductList"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
@@ -416,6 +416,8 @@ paths:
       operationId: list_grid_schemas
       parameters:
         - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
       responses:
         "200":
           description: |
@@ -424,9 +426,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Schema"
+                $ref: "#/components/schemas/SchemaList"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
@@ -476,6 +476,8 @@ paths:
       operationId: list_records
       parameters:
         - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
       responses:
         "200":
           description: |
@@ -484,9 +486,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Record"
+                $ref: "#/components/schemas/RecordList"
         "400":
           $ref: "#/components/responses/400BadRequest"
         "500":
@@ -566,6 +566,14 @@ paths:
 components:
   schemas:
     # Location models
+    LocationList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Location"
+        paging:
+          $ref: "#/components/schemas/Paging"
     Location:
       type: object
       properties:
@@ -585,6 +593,14 @@ components:
           $ref: "#/components/schemas/ServiceID"
 
     # Pike models
+    AgentList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agent"
+        paging:
+          $ref: "#/components/schemas/Paging"
     Agent:
       properties:
         public_key:
@@ -607,6 +623,14 @@ components:
             $ref: "#/components/schemas/Metadata"
         service_id:
           $ref: "#/components/schemas/ServiceID"
+    OrganizationList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Organization"
+        paging:
+          $ref: "#/components/schemas/Paging"
     Organization:
       type: object
       properties:
@@ -627,6 +651,14 @@ components:
           $ref: "#/components/schemas/ServiceID"
 
     # Product models
+    ProductList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        paging:
+          $ref: "#/components/schemas/Paging"
     Product:
       type: object
       properties:
@@ -649,6 +681,14 @@ components:
           $ref: "#/components/schemas/ServiceID"
 
     # Schema models
+    SchemaList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Schema"
+        paging:
+          $ref: "#/components/schemas/Paging"
     Schema:
       properties:
         name:
@@ -776,7 +816,47 @@ components:
       items:
         $ref: "#/components/schemas/StructPropertyValue"
 
+    Paging:
+      type: object
+      properties:
+        current:
+          type: string
+          description: Link to the current page
+          example: /agent?offset0&limit=10
+        offset:
+          type: integer
+          description: Index of first element in page
+          example: 0
+        limit:
+          type: integer
+          description: The maximum number of elements per page
+          example: 10
+        total:
+          type: integer
+          description: The total number of elements that exist
+          example: 1000
+        prev:
+          type: string
+          description: Link to previous page
+          example: /agent?offset=0&limit=10
+        next:
+          type: string
+          description: Link to next page
+          example: /agent?offset=10&limit=10
+        last:
+          type: string
+          description: Link to last page
+          example: /agent?offset100&limit=10
+
     # Track and Trace models
+    RecordList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Record"
+        paging:
+          $ref: "#/components/schemas/Paging"
     Record:
       type: object
       properties:
@@ -1040,6 +1120,20 @@ components:
       description: |
         The number of seconds to wait for batches to be committed before
         returning.
+      schema:
+        type: integer
+    page_offset:
+      name: offset
+      in: query
+      description: |
+        The index of the first element to be in the page
+      schema:
+        type: integer
+    page_limit:
+      name: limit
+      in: query
+      description: |
+        The maximum number of elements in a page
       schema:
         type: integer
 
