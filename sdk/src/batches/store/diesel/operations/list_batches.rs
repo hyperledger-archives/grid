@@ -15,34 +15,63 @@
 use super::BatchStoreOperations;
 use crate::batches::store::{diesel::schema::batches, BatchStoreError};
 
-use crate::batches::store::diesel::BatchModel;
 use crate::error::InternalError;
+use crate::{
+    batches::store::{diesel::BatchModel, BatchList},
+    paging::Paging,
+};
 use diesel::prelude::*;
 
 pub(in crate::batches::store::diesel) trait ListBatchesOperation {
-    fn list_batches(&self) -> Result<Vec<BatchModel>, BatchStoreError>;
+    fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> ListBatchesOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
-    fn list_batches(&self) -> Result<Vec<BatchModel>, BatchStoreError> {
-        batches::table
+    fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
+        let batches = batches::table
             .select(batches::all_columns)
+            .offset(offset)
+            .limit(limit)
             .load::<BatchModel>(self.conn)
+            .map(|models| models.into_iter().map(|model| model.into()).collect())
             .map_err(|err| {
                 BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+            })?;
+
+        let total = batches::table
+            .select(batches::all_columns)
+            .count()
+            .get_result(self.conn)
+            .map_err(|err| {
+                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+        Ok(BatchList::new(batches, Paging::new(offset, limit, total)))
     }
 }
 
 #[cfg(feature = "sqlite")]
 impl<'a> ListBatchesOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn list_batches(&self) -> Result<Vec<BatchModel>, BatchStoreError> {
-        batches::table
+    fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
+        let batches = batches::table
             .select(batches::all_columns)
+            .offset(offset)
+            .limit(limit)
             .load::<BatchModel>(self.conn)
+            .map(|models| models.into_iter().map(|model| model.into()).collect())
             .map_err(|err| {
                 BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+            })?;
+
+        let total = batches::table
+            .select(batches::all_columns)
+            .count()
+            .get_result(self.conn)
+            .map_err(|err| {
+                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+        Ok(BatchList::new(batches, Paging::new(offset, limit, total)))
     }
 }
