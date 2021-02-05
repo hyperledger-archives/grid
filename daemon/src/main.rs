@@ -33,7 +33,12 @@ extern crate log;
 ))]
 #[macro_use]
 extern crate serde_json;
-#[cfg(feature = "splinter-support")]
+#[cfg(any(
+    feature = "pike",
+    feature = "schema",
+    feature = "product",
+    feature = "location"
+))]
 #[macro_use]
 extern crate serde;
 
