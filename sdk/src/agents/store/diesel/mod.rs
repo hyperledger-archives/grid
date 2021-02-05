@@ -19,7 +19,7 @@ pub(in crate) mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::diesel::models::{AgentModel, NewAgentModel, NewRoleModel, RoleModel};
-use super::{Agent, AgentStore, AgentStoreError, Role};
+use super::{Agent, AgentList, AgentStore, AgentStoreError, Role};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{
     ConstraintViolationError, ConstraintViolationType, InternalError,
@@ -59,13 +59,18 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
         .add_agent(agent.clone().into(), make_role_models(&agent))
     }
 
-    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             AgentStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_agents(service_id)
+        .list_agents(service_id, offset, limit)
     }
 
     fn fetch_agent(
@@ -102,13 +107,18 @@ impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
         .add_agent(agent.clone().into(), make_role_models(&agent))
     }
 
-    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             AgentStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_agents(service_id)
+        .list_agents(service_id, offset, limit)
     }
 
     fn fetch_agent(
