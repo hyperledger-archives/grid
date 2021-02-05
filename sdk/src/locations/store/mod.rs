@@ -16,6 +16,8 @@
 pub mod diesel;
 mod error;
 
+use crate::paging::Paging;
+
 pub use error::LocationStoreError;
 
 /// Represents a Grid Location
@@ -30,6 +32,18 @@ pub struct Location {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct LocationList {
+    pub data: Vec<Location>,
+    pub paging: Paging,
+}
+
+impl LocationList {
+    pub fn new(data: Vec<Location>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
 }
 
 /// Represents a Grid Location Attribute
@@ -83,8 +97,14 @@ pub trait LocationStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `service_id` - optional - The service ID to get the locations for
-    fn list_locations(&self, service_id: Option<&str>)
-        -> Result<Vec<Location>, LocationStoreError>;
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
+    fn list_locations(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError>;
 
     /// Updates a location in the underlying storage
     ///
@@ -125,8 +145,10 @@ where
     fn list_locations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Location>, LocationStoreError> {
-        (**self).list_locations(service_id)
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError> {
+        (**self).list_locations(service_id, offset, limit)
     }
 
     fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {

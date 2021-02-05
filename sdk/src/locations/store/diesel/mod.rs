@@ -21,7 +21,9 @@ use diesel::r2d2::{ConnectionManager, Pool};
 use super::diesel::models::{
     LocationAttributeModel, LocationModel, NewLocationAttributeModel, NewLocationModel,
 };
-use super::{LatLongValue, Location, LocationAttribute, LocationStore, LocationStoreError};
+use super::{
+    LatLongValue, Location, LocationAttribute, LocationList, LocationStore, LocationStoreError,
+};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::ResourceTemporarilyUnavailableError;
 
@@ -78,13 +80,15 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
     fn list_locations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Location>, LocationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             LocationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_locations(service_id)
+        .list_locations(service_id, offset, limit)
     }
 
     fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
@@ -141,13 +145,15 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
     fn list_locations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Location>, LocationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             LocationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_locations(service_id)
+        .list_locations(service_id, offset, limit)
     }
 
     fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
