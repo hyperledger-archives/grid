@@ -19,7 +19,7 @@ pub(in crate) mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::diesel::models::{NewOrganizationModel, OrganizationModel};
-use super::{Organization, OrganizationStore, OrganizationStoreError};
+use super::{Organization, OrganizationList, OrganizationStore, OrganizationStoreError};
 use crate::error::{
     ConstraintViolationError, ConstraintViolationType, InternalError,
     ResourceTemporarilyUnavailableError,
@@ -60,13 +60,15 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             OrganizationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_organizations(service_id)
+        .list_organizations(service_id, offset, limit)
     }
 
     fn fetch_organization(
@@ -97,13 +99,15 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             OrganizationStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_organizations(service_id)
+        .list_organizations(service_id, offset, limit)
     }
 
     fn fetch_organization(

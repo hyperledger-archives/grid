@@ -17,7 +17,10 @@ use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::organizations::store::diesel::models::OrganizationModel;
 use crate::organizations::store::diesel::{schema::organization, OrganizationStoreError};
-use crate::organizations::store::Organization;
+use crate::{
+    organizations::store::{Organization, OrganizationList},
+    paging::Paging,
+};
 
 use diesel::prelude::*;
 
@@ -25,7 +28,9 @@ pub(in crate::organizations::store::diesel) trait OrganizationStoreListOrganizat
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError>;
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError>;
 }
 
 #[cfg(feature = "postgres")]
@@ -35,10 +40,14 @@ impl<'a> OrganizationStoreListOrganizationsOperation
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError> {
         let mut query = organization::table
             .into_boxed()
             .select(organization::all_columns)
+            .offset(offset)
+            .limit(limit)
             .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
 
         if let Some(service_id) = service_id {
@@ -56,7 +65,22 @@ impl<'a> OrganizationStoreListOrganizationsOperation
             .map(Organization::from)
             .collect();
 
-        Ok(orgs)
+        let mut count_query = organization::table
+            .into_boxed()
+            .select(organization::all_columns);
+
+        if let Some(service_id) = service_id {
+            count_query = count_query.filter(organization::service_id.eq(service_id));
+        } else {
+            count_query = count_query.filter(organization::service_id.is_null());
+        }
+
+        let total = count_query.count().get_result(self.conn)?;
+
+        Ok(OrganizationList::new(
+            orgs,
+            Paging::new(offset, limit, total),
+        ))
     }
 }
 
@@ -67,10 +91,14 @@ impl<'a> OrganizationStoreListOrganizationsOperation
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError> {
         let mut query = organization::table
             .into_boxed()
             .select(organization::all_columns)
+            .offset(offset)
+            .limit(limit)
             .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
 
         if let Some(service_id) = service_id {
@@ -88,6 +116,21 @@ impl<'a> OrganizationStoreListOrganizationsOperation
             .map(Organization::from)
             .collect();
 
-        Ok(orgs)
+        let mut count_query = organization::table
+            .into_boxed()
+            .select(organization::all_columns);
+
+        if let Some(service_id) = service_id {
+            count_query = count_query.filter(organization::service_id.eq(service_id));
+        } else {
+            count_query = count_query.filter(organization::service_id.is_null());
+        }
+
+        let total = count_query.count().get_result(self.conn)?;
+
+        Ok(OrganizationList::new(
+            orgs,
+            Paging::new(offset, limit, total),
+        ))
     }
 }

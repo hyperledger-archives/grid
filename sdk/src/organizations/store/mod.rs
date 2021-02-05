@@ -19,7 +19,7 @@ pub mod memory;
 
 pub use error::OrganizationStoreError;
 
-use crate::hex::as_hex;
+use crate::{hex::as_hex, paging::Paging};
 
 /// Represents a Grid commit
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -37,6 +37,17 @@ pub struct Organization {
     pub service_id: Option<String>,
 }
 
+pub struct OrganizationList {
+    pub data: Vec<Organization>,
+    pub paging: Paging,
+}
+
+impl OrganizationList {
+    pub fn new(data: Vec<Organization>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
+}
+
 pub trait OrganizationStore: Send + Sync {
     /// Adds an organization to the underlying storage
     ///
@@ -50,10 +61,14 @@ pub trait OrganizationStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `service_id` - The service ID to list organizations for
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError>;
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError>;
 
     /// Fetches an organization from the underlying storage
     ///
@@ -79,8 +94,10 @@ where
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError> {
-        (**self).list_organizations(service_id)
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError> {
+        (**self).list_organizations(service_id, offset, limit)
     }
 
     fn fetch_organization(

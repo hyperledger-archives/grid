@@ -15,7 +15,9 @@
 use std::{convert::TryFrom, str::FromStr};
 
 use crate::rest_api::{
-    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+    error::RestApiResponseError,
+    routes::{paging::Paging, DbExecutor},
+    AcceptServiceIdParam, AppState, QueryPaging, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
@@ -33,6 +35,12 @@ pub struct OrganizationSlice {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OrganizationListSlice {
+    pub data: Vec<OrganizationSlice>,
+    pub paging: Paging,
 }
 
 impl TryFrom<Organization> for OrganizationSlice {
@@ -61,33 +69,49 @@ impl TryFrom<Organization> for OrganizationSlice {
 
 struct ListOrganizations {
     service_id: Option<String>,
+    offset: i64,
+    limit: i64,
 }
 
 impl Message for ListOrganizations {
-    type Result = Result<Vec<OrganizationSlice>, RestApiResponseError>;
+    type Result = Result<OrganizationListSlice, RestApiResponseError>;
 }
 
 impl Handler<ListOrganizations> for DbExecutor {
-    type Result = Result<Vec<OrganizationSlice>, RestApiResponseError>;
+    type Result = Result<OrganizationListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListOrganizations, _: &mut SyncContext<Self>) -> Self::Result {
-        self.organization_store
-            .list_organizations(msg.service_id.as_deref())?
+        let orgs_list = self.organization_store.list_organizations(
+            msg.service_id.as_deref(),
+            msg.offset,
+            msg.limit,
+        )?;
+
+        let data = orgs_list
+            .data
             .into_iter()
             .map(OrganizationSlice::try_from)
-            .collect::<Result<Vec<OrganizationSlice>, RestApiResponseError>>()
+            .collect::<Result<Vec<OrganizationSlice>, RestApiResponseError>>()?;
+
+        let paging = Paging::new("/organization", orgs_list.paging, msg.service_id.as_deref());
+
+        Ok(OrganizationListSlice { data, paging })
     }
 }
 
 pub async fn list_organizations(
     state: web::Data<AppState>,
-    query: web::Query<QueryServiceId>,
+    query_service_id: web::Query<QueryServiceId>,
+    query_paging: web::Query<QueryPaging>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
+    let paging = query_paging.into_inner();
     state
         .database_connection
         .send(ListOrganizations {
-            service_id: query.into_inner().service_id,
+            service_id: query_service_id.into_inner().service_id,
+            offset: paging.offset.unwrap_or(0),
+            limit: paging.limit.unwrap_or(10),
         })
         .await?
         .map(|organizations| HttpResponse::Ok().json(organizations))
