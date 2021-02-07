@@ -60,11 +60,11 @@ jobs:
         - provider: script
           script: bash ci/publish-saplings
           on:
-            branch: main
+            branch: 0-1
         - provider: script
-          script: bash ci/publish-docker main
+          script: bash ci/publish-docker 0.1-dev
           on:
-            branch: main
+            branch: 0-1
         - provider: script
           script: bash ci/publish-docker
           on:
