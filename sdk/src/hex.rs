@@ -14,20 +14,18 @@
 
 use std::error::Error;
 use std::fmt;
-#[cfg(feature = "pike")]
+#[cfg(feature = "batch-store")]
 use std::fmt::Write;
 
 use serde::de;
 use serde::Deserializer;
-#[cfg(feature = "pike")]
-use serde::Serializer;
 
 /// Converts a byte array into a hex string
 ///
 /// # Arguments
 ///
 ///  * `bytes`: the byte array to convert
-#[cfg(feature = "pike")]
+#[cfg(feature = "batch-store")]
 pub fn to_hex(bytes: &[u8]) -> String {
     let mut buf = String::new();
     for b in bytes {
@@ -61,20 +59,6 @@ pub fn parse_hex(hex: &str) -> Result<Vec<u8>, HexError> {
     }
 
     Ok(res)
-}
-
-/// Serializes a byte array as a hex string
-///
-/// # Arguments
-///
-///  * `data`: the byte array to convert
-///  * `serializer`: the serializer to use
-#[cfg(feature = "pike")]
-pub fn as_hex<S>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&to_hex(data))
 }
 
 /// Deserializes a hex string into a byte array
