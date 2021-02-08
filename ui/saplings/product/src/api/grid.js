@@ -42,16 +42,32 @@ const getOrgNames = (products, serviceID) => {
   );
 };
 
+/* eslint no-await-in-loop: "off" */
 export const listProducts = async serviceID => {
-  const result = await get(`${gridURL}/product?service_id=${serviceID}`,
+  let result = await get(`${gridURL}/product?service_id=${serviceID}`,
     ProductProtocolVersion
   );
 
-  if (result.ok) {
-    const products = await getOrgNames(result.json, serviceID);
-    return products;
+  if (!result.ok) {
+    throw Error(result.data);
   }
-  throw Error(result.data);
+
+  const products = await getOrgNames(result.json.data, serviceID);
+
+  while (result.json.paging.next) {
+    result = await get(`${gridURL}${result.json.paging.next}`,
+      ProductProtocolVersion
+    );
+
+    if (result.ok) {
+      const nextPageProduct = await getOrgNames(result.json.data, serviceID);
+      products.push(...nextPageProduct);
+    } else {
+      throw Error(result.data);
+    }
+  }
+
+  return products;
 };
 
 export const fetchProduct = async (serviceID, productID) => {
