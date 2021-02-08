@@ -3034,7 +3034,9 @@ mod test {
     fn populate_organization_table(organizations: Vec<Organization>) {
         let pool = get_connection_pool();
         let store = DieselPikeStore::new(pool.pool);
-        store.add_organizations(organizations).unwrap();
+        organizations
+            .into_iter()
+            .for_each(|org| store.add_organization(org).unwrap());
     }
 
     fn get_grid_schema(service_id: Option<String>) -> Vec<Schema> {
