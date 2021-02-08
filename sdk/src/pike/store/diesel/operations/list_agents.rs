@@ -15,7 +15,7 @@
 use super::PikeStoreOperations;
 use crate::paging::Paging;
 use crate::pike::store::diesel::{
-    schema::{agent, role},
+    schema::{pike_agent, pike_role},
     Agent, AgentList, PikeStoreError,
 };
 
@@ -45,29 +45,31 @@ impl<'a> PikeStoreListAgentsOperation for PikeStoreOperations<'a, diesel::pg::Pg
             .build_transaction()
             .read_write()
             .run::<_, PikeStoreError, _>(|| {
-                let mut query = agent::table
+                let mut query = pike_agent::table
                     .into_boxed()
-                    .select(agent::all_columns)
+                    .select(pike_agent::all_columns)
                     .offset(offset)
                     .limit(limit)
-                    .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+                    .filter(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM));
 
                 if let Some(service_id) = service_id {
-                    query = query.filter(agent::service_id.eq(service_id));
+                    query = query.filter(pike_agent::service_id.eq(service_id));
                 } else {
-                    query = query.filter(agent::service_id.is_null());
+                    query = query.filter(pike_agent::service_id.is_null());
                 }
 
                 let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-                let mut count_query = agent::table.into_boxed().select(agent::all_columns);
+                let mut count_query = pike_agent::table
+                    .into_boxed()
+                    .select(pike_agent::all_columns);
 
                 if let Some(service_id) = service_id {
-                    count_query = count_query.filter(agent::service_id.eq(service_id));
+                    count_query = count_query.filter(pike_agent::service_id.eq(service_id));
                 } else {
-                    count_query = count_query.filter(agent::service_id.is_null());
+                    count_query = count_query.filter(pike_agent::service_id.is_null());
                 }
 
                 let total = count_query.count().get_result(self.conn)?;
@@ -75,16 +77,19 @@ impl<'a> PikeStoreListAgentsOperation for PikeStoreOperations<'a, diesel::pg::Pg
                 let mut agents = Vec::new();
 
                 for a in agent_models {
-                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
-                        role::public_key
-                            .eq(&a.public_key)
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
+                    let mut query = pike_role::table
+                        .into_boxed()
+                        .select(pike_role::all_columns)
+                        .filter(
+                            pike_role::public_key
+                                .eq(&a.public_key)
+                                .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        );
 
                     if let Some(service_id) = service_id {
-                        query = query.filter(role::service_id.eq(service_id));
+                        query = query.filter(pike_role::service_id.eq(service_id));
                     } else {
-                        query = query.filter(role::service_id.is_null());
+                        query = query.filter(pike_role::service_id.is_null());
                     }
 
                     let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
@@ -110,29 +115,31 @@ impl<'a> PikeStoreListAgentsOperation
         limit: i64,
     ) -> Result<AgentList, PikeStoreError> {
         self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
-            let mut query = agent::table
+            let mut query = pike_agent::table
                 .into_boxed()
-                .select(agent::all_columns)
+                .select(pike_agent::all_columns)
                 .offset(offset)
                 .limit(limit)
-                .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+                .filter(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM));
 
             if let Some(service_id) = service_id {
-                query = query.filter(agent::service_id.eq(service_id));
+                query = query.filter(pike_agent::service_id.eq(service_id));
             } else {
-                query = query.filter(agent::service_id.is_null());
+                query = query.filter(pike_agent::service_id.is_null());
             }
 
             let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-            let mut count_query = agent::table.into_boxed().select(agent::all_columns);
+            let mut count_query = pike_agent::table
+                .into_boxed()
+                .select(pike_agent::all_columns);
 
             if let Some(service_id) = service_id {
-                count_query = count_query.filter(agent::service_id.eq(service_id));
+                count_query = count_query.filter(pike_agent::service_id.eq(service_id));
             } else {
-                count_query = count_query.filter(agent::service_id.is_null());
+                count_query = count_query.filter(pike_agent::service_id.is_null());
             }
 
             let total = count_query.count().get_result(self.conn)?;
@@ -140,16 +147,19 @@ impl<'a> PikeStoreListAgentsOperation
             let mut agents = Vec::new();
 
             for a in agent_models {
-                let mut query = role::table.into_boxed().select(role::all_columns).filter(
-                    role::public_key
-                        .eq(&a.public_key)
-                        .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
+                let mut query = pike_role::table
+                    .into_boxed()
+                    .select(pike_role::all_columns)
+                    .filter(
+                        pike_role::public_key
+                            .eq(&a.public_key)
+                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
 
                 if let Some(service_id) = service_id {
-                    query = query.filter(role::service_id.eq(service_id));
+                    query = query.filter(pike_role::service_id.eq(service_id));
                 } else {
-                    query = query.filter(role::service_id.is_null());
+                    query = query.filter(pike_role::service_id.is_null());
                 }
 
                 let roles = query.load::<RoleModel>(self.conn).map_err(|err| {

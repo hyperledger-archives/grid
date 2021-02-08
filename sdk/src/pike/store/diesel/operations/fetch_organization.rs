@@ -15,9 +15,12 @@
 use super::PikeStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::pike::store::diesel::models::OrganizationModel;
-use crate::pike::store::diesel::{schema::organization, PikeStoreError};
-use crate::pike::store::Organization;
+use crate::pike::store::diesel::models::{OrganizationMetadataModel, OrganizationModel};
+use crate::pike::store::diesel::{
+    schema::{pike_organization, pike_organization_metadata},
+    PikeStoreError,
+};
+use crate::pike::store::{Organization, OrganizationMetadata};
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in crate::pike::store::diesel) trait PikeStoreFetchOrganizationOperation {
@@ -35,27 +38,63 @@ impl<'a> PikeStoreFetchOrganizationOperation for PikeStoreOperations<'a, diesel:
         org_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, PikeStoreError> {
-        let mut query = organization::table
-            .into_boxed()
-            .select(organization::all_columns)
-            .filter(
-                organization::org_id
-                    .eq(&org_id)
-                    .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-            );
+        self.conn
+            .build_transaction()
+            .read_write()
+            .run::<_, PikeStoreError, _>(|| {
+                let mut query = pike_organization::table
+                    .into_boxed()
+                    .select(pike_organization::all_columns)
+                    .filter(
+                        pike_organization::org_id
+                            .eq(&org_id)
+                            .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
 
-        if let Some(service_id) = service_id {
-            query = query.filter(organization::service_id.eq(service_id));
-        } else {
-            query = query.filter(organization::service_id.is_null());
-        }
+                if let Some(service_id) = service_id {
+                    query = query.filter(pike_organization::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_organization::service_id.is_null());
+                }
 
-        query
-            .first::<OrganizationModel>(self.conn)
-            .map(Organization::from)
-            .map(Some)
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| PikeStoreError::InternalError(InternalError::from_source(Box::new(err))))
+                let org_model = query
+                    .first::<OrganizationModel>(self.conn)
+                    .map(Some)
+                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+                let mut metadata_query = pike_organization_metadata::table
+                    .into_boxed()
+                    .select(pike_organization_metadata::all_columns)
+                    .filter(
+                        pike_organization_metadata::org_id
+                            .eq(&org_id)
+                            .and(pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
+
+                if let Some(service_id) = service_id {
+                    metadata_query = metadata_query
+                        .filter(pike_organization_metadata::service_id.eq(service_id));
+                } else {
+                    metadata_query =
+                        metadata_query.filter(pike_organization_metadata::service_id.is_null());
+                }
+
+                let metadata_models = metadata_query
+                    .load::<OrganizationMetadataModel>(self.conn)
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+                let metadata = metadata_models
+                    .iter()
+                    .map(OrganizationMetadata::from)
+                    .collect();
+
+                Ok(org_model.map(|org| Organization::from((org, metadata))))
+            })
     }
 }
 
@@ -68,26 +107,59 @@ impl<'a> PikeStoreFetchOrganizationOperation
         org_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, PikeStoreError> {
-        let mut query = organization::table
-            .into_boxed()
-            .select(organization::all_columns)
-            .filter(
-                organization::org_id
-                    .eq(&org_id)
-                    .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-            );
+        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+            let mut query = pike_organization::table
+                .into_boxed()
+                .select(pike_organization::all_columns)
+                .filter(
+                    pike_organization::org_id
+                        .eq(&org_id)
+                        .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-        if let Some(service_id) = service_id {
-            query = query.filter(organization::service_id.eq(service_id));
-        } else {
-            query = query.filter(organization::service_id.is_null());
-        }
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_organization::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization::service_id.is_null());
+            }
 
-        query
-            .first::<OrganizationModel>(self.conn)
-            .map(Organization::from)
-            .map(Some)
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| PikeStoreError::InternalError(InternalError::from_source(Box::new(err))))
+            let org_model = query
+                .first::<OrganizationModel>(self.conn)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            let mut metadata_query = pike_organization_metadata::table
+                .into_boxed()
+                .select(pike_organization_metadata::all_columns)
+                .filter(
+                    pike_organization_metadata::org_id
+                        .eq(&org_id)
+                        .and(pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                metadata_query =
+                    metadata_query.filter(pike_organization_metadata::service_id.eq(service_id));
+            } else {
+                metadata_query =
+                    metadata_query.filter(pike_organization_metadata::service_id.is_null());
+            }
+
+            let metadata_models = metadata_query
+                .load::<OrganizationMetadataModel>(self.conn)
+                .map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            let metadata = metadata_models
+                .iter()
+                .map(OrganizationMetadata::from)
+                .collect();
+
+            Ok(org_model.map(|org| Organization::from((org, metadata))))
+        })
     }
 }

@@ -14,7 +14,7 @@
 
 use super::PikeStoreOperations;
 use crate::pike::store::diesel::{
-    schema::{agent, role},
+    schema::{pike_agent, pike_role},
     PikeStoreError,
 };
 
@@ -47,12 +47,12 @@ impl<'a> PikeStoreUpdateAgentOperation for PikeStoreOperations<'a, diesel::pg::P
             .build_transaction()
             .read_write()
             .run::<_, PikeStoreError, _>(|| {
-                let agt = agent::table
+                let agt = pike_agent::table
                     .filter(
-                        agent::public_key
+                        pike_agent::public_key
                             .eq(&agent.public_key)
-                            .and(agent::service_id.eq(&agent.service_id))
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            .and(pike_agent::service_id.eq(&agent.service_id))
+                            .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
                     .first::<AgentModel>(self.conn)
                     .map(Some)
@@ -68,14 +68,14 @@ impl<'a> PikeStoreUpdateAgentOperation for PikeStoreOperations<'a, diesel::pg::P
                     })?;
 
                 if agt.is_some() {
-                    update(agent::table)
+                    update(pike_agent::table)
                         .filter(
-                            agent::public_key
+                            pike_agent::public_key
                                 .eq(&agent.public_key)
-                                .and(agent::service_id.eq(&agent.service_id))
-                                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                                .and(pike_agent::service_id.eq(&agent.service_id))
+                                .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
                         )
-                        .set(agent::end_commit_num.eq(&agent.start_commit_num))
+                        .set(pike_agent::end_commit_num.eq(&agent.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
                         .map_err(|err| match err {
@@ -101,7 +101,7 @@ impl<'a> PikeStoreUpdateAgentOperation for PikeStoreOperations<'a, diesel::pg::P
                         })?;
                 }
 
-                insert_into(agent::table)
+                insert_into(pike_agent::table)
                     .values(&agent)
                     .execute(self.conn)
                     .map(|_| ())
@@ -127,14 +127,14 @@ impl<'a> PikeStoreUpdateAgentOperation for PikeStoreOperations<'a, diesel::pg::P
                         }
                     })?;
 
-                update(role::table)
+                update(pike_role::table)
                     .filter(
-                        role::public_key
+                        pike_role::public_key
                             .eq(&agent.public_key)
-                            .and(role::service_id.eq(&agent.service_id))
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            .and(pike_role::service_id.eq(&agent.service_id))
+                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
-                    .set(role::end_commit_num.eq(&agent.start_commit_num))
+                    .set(pike_role::end_commit_num.eq(&agent.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {
@@ -160,7 +160,7 @@ impl<'a> PikeStoreUpdateAgentOperation for PikeStoreOperations<'a, diesel::pg::P
                     })?;
 
                 for role in roles {
-                    insert_into(role::table)
+                    insert_into(pike_role::table)
                         .values(&role)
                         .execute(self.conn)
                         .map(|_| ())
@@ -202,12 +202,12 @@ impl<'a> PikeStoreUpdateAgentOperation
         roles: Vec<NewRoleModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
-            let agt = agent::table
+            let agt = pike_agent::table
                 .filter(
-                    agent::public_key
+                    pike_agent::public_key
                         .eq(&agent.public_key)
-                        .and(agent::service_id.eq(&agent.service_id))
-                        .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        .and(pike_agent::service_id.eq(&agent.service_id))
+                        .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
                 )
                 .first::<AgentModel>(self.conn)
                 .map(Some)
@@ -223,14 +223,14 @@ impl<'a> PikeStoreUpdateAgentOperation
                 })?;
 
             if agt.is_some() {
-                update(agent::table)
+                update(pike_agent::table)
                     .filter(
-                        agent::public_key
+                        pike_agent::public_key
                             .eq(&agent.public_key)
-                            .and(agent::service_id.eq(&agent.service_id))
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            .and(pike_agent::service_id.eq(&agent.service_id))
+                            .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
-                    .set(agent::end_commit_num.eq(&agent.start_commit_num))
+                    .set(pike_agent::end_commit_num.eq(&agent.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {
@@ -256,7 +256,7 @@ impl<'a> PikeStoreUpdateAgentOperation
                     })?;
             }
 
-            insert_into(agent::table)
+            insert_into(pike_agent::table)
                 .values(&agent)
                 .execute(self.conn)
                 .map(|_| ())
@@ -280,14 +280,14 @@ impl<'a> PikeStoreUpdateAgentOperation
                     _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
                 })?;
 
-            update(role::table)
+            update(pike_role::table)
                 .filter(
-                    role::public_key
+                    pike_role::public_key
                         .eq(&agent.public_key)
-                        .and(role::service_id.eq(&agent.service_id))
-                        .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        .and(pike_role::service_id.eq(&agent.service_id))
+                        .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
                 )
-                .set(role::end_commit_num.eq(&agent.start_commit_num))
+                .set(pike_role::end_commit_num.eq(&agent.start_commit_num))
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(|err| match err {
@@ -311,7 +311,7 @@ impl<'a> PikeStoreUpdateAgentOperation
                 })?;
 
             for role in roles {
-                insert_into(role::table)
+                insert_into(pike_role::table)
                     .values(&role)
                     .execute(self.conn)
                     .map(|_| ())
