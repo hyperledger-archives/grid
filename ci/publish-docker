@@ -46,7 +46,7 @@ then
 else
     export ISOLATION_ID=$1
 fi
-echo "Publishing main images for an untagged build"
+echo "Publishing 0-1 images for an untagged build"
 echo "ISOLATION_ID is: $ISOLATION_ID"
 
 docker-compose -f ci/publish-docker.yaml build
