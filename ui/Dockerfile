@@ -52,7 +52,7 @@ RUN cd /saplings/product && \
   npm install && \
   npm run deploy
 
-RUN git clone https://github.com/Cargill/splinter-ui
+RUN git clone -b 0-1 https://github.com/Cargill/splinter-ui
 
 RUN cp -r splinter-ui/saplings/register-login /saplings && \
   cd saplings/register-login && \
