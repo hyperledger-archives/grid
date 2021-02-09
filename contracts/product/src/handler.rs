@@ -93,19 +93,8 @@ impl ProductTransactionHandler {
         let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
-        // Check that the agent submitting the transactions exists in state
-        let agent = match state.get_agent(signer)? {
-            Some(agent) => agent,
-            None => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "The signing Agent does not exist: {}",
-                    signer
-                )));
-            }
-        };
-
         // Check signing agent's permission
-        check_permission(perm_checker, signer, "can_create_product")?;
+        check_permission(perm_checker, signer, "can_create_product", owner)?;
 
         // Check if product exists in state
         if state.get_product(product_id)?.is_some() {
@@ -137,15 +126,6 @@ impl ProductTransactionHandler {
                 )));
             }
         };
-
-        // Check that the agent belongs to organization
-        if agent.org_id() != org.org_id() {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signing Agent {} is not associated with organization {}",
-                signer,
-                org.org_id()
-            )));
-        }
 
         /* Check if the agents organization contain GS1 Company Prefix key in its metadata
         (gs1_company_prefixes), and the prefix must match the company prefix in the product_id */
@@ -238,20 +218,6 @@ impl ProductTransactionHandler {
         let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
-        // Check that the agent submitting the transactions exists in state
-        let agent = match state.get_agent(signer)? {
-            Some(agent) => agent,
-            None => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "The signing Agent does not exist: {}",
-                    signer
-                )));
-            }
-        };
-
-        // Check signing agent's permission
-        check_permission(perm_checker, signer, "can_update_product")?;
-
         // Check if the product namespace is a GS1 product
         if product_namespace != &ProductNamespace::GS1 {
             return Err(ApplyError::InvalidTransaction(
@@ -269,12 +235,8 @@ impl ProductTransactionHandler {
             Err(err) => Err(err),
         }?;
 
-        // Check if the agent updating the product is part of the organization associated with the product
-        if product.owner() != agent.org_id() {
-            return Err(ApplyError::InvalidTransaction(
-                "Invalid organization for the agent submitting this transaction".to_string(),
-            ));
-        }
+        // Check signing agent's permission
+        check_permission(perm_checker, signer, "can_update_product", product.owner())?;
 
         // Check if product product_id is a valid gtin
         if let Err(e) = validate_gtin(product_id) {
@@ -347,20 +309,6 @@ impl ProductTransactionHandler {
         let product_id = payload.product_id();
         let product_namespace = payload.product_namespace();
 
-        // Check that the agent submitting the transactions exists in state
-        let agent = match state.get_agent(signer)? {
-            Some(agent) => agent,
-            None => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "The signing Agent does not exist: {}",
-                    signer
-                )));
-            }
-        };
-
-        // Check signing agent's permission
-        check_permission(perm_checker, signer, "can_delete_product")?;
-
         // Check if the product namespace is a GS1 product
         if product_namespace != &ProductNamespace::GS1 {
             return Err(ApplyError::InvalidTransaction(
@@ -378,16 +326,12 @@ impl ProductTransactionHandler {
             Err(err) => Err(err),
         }?;
 
+        // Check signing agent's permission
+        check_permission(perm_checker, signer, "can_delete_product", product.owner())?;
+
         // Check if product product_id is a valid gtin
         if let Err(e) = validate_gtin(product_id) {
             return Err(ApplyError::InvalidTransaction(e.to_string()));
-        }
-
-        // Check that the owner of the products organization is the same as the agent trying to delete the product
-        if product.owner() != agent.org_id() {
-            return Err(ApplyError::InvalidTransaction(
-                "Invalid organization for the agent submitting this transaction".to_string(),
-            ));
         }
 
         // Delete the product
@@ -449,14 +393,18 @@ fn check_permission(
     perm_checker: &PermissionChecker,
     signer: &str,
     permission: &str,
+    record_owner: &str,
 ) -> Result<(), ApplyError> {
-    match perm_checker.has_permission(signer, permission) {
+    match perm_checker.has_permission(signer, permission, record_owner) {
         Ok(true) => Ok(()),
         Ok(false) => Err(ApplyError::InvalidTransaction(format!(
-            "The signer does not have the {} permission: {}.",
-            permission, signer,
+            "The signer \"{}\" does not have the \"{}\" permission for org \"{}\"",
+            signer, permission, record_owner
         ))),
-        Err(e) => Err(ApplyError::InvalidTransaction(format!("{}", e))),
+        Err(e) => Err(ApplyError::InvalidTransaction(format!(
+            "Permission check failed: {}",
+            e
+        ))),
     }
 }
 
@@ -732,60 +680,6 @@ mod tests {
     }
 
     #[test]
-    /// Test that ProductCreationAction is invalid if the signer is not an Agent.
-    fn test_create_product_agent_does_not_exist() {
-        let transaction_context = MockTransactionContext::default();
-        let perm_checker = PermissionChecker::new(&transaction_context);
-        let mut state = ProductState::new(&transaction_context);
-
-        let transaction_handler = ProductTransactionHandler::new();
-        let product_create_action = make_product_create_action();
-
-        match transaction_handler.create_product(
-            &product_create_action,
-            &mut state,
-            PUBLIC_KEY,
-            &perm_checker,
-        ) {
-            Ok(()) => panic!("Agent should not exist, InvalidTransaction should be returned"),
-            Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(&format!("The signing Agent does not exist: {}", PUBLIC_KEY)));
-            }
-            Err(err) => panic!("Should have gotten invalid error but go {}", err),
-        }
-    }
-
-    #[test]
-    /// Test that ProductCreationAction is invalid if the agent does not have can_create_product role
-    fn test_create_product_agent_without_roles() {
-        let transaction_context = MockTransactionContext::default();
-        transaction_context.add_agent_without_roles(PUBLIC_KEY);
-        let perm_checker = PermissionChecker::new(&transaction_context);
-        let mut state = ProductState::new(&transaction_context);
-
-        let transaction_handler = ProductTransactionHandler::new();
-        let product_create_action = make_product_create_action();
-
-        match transaction_handler.create_product(
-            &product_create_action,
-            &mut state,
-            PUBLIC_KEY,
-            &perm_checker,
-        ) {
-            Ok(()) => panic!(
-                "Agent should not have can_create_product role, InvalidTransaction should be returned"
-            ),
-            Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(&format!(
-                    "The signer does not have the can_create_product permission: {}",
-                    PUBLIC_KEY
-                )));
-            }
-            Err(err) => panic!("Should have gotten invalid error but go {}", err),
-        }
-    }
-
-    #[test]
     /// Test that ProductCreationAction is invalid if the agent's org does not exist.
     fn test_create_product_org_does_not_exist() {
         let transaction_context = MockTransactionContext::default();
@@ -901,60 +795,6 @@ mod tests {
     }
 
     #[test]
-    /// Test that ProductUpdateAction is invalid if the signer is not an Agent.
-    fn test_update_product_agent_does_not_exist() {
-        let transaction_context = MockTransactionContext::default();
-        let perm_checker = PermissionChecker::new(&transaction_context);
-        let mut state = ProductState::new(&transaction_context);
-
-        let transaction_handler = ProductTransactionHandler::new();
-        let product_update_action = make_product_update_action();
-
-        match transaction_handler.update_product(
-            &product_update_action,
-            &mut state,
-            PUBLIC_KEY,
-            &perm_checker,
-        ) {
-            Ok(()) => panic!("Agent should not exist, InvalidTransaction should be returned"),
-            Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(&format!("The signing Agent does not exist: {}", PUBLIC_KEY)));
-            }
-            Err(err) => panic!("Should have gotten invalid error but go {}", err),
-        }
-    }
-
-    #[test]
-    /// Test that ProductUpdateAction is invalid if the agent does not have can_update_product role
-    fn test_update_product_agent_without_roles() {
-        let transaction_context = MockTransactionContext::default();
-        transaction_context.add_agent_without_roles(PUBLIC_KEY);
-        let perm_checker = PermissionChecker::new(&transaction_context);
-        let mut state = ProductState::new(&transaction_context);
-
-        let transaction_handler = ProductTransactionHandler::new();
-        let product_update_action = make_product_update_action();
-
-        match transaction_handler.update_product(
-            &product_update_action,
-            &mut state,
-            PUBLIC_KEY,
-            &perm_checker,
-        ) {
-            Ok(()) => panic!(
-                "Agent should not have can_update_product role, InvalidTransaction should be returned"
-            ),
-            Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(&format!(
-                    "The signer does not have the can_update_product permission: {}",
-                    PUBLIC_KEY
-                )));
-            }
-            Err(err) => panic!("Should have gotten invalid error but go {}", err),
-        }
-    }
-
-    #[test]
     /// Test that ProductUpdateAction is invalid if there is no product to update
     fn test_update_product_that_does_not_exist() {
         let transaction_context = MockTransactionContext::default();
@@ -1058,11 +898,10 @@ mod tests {
             ),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains(&format!(
-                    "The signer does not have the can_delete_product permission: {}",
-                    PUBLIC_KEY
+                    "The signer \"test_public_key\" does not have the \"can_delete_product\" permission for org \"test_org\"",
                 )));
             }
-            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
     }
 

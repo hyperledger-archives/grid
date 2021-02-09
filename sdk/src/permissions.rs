@@ -91,21 +91,30 @@ impl<'a> PermissionChecker<'a> {
         PermissionChecker { context }
     }
 
-    /// Checks whether an agent with a given public key has a certain role.
+    /// Checks whether an agent with a given public key has a certain role and
+    /// belongs to the organization that owns the record.
     ///
     /// # Arguments
     ///
     /// * `public_key` - Public key of a Pike agent.
     /// * `permission` - Permission string to be checked.
+    /// * `record_owner` - Pike organization ID of the record owner.
     ///
     pub fn has_permission(
         &self,
         public_key: &str,
         permission: &str,
+        record_owner: &str,
     ) -> Result<bool, PermissionCheckerError> {
         let agent = self.get_agent(public_key)?;
+
         match agent {
-            Some(agent) => Ok(agent.roles().iter().any(|r| r == permission)),
+            Some(agent) => {
+                if agent.org_id() != record_owner {
+                    return Ok(false);
+                }
+                Ok(agent.roles().iter().any(|r| r == permission))
+            }
             None => Err(PermissionCheckerError::InvalidPublicKey(format!(
                 "The signer is not an Agent: {}",
                 public_key
@@ -146,6 +155,7 @@ mod tests {
 
     const PUBLIC_KEY: &str = "test_public_key";
     const ORG_ID: &str = "test_org";
+    const WRONG_ORG_ID: &str = "test_wrong_org";
 
     #[derive(Default)]
     /// A MockTransactionContext that can be used to test PermissionChecker
@@ -216,7 +226,7 @@ mod tests {
         let agent_address = compute_agent_address(PUBLIC_KEY);
         context.set_state_entry(agent_address, agent_bytes).unwrap();
 
-        let result = pc.has_permission(PUBLIC_KEY, ROLE_A).unwrap();
+        let result = pc.has_permission(PUBLIC_KEY, ROLE_A, ORG_ID).unwrap();
         assert!(!result);
     }
 
@@ -240,7 +250,7 @@ mod tests {
         let agent_address = compute_agent_address(PUBLIC_KEY);
         context.set_state_entry(agent_address, agent_bytes).unwrap();
 
-        let result = pc.has_permission(PUBLIC_KEY, ROLE_A).unwrap();
+        let result = pc.has_permission(PUBLIC_KEY, ROLE_A, ORG_ID).unwrap();
         assert!(result);
     }
 
@@ -264,7 +274,7 @@ mod tests {
         let agent_address = compute_agent_address(PUBLIC_KEY);
         context.set_state_entry(agent_address, agent_bytes).unwrap();
 
-        let result = pc.has_permission(PUBLIC_KEY, ROLE_B).unwrap();
+        let result = pc.has_permission(PUBLIC_KEY, ROLE_B, ORG_ID).unwrap();
         assert!(!result);
     }
 
@@ -288,7 +298,7 @@ mod tests {
         let agent_address = compute_agent_address(PUBLIC_KEY);
         context.set_state_entry(agent_address, agent_bytes).unwrap();
 
-        let result = pc.has_permission(PUBLIC_KEY, ROLE_A).unwrap();
+        let result = pc.has_permission(PUBLIC_KEY, ROLE_A, ORG_ID).unwrap();
         assert!(result);
     }
 
@@ -312,7 +322,31 @@ mod tests {
         let agent_address = compute_agent_address(PUBLIC_KEY);
         context.set_state_entry(agent_address, agent_bytes).unwrap();
 
-        let result = pc.has_permission(PUBLIC_KEY, ROLE_B).unwrap();
+        let result = pc.has_permission(PUBLIC_KEY, ROLE_B, ORG_ID).unwrap();
         assert!(result);
+    }
+
+    #[test]
+    // Test that if an agent has the correct roles but the record doesn't belong their org, false is returned
+    fn test_has_wrong_org() {
+        let context = MockTransactionContext::default();
+        let pc = PermissionChecker::new(&context);
+
+        let builder = AgentBuilder::new();
+        let agent = builder
+            .with_org_id(ORG_ID.to_string())
+            .with_public_key(PUBLIC_KEY.to_string())
+            .with_active(true)
+            .with_roles(vec![ROLE_A.to_string()])
+            .build()
+            .unwrap();
+        let builder = AgentListBuilder::new();
+        let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
+        let agent_bytes = agent_list.into_bytes().unwrap();
+        let agent_address = compute_agent_address(PUBLIC_KEY);
+        context.set_state_entry(agent_address, agent_bytes).unwrap();
+
+        let result = pc.has_permission(PUBLIC_KEY, ROLE_A, WRONG_ORG_ID).unwrap();
+        assert!(!result);
     }
 }

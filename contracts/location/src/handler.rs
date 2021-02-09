@@ -134,7 +134,7 @@ fn create_location(
     signer: &str,
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
-    // 1) validate gln (gs1 only)
+    // validate gln (gs1 only)
     if payload.namespace() == &LocationNamespace::GS1 && !is_gln_13_valid(&payload.location_id()) {
         return Err(ApplyError::InvalidTransaction(format!(
             "Invalid GLN: {}",
@@ -142,7 +142,7 @@ fn create_location(
         )));
     }
 
-    // 2) check if location already exists
+    // check if location already exists
     if state.get_location(&payload.location_id())?.is_some() {
         return Err(ApplyError::InvalidTransaction(format!(
             "A location with GLN {} already exists",
@@ -150,17 +150,7 @@ fn create_location(
         )));
     }
 
-    // 3) check if agent exists
-    let agent = if let Some(agent) = state.get_agent(signer)? {
-        agent
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} is not registered in Pike",
-            signer
-        )));
-    };
-
-    // 4) check if organization exists
+    // check if organization exists
     let organization = if let Some(org) = state.get_organization(payload.owner())? {
         org
     } else {
@@ -170,27 +160,18 @@ fn create_location(
         )));
     };
 
-    // 5) check if agent belongs to organization
-    if agent.org_id() != organization.org_id() {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent with public key {} is not registered to {}",
-            agent.public_key(),
-            organization.org_id()
-        )));
-    }
-
-    // 6) check if agent has can_create_location permission
+    // check if agent has can_create_location permission
     if !perm_checker
-        .has_permission(agent.public_key(), "can_create_location")
+        .has_permission(signer, "can_create_location", organization.org_id())
         .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
     {
         return Err(ApplyError::InvalidTransaction(format!(
             "Agent {} does not have permission to create locations",
-            agent.public_key()
+            signer
         )));
     }
 
-    // 7) check if organization has gln in gs1_company_prefix metadata
+    // check if organization has gln in gs1_company_prefix metadata
     let mut has_gs1_prefix = false;
     for metadata in organization.metadata() {
         if metadata.key() == "gs1_company_prefixes"
@@ -207,7 +188,7 @@ fn create_location(
         )));
     }
 
-    // 8) check if gs1 schema exists
+    // check if gs1 schema exists
     let schema = if let Some(schema) = state.get_schema("gs1_location")? {
         schema
     } else {
@@ -217,7 +198,7 @@ fn create_location(
     };
 
     if payload.namespace() == &LocationNamespace::GS1 {
-        // 9) Check if properties in location are all a part of the gs1 schema
+        // Check if properties in location are all a part of the gs1 schema
         for property in payload.properties() {
             if schema
                 .properties()
@@ -231,7 +212,7 @@ fn create_location(
             }
         }
 
-        // 10) check if location has all required fields
+        // check if location has all required fields
         for property in schema.properties().iter().filter(|p| *p.required()) {
             if !payload
                 .properties()
@@ -268,7 +249,7 @@ fn update_location(
     signer: &str,
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
-    // 1) check if location already exists
+    // check if location already exists
     let location = if let Some(location) = state.get_location(&payload.location_id())? {
         location
     } else {
@@ -278,17 +259,7 @@ fn update_location(
         )));
     };
 
-    // 2) check if agent exists
-    let agent = if let Some(agent) = state.get_agent(signer)? {
-        agent
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} is not registered in Pike",
-            signer
-        )));
-    };
-
-    // 3) check if organization exists
+    // check if organization exists
     let organization = if let Some(org) = state.get_organization(location.owner())? {
         org
     } else {
@@ -298,27 +269,18 @@ fn update_location(
         )));
     };
 
-    // 4) check if agent belongs to organization
-    if agent.org_id() != organization.org_id() {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent with public key {} is not registered to {}",
-            agent.public_key(),
-            organization.org_id()
-        )));
-    }
-
-    // 5) check if agent has can_update_location permission
+    // check if agent has can_update_location permission
     if !perm_checker
-        .has_permission(agent.public_key(), "can_update_location")
+        .has_permission(signer, "can_update_location", organization.org_id())
         .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
     {
         return Err(ApplyError::InvalidTransaction(format!(
             "Agent {} does not have permission to update locations",
-            agent.public_key()
+            signer
         )));
     }
 
-    // 6) check if gs1 schema exists
+    // check if gs1 schema exists
     let schema = if let Some(schema) = state.get_schema("gs1_location")? {
         schema
     } else {
@@ -328,7 +290,7 @@ fn update_location(
     };
 
     if payload.namespace() == &LocationNamespace::GS1 {
-        // 7) Check if properties in location are all a part of the gs1 schema
+        // Check if properties in location are all a part of the gs1 schema
         for property in payload.properties() {
             if schema
                 .properties()
@@ -342,7 +304,7 @@ fn update_location(
             }
         }
 
-        // 8) check if location has all required fields
+        // check if location has all required fields
         for property in schema.properties().iter().filter(|p| *p.required()) {
             if !payload
                 .properties()
@@ -379,7 +341,7 @@ fn delete_location(
     signer: &str,
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
-    // 1) check if location already exists
+    // check if location already exists
     let location = if let Some(location) = state.get_location(&payload.location_id())? {
         location
     } else {
@@ -389,17 +351,7 @@ fn delete_location(
         )));
     };
 
-    // 2) check if agent exists
-    let agent = if let Some(agent) = state.get_agent(signer)? {
-        agent
-    } else {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} is not registered in Pike",
-            signer
-        )));
-    };
-
-    // 3) check if organization exists
+    // check if organization exists
     let organization = if let Some(org) = state.get_organization(location.owner())? {
         org
     } else {
@@ -409,23 +361,14 @@ fn delete_location(
         )));
     };
 
-    // 4) check if agent belongs to organization
-    if agent.org_id() != organization.org_id() {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent with public key {} is not registered to {}",
-            agent.public_key(),
-            organization.org_id()
-        )));
-    }
-
-    // 5) check if agent has can_delete_location permission
+    // check if agent has can_delete_location permission
     if !perm_checker
-        .has_permission(agent.public_key(), "can_delete_location")
+        .has_permission(signer, "can_delete_location", organization.org_id())
         .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
     {
         return Err(ApplyError::InvalidTransaction(format!(
             "Agent {} does not have permission to delete locations",
-            agent.public_key()
+            signer
         )));
     }
 
@@ -895,46 +838,6 @@ mod tests {
     }
 
     #[test]
-    fn test_create_location_agent_does_not_exist() {
-        let mock_context = MockTransactionContext::new();
-        mock_context.create_gs1_schema();
-
-        let perm_checker = PermissionChecker::new(&mock_context);
-        let mut state = LocationState::new(&mock_context);
-
-        let properties = vec![
-            PropertyValueBuilder::new()
-                .with_name("locationName".into())
-                .with_data_type(DataType::String)
-                .with_string_value("Taco Alley".into())
-                .build()
-                .unwrap(),
-            PropertyValueBuilder::new()
-                .with_name("description".into())
-                .with_data_type(DataType::String)
-                .with_string_value("An alley filled with tacos".into())
-                .build()
-                .unwrap(),
-        ];
-
-        let payload = LocationCreateActionBuilder::new()
-            .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
-            .with_owner("prefix_org".into())
-            .with_properties(properties)
-            .build()
-            .unwrap();
-
-        match create_location(&payload, &mut state, "no_agent", &perm_checker) {
-            Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!("Agent no_agent is not registered in Pike", msg);
-            }
-            Err(err) => panic!("Wrong error: {}", err),
-        }
-    }
-
-    #[test]
     fn test_create_location_org_does_not_exist() {
         let mock_context = MockTransactionContext::new();
         mock_context.create_gs1_schema();
@@ -969,53 +872,6 @@ mod tests {
             Ok(()) => panic!("Unexpected positive result"),
             Err(ApplyError::InvalidTransaction(ref msg)) => {
                 assert_eq!("Organization fake_org is not registered with Pike", msg);
-            }
-            Err(err) => panic!("Wrong error: {}", err),
-        }
-    }
-
-    #[test]
-    fn test_create_location_wrong_agent_for_org() {
-        let mock_context = MockTransactionContext::new();
-        mock_context.create_gs1_schema();
-
-        let perm_checker = PermissionChecker::new(&mock_context);
-        let mut state = LocationState::new(&mock_context);
-
-        let properties = vec![
-            PropertyValueBuilder::new()
-                .with_name("locationName".into())
-                .with_data_type(DataType::String)
-                .with_string_value("Taco Alley".into())
-                .build()
-                .unwrap(),
-            PropertyValueBuilder::new()
-                .with_name("description".into())
-                .with_data_type(DataType::String)
-                .with_string_value("An alley filled with tacos".into())
-                .build()
-                .unwrap(),
-        ];
-
-        let payload = LocationCreateActionBuilder::new()
-            .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
-            .with_owner("prefix_org".into())
-            .with_properties(properties)
-            .build()
-            .unwrap();
-
-        match create_location(
-            &payload,
-            &mut state,
-            "agent_with_perms_no_prefix",
-            &perm_checker,
-        ) {
-            Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!(
-                    "Agent with public key agent_with_perms_no_prefix is not registered to prefix_org",
-                    msg);
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
@@ -1356,95 +1212,6 @@ mod tests {
     }
 
     #[test]
-    fn test_update_location_agent_does_not_exist() {
-        let mock_context = MockTransactionContext::new();
-        mock_context.create_gs1_schema();
-
-        let perm_checker = PermissionChecker::new(&mock_context);
-        let mut state = LocationState::new(&mock_context);
-
-        create_default_location(&mut state, &perm_checker);
-
-        let properties = vec![
-            PropertyValueBuilder::new()
-                .with_name("locationName".into())
-                .with_data_type(DataType::String)
-                .with_string_value("Taco Alley".into())
-                .build()
-                .unwrap(),
-            PropertyValueBuilder::new()
-                .with_name("description".into())
-                .with_data_type(DataType::String)
-                .with_string_value("An alley filled with tacos".into())
-                .build()
-                .unwrap(),
-        ];
-
-        let payload = LocationUpdateActionBuilder::new()
-            .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
-            .with_properties(properties)
-            .build()
-            .unwrap();
-
-        match update_location(&payload, &mut state, "no_agent", &perm_checker) {
-            Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!("Agent no_agent is not registered in Pike", msg);
-            }
-            Err(err) => panic!("Wrong error: {}", err),
-        }
-    }
-
-    #[test]
-    fn test_update_location_wrong_agent_for_org() {
-        let mock_context = MockTransactionContext::new();
-        mock_context.create_gs1_schema();
-
-        let perm_checker = PermissionChecker::new(&mock_context);
-        let mut state = LocationState::new(&mock_context);
-
-        create_default_location(&mut state, &perm_checker);
-
-        let properties = vec![
-            PropertyValueBuilder::new()
-                .with_name("locationName".into())
-                .with_data_type(DataType::String)
-                .with_string_value("Taco Alley".into())
-                .build()
-                .unwrap(),
-            PropertyValueBuilder::new()
-                .with_name("description".into())
-                .with_data_type(DataType::String)
-                .with_string_value("An alley filled with tacos".into())
-                .build()
-                .unwrap(),
-        ];
-
-        let payload = LocationUpdateActionBuilder::new()
-            .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
-            .with_properties(properties)
-            .build()
-            .unwrap();
-
-        match update_location(
-            &payload,
-            &mut state,
-            "agent_with_perms_no_prefix",
-            &perm_checker,
-        ) {
-            Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!(
-                    "Agent with public key agent_with_perms_no_prefix is not registered to prefix_org",
-                    msg);
-            }
-            Err(err) => panic!("Wrong error: {}", err),
-        }
-    }
-
-    #[test]
     fn test_update_location_undefined_property() {
         let mock_context = MockTransactionContext::new();
         mock_context.create_gs1_schema();
@@ -1614,63 +1381,6 @@ mod tests {
                     "Agent agent_no_perms does not have permission to delete locations",
                     msg
                 );
-            }
-            Err(err) => panic!("Wrong error: {}", err),
-        }
-    }
-
-    #[test]
-    fn test_delete_location_agent_does_not_exist() {
-        let mock_context = MockTransactionContext::new();
-        mock_context.create_gs1_schema();
-
-        let perm_checker = PermissionChecker::new(&mock_context);
-        let mut state = LocationState::new(&mock_context);
-
-        create_default_location(&mut state, &perm_checker);
-
-        let payload = LocationDeleteActionBuilder::new()
-            .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
-            .build()
-            .unwrap();
-
-        match delete_location(&payload, &mut state, "no_agent", &perm_checker) {
-            Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!("Agent no_agent is not registered in Pike", msg);
-            }
-            Err(err) => panic!("Wrong error: {}", err),
-        }
-    }
-
-    #[test]
-    fn test_delete_location_wrong_agent_for_org() {
-        let mock_context = MockTransactionContext::new();
-        mock_context.create_gs1_schema();
-
-        let perm_checker = PermissionChecker::new(&mock_context);
-        let mut state = LocationState::new(&mock_context);
-
-        create_default_location(&mut state, &perm_checker);
-
-        let payload = LocationDeleteActionBuilder::new()
-            .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
-            .build()
-            .unwrap();
-
-        match delete_location(
-            &payload,
-            &mut state,
-            "agent_with_perms_no_prefix",
-            &perm_checker,
-        ) {
-            Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
-                assert_eq!(
-                    "Agent with public key agent_with_perms_no_prefix is not registered to prefix_org",
-                    msg);
             }
             Err(err) => panic!("Wrong error: {}", err),
         }
