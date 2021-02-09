@@ -19,7 +19,7 @@ pub(in crate) mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::diesel::models::BatchModel;
-use super::{Batch, BatchStatus, BatchStore, BatchStoreError};
+use super::{Batch, BatchList, BatchStatus, BatchStore, BatchStoreError};
 use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_batch::AddBatchOperation as _;
@@ -62,24 +62,27 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
         .map(|op| op.map(|model| model.into()))
     }
 
-    fn list_batches(&self) -> Result<Vec<Batch>, BatchStoreError> {
+    fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
         BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_batches()
-        .map(|models| models.into_iter().map(|model| model.into()).collect())
+        .list_batches(offset, limit)
     }
 
-    fn list_batches_with_status(&self, status: BatchStatus) -> Result<Vec<Batch>, BatchStoreError> {
+    fn list_batches_with_status(
+        &self,
+        status: BatchStatus,
+        offset: i64,
+        limit: i64,
+    ) -> Result<BatchList, BatchStoreError> {
         BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_batches_with_status(&status.to_string())
-        .map(|models| models.into_iter().map(|model| model.into()).collect())
+        .list_batches_with_status(&status.to_string(), offset, limit)
     }
 
     fn update_status(&self, id: &str, status: BatchStatus) -> Result<(), BatchStoreError> {
@@ -113,24 +116,27 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
         .map(|op| op.map(|model| model.into()))
     }
 
-    fn list_batches(&self) -> Result<Vec<Batch>, BatchStoreError> {
+    fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
         BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_batches()
-        .map(|models| models.into_iter().map(|model| model.into()).collect())
+        .list_batches(offset, limit)
     }
 
-    fn list_batches_with_status(&self, status: BatchStatus) -> Result<Vec<Batch>, BatchStoreError> {
+    fn list_batches_with_status(
+        &self,
+        status: BatchStatus,
+        offset: i64,
+        limit: i64,
+    ) -> Result<BatchList, BatchStoreError> {
         BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_batches_with_status(&status.to_string())
-        .map(|models| models.into_iter().map(|model| model.into()).collect())
+        .list_batches_with_status(&status.to_string(), offset, limit)
     }
 
     fn update_status(&self, id: &str, status: BatchStatus) -> Result<(), BatchStoreError> {

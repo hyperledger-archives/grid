@@ -16,6 +16,8 @@
 pub mod diesel;
 mod error;
 
+use crate::paging::Paging;
+
 pub use error::TrackAndTraceStoreError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +72,18 @@ pub struct Record {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct RecordList {
+    pub data: Vec<Record>,
+    pub paging: Paging,
+}
+
+impl RecordList {
+    pub fn new(data: Vec<Record>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -266,10 +280,14 @@ pub trait TrackAndTraceStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `service_id` - The service ID to fetch for
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
     fn list_records(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Record>, TrackAndTraceStoreError>;
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError>;
 
     /// Fetches a list of reported value reported to agent metadata objects from the underlying
     /// storage
@@ -394,8 +412,10 @@ where
     fn list_records(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
-        (**self).list_records(service_id)
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError> {
+        (**self).list_records(service_id, offset, limit)
     }
 
     fn list_reported_value_reporter_to_agent_metadata(

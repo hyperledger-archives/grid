@@ -13,9 +13,12 @@
 // limitations under the License.
 
 use super::AgentStoreOperations;
-use crate::agents::store::diesel::{
-    schema::{agent, role},
-    Agent, AgentStoreError,
+use crate::{
+    agents::store::diesel::{
+        schema::{agent, role},
+        Agent, AgentList, AgentStoreError,
+    },
+    paging::Paging,
 };
 
 use crate::agents::store::diesel::models::{AgentModel, RoleModel};
@@ -24,12 +27,22 @@ use crate::error::InternalError;
 use diesel::prelude::*;
 
 pub(in crate::agents::store::diesel) trait AgentStoreListAgentsOperation {
-    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError>;
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, AgentStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::PgConnection> {
-    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, AgentStoreError> {
         self.conn
             .build_transaction()
             .read_write()
@@ -37,6 +50,8 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                 let mut query = agent::table
                     .into_boxed()
                     .select(agent::all_columns)
+                    .offset(offset)
+                    .limit(limit)
                     .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
 
                 if let Some(service_id) = service_id {
@@ -48,6 +63,16 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                 let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
                     AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
+
+                let mut count_query = agent::table.into_boxed().select(agent::all_columns);
+
+                if let Some(service_id) = service_id {
+                    count_query = count_query.filter(agent::service_id.eq(service_id));
+                } else {
+                    count_query = count_query.filter(agent::service_id.is_null());
+                }
+
+                let total = count_query.count().get_result(self.conn)?;
 
                 let mut agents = Vec::new();
 
@@ -71,7 +96,7 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                     agents.push(Agent::from((a, roles)));
                 }
 
-                Ok(agents)
+                Ok(AgentList::new(agents, Paging::new(offset, limit, total)))
             })
     }
 }
@@ -80,12 +105,19 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
 impl<'a> AgentStoreListAgentsOperation
     for AgentStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, AgentStoreError> {
         self.conn
             .immediate_transaction::<_, AgentStoreError, _>(|| {
                 let mut query = agent::table
                     .into_boxed()
                     .select(agent::all_columns)
+                    .offset(offset)
+                    .limit(limit)
                     .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
 
                 if let Some(service_id) = service_id {
@@ -97,6 +129,16 @@ impl<'a> AgentStoreListAgentsOperation
                 let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
                     AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
+
+                let mut count_query = agent::table.into_boxed().select(agent::all_columns);
+
+                if let Some(service_id) = service_id {
+                    count_query = count_query.filter(agent::service_id.eq(service_id));
+                } else {
+                    count_query = count_query.filter(agent::service_id.is_null());
+                }
+
+                let total = count_query.count().get_result(self.conn)?;
 
                 let mut agents = Vec::new();
 
@@ -120,7 +162,7 @@ impl<'a> AgentStoreListAgentsOperation
                     agents.push(Agent::from((a, roles)));
                 }
 
-                Ok(agents)
+                Ok(AgentList::new(agents, Paging::new(offset, limit, total)))
             })
     }
 }

@@ -18,7 +18,10 @@ use std::sync::{Arc, Mutex};
 use super::OrganizationStore;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::organizations::store::{error::OrganizationStoreError, Organization};
+use crate::{
+    organizations::store::{error::OrganizationStoreError, Organization, OrganizationList},
+    paging::Paging,
+};
 
 /// Implementation of OrganizationStore that stores Organizations in memory. Useful for when
 /// persistence isn't necessary.
@@ -51,13 +54,15 @@ impl OrganizationStore for MemoryOrganizationStore {
     fn list_organizations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Organization>, OrganizationStoreError> {
+        _offset: i64,
+        _limit: i64,
+    ) -> Result<OrganizationList, OrganizationStoreError> {
         let inner_organization = self.inner_organization.lock().map_err(|_| {
             OrganizationStoreError::InternalError(InternalError::with_message(
                 "Cannot access organizations: mutex lock poisoned".to_string(),
             ))
         })?;
-        let filtered_orgs = inner_organization
+        let filtered_orgs: Vec<Organization> = inner_organization
             .iter()
             .filter(|(_, o)| {
                 o.service_id.eq(&service_id.map(String::from))
@@ -73,7 +78,14 @@ impl OrganizationStore for MemoryOrganizationStore {
                 service_id: o.service_id.clone(),
             })
             .collect();
-        Ok(filtered_orgs)
+
+        let limit = filtered_orgs.len() as i64;
+        let total = filtered_orgs.len() as i64;
+
+        Ok(OrganizationList::new(
+            filtered_orgs,
+            Paging::new(0, limit, total),
+        ))
     }
 
     fn fetch_organization(

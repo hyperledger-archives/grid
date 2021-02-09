@@ -14,27 +14,40 @@
 
 use super::ProductStoreOperations;
 
-use crate::products::{
-    store::{
-        diesel::{
-            models::{Product as ModelProduct, ProductPropertyValue},
-            schema::{product, product_property_value},
+use crate::{
+    paging::Paging,
+    products::{
+        store::{
+            diesel::{
+                models::{Product as ModelProduct, ProductPropertyValue},
+                schema::{product, product_property_value},
+            },
+            error::ProductStoreError,
+            Product, ProductList, PropertyValue,
         },
-        error::ProductStoreError,
-        Product, PropertyValue,
+        MAX_COMMIT_NUM,
     },
-    MAX_COMMIT_NUM,
 };
 use diesel::prelude::*;
 
 pub(in crate::products) trait ListProductsOperation {
-    fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError>;
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::pg::PgConnection> {
-    fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError> {
-        let db_products = pg::list_products(&*self.conn, service_id)?;
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
+        let db_products = pg::list_products(&*self.conn, service_id, offset, limit)?;
 
         let mut products = Vec::new();
 
@@ -46,14 +59,32 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::pg::PgConn
             products.push(Product::from((product, values)));
         }
 
-        Ok(products)
+        let mut count_query = product::table.into_boxed().select(product::all_columns);
+
+        if let Some(service_id) = service_id {
+            count_query = count_query.filter(product::service_id.eq(service_id));
+        } else {
+            count_query = count_query.filter(product::service_id.is_null());
+        }
+
+        let total = count_query.count().get_result(self.conn)?;
+
+        Ok(ProductList::new(
+            products,
+            Paging::new(offset, limit, total),
+        ))
     }
 }
 
 #[cfg(feature = "sqlite")]
 impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError> {
-        let db_products = sqlite::list_products(&*self.conn, service_id)?;
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
+        let db_products = sqlite::list_products(&*self.conn, service_id, offset, limit)?;
 
         let mut products = Vec::new();
 
@@ -65,7 +96,20 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::sqlite::Sq
             products.push(Product::from((product, values)));
         }
 
-        Ok(products)
+        let mut count_query = product::table.into_boxed().select(product::all_columns);
+
+        if let Some(service_id) = service_id {
+            count_query = count_query.filter(product::service_id.eq(service_id));
+        } else {
+            count_query = count_query.filter(product::service_id.is_null());
+        }
+
+        let total = count_query.count().get_result(self.conn)?;
+
+        Ok(ProductList::new(
+            products,
+            Paging::new(offset, limit, total),
+        ))
     }
 }
 
@@ -76,10 +120,14 @@ mod pg {
     pub fn list_products(
         conn: &PgConnection,
         service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
     ) -> QueryResult<Vec<ModelProduct>> {
         let mut query = product::table
             .into_boxed()
             .select(product::all_columns)
+            .limit(limit)
+            .offset(offset)
             .filter(product::end_commit_num.eq(MAX_COMMIT_NUM));
 
         if let Some(service_id) = service_id {
@@ -138,10 +186,14 @@ mod sqlite {
     pub fn list_products(
         conn: &SqliteConnection,
         service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
     ) -> QueryResult<Vec<ModelProduct>> {
         let mut query = product::table
             .into_boxed()
             .select(product::all_columns)
+            .limit(limit)
+            .offset(offset)
             .filter(product::end_commit_num.eq(MAX_COMMIT_NUM));
 
         if let Some(service_id) = service_id {

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::actions::Paging;
+use crate::error::CliError;
 use crate::http::submit_batches;
 use crate::transaction::schema_batch_builder;
 use crate::yaml_parser::{
@@ -30,7 +32,6 @@ use grid_sdk::protos::IntoProto;
 use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
 use reqwest::Client;
 
-use crate::error::CliError;
 use serde::Deserialize;
 use serde_yaml::{Mapping, Value};
 
@@ -40,6 +41,12 @@ pub struct GridSchemaSlice {
     pub description: String,
     pub owner: String,
     pub properties: Vec<GridPropertyDefinitionSlice>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GridSchemaListSlice {
+    pub data: Vec<GridSchemaSlice>,
+    pub paging: Paging,
 }
 
 #[derive(Debug, Deserialize)]
@@ -143,13 +150,25 @@ pub fn do_list_schemas(url: &str, service_id: Option<String>) -> Result<(), CliE
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
 
-    let mut response = client.get(&final_url).send()?;
+    let mut schemas = Vec::new();
 
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
+    loop {
+        let mut response = client.get(&final_url).send()?;
+
+        if !response.status().is_success() {
+            return Err(CliError::DaemonError(response.text()?));
+        }
+        let mut schema_list = response.json::<GridSchemaListSlice>()?;
+
+        schemas.append(&mut schema_list.data);
+
+        if let Some(next) = schema_list.paging.next {
+            final_url = format!("{}{}", url, next);
+        } else {
+            break;
+        }
     }
 
-    let schemas = response.json::<Vec<GridSchemaSlice>>()?;
     display_schemas_info(&schemas);
     Ok(())
 }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::actions::schemas::{self, get_schema, GridPropertyDefinitionSlice};
+use crate::actions::Paging;
 use crate::http::submit_batches;
 use crate::transaction::product_batch_builder;
 use grid_sdk::agents::addressing::PIKE_NAMESPACE;
@@ -43,6 +44,12 @@ pub struct GridProduct {
     pub product_namespace: String,
     pub owner: String,
     pub properties: Vec<GridPropertyValue>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GridProductList {
+    pub data: Vec<GridProduct>,
+    pub paging: Paging,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -218,13 +225,26 @@ pub fn do_list_products(url: &str, service_id: Option<String>) -> Result<(), Cli
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
 
-    let mut response = client.get(&final_url).send()?;
+    let mut products = Vec::new();
 
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
+    loop {
+        let mut response = client.get(&final_url).send()?;
+
+        if !response.status().is_success() {
+            return Err(CliError::DaemonError(response.text()?));
+        }
+
+        let mut product_list = response.json::<GridProductList>()?;
+
+        products.append(&mut product_list.data);
+
+        if let Some(next) = product_list.paging.next {
+            final_url = format!("{}{}", url, next);
+        } else {
+            break;
+        }
     }
 
-    let products = response.json::<Vec<GridProduct>>()?;
     display_products_info(&products);
     Ok(())
 }

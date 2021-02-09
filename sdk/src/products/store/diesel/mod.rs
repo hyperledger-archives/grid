@@ -28,7 +28,7 @@ use operations::{
 
 use diesel::r2d2::{ConnectionManager, Pool};
 
-use super::{LatLongValue, Product, ProductStore, ProductStoreError, PropertyValue};
+use super::{LatLongValue, Product, ProductList, ProductStore, ProductStoreError, PropertyValue};
 
 #[derive(Clone)]
 pub struct DieselProductStore<C: diesel::Connection + 'static> {
@@ -65,13 +65,18 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
         .fetch_product(product_id, service_id)
     }
 
-    fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError> {
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             ProductStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_products(service_id)
+        .list_products(service_id, offset, limit)
     }
 
     fn update_product(
@@ -126,13 +131,18 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
         .fetch_product(product_id, service_id)
     }
 
-    fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError> {
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             ProductStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_products(service_id)
+        .list_products(service_id, offset, limit)
     }
 
     fn update_product(

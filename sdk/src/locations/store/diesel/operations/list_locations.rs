@@ -21,12 +21,18 @@ use crate::locations::store::diesel::{
 
 use crate::error::InternalError;
 use crate::locations::store::diesel::models::{LocationAttributeModel, LocationModel};
-use crate::locations::store::{Location, LocationAttribute};
+use crate::locations::store::{Location, LocationAttribute, LocationList};
+use crate::paging::Paging;
+
 use diesel::prelude::*;
 
 pub(in crate::locations::store::diesel) trait LocationStoreListLocationsOperation<C: Connection> {
-    fn list_locations(&self, service_id: Option<&str>)
-        -> Result<Vec<Location>, LocationStoreError>;
+    fn list_locations(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError>;
     fn get_root_attributes(
         conn: &C,
         location_id: &str,
@@ -45,7 +51,9 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
     fn list_locations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Location>, LocationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError> {
         self.conn
             .build_transaction()
             .read_write()
@@ -53,6 +61,8 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
                 let mut query = location::table
                     .into_boxed()
                     .select(location::all_columns)
+                    .limit(limit)
+                    .offset(offset)
                     .filter(location::end_commit_num.eq(MAX_COMMIT_NUM));
 
                 if let Some(service_id) = service_id {
@@ -77,7 +87,20 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
                     locations.push(Location::from((loc, attrs)));
                 }
 
-                Ok(locations)
+                let mut count_query = location::table.into_boxed().select(location::all_columns);
+
+                if let Some(service_id) = service_id {
+                    count_query = count_query.filter(location::service_id.eq(service_id));
+                } else {
+                    count_query = count_query.filter(location::service_id.is_null());
+                }
+
+                let total = count_query.count().get_result(self.conn)?;
+
+                Ok(LocationList::new(
+                    locations,
+                    Paging::new(offset, limit, total),
+                ))
             })
     }
 
@@ -150,12 +173,16 @@ impl<'a> LocationStoreListLocationsOperation<diesel::sqlite::SqliteConnection>
     fn list_locations(
         &self,
         service_id: Option<&str>,
-    ) -> Result<Vec<Location>, LocationStoreError> {
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError> {
         self.conn
             .immediate_transaction::<_, LocationStoreError, _>(|| {
                 let mut query = location::table
                     .into_boxed()
                     .select(location::all_columns)
+                    .limit(limit)
+                    .offset(offset)
                     .filter(location::end_commit_num.eq(MAX_COMMIT_NUM));
 
                 if let Some(service_id) = service_id {
@@ -180,7 +207,20 @@ impl<'a> LocationStoreListLocationsOperation<diesel::sqlite::SqliteConnection>
                     locations.push(Location::from((loc, attrs)));
                 }
 
-                Ok(locations)
+                let mut count_query = location::table.into_boxed().select(location::all_columns);
+
+                if let Some(service_id) = service_id {
+                    count_query = count_query.filter(location::service_id.eq(service_id));
+                } else {
+                    count_query = count_query.filter(location::service_id.is_null());
+                }
+
+                let total = count_query.count().get_result(self.conn)?;
+
+                Ok(LocationList::new(
+                    locations,
+                    Paging::new(offset, limit, total),
+                ))
             })
     }
 

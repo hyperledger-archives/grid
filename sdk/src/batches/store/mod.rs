@@ -19,6 +19,7 @@ mod error;
 use std::fmt;
 
 use crate::hex;
+use crate::paging::Paging;
 
 pub use error::BatchStoreError;
 
@@ -58,14 +59,31 @@ impl Batch {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct BatchList {
+    data: Vec<Batch>,
+    paging: Paging,
+}
+
+impl BatchList {
+    fn new(data: Vec<Batch>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
+}
+
 pub trait BatchStore: Send + Sync {
     fn add_batch(&self, batch: Batch) -> Result<(), BatchStoreError>;
 
     fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError>;
 
-    fn list_batches(&self) -> Result<Vec<Batch>, BatchStoreError>;
+    fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError>;
 
-    fn list_batches_with_status(&self, status: BatchStatus) -> Result<Vec<Batch>, BatchStoreError>;
+    fn list_batches_with_status(
+        &self,
+        status: BatchStatus,
+        offset: i64,
+        limit: i64,
+    ) -> Result<BatchList, BatchStoreError>;
 
     fn update_status(&self, id: &str, status: BatchStatus) -> Result<(), BatchStoreError>;
 }

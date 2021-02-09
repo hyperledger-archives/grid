@@ -15,7 +15,9 @@
 use std::{convert::TryFrom, str::FromStr};
 
 use crate::rest_api::{
-    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+    error::RestApiResponseError,
+    routes::{paging::Paging, DbExecutor},
+    AcceptServiceIdParam, AppState, QueryPaging, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
@@ -34,6 +36,12 @@ pub struct AgentSlice {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgentListSlice {
+    pub data: Vec<AgentSlice>,
+    pub paging: Paging,
 }
 
 impl TryFrom<Agent> for AgentSlice {
@@ -63,33 +71,47 @@ impl TryFrom<Agent> for AgentSlice {
 
 struct ListAgents {
     service_id: Option<String>,
+    offset: i64,
+    limit: i64,
 }
 
 impl Message for ListAgents {
-    type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
+    type Result = Result<AgentListSlice, RestApiResponseError>;
 }
 
 impl Handler<ListAgents> for DbExecutor {
-    type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
+    type Result = Result<AgentListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
-        self.agent_store
-            .list_agents(msg.service_id.as_deref())?
+        let agent_list =
+            self.agent_store
+                .list_agents(msg.service_id.as_deref(), msg.offset, msg.limit)?;
+
+        let data = agent_list
+            .data
             .into_iter()
             .map(AgentSlice::try_from)
-            .collect::<Result<Vec<AgentSlice>, RestApiResponseError>>()
+            .collect::<Result<Vec<AgentSlice>, RestApiResponseError>>()?;
+
+        let paging = Paging::new("/agent", agent_list.paging, msg.service_id.as_deref());
+
+        Ok(AgentListSlice { data, paging })
     }
 }
 
 pub async fn list_agents(
     state: web::Data<AppState>,
-    query: web::Query<QueryServiceId>,
+    query_service_id: web::Query<QueryServiceId>,
+    query_paging: web::Query<QueryPaging>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
+    let paging = query_paging.into_inner();
     state
         .database_connection
         .send(ListAgents {
-            service_id: query.into_inner().service_id,
+            service_id: query_service_id.into_inner().service_id,
+            offset: paging.offset.unwrap_or(0),
+            limit: paging.limit.unwrap_or(10),
         })
         .await?
         .map(|agents| HttpResponse::Ok().json(agents))

@@ -35,6 +35,7 @@ use grid_sdk::{
 use reqwest::Client;
 use serde::Deserialize;
 
+use crate::actions::Paging;
 use crate::error::CliError;
 use crate::http::submit_batches;
 use crate::{
@@ -96,13 +97,27 @@ pub fn do_list_locations(url: &str, service_id: Option<&str>) -> Result<(), CliE
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let mut response = client.get(&final_url).send()?;
 
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
+    let mut locations = Vec::new();
+
+    loop {
+        let mut response = client.get(&final_url).send()?;
+
+        if !response.status().is_success() {
+            return Err(CliError::DaemonError(response.text()?));
+        }
+
+        let mut location_list = response.json::<LocationListSlice>()?;
+
+        locations.append(&mut location_list.data);
+
+        if let Some(next) = location_list.paging.next {
+            final_url = format!("{}{}", url, next);
+        } else {
+            break;
+        }
     }
 
-    let locations = response.json::<Vec<LocationSlice>>()?;
     display_locations_info(&locations);
     Ok(())
 }
@@ -403,6 +418,12 @@ pub struct LocationSlice {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LocationListSlice {
+    pub data: Vec<LocationSlice>,
+    pub paging: Paging,
 }
 
 #[derive(Debug, Deserialize)]

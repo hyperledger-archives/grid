@@ -16,6 +16,8 @@
 pub mod diesel;
 mod error;
 
+use crate::paging::Paging;
+
 pub use error::AgentStoreError;
 
 /// Represents a Grid Agent
@@ -44,6 +46,18 @@ pub struct Role {
     pub service_id: Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct AgentList {
+    pub data: Vec<Agent>,
+    pub paging: Paging,
+}
+
+impl AgentList {
+    pub fn new(data: Vec<Agent>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
+}
+
 pub trait AgentStore: Send + Sync {
     /// Adds an agent to the underlying storage
     ///
@@ -57,7 +71,14 @@ pub trait AgentStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `service_id` - The service id to list agents for
-    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError>;
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, AgentStoreError>;
 
     /// Fetches an agent from the underlying storage
     ///
@@ -87,8 +108,13 @@ where
         (**self).add_agent(agent)
     }
 
-    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
-        (**self).list_agents(service_id)
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, AgentStoreError> {
+        (**self).list_agents(service_id, offset, limit)
     }
 
     fn fetch_agent(

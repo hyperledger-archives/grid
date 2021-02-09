@@ -16,6 +16,8 @@
 pub mod diesel;
 pub mod error;
 
+use crate::paging::Paging;
+
 pub use error::ProductStoreError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +50,18 @@ pub struct PropertyValue {
     pub service_id: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ProductList {
+    pub data: Vec<Product>,
+    pub paging: Paging,
+}
+
+impl ProductList {
+    pub fn new(data: Vec<Product>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LatLongValue {
     pub latitude: i64,
@@ -63,7 +77,12 @@ pub trait ProductStore: Send + Sync {
         service_id: Option<&str>,
     ) -> Result<Option<Product>, ProductStoreError>;
 
-    fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ProductStoreError>;
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError>;
 
     fn update_product(
         &self,
