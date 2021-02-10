@@ -25,20 +25,10 @@ extern crate diesel;
 extern crate diesel_migrations;
 #[macro_use]
 extern crate log;
-#[cfg(any(
-    feature = "pike",
-    feature = "schema",
-    feature = "product",
-    feature = "location"
-))]
+#[cfg(feature = "serde_json")]
 #[macro_use]
 extern crate serde_json;
-#[cfg(any(
-    feature = "pike",
-    feature = "schema",
-    feature = "product",
-    feature = "location"
-))]
+#[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde;
 

@@ -17,7 +17,6 @@ use std::pin::Pin;
 use futures::prelude::*;
 use sawtooth_sdk::messages::batch::BatchList;
 use sawtooth_sdk::messages::client_batch_submit::ClientBatchStatus;
-use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::rest_api::error::RestApiResponseError;
