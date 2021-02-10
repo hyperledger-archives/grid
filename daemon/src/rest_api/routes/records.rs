@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::convert::TryFrom;
 use std::sync::Arc;
 
 use crate::rest_api::{
@@ -143,8 +144,8 @@ pub struct RecordListSlice {
 
 struct ListRecords {
     service_id: Option<String>,
-    offset: i64,
-    limit: i64,
+    offset: u64,
+    limit: u16,
 }
 
 impl Message for ListRecords {
@@ -155,9 +156,13 @@ impl Handler<ListRecords> for DbExecutor {
     type Result = Result<RecordListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListRecords, _: &mut SyncContext<Self>) -> Self::Result {
-        let record_list =
-            self.tnt_store
-                .list_records(msg.service_id.as_deref(), msg.offset, msg.limit)?;
+        let offset = i64::try_from(msg.offset).unwrap_or(i64::MAX);
+
+        let limit = i64::try_from(msg.limit).unwrap_or(10);
+
+        let record_list = self
+            .tnt_store
+            .list_records(msg.service_id.as_deref(), offset, limit)?;
 
         let record_ids: Vec<String> = record_list
             .data
@@ -228,8 +233,8 @@ pub async fn list_records(
         .database_connection
         .send(ListRecords {
             service_id: query_service_id.into_inner().service_id,
-            offset: paging.offset.unwrap_or(0),
-            limit: paging.limit.unwrap_or(10),
+            offset: paging.offset(),
+            limit: paging.limit(),
         })
         .await?
         .map(|records| HttpResponse::Ok().json(records))
