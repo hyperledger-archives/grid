@@ -88,8 +88,21 @@ pub struct QueryServiceId {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryPaging {
-    pub offset: Option<i64>,
-    pub limit: Option<i64>,
+    pub offset: Option<u64>,
+    pub limit: Option<u16>,
+}
+
+#[cfg(feature = "pike")]
+impl QueryPaging {
+    pub fn offset(&self) -> u64 {
+        self.offset.unwrap_or(0)
+    }
+
+    pub fn limit(&self) -> u16 {
+        self.limit
+            .map(|l| if l > 1024 { 1024 } else { l })
+            .unwrap_or(10)
+    }
 }
 
 pub struct AcceptServiceIdParam;
