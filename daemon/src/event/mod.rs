@@ -251,7 +251,7 @@ impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
             .spawn(move || {
                 loop {
                     match connection.recv() {
-                        Ok(commit_event) => handle_message(commit_event, &event_handlers)?,
+                        Ok(commit_event) => handle_message(commit_event, &event_handlers),
                         Err(EventIoError::InvalidMessage(msg)) => {
                             warn!("{}; ignoring...", msg);
                         }
@@ -298,15 +298,10 @@ impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
     }
 }
 
-fn handle_message(
-    event: CommitEvent,
-    event_handlers: &[Box<dyn EventHandler>],
-) -> Result<(), EventProcessorError> {
+fn handle_message(event: CommitEvent, event_handlers: &[Box<dyn EventHandler>]) {
     for handler in event_handlers {
         if let Err(err) = handler.handle_event(&event) {
             error!("An error occurred while handling events: {}", err);
         }
     }
-
-    Ok(())
 }
