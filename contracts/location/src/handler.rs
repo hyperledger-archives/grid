@@ -41,7 +41,10 @@ use grid_sdk::{
 
 use grid_sdk::protos::FromBytes;
 
-use crate::state::LocationState;
+use crate::{
+    permissions::{permission_to_perm_string, Permission},
+    state::LocationState,
+};
 
 #[cfg(target_arch = "wasm32")]
 fn apply(
@@ -160,16 +163,12 @@ fn create_location(
         )));
     };
 
-    // check if agent has can_create_location permission
-    if !perm_checker
-        .has_permission(signer, "can_create_location", organization.org_id())
-        .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
-    {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission to create locations",
-            signer
-        )));
-    }
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanCreateLocation),
+        organization.org_id(),
+    )?;
 
     // check if organization has gln in gs1_company_prefix metadata
     let mut has_gs1_prefix = false;
@@ -269,16 +268,12 @@ fn update_location(
         )));
     };
 
-    // check if agent has can_update_location permission
-    if !perm_checker
-        .has_permission(signer, "can_update_location", organization.org_id())
-        .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
-    {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission to update locations",
-            signer
-        )));
-    }
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanUpdateLocation),
+        organization.org_id(),
+    )?;
 
     // check if gs1 schema exists
     let schema = if let Some(schema) = state.get_schema("gs1_location")? {
@@ -361,18 +356,33 @@ fn delete_location(
         )));
     };
 
-    // check if agent has can_delete_location permission
-    if !perm_checker
-        .has_permission(signer, "can_delete_location", organization.org_id())
-        .map_err(|err| ApplyError::InternalError(format!("Failed to check permissions: {}", err)))?
-    {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission to delete locations",
-            signer
-        )));
-    }
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanDeleteLocation),
+        organization.org_id(),
+    )?;
 
     state.remove_location(payload.location_id())
+}
+
+fn check_permission(
+    perm_checker: &PermissionChecker,
+    signer: &str,
+    permission: &str,
+    record_owner: &str,
+) -> Result<(), ApplyError> {
+    match perm_checker.has_permission(signer, permission, record_owner) {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(ApplyError::InvalidTransaction(format!(
+            "The signer \"{}\" does not have the \"{}\" permission for org \"{}\"",
+            signer, permission, record_owner
+        ))),
+        Err(err) => Err(ApplyError::InvalidTransaction(format!(
+            "Permission check failed: {}",
+            err
+        ))),
+    }
 }
 
 fn is_gln_13_valid(gln: &str) -> bool {
@@ -410,7 +420,9 @@ mod tests {
     use std::collections::HashMap;
 
     use grid_sdk::{
-        pike::addressing::{compute_agent_address, compute_organization_address},
+        pike::addressing::{
+            compute_agent_address, compute_organization_address, compute_role_address,
+        },
         protocol::{
             location::payload::{
                 LocationCreateActionBuilder, LocationDeleteActionBuilder,
@@ -418,7 +430,7 @@ mod tests {
             },
             pike::state::{
                 AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
-                OrganizationListBuilder,
+                OrganizationListBuilder, RoleBuilder, RoleListBuilder,
             },
             schema::state::{
                 DataType, PropertyDefinitionBuilder, PropertyValueBuilder, SchemaBuilder,
@@ -449,7 +461,7 @@ mod tests {
             let prefix_org = OrganizationBuilder::new()
                 .with_org_id("prefix_org".to_string())
                 .with_name("test_org_name".to_string())
-                .with_address("test_org_address".to_string())
+                .with_locations(vec![])
                 .with_metadata(vec![key_value.clone()])
                 .build()
                 .unwrap();
@@ -466,7 +478,7 @@ mod tests {
             let no_prefix_org = OrganizationBuilder::new()
                 .with_org_id("no_prefix_org".to_string())
                 .with_name("test_org_name".to_string())
-                .with_address("test_org_address".to_string())
+                .with_locations(vec!["test".to_string()])
                 .build()
                 .unwrap();
             let no_prefix_org_list = OrganizationListBuilder::new()
@@ -478,15 +490,54 @@ mod tests {
 
             entries.push((no_prefix_org_address, no_prefix_org_bytes));
 
+            let role_prefix = RoleBuilder::new()
+                .with_org_id("prefix_org".to_string())
+                .with_name("location".to_string())
+                .with_description("role description".to_string())
+                .with_permissions(vec![
+                    "location::can-create-location".to_string(),
+                    "location::can-update-location".to_string(),
+                    "location::can-delete-location".to_string(),
+                ])
+                .build()
+                .unwrap();
+            let role_prefix_list = RoleListBuilder::new()
+                .with_roles(vec![role_prefix.clone()])
+                .build()
+                .unwrap();
+            let role_prefix_bytes = role_prefix_list.into_bytes().unwrap();
+            let role_prefix_address = compute_role_address("location", "prefix_org");
+
+            entries.push((role_prefix_address, role_prefix_bytes));
+
+            let role_no_prefix = RoleBuilder::new()
+                .with_org_id("no_prefix_org".to_string())
+                .with_name("location".to_string())
+                .with_description("role description".to_string())
+                .with_permissions(vec![
+                    "location::can-create-location".to_string(),
+                    "location::can-update-location".to_string(),
+                    "location::can-delete-location".to_string(),
+                ])
+                .build()
+                .unwrap();
+            let role_no_prefix_list = RoleListBuilder::new()
+                .with_roles(vec![role_no_prefix.clone()])
+                .build()
+                .unwrap();
+            let role_no_prefix_bytes = role_no_prefix_list.into_bytes().unwrap();
+            let role_no_prefix_address = compute_role_address("location", "no_prefix_org");
+
+            entries.push((role_no_prefix_address, role_no_prefix_bytes));
+
             // create agent with correct permissions
             let agent_with_perms = AgentBuilder::new()
                 .with_org_id("prefix_org".to_string())
                 .with_public_key("agent_with_perms".to_string())
                 .with_active(true)
                 .with_roles(vec![
-                    "can_delete_location".to_string(),
-                    "can_create_location".to_string(),
-                    "can_update_location".to_string(),
+                    "prefix_org.location".to_string(),
+                    "no_prefix_org.location".to_string(),
                 ])
                 .build()
                 .unwrap();
@@ -521,9 +572,8 @@ mod tests {
                 .with_public_key("agent_with_perms_no_prefix".to_string())
                 .with_active(true)
                 .with_roles(vec![
-                    "can_delete_location".to_string(),
-                    "can_create_location".to_string(),
-                    "can_update_location".to_string(),
+                    "prefix_org.location".to_string(),
+                    "no_prefix_org.location".to_string(),
                 ])
                 .build()
                 .unwrap();
@@ -909,9 +959,9 @@ mod tests {
 
         match create_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have permission to create locations",
+                    "Agent agent_no_perms does not have the correct permissions",
                     msg
                 );
             }
@@ -1200,9 +1250,9 @@ mod tests {
 
         match update_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have permission to update locations",
+                    "Agent agent_no_perms does not have the correct permissions",
                     msg
                 );
             }
@@ -1375,9 +1425,9 @@ mod tests {
 
         match delete_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InvalidTransaction(ref msg)) => {
+            Err(ApplyError::InternalError(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have permission to delete locations",
+                    "Agent agent_no_perms does not have the correct permissions",
                     msg
                 );
             }

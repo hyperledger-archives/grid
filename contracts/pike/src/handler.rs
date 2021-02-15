@@ -31,15 +31,22 @@ cfg_if! {
 
 use grid_sdk::{
     permissions::PermissionChecker,
-    pike::addressing::{compute_agent_address, compute_organization_address, PIKE_NAMESPACE},
+    pike::addressing::{
+        compute_agent_address, compute_organization_address, compute_role_address, PIKE_NAMESPACE,
+    },
+    protocol::pike::state::{Role, RoleBuilder, RoleList, RoleListBuilder},
     protos::{
         pike_payload::{
-            CreateAgentAction, CreateOrganizationAction, PikePayload, PikePayload_Action as Action,
-            UpdateAgentAction, UpdateOrganizationAction,
+            CreateAgentAction, CreateOrganizationAction, CreateRoleAction, DeleteRoleAction,
+            PikePayload, PikePayload_Action as Action, UpdateAgentAction, UpdateOrganizationAction,
+            UpdateRoleAction,
         },
         pike_state::{Agent, AgentList, Organization, OrganizationList},
+        FromBytes, IntoBytes,
     },
 };
+
+use crate::permissions::{permission_to_perm_string, Permission};
 
 pub struct PikeTransactionHandler {
     family_name: String,
@@ -54,6 +61,131 @@ pub struct PikeState<'a> {
 impl<'a> PikeState<'a> {
     pub fn new(context: &'a dyn TransactionContext) -> Self {
         Self { context }
+    }
+
+    pub fn get_role(&self, name: &str, org_id: &str) -> Result<Option<Role>, ApplyError> {
+        let address = compute_role_address(name, org_id);
+        match self.context.get_state_entry(&address)? {
+            Some(packed) => {
+                let roles: RoleList = match RoleList::from_bytes(packed.as_slice()) {
+                    Ok(role) => role,
+                    Err(err) => {
+                        return Err(ApplyError::InvalidTransaction(format!(
+                            "Cannot deserialize role list: {:?}",
+                            err,
+                        )));
+                    }
+                };
+
+                for role in roles.roles() {
+                    if role.name() == name && role.org_id() == org_id {
+                        return Ok(Some(role.clone()));
+                    }
+                }
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub fn set_role(&self, role: Role) -> Result<(), ApplyError> {
+        let address = compute_role_address(&role.name(), &role.org_id());
+        let mut roles = match self.context.get_state_entry(&address)? {
+            Some(packed) => match RoleList::from_bytes(packed.as_slice()) {
+                Ok(role_list) => role_list.roles().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InternalError(format!(
+                        "Cannot deserialize role list: {:?}",
+                        err
+                    )));
+                }
+            },
+            None => vec![],
+        };
+
+        let mut index = None;
+        for (i, r) in roles.iter().enumerate() {
+            if role.name() == r.name() && role.org_id() == r.org_id() {
+                index = Some(i);
+                break;
+            }
+        }
+
+        if let Some(i) = index {
+            roles.remove(i);
+        }
+
+        roles.push(role);
+        roles.sort_by_key(|role| role.name().to_string());
+        let role_list = RoleListBuilder::new()
+            .with_roles(roles)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build role list: {:?}", err))
+            })?;
+
+        let serialized = match role_list.into_bytes() {
+            Ok(serialized) => serialized,
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Cannot serialize role list: {:?}",
+                    err
+                )));
+            }
+        };
+        self.context
+            .set_state_entry(address, serialized)
+            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        Ok(())
+    }
+
+    pub fn remove_role(&mut self, name: &str, org_id: &str) -> Result<(), ApplyError> {
+        let address = compute_role_address(&name, &org_id);
+        let roles = match self.context.get_state_entry(&address)? {
+            Some(packed) => match RoleList::from_bytes(packed.as_slice()) {
+                Ok(role_list) => role_list.roles().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InternalError(format!(
+                        "Cannot deserialize role list: {:?}",
+                        err
+                    )));
+                }
+            },
+            None => vec![],
+        };
+
+        let filtered_roles = roles
+            .into_iter()
+            .filter(|role| role.name() == name && role.org_id() == org_id)
+            .collect::<Vec<_>>();
+
+        if filtered_roles.is_empty() {
+            self.context
+                .delete_state_entries(&[address])
+                .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        } else {
+            let role_list = RoleListBuilder::new()
+                .with_roles(filtered_roles)
+                .build()
+                .map_err(|err| {
+                    ApplyError::InvalidTransaction(format!("Cannot build role list: {:?}", err))
+                })?;
+
+            let serialized = match role_list.into_bytes() {
+                Ok(serialized) => serialized,
+                Err(_) => {
+                    return Err(ApplyError::InternalError(String::from(
+                        "Cannot serialize role list",
+                    )));
+                }
+            };
+
+            self.context
+                .set_state_entry(address, serialized)
+                .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        }
+
+        Ok(())
     }
 
     pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
@@ -266,9 +398,238 @@ impl TransactionHandler for PikeTransactionHandler {
                 &mut state,
                 &perm_checker,
             ),
+            Action::CREATE_ROLE => {
+                create_role(payload.get_create_role(), signer, &mut state, &perm_checker)
+            }
+            Action::UPDATE_ROLE => {
+                update_role(payload.get_update_role(), signer, &mut state, &perm_checker)
+            }
+            Action::DELETE_ROLE => {
+                delete_role(payload.get_delete_role(), signer, &mut state, &perm_checker)
+            }
             _ => Err(ApplyError::InvalidTransaction("Invalid action".into())),
         }
     }
+}
+
+fn create_role(
+    payload: &CreateRoleAction,
+    signer: &str,
+    state: &mut PikeState,
+    perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    if payload.get_org_id().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "Organization ID required".into(),
+        ));
+    }
+
+    if payload.get_name().is_empty() {
+        return Err(ApplyError::InvalidTransaction("Name required".into()));
+    }
+
+    if payload.get_description().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "Description required".into(),
+        ));
+    }
+
+    let agent = match state.get_agent(signer)? {
+        Some(agent) => agent,
+        None => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "The signer is not an Agent: {}",
+                signer
+            )));
+        }
+    };
+
+    let name = &payload.get_name();
+
+    if name.contains('.') {
+        return Err(ApplyError::InvalidTransaction(
+            "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
+                .to_string(),
+        ));
+    }
+
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanCreateRoles),
+        &agent.org_id,
+    )?;
+
+    match state.get_role(payload.get_name(), payload.get_org_id()) {
+        Ok(None) => (),
+        Ok(Some(_)) => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Role already exists: {}",
+                payload.get_name(),
+            )))
+        }
+        Err(err) => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Failed to retrieve state: {}",
+                err,
+            )))
+        }
+    };
+
+    let role_builder = RoleBuilder::new();
+    let role = role_builder
+        .with_org_id(payload.get_org_id().to_string())
+        .with_name(payload.get_name().to_string())
+        .with_description(payload.get_description().to_string())
+        .with_permissions(payload.get_permissions().to_vec())
+        .with_active(payload.get_active())
+        .with_allowed_organizations(payload.get_allowed_organizations().to_vec())
+        .with_inherit_from(payload.get_inherit_from().to_vec())
+        .build()
+        .map_err(|err| ApplyError::InvalidTransaction(format!("Cannot build role: {}", err)))?;
+
+    state
+        .set_role(role)
+        .map_err(|e| ApplyError::InternalError(format!("Failed to create role: {:?}", e)))
+}
+
+fn update_role(
+    payload: &UpdateRoleAction,
+    signer: &str,
+    state: &mut PikeState,
+    perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    if payload.get_org_id().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "Organization ID required".into(),
+        ));
+    }
+
+    if payload.get_name().is_empty() {
+        return Err(ApplyError::InvalidTransaction("Name required".into()));
+    }
+
+    if payload.get_description().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "Description required".into(),
+        ));
+    }
+
+    let agent = match state.get_agent(signer)? {
+        Some(agent) => agent,
+        None => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "The signer is not an Agent: {}",
+                signer
+            )));
+        }
+    };
+
+    let name = &payload.get_name();
+
+    if name.contains('.') {
+        return Err(ApplyError::InvalidTransaction(
+            "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
+                .to_string(),
+        ));
+    }
+
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanUpdateRoles),
+        &agent.org_id,
+    )?;
+
+    match state.get_role(payload.get_name(), payload.get_org_id()) {
+        Ok(None) => (),
+        Ok(Some(_)) => (),
+        Err(err) => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Failed to retrieve state: {}",
+                err,
+            )))
+        }
+    };
+
+    let role_builder = RoleBuilder::new();
+    let role = role_builder
+        .with_org_id(payload.get_org_id().to_string())
+        .with_name(payload.get_name().to_string())
+        .with_description(payload.get_description().to_string())
+        .with_permissions(payload.get_permissions().to_vec())
+        .with_active(payload.get_active())
+        .with_allowed_organizations(payload.get_allowed_organizations().to_vec())
+        .with_inherit_from(payload.get_inherit_from().to_vec())
+        .build()
+        .map_err(|err| ApplyError::InvalidTransaction(format!("Cannot build role: {}", err)))?;
+
+    state
+        .set_role(role)
+        .map_err(|e| ApplyError::InternalError(format!("Failed to update role: {:?}", e)))
+}
+
+fn delete_role(
+    payload: &DeleteRoleAction,
+    signer: &str,
+    state: &mut PikeState,
+    perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    if payload.get_org_id().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "Organization ID required".into(),
+        ));
+    }
+
+    if payload.get_name().is_empty() {
+        return Err(ApplyError::InvalidTransaction("Name required".into()));
+    }
+
+    let agent = match state.get_agent(signer)? {
+        Some(agent) => agent,
+        None => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "The signer is not an Agent: {}",
+                signer
+            )));
+        }
+    };
+
+    let name = &payload.get_name();
+
+    if name.contains('.') {
+        return Err(ApplyError::InvalidTransaction(
+            "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
+                .to_string(),
+        ));
+    }
+
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanDeleteRoles),
+        &agent.org_id,
+    )?;
+
+    match state.get_role(payload.get_name(), payload.get_org_id()) {
+        Ok(None) => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Role does not exist: {}",
+                payload.get_name(),
+            )))
+        }
+        Ok(Some(_)) => (),
+        Err(err) => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Failed to retrieve state: {}",
+                err,
+            )))
+        }
+    };
+
+    state
+        .remove_role(payload.get_name(), payload.get_org_id())
+        .map_err(|e| ApplyError::InternalError(format!("Failed to delete role: {:?}", e)))
 }
 
 fn create_agent(
@@ -287,8 +648,12 @@ fn create_agent(
         ));
     }
 
-    // verify the signer of the transaction is authorized to create agent
-    is_admin(signer, payload.get_org_id(), perm_checker)?;
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanCreateAgents),
+        payload.get_org_id(),
+    )?;
 
     // Check if agent already exists
     match state.get_agent(payload.get_public_key()) {
@@ -356,7 +721,12 @@ fn update_agent(
         }
     };
 
-    is_admin(signer, payload.get_org_id(), perm_checker)?;
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanUpdateAgents),
+        &agent.org_id,
+    )?;
 
     if !payload.get_roles().is_empty() {
         // verify that an admin is not removing the role admin from themselves.
@@ -428,10 +798,10 @@ fn create_org(
             )))
         }
     };
+
     let mut organization = Organization::new();
     organization.set_org_id(payload.get_id().to_string());
     organization.set_name(payload.get_name().to_string());
-    organization.set_address(payload.get_address().to_string());
     organization.set_metadata(protobuf::RepeatedField::from_vec(
         payload.get_metadata().to_vec(),
     ));
@@ -440,6 +810,25 @@ fn create_org(
     state.get_agent(signer).map_err(|e| {
         ApplyError::InternalError(format!("Failed to create organization: {:?}", e))
     })?;
+
+    let role_builder = RoleBuilder::new();
+    let role = role_builder
+        .with_org_id(payload.get_id().to_string())
+        .with_name("admin".to_string())
+        .with_description("The Pike administrator".to_string())
+        .with_permissions(vec![
+            permission_to_perm_string(Permission::CanCreateAgents),
+            permission_to_perm_string(Permission::CanUpdateAgents),
+            permission_to_perm_string(Permission::CanDeleteAgents),
+            permission_to_perm_string(Permission::CanUpdateOrganization),
+            permission_to_perm_string(Permission::CanCreateRoles),
+            permission_to_perm_string(Permission::CanUpdateRoles),
+            permission_to_perm_string(Permission::CanDeleteRoles),
+        ])
+        .with_active(true)
+        .build()
+        .unwrap();
+    state.set_role(role)?;
 
     // Check if the agent already exists
     match state.get_agent(signer) {
@@ -452,7 +841,7 @@ fn create_org(
         }
         Err(err) => {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Failed to retrievestate: {}",
+                "Failed to retrieve state: {}",
                 err,
             )))
         }
@@ -461,9 +850,7 @@ fn create_org(
     agent.set_public_key(signer.to_string());
     agent.set_org_id(payload.get_id().to_string());
     agent.set_active(true);
-    agent.set_roles(protobuf::RepeatedField::from_vec(vec![String::from(
-        "admin",
-    )]));
+    agent.set_roles(protobuf::RepeatedField::from_vec(vec!["admin".to_string()]));
 
     state
         .set_agent(signer, agent)
@@ -482,8 +869,12 @@ fn update_org(
         ));
     }
 
-    // verify the signer of the transaction is authorized to update organization
-    is_admin(signer, payload.get_id(), perm_checker)?;
+    check_permission(
+        perm_checker,
+        signer,
+        &permission_to_perm_string(Permission::CanUpdateOrganization),
+        payload.get_id(),
+    )?;
 
     // Make sure the organization already exists
     let mut organization = match state.get_organization(payload.get_id()) {
@@ -505,8 +896,10 @@ fn update_org(
     if !payload.get_name().is_empty() {
         organization.set_name(payload.get_name().to_string());
     }
-    if !payload.get_address().is_empty() {
-        organization.set_address(payload.get_address().to_string());
+    if !payload.get_locations().is_empty() {
+        organization.set_locations(protobuf::RepeatedField::from_vec(
+            payload.get_locations().to_vec(),
+        ));
     }
     if !payload.get_metadata().is_empty() {
         organization.set_metadata(protobuf::RepeatedField::from_vec(
@@ -516,23 +909,23 @@ fn update_org(
     state.set_organization(payload.get_id(), organization)
 }
 
-pub fn is_admin(
-    signer: &str,
-    org_id: &str,
+fn check_permission(
     perm_checker: &PermissionChecker,
+    signer: &str,
+    permission: &str,
+    record_owner: &str,
 ) -> Result<(), ApplyError> {
-    let has_perm = perm_checker
-        .has_permission(signer, "admin", org_id)
-        .map_err(|err| {
-            ApplyError::InvalidTransaction(format!("Permission check failed: {}", err))
-        })?;
-    if !has_perm {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "The signer \"{}\" does not have the \"admin\" permission for org \"{}\"",
-            signer, org_id
-        )));
+    match perm_checker.has_permission(signer, permission, record_owner) {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(ApplyError::InvalidTransaction(format!(
+            "The signer \"{}\" does not have the \"{}\" permission for org \"{}\"",
+            signer, permission, record_owner
+        ))),
+        Err(err) => Err(ApplyError::InvalidTransaction(format!(
+            "Permission check failed: {}",
+            err
+        ))),
     }
-    Ok(())
 }
 
 #[cfg(target_arch = "wasm32")]
