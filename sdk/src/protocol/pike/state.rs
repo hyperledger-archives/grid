@@ -150,6 +150,537 @@ impl KeyValueEntryBuilder {
     }
 }
 
+/// Native implementation of Role
+#[derive(Debug, Clone, PartialEq)]
+pub struct Role {
+    org_id: String,
+    name: String,
+    description: String,
+    active: bool,
+    permissions: Vec<String>,
+    allowed_organizations: Vec<String>,
+    inherit_from: Vec<String>,
+}
+
+impl Role {
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn active(&self) -> &bool {
+        &self.active
+    }
+
+    pub fn permissions(&self) -> &[String] {
+        &self.permissions
+    }
+
+    pub fn allowed_organizations(&self) -> &[String] {
+        &self.allowed_organizations
+    }
+
+    pub fn inherit_from(&self) -> &[String] {
+        &self.inherit_from
+    }
+}
+
+impl FromProto<protos::pike_state::Role> for Role {
+    fn from_proto(role: protos::pike_state::Role) -> Result<Self, ProtoConversionError> {
+        Ok(Role {
+            org_id: role.get_org_id().to_string(),
+            name: role.get_name().to_string(),
+            description: role.get_description().to_string(),
+            active: role.get_active(),
+            permissions: role.get_permissions().to_vec(),
+            allowed_organizations: role.get_allowed_organizations().to_vec(),
+            inherit_from: role.get_inherit_from().to_vec(),
+        })
+    }
+}
+
+impl FromNative<Role> for protos::pike_state::Role {
+    fn from_native(role: Role) -> Result<Self, ProtoConversionError> {
+        let mut role_proto = protos::pike_state::Role::new();
+
+        role_proto.set_org_id(role.org_id().to_string());
+        role_proto.set_name(role.name().to_string());
+        role_proto.set_description(role.description().to_string());
+        role_proto.set_active(*role.active());
+        role_proto.set_permissions(RepeatedField::from_vec(role.permissions().to_vec()));
+        role_proto.set_allowed_organizations(RepeatedField::from_vec(
+            role.allowed_organizations().to_vec(),
+        ));
+        role_proto.set_inherit_from(RepeatedField::from_vec(role.inherit_from().to_vec()));
+
+        Ok(role_proto)
+    }
+}
+
+impl FromBytes<Role> for Role {
+    fn from_bytes(bytes: &[u8]) -> Result<Role, ProtoConversionError> {
+        let proto: protos::pike_state::Role = Message::parse_from_bytes(bytes).map_err(|_| {
+            ProtoConversionError::SerializationError("Unable to get Role from bytes".to_string())
+        })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for Role {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError("Unable to get bytes from Role".to_string())
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_state::Role> for Role {}
+impl IntoNative<Role> for protos::pike_state::Role {}
+
+#[derive(Debug)]
+pub enum RoleBuildError {
+    MissingField(String),
+}
+
+impl StdError for RoleBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            RoleBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            RoleBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for RoleBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            RoleBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+        }
+    }
+}
+
+/// Builder used to create a Role
+#[derive(Default, Clone)]
+pub struct RoleBuilder {
+    org_id: Option<String>,
+    name: Option<String>,
+    description: Option<String>,
+    active: bool,
+    permissions: Vec<String>,
+    allowed_organizations: Vec<String>,
+    inherit_from: Vec<String>,
+}
+
+impl RoleBuilder {
+    pub fn new() -> Self {
+        RoleBuilder::default()
+    }
+
+    pub fn with_org_id(mut self, org_id: String) -> RoleBuilder {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    pub fn with_name(mut self, name: String) -> RoleBuilder {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn with_description(mut self, description: String) -> RoleBuilder {
+        self.description = Some(description);
+        self
+    }
+
+    pub fn with_active(mut self, active: bool) -> RoleBuilder {
+        self.active = active;
+        self
+    }
+
+    pub fn with_permissions(mut self, permissions: Vec<String>) -> RoleBuilder {
+        self.permissions = permissions;
+        self
+    }
+
+    pub fn with_allowed_organizations(mut self, allowed_organizations: Vec<String>) -> RoleBuilder {
+        self.allowed_organizations = allowed_organizations;
+        self
+    }
+
+    pub fn with_inherit_from(mut self, inherit_from: Vec<String>) -> RoleBuilder {
+        self.inherit_from = inherit_from;
+        self
+    }
+
+    pub fn build(self) -> Result<Role, RoleBuildError> {
+        let org_id = self.org_id.ok_or_else(|| {
+            RoleBuildError::MissingField("'org_id' field is required".to_string())
+        })?;
+
+        let name = self
+            .name
+            .ok_or_else(|| RoleBuildError::MissingField("'name' field is required".to_string()))?;
+
+        let description = self.description.unwrap_or_else(|| "".to_string());
+
+        let active = self.active;
+
+        let permissions = self.permissions;
+        let allowed_organizations = self.allowed_organizations;
+        let inherit_from = self.inherit_from;
+
+        Ok(Role {
+            org_id,
+            name,
+            description,
+            active,
+            permissions,
+            allowed_organizations,
+            inherit_from,
+        })
+    }
+}
+
+/// Native implementation of RoleList
+#[derive(Debug, Clone, PartialEq)]
+pub struct RoleList {
+    roles: Vec<Role>,
+}
+
+impl RoleList {
+    pub fn roles(&self) -> &[Role] {
+        &self.roles
+    }
+}
+
+impl FromProto<protos::pike_state::RoleList> for RoleList {
+    fn from_proto(role_list: protos::pike_state::RoleList) -> Result<Self, ProtoConversionError> {
+        Ok(RoleList {
+            roles: role_list
+                .get_roles()
+                .to_vec()
+                .into_iter()
+                .map(Role::from_proto)
+                .collect::<Result<Vec<Role>, ProtoConversionError>>()?,
+        })
+    }
+}
+
+impl FromNative<RoleList> for protos::pike_state::RoleList {
+    fn from_native(role_list: RoleList) -> Result<Self, ProtoConversionError> {
+        let mut role_list_proto = protos::pike_state::RoleList::new();
+
+        role_list_proto.set_roles(RepeatedField::from_vec(
+            role_list
+                .roles()
+                .to_vec()
+                .into_iter()
+                .map(Role::into_proto)
+                .collect::<Result<Vec<protos::pike_state::Role>, ProtoConversionError>>()?,
+        ));
+
+        Ok(role_list_proto)
+    }
+}
+
+impl FromBytes<RoleList> for RoleList {
+    fn from_bytes(bytes: &[u8]) -> Result<RoleList, ProtoConversionError> {
+        let proto: protos::pike_state::RoleList =
+            Message::parse_from_bytes(bytes).map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get RoleList from bytes".to_string(),
+                )
+            })?;
+
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for RoleList {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from RoleList".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_state::RoleList> for RoleList {}
+impl IntoNative<RoleList> for protos::pike_state::RoleList {}
+
+#[derive(Debug)]
+pub enum RoleListBuildError {
+    MissingField(String),
+}
+
+impl StdError for RoleListBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            RoleListBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            RoleListBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for RoleListBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            RoleListBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+        }
+    }
+}
+
+/// Builder used to create a RoleList
+#[derive(Default, Clone)]
+pub struct RoleListBuilder {
+    pub roles: Vec<Role>,
+}
+
+impl RoleListBuilder {
+    pub fn new() -> Self {
+        RoleListBuilder::default()
+    }
+
+    pub fn with_roles(mut self, roles: Vec<Role>) -> RoleListBuilder {
+        self.roles = roles;
+        self
+    }
+
+    pub fn build(self) -> Result<RoleList, RoleListBuildError> {
+        let roles = {
+            if self.roles.is_empty() {
+                return Err(RoleListBuildError::MissingField(
+                    "'roles' cannot be empty".to_string(),
+                ));
+            } else {
+                self.roles
+            }
+        };
+
+        Ok(RoleList { roles })
+    }
+}
+
+/// Native implementation of AlternateIDIndexEntry
+#[derive(Debug, Clone, PartialEq)]
+pub struct AlternateIDIndexEntry {
+    id_type: String,
+    id: String,
+    grid_identity_id: String,
+}
+
+impl AlternateIDIndexEntry {
+    pub fn id_type(&self) -> &str {
+        &self.id_type
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn grid_identity_id(&self) -> &str {
+        &self.grid_identity_id
+    }
+}
+
+impl FromProto<protos::pike_state::AlternateIDIndexEntry> for AlternateIDIndexEntry {
+    fn from_proto(
+        id: protos::pike_state::AlternateIDIndexEntry,
+    ) -> Result<Self, ProtoConversionError> {
+        Ok(AlternateIDIndexEntry {
+            id_type: id.get_id_type().to_string(),
+            id: id.get_id().to_string(),
+            grid_identity_id: id.get_grid_identity_id().to_string(),
+        })
+    }
+}
+
+impl FromNative<AlternateIDIndexEntry> for protos::pike_state::AlternateIDIndexEntry {
+    fn from_native(id: AlternateIDIndexEntry) -> Result<Self, ProtoConversionError> {
+        let mut alt_id_proto = protos::pike_state::AlternateIDIndexEntry::new();
+
+        alt_id_proto.set_id_type(id.id_type().to_string());
+        alt_id_proto.set_id(id.id().to_string());
+        alt_id_proto.set_grid_identity_id(id.grid_identity_id().to_string());
+
+        Ok(alt_id_proto)
+    }
+}
+
+impl FromBytes<AlternateIDIndexEntry> for AlternateIDIndexEntry {
+    fn from_bytes(bytes: &[u8]) -> Result<AlternateIDIndexEntry, ProtoConversionError> {
+        let proto: protos::pike_state::AlternateIDIndexEntry = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get AlternateIDIndexEntry from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for AlternateIDIndexEntry {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from AlternateIDIndexEntry".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_state::AlternateIDIndexEntry> for AlternateIDIndexEntry {}
+impl IntoNative<AlternateIDIndexEntry> for protos::pike_state::AlternateIDIndexEntry {}
+
+/// Native implementation of AlternateID
+#[derive(Debug, Clone, PartialEq)]
+pub struct AlternateID {
+    id_type: String,
+    id: String,
+}
+
+impl AlternateID {
+    pub fn id_type(&self) -> &str {
+        &self.id_type
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+}
+
+impl FromProto<protos::pike_state::AlternateID> for AlternateID {
+    fn from_proto(id: protos::pike_state::AlternateID) -> Result<Self, ProtoConversionError> {
+        Ok(AlternateID {
+            id_type: id.get_id_type().to_string(),
+            id: id.get_id().to_string(),
+        })
+    }
+}
+
+impl FromNative<AlternateID> for protos::pike_state::AlternateID {
+    fn from_native(id: AlternateID) -> Result<Self, ProtoConversionError> {
+        let mut alt_id_proto = protos::pike_state::AlternateID::new();
+
+        alt_id_proto.set_id_type(id.id_type().to_string());
+        alt_id_proto.set_id(id.id().to_string());
+
+        Ok(alt_id_proto)
+    }
+}
+
+impl FromBytes<AlternateID> for AlternateID {
+    fn from_bytes(bytes: &[u8]) -> Result<AlternateID, ProtoConversionError> {
+        let proto: protos::pike_state::AlternateID =
+            Message::parse_from_bytes(bytes).map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get AlternateID from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for AlternateID {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from AlternateID".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_state::AlternateID> for AlternateID {}
+impl IntoNative<AlternateID> for protos::pike_state::AlternateID {}
+
+#[derive(Debug)]
+pub enum AlternateIDBuildError {
+    MissingField(String),
+}
+
+impl StdError for AlternateIDBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            AlternateIDBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            AlternateIDBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for AlternateIDBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            AlternateIDBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+        }
+    }
+}
+
+/// Builder used to create a AlternateID
+#[derive(Default, Clone)]
+pub struct AlternateIDBuilder {
+    pub id_type: Option<String>,
+    pub id: Option<String>,
+}
+
+impl AlternateIDBuilder {
+    pub fn new() -> Self {
+        AlternateIDBuilder::default()
+    }
+
+    pub fn with_id_type(mut self, id_type: String) -> AlternateIDBuilder {
+        self.id_type = Some(id_type);
+        self
+    }
+
+    pub fn with_id(mut self, id: String) -> AlternateIDBuilder {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn build(self) -> Result<AlternateID, AlternateIDBuildError> {
+        let id_type = self.id_type.ok_or_else(|| {
+            AlternateIDBuildError::MissingField("'id_type' field is required".to_string())
+        })?;
+
+        let id = self.id.ok_or_else(|| {
+            AlternateIDBuildError::MissingField("'id' field is required".to_string())
+        })?;
+
+        Ok(AlternateID { id_type, id })
+    }
+}
+
 /// Native implementation of Agent
 #[derive(Debug, Clone, PartialEq)]
 pub struct Agent {
@@ -466,7 +997,8 @@ impl AgentListBuilder {
 pub struct Organization {
     org_id: String,
     name: String,
-    address: String,
+    locations: Vec<String>,
+    alternate_ids: Vec<AlternateID>,
     metadata: Vec<KeyValueEntry>,
 }
 
@@ -479,8 +1011,12 @@ impl Organization {
         &self.name
     }
 
-    pub fn address(&self) -> &str {
-        &self.address
+    pub fn locations(&self) -> &[String] {
+        &self.locations
+    }
+
+    pub fn alternate_ids(&self) -> &[AlternateID] {
+        &self.alternate_ids
     }
 
     pub fn metadata(&self) -> &[KeyValueEntry] {
@@ -493,7 +1029,13 @@ impl FromProto<protos::pike_state::Organization> for Organization {
         Ok(Organization {
             org_id: org.get_org_id().to_string(),
             name: org.get_name().to_string(),
-            address: org.get_address().to_string(),
+            locations: org.get_locations().to_vec(),
+            alternate_ids: org
+                .get_alternate_id()
+                .to_vec()
+                .into_iter()
+                .map(AlternateID::from_proto)
+                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
             metadata: org
                 .get_metadata()
                 .to_vec()
@@ -510,7 +1052,14 @@ impl FromNative<Organization> for protos::pike_state::Organization {
 
         org_proto.set_org_id(org.org_id().to_string());
         org_proto.set_name(org.name().to_string());
-        org_proto.set_address(org.address().to_string());
+        org_proto.set_locations(RepeatedField::from_vec(org.locations().to_vec()));
+        org_proto.set_alternate_id(RepeatedField::from_vec(
+            org.alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(AlternateID::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+        ));
         org_proto.set_metadata(RepeatedField::from_vec(
             org.metadata()
                 .to_vec()
@@ -583,7 +1132,8 @@ impl std::fmt::Display for OrganizationBuildError {
 pub struct OrganizationBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
-    pub address: Option<String>,
+    pub locations: Vec<String>,
+    pub alternate_ids: Vec<AlternateID>,
     pub metadata: Vec<KeyValueEntry>,
 }
 
@@ -602,8 +1152,13 @@ impl OrganizationBuilder {
         self
     }
 
-    pub fn with_address(mut self, name: String) -> OrganizationBuilder {
-        self.address = Some(name);
+    pub fn with_locations(mut self, locations: Vec<String>) -> OrganizationBuilder {
+        self.locations = locations;
+        self
+    }
+
+    pub fn with_alternate_ids(mut self, alternate_ids: Vec<AlternateID>) -> OrganizationBuilder {
+        self.alternate_ids = alternate_ids;
         self
     }
 
@@ -621,16 +1176,17 @@ impl OrganizationBuilder {
             OrganizationBuildError::MissingField("'name' field is required".to_string())
         })?;
 
-        let address = self.address.ok_or_else(|| {
-            OrganizationBuildError::MissingField("'address' field is required".to_string())
-        })?;
+        let locations = self.locations;
+
+        let alternate_ids = self.alternate_ids;
 
         let metadata = self.metadata;
 
         Ok(Organization {
             org_id,
             name,
-            address,
+            locations,
+            alternate_ids,
             metadata,
         })
     }
@@ -921,14 +1477,14 @@ mod tests {
         let organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["location".to_string()])
             .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 
         assert_eq!(organization.org_id(), "organization");
         assert_eq!(organization.name(), "name");
-        assert_eq!(organization.address(), "address");
+        assert_eq!(organization.locations(), ["location"]);
         assert_eq!(organization.metadata(), [key_value]);
     }
 
@@ -946,7 +1502,7 @@ mod tests {
         let original = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["locations".to_string()])
             .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
@@ -970,7 +1526,7 @@ mod tests {
         let organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["location".to_string()])
             .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
@@ -998,7 +1554,7 @@ mod tests {
         let organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["locations".to_string()])
             .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
