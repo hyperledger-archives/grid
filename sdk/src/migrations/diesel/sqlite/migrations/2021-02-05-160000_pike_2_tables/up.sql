@@ -34,7 +34,6 @@ CREATE TABLE pike_organization (
     id BIGSERIAL PRIMARY KEY,
     org_id VARCHAR(256) NOT NULL,
     name VARCHAR(256) NOT NULL,
-    address VARCHAR(256) NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
@@ -52,8 +51,9 @@ CREATE TABLE pike_agent_role_assoc (
 
 CREATE TABLE pike_role (
     id BIGSERIAL PRIMARY KEY,
-    public_key VARCHAR(70) NOT NULL,
-    role_name TEXT NOT NULL,
+    name VARCHAR NOT NULL,
+    org_id VARCHAR(256) NOT NULL,
+    description TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
@@ -92,6 +92,7 @@ CREATE TABLE pike_inherit_from (
     id BIGSERIAL PRIMARY KEY,
     role_name VARCHAR(256) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
+    inherit_from_role_name VARCHAR(256) NOT NULL,
     inherit_from_org_id VARCHAR(256) NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
