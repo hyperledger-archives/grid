@@ -269,8 +269,14 @@ fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError
                 })?;
                 let schema_description = parse_value_as_string(schema_yaml, "description")?;
 
+                let schema_owner =
+                    parse_value_as_string(schema_yaml, "owner")?.ok_or_else(|| {
+                        CliError::InvalidYamlError("Missing `owner` field for schema.".to_string())
+                    })?;
+
                 generate_create_schema_payload(
                     &schema_name,
+                    &schema_owner,
                     &property_definitions,
                     schema_description,
                 )
@@ -291,7 +297,12 @@ fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError
                     CliError::InvalidYamlError("Missing `name` field for schema.".to_string())
                 })?;
 
-                generate_update_schema_payload(&schema_name, &property_definitions)
+                let schema_owner =
+                    parse_value_as_string(schema_yaml, "owner")?.ok_or_else(|| {
+                        CliError::InvalidYamlError("Missing `owner` field for schema.".to_string())
+                    })?;
+
+                generate_update_schema_payload(&schema_name, &schema_owner, &property_definitions)
             })
             .collect::<Result<Vec<SchemaPayload>, _>>(),
     }
@@ -299,13 +310,15 @@ fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError
 
 fn generate_create_schema_payload(
     name: &str,
+    owner: &str,
     properties: &[PropertyDefinition],
     description: Option<String>,
 ) -> Result<SchemaPayload, CliError> {
-    let mut schema_paylod = SchemaPayloadBuilder::new();
+    let mut schema_payload = SchemaPayloadBuilder::new();
 
     let mut schema_create_action_builder = SchemaCreateBuilder::new()
         .with_schema_name(name.to_string())
+        .with_owner(owner.to_string())
         .with_properties(properties.to_vec());
 
     schema_create_action_builder = match description {
@@ -317,28 +330,30 @@ fn generate_create_schema_payload(
         CliError::PayloadError(format!("Failed to build schema payload: {}", err))
     })?;
 
-    schema_paylod = schema_paylod.with_action(Action::SchemaCreate(schema_create_action));
-    schema_paylod
+    schema_payload = schema_payload.with_action(Action::SchemaCreate(schema_create_action));
+    schema_payload
         .build()
         .map_err(|err| CliError::PayloadError(format!("Failed to build schema payload: {}", err)))
 }
 
 fn generate_update_schema_payload(
     name: &str,
+    owner: &str,
     properties: &[PropertyDefinition],
 ) -> Result<SchemaPayload, CliError> {
-    let mut schema_paylod = SchemaPayloadBuilder::new();
+    let mut schema_payload = SchemaPayloadBuilder::new();
 
     let schema_update_action_builder = SchemaUpdateBuilder::new()
         .with_schema_name(name.to_string())
+        .with_owner(owner.to_string())
         .with_properties(properties.to_vec());
 
     let schema_update_action = schema_update_action_builder.build().map_err(|err| {
         CliError::PayloadError(format!("Failed to build schema payload: {}", err))
     })?;
 
-    schema_paylod = schema_paylod.with_action(Action::SchemaUpdate(schema_update_action));
-    schema_paylod
+    schema_payload = schema_payload.with_action(Action::SchemaUpdate(schema_update_action));
+    schema_payload
         .build()
         .map_err(|err| CliError::PayloadError(format!("Failed to build schema payload: {}", err)))
 }
@@ -431,8 +446,9 @@ mod test {
     use std::panic;
     use std::thread;
 
-    static LIGHTBULB_YAML_EXAMPLE: &[u8; 800] = br##"- name: "Lightbulb"
+    static LIGHTBULB_YAML_EXAMPLE: &[u8; 816] = br##"- name: "Lightbulb"
   description: "Example Lightbulb schema"
+  owner: 013600
   properties:
     - name: "size"
       data_type: NUMBER
@@ -459,9 +475,10 @@ mod test {
               data_type: STRING
               description: "RGB value" "##;
 
-    static PHONE_YAML_EXAMPLE: &[u8; 625] = br##"
+    static PHONE_YAML_EXAMPLE: &[u8; 641] = br##"
 - name: "Phone"
   description: "Example phone schema"
+  owner: 013600
   properties:
       - name: "brand"
         data_type: STRING
@@ -579,6 +596,7 @@ mod test {
     fn make_create_schema_payload_1() -> SchemaPayload {
         generate_create_schema_payload(
             "Lightbulb",
+            "013600",
             &create_lightbulb_property_definitions(),
             Some("Example Lightbulb schema".to_string()),
         )
@@ -588,6 +606,7 @@ mod test {
     fn make_create_schema_payload_2() -> SchemaPayload {
         generate_create_schema_payload(
             "Phone",
+            "013600",
             &create_phone_property_definitions(),
             Some("Example phone schema".to_string()),
         )
@@ -595,12 +614,17 @@ mod test {
     }
 
     fn make_update_schema_payload_1() -> SchemaPayload {
-        generate_update_schema_payload("Lightbulb", &create_lightbulb_property_definitions())
-            .unwrap()
+        generate_update_schema_payload(
+            "Lightbulb",
+            "013600",
+            &create_lightbulb_property_definitions(),
+        )
+        .unwrap()
     }
 
     fn make_update_schema_payload_2() -> SchemaPayload {
-        generate_update_schema_payload("Phone", &create_phone_property_definitions()).unwrap()
+        generate_update_schema_payload("Phone", "013600", &create_phone_property_definitions())
+            .unwrap()
     }
 
     fn create_lightbulb_property_definitions() -> Vec<PropertyDefinition> {
