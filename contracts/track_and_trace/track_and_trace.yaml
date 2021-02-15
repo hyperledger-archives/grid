@@ -18,6 +18,6 @@ wasm: /tmp/grid-track-and-trace-tp.wasm
 inputs:
   - 'a43b46'
   - '621dee01'
-  - 'cad11d'
+  - '621dee05'
 outputs:
   - 'a43b46'

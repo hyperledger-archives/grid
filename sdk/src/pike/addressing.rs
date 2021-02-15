@@ -15,13 +15,19 @@
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
 
-pub const PIKE_NAMESPACE: &str = "cad11d";
+pub const PIKE_NAMESPACE: &str = "621dee05";
 
 pub const AGENT_PREFIX: &str = "00";
-pub const PIKE_AGENT_NAMESPACE: &str = "cad11d00";
+pub const PIKE_AGENT_NAMESPACE: &str = "621dee0500";
 
 pub const ORG_PREFIX: &str = "01";
-pub const PIKE_ORGANIZATION_NAMESPACE: &str = "cad11d01";
+pub const PIKE_ORGANIZATION_NAMESPACE: &str = "621dee0501";
+
+pub const ROLE_PREFIX: &str = "02";
+pub const PIKE_ROLE_NAMESPACE: &str = "621dee0502";
+
+pub const ALTERNATE_ID_INDEX_ENTRY_PREFIX: &str = "03";
+pub const PIKE_ALTERNATE_ID_INDEX_ENTRY_NAMESPACE: &str = "621dee0503";
 
 /// Computes the address a Pike Agent is stored at based on its public_key
 pub fn compute_agent_address(public_key: &str) -> String {
@@ -38,5 +44,25 @@ pub fn compute_organization_address(org_id: &str) -> String {
     sha.input(org_id.as_bytes());
     // (pike namespace) + (org namespace) + hash
     let hash_str = String::from(PIKE_NAMESPACE) + ORG_PREFIX + &sha.result_str();
+    hash_str[..70].to_string()
+}
+
+/// Computes the address a Pike Role is stored at based on its name
+pub fn compute_role_address(name: &str, org_id: &str) -> String {
+    let uname = format!("{}.{}", org_id, name);
+    let mut sha = Sha512::new();
+    sha.input(uname.as_bytes());
+    // (pike namespace) + (role namespace) + hash
+    let hash_str = String::from(PIKE_NAMESPACE) + ROLE_PREFIX + &sha.result_str();
+    hash_str[..70].to_string()
+}
+
+/// Computes the address a Pike Alternate ID Index is stored at based on its name
+pub fn compute_alternate_id_index_entry_address(id: &str) -> String {
+    let mut sha = Sha512::new();
+    sha.input(id.as_bytes());
+    // (pike namespace) + (alternate ID namespace) + hash
+    let hash_str =
+        String::from(PIKE_NAMESPACE) + ALTERNATE_ID_INDEX_ENTRY_PREFIX + &sha.result_str();
     hash_str[..70].to_string()
 }
