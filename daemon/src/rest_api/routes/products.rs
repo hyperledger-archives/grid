@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use std::convert::TryFrom;
+
 use crate::rest_api::{
     error::RestApiResponseError,
     routes::{paging::Paging, DbExecutor},
@@ -115,8 +117,8 @@ impl From<LatLongValue> for LatLongSlice {
 
 struct ListProducts {
     service_id: Option<String>,
-    offset: i64,
-    limit: i64,
+    offset: u64,
+    limit: u16,
 }
 
 impl Message for ListProducts {
@@ -127,9 +129,13 @@ impl Handler<ListProducts> for DbExecutor {
     type Result = Result<ProductListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListProducts, _: &mut SyncContext<Self>) -> Self::Result {
+        let offset = i64::try_from(msg.offset).unwrap_or(i64::MAX);
+
+        let limit = i64::try_from(msg.limit).unwrap_or(10);
+
         let product_list =
             self.product_store
-                .list_products(msg.service_id.as_deref(), msg.offset, msg.limit)?;
+                .list_products(msg.service_id.as_deref(), offset, limit)?;
 
         let data = product_list
             .data

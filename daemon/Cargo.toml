@@ -48,8 +48,8 @@ reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"]
 sabre-sdk = { version = "0.5", optional = true }
 sawtooth-sdk = { version = "0.4", features = ["transact-compat"] }
 scabbard = { version = "0.4", optional = true, features = ["client", "events"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1.0", optional = true, features = ["derive"] }
+serde_json = { version = "1.0", optional = true }
 transact = { version = "0.2", optional = true }
 url = "2.1"
 uuid = { version = "0.6", features = ["v4"] }
@@ -90,13 +90,13 @@ experimental = [
 event = ["database"]
 database = []
 location = ["pike", "schema"]
-pike = []
+pike = ["serde_json"]
 product = ["pike", "schema"]
 rest-api = ["database", "submitter"]
 sawtooth-support = ["database", "event", "rest-api"]
 schema = ["pike"]
 splinter-support = ["database", "event", "rest-api", "reqwest", "scabbard", "sabre-sdk", "splinter", "transact/contract-archive"]
-submitter = ["rest-api"]
+submitter = ["rest-api", "serde"]
 test-postgres = []
 track-and-trace = []
 integration = []

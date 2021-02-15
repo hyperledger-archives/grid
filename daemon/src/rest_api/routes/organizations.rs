@@ -69,8 +69,8 @@ impl TryFrom<Organization> for OrganizationSlice {
 
 struct ListOrganizations {
     service_id: Option<String>,
-    offset: i64,
-    limit: i64,
+    offset: u64,
+    limit: u16,
 }
 
 impl Message for ListOrganizations {
@@ -81,11 +81,13 @@ impl Handler<ListOrganizations> for DbExecutor {
     type Result = Result<OrganizationListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListOrganizations, _: &mut SyncContext<Self>) -> Self::Result {
-        let orgs_list = self.organization_store.list_organizations(
-            msg.service_id.as_deref(),
-            msg.offset,
-            msg.limit,
-        )?;
+        let offset = i64::try_from(msg.offset).unwrap_or(i64::MAX);
+
+        let limit = i64::try_from(msg.limit).unwrap_or(10);
+
+        let orgs_list =
+            self.organization_store
+                .list_organizations(msg.service_id.as_deref(), offset, limit)?;
 
         let data = orgs_list
             .data
@@ -110,8 +112,8 @@ pub async fn list_organizations(
         .database_connection
         .send(ListOrganizations {
             service_id: query_service_id.into_inner().service_id,
-            offset: paging.offset.unwrap_or(0),
-            limit: paging.limit.unwrap_or(10),
+            offset: paging.offset(),
+            limit: paging.limit(),
         })
         .await?
         .map(|organizations| HttpResponse::Ok().json(organizations))

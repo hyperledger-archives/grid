@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::convert::TryFrom;
+
 use crate::rest_api::{
     error::RestApiResponseError,
     routes::{paging::Paging, DbExecutor},
@@ -111,8 +113,8 @@ impl From<LatLongValue> for LatLongSlice {
 
 struct ListLocations {
     service_id: Option<String>,
-    offset: i64,
-    limit: i64,
+    offset: u64,
+    limit: u16,
 }
 
 impl Message for ListLocations {
@@ -123,9 +125,13 @@ impl Handler<ListLocations> for DbExecutor {
     type Result = Result<LocationListSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListLocations, _: &mut SyncContext<Self>) -> Self::Result {
+        let offset = i64::try_from(msg.offset).unwrap_or(i64::MAX);
+
+        let limit = i64::try_from(msg.limit).unwrap_or(10);
+
         let location_list =
             self.location_store
-                .list_locations(msg.service_id.as_deref(), msg.offset, msg.limit)?;
+                .list_locations(msg.service_id.as_deref(), offset, limit)?;
 
         let data = location_list
             .data
@@ -150,8 +156,8 @@ pub async fn list_locations(
         .database_connection
         .send(ListLocations {
             service_id: query_service_id.into_inner().service_id,
-            offset: paging.offset.unwrap_or(0),
-            limit: paging.limit.unwrap_or(10),
+            offset: paging.offset(),
+            limit: paging.limit(),
         })
         .await?
         .map(|locations| HttpResponse::Ok().json(locations))
