@@ -15,13 +15,13 @@
 use super::PikeStoreOperations;
 use crate::paging::Paging;
 use crate::pike::store::diesel::{
-    schema::{pike_agent, pike_role},
+    schema::{pike_agent, pike_agent_role_assoc},
     Agent, AgentList, PikeStoreError,
 };
 
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::pike::store::diesel::models::{AgentModel, RoleModel};
+use crate::pike::store::diesel::models::{AgentModel, RoleAssociationModel};
 use diesel::prelude::*;
 
 pub(in crate::pike::store::diesel) trait PikeStoreListAgentsOperation {
@@ -74,24 +74,27 @@ impl<'a> PikeStoreListAgentsOperation for PikeStoreOperations<'a, diesel::pg::Pg
             let mut agents = Vec::new();
 
             for a in agent_models {
-                let mut query = pike_role::table
+                let mut query = pike_agent_role_assoc::table
                     .into_boxed()
-                    .select(pike_role::all_columns)
+                    .select(pike_agent_role_assoc::all_columns)
                     .filter(
-                        pike_role::public_key
+                        pike_agent_role_assoc::agent_public_key
                             .eq(&a.public_key)
-                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            .and(pike_agent_role_assoc::org_id.eq(&a.org_id))
+                            .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
                     );
 
                 if let Some(service_id) = service_id {
-                    query = query.filter(pike_role::service_id.eq(service_id));
+                    query = query.filter(pike_agent_role_assoc::service_id.eq(service_id));
                 } else {
-                    query = query.filter(pike_role::service_id.is_null());
+                    query = query.filter(pike_agent_role_assoc::service_id.is_null());
                 }
 
-                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
+                let roles = query
+                    .load::<RoleAssociationModel>(self.conn)
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
 
                 agents.push(Agent::from((a, roles)));
             }
@@ -144,24 +147,27 @@ impl<'a> PikeStoreListAgentsOperation
             let mut agents = Vec::new();
 
             for a in agent_models {
-                let mut query = pike_role::table
+                let mut query = pike_agent_role_assoc::table
                     .into_boxed()
-                    .select(pike_role::all_columns)
+                    .select(pike_agent_role_assoc::all_columns)
                     .filter(
-                        pike_role::public_key
+                        pike_agent_role_assoc::agent_public_key
                             .eq(&a.public_key)
-                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            .and(pike_agent_role_assoc::org_id.eq(&a.org_id))
+                            .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
                     );
 
                 if let Some(service_id) = service_id {
-                    query = query.filter(pike_role::service_id.eq(service_id));
+                    query = query.filter(pike_agent_role_assoc::service_id.eq(service_id));
                 } else {
-                    query = query.filter(pike_role::service_id.is_null());
+                    query = query.filter(pike_agent_role_assoc::service_id.is_null());
                 }
 
-                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
+                let roles = query
+                    .load::<RoleAssociationModel>(self.conn)
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
 
                 agents.push(Agent::from((a, roles)));
             }

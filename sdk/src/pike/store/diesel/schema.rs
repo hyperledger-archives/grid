@@ -28,8 +28,10 @@ table! {
 table! {
     pike_role (id) {
         id -> Int8,
-        public_key -> Varchar,
-        role_name -> Varchar,
+        org_id -> Varchar,
+        name -> Varchar,
+        description -> Text,
+        active -> Bool,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,
@@ -41,6 +43,7 @@ table! {
         id -> Int8,
         role_name -> Varchar,
         org_id -> Varchar,
+        inherit_from_role_name -> Varchar,
         inherit_from_org_id -> Varchar,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
@@ -89,7 +92,6 @@ table! {
         id -> Int8,
         org_id -> Varchar,
         name -> Varchar,
-        address -> Varchar,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,
@@ -123,22 +125,10 @@ table! {
 table! {
     pike_organization_location_assoc (id) {
         id -> Int8,
+        org_id -> Varchar,
         location_id -> Varchar,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,
     }
 }
-
-allow_tables_to_appear_in_same_query!(
-    pike_agent,
-    pike_agent_role_assoc,
-    pike_role,
-    pike_inherit_from,
-    pike_permissions,
-    pike_allowed_orgs,
-    pike_organization,
-    pike_organization_metadata,
-    pike_organization_alternate_id,
-    pike_organization_location_assoc,
-);

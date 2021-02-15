@@ -19,18 +19,25 @@ pub(in crate) mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{
-    Agent, AgentList, Organization, OrganizationList, OrganizationMetadata, PikeStore,
-    PikeStoreError, Role,
+    Agent, AgentList, AlternateID, Organization, OrganizationList, OrganizationMetadata, PikeStore,
+    PikeStoreError, Role, RoleList,
 };
 use crate::error::ResourceTemporarilyUnavailableError;
-use models::{make_org_metadata_models, make_role_models};
+use models::{
+    make_allowed_orgs_models, make_inherit_from_models, make_org_metadata_models,
+    make_permissions_models, make_role_association_models,
+};
 use operations::add_agent::PikeStoreAddAgentOperation as _;
 use operations::add_organization::PikeStoreAddOrganizationOperation as _;
+use operations::add_role::PikeStoreAddRoleOperation as _;
 use operations::fetch_agent::PikeStoreFetchAgentOperation as _;
 use operations::fetch_organization::PikeStoreFetchOrganizationOperation as _;
+use operations::fetch_role::PikeStoreFetchRoleOperation as _;
 use operations::list_agents::PikeStoreListAgentsOperation as _;
 use operations::list_organizations::PikeStoreListOrganizationsOperation as _;
+use operations::list_roles_for_organization::PikeStoreListRolesForOrganizationOperation as _;
 use operations::update_agent::PikeStoreUpdateAgentOperation as _;
+use operations::update_role::PikeStoreUpdateRoleOperation as _;
 use operations::PikeStoreOperations;
 
 /// Manages creating agents in the database
@@ -58,7 +65,21 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_agent(agent.clone().into(), make_role_models(&agent))
+        .add_agent(agent.clone().into(), make_role_association_models(&agent))
+    }
+
+    fn add_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .add_role(
+            role.clone().into(),
+            make_inherit_from_models(&role),
+            make_permissions_models(&role),
+            make_allowed_orgs_models(&role),
+        )
     }
 
     fn list_agents(
@@ -75,6 +96,21 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
         .list_agents(service_id, offset, limit)
     }
 
+    fn list_roles_for_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RoleList, PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .list_roles_for_organization(org_id, service_id, offset, limit)
+    }
+
     fn fetch_agent(
         &self,
         pub_key: &str,
@@ -88,13 +124,27 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
         .fetch_agent(pub_key, service_id)
     }
 
+    fn fetch_role(
+        &self,
+        name: &str,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Role>, PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .fetch_role(name, org_id, service_id)
+    }
+
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
         PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             PikeStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .update_agent(agent.clone().into(), make_role_models(&agent))
+        .update_agent(agent.clone().into(), make_role_association_models(&agent))
     }
 
     fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError> {
@@ -131,6 +181,20 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
             )
         })?)
         .fetch_organization(org_id, service_id)
+    }
+
+    fn update_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .update_role(
+            role.clone().into(),
+            make_inherit_from_models(&role),
+            make_permissions_models(&role),
+            make_allowed_orgs_models(&role),
+        )
     }
 }
 
@@ -142,7 +206,21 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_agent(agent.clone().into(), make_role_models(&agent))
+        .add_agent(agent.clone().into(), make_role_association_models(&agent))
+    }
+
+    fn add_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .add_role(
+            role.clone().into(),
+            make_inherit_from_models(&role),
+            make_permissions_models(&role),
+            make_allowed_orgs_models(&role),
+        )
     }
 
     fn list_agents(
@@ -159,6 +237,21 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
         .list_agents(service_id, offset, limit)
     }
 
+    fn list_roles_for_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RoleList, PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .list_roles_for_organization(org_id, service_id, offset, limit)
+    }
+
     fn fetch_agent(
         &self,
         pub_key: &str,
@@ -172,13 +265,27 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
         .fetch_agent(pub_key, service_id)
     }
 
+    fn fetch_role(
+        &self,
+        name: &str,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Role>, PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .fetch_role(name, org_id, service_id)
+    }
+
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
         PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             PikeStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .update_agent(agent.clone().into(), make_role_models(&agent))
+        .update_agent(agent.clone().into(), make_role_association_models(&agent))
     }
 
     fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError> {
@@ -215,5 +322,19 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .fetch_organization(org_id, service_id)
+    }
+
+    fn update_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .update_role(
+            role.clone().into(),
+            make_inherit_from_models(&role),
+            make_permissions_models(&role),
+            make_allowed_orgs_models(&role),
+        )
     }
 }

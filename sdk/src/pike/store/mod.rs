@@ -35,15 +35,31 @@ pub struct Agent {
     pub service_id: Option<String>,
 }
 
-/// Represents a Grid Agent Role
+/// Represents a Grid Role
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Role {
-    pub public_key: String,
-    pub role_name: String,
-    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub name: String,
+    pub org_id: String,
+    pub description: String,
+    pub active: bool,
+    pub permissions: Vec<String>,
+    pub allowed_organizations: Vec<String>,
+    pub inherit_from: Vec<String>,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct RoleList {
+    pub data: Vec<Role>,
+    pub paging: Paging,
+}
+
+impl RoleList {
+    pub fn new(data: Vec<Role>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
 }
 
 /// Represents a Grid Organization
@@ -51,9 +67,20 @@ pub struct Role {
 pub struct Organization {
     pub org_id: String,
     pub name: String,
-    pub address: String,
+    pub locations: Vec<String>,
+    pub alternate_ids: Vec<AlternateID>,
     pub metadata: Vec<OrganizationMetadata>,
-    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
+}
+
+/// Represents a Grid Alternate ID
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct AlternateID {
+    pub org_id: String,
+    pub alternate_id_type: String,
+    pub alternate_id: String,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
@@ -100,6 +127,13 @@ pub trait PikeStore: Send + Sync {
     ///  * `agent` - The agent to be added
     fn add_agent(&self, agent: Agent) -> Result<(), PikeStoreError>;
 
+    /// Adds a role to the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `role` - The role to be added
+    fn add_role(&self, role: Role) -> Result<(), PikeStoreError>;
+
     ///  Lists agents from the underlying storage
     ///
     /// # Arguments
@@ -114,6 +148,22 @@ pub trait PikeStore: Send + Sync {
         limit: i64,
     ) -> Result<AgentList, PikeStoreError>;
 
+    ///  Lists roles from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `org_id` - The organization id to list roles for
+    ///  * `service_id` - The service id to list roles for
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
+    fn list_roles_for_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RoleList, PikeStoreError>;
+
     /// Fetches an agent from the underlying storage
     ///
     /// # Arguments
@@ -126,12 +176,32 @@ pub trait PikeStore: Send + Sync {
         service_id: Option<&str>,
     ) -> Result<Option<Agent>, PikeStoreError>;
 
+    /// Fetches a role from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `name` - The role to fetch
+    ///  * `service_id` - The service id of the role to fetch
+    fn fetch_role(
+        &self,
+        name: &str,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Role>, PikeStoreError>;
+
     /// Updates an agent in the underlying storage
     ///
     /// # Arguments
     ///
     ///  * `agent` - The updated agent to add
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError>;
+
+    /// Updates a role from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `role` - The role to update
+    fn update_role(&self, role: Role) -> Result<(), PikeStoreError>;
 
     /// Adds an organization to the underlying storage
     ///
@@ -175,6 +245,10 @@ where
         (**self).add_agent(agent)
     }
 
+    fn add_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        (**self).add_role(role)
+    }
+
     fn list_agents(
         &self,
         service_id: Option<&str>,
@@ -182,6 +256,16 @@ where
         limit: i64,
     ) -> Result<AgentList, PikeStoreError> {
         (**self).list_agents(service_id, offset, limit)
+    }
+
+    fn list_roles_for_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RoleList, PikeStoreError> {
+        (**self).list_roles_for_organization(org_id, service_id, offset, limit)
     }
 
     fn fetch_agent(
@@ -192,8 +276,21 @@ where
         (**self).fetch_agent(pub_key, service_id)
     }
 
+    fn fetch_role(
+        &self,
+        name: &str,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Role>, PikeStoreError> {
+        (**self).fetch_role(name, org_id, service_id)
+    }
+
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
         (**self).update_agent(agent)
+    }
+
+    fn update_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        (**self).update_role(role)
     }
 
     fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError> {

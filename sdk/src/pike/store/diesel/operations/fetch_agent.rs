@@ -14,13 +14,13 @@
 
 use super::PikeStoreOperations;
 use crate::pike::store::diesel::{
-    schema::{pike_agent, pike_role},
+    schema::{pike_agent, pike_agent_role_assoc},
     Agent, PikeStoreError,
 };
 
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::pike::store::diesel::models::{AgentModel, RoleModel};
+use crate::pike::store::diesel::models::{AgentModel, RoleAssociationModel};
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in crate::pike::store::diesel) trait PikeStoreFetchAgentOperation {
@@ -62,26 +62,34 @@ impl<'a> PikeStoreFetchAgentOperation for PikeStoreOperations<'a, diesel::pg::Pg
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let mut query = pike_role::table
-                .into_boxed()
-                .select(pike_role::all_columns)
-                .filter(
-                    pike_role::public_key
-                        .eq(&pub_key)
-                        .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
+            return match agent {
+                Some(agent) => {
+                    let mut query = pike_agent_role_assoc::table
+                        .into_boxed()
+                        .select(pike_agent_role_assoc::all_columns)
+                        .filter(
+                            pike_agent_role_assoc::agent_public_key
+                                .eq(&pub_key)
+                                .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                                .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        );
 
-            if let Some(service_id) = service_id {
-                query = query.filter(pike_role::service_id.eq(service_id));
-            } else {
-                query = query.filter(pike_role::service_id.is_null());
-            }
+                    if let Some(service_id) = service_id {
+                        query = query.filter(pike_agent_role_assoc::service_id.eq(service_id));
+                    } else {
+                        query = query.filter(pike_agent_role_assoc::service_id.is_null());
+                    }
 
-            let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
+                    let roles = query
+                        .load::<RoleAssociationModel>(self.conn)
+                        .map_err(|err| {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        })?;
 
-            Ok(agent.map(|agent| Agent::from((agent, roles))))
+                    Ok(Some(Agent::from((agent, roles))))
+                }
+                None => Ok(None),
+            };
         })
     }
 }
@@ -119,26 +127,34 @@ impl<'a> PikeStoreFetchAgentOperation
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let mut query = pike_role::table
-                .into_boxed()
-                .select(pike_role::all_columns)
-                .filter(
-                    pike_role::public_key
-                        .eq(&pub_key)
-                        .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
+            return match agent {
+                Some(agent) => {
+                    let mut query = pike_agent_role_assoc::table
+                        .into_boxed()
+                        .select(pike_agent_role_assoc::all_columns)
+                        .filter(
+                            pike_agent_role_assoc::agent_public_key
+                                .eq(&pub_key)
+                                .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                                .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        );
 
-            if let Some(service_id) = service_id {
-                query = query.filter(pike_role::service_id.eq(service_id));
-            } else {
-                query = query.filter(pike_role::service_id.is_null());
-            }
+                    if let Some(service_id) = service_id {
+                        query = query.filter(pike_agent_role_assoc::service_id.eq(service_id));
+                    } else {
+                        query = query.filter(pike_agent_role_assoc::service_id.is_null());
+                    }
 
-            let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
+                    let roles = query
+                        .load::<RoleAssociationModel>(self.conn)
+                        .map_err(|err| {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        })?;
 
-            Ok(agent.map(|agent| Agent::from((agent, roles))))
+                    Ok(Some(Agent::from((agent, roles))))
+                }
+                None => Ok(None),
+            };
         })
     }
 }
