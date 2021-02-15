@@ -14,7 +14,7 @@
 
 use std::error::Error;
 use std::fmt;
-#[cfg(feature = "pike")]
+#[cfg(any(feature = "pike", feature = "batch-store"))]
 use std::fmt::Write;
 
 use serde::de;
@@ -27,7 +27,7 @@ use serde::Serializer;
 /// # Arguments
 ///
 ///  * `bytes`: the byte array to convert
-#[cfg(feature = "pike")]
+#[cfg(any(feature = "pike", feature = "batch-store"))]
 pub fn to_hex(bytes: &[u8]) -> String {
     let mut buf = String::new();
     for b in bytes {
