@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2019-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,18 +19,22 @@ use crate::rest_api::{
     QueryServiceId,
 };
 
+use super::roles::RoleSlice;
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::{pike::store::Agent, rest_api::resources::paging::v1::Paging};
+use grid_sdk::{
+    pike::store::{Agent, Role},
+    rest_api::resources::paging::v1::Paging,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentSlice {
-    pub public_key: String,
     pub org_id: String,
+    pub public_key: String,
+    pub roles: Vec<RoleSlice>,
     pub active: bool,
-    pub roles: Vec<String>,
     pub metadata: JsonValue,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -41,6 +45,46 @@ pub struct AgentSlice {
 pub struct AgentListSlice {
     pub data: Vec<AgentSlice>,
     pub paging: Paging,
+}
+
+impl TryFrom<(AgentSlice, Vec<RoleSlice>)> for AgentSlice {
+    type Error = RestApiResponseError;
+
+    fn try_from((agent, roles): (AgentSlice, Vec<RoleSlice>)) -> Result<Self, Self::Error> {
+        Ok(Self {
+            org_id: agent.org_id.clone(),
+            public_key: agent.public_key.clone(),
+            roles,
+            active: agent.active,
+            metadata: agent.metadata,
+            service_id: agent.service_id,
+        })
+    }
+}
+
+impl TryFrom<(Agent, Vec<RoleSlice>)> for AgentSlice {
+    type Error = RestApiResponseError;
+
+    fn try_from((agent, roles): (Agent, Vec<RoleSlice>)) -> Result<Self, Self::Error> {
+        let metadata = if !agent.metadata.is_empty() {
+            JsonValue::from_str(
+                &String::from_utf8(agent.metadata.clone())
+                    .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?,
+            )
+            .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?
+        } else {
+            json!([])
+        };
+
+        Ok(Self {
+            org_id: agent.org_id.clone(),
+            public_key: agent.public_key.clone(),
+            roles,
+            active: agent.active,
+            metadata,
+            service_id: agent.service_id,
+        })
+    }
 }
 
 impl TryFrom<Agent> for AgentSlice {
@@ -58,10 +102,10 @@ impl TryFrom<Agent> for AgentSlice {
         };
 
         Ok(Self {
-            public_key: agent.public_key.clone(),
             org_id: agent.org_id.clone(),
+            public_key: agent.public_key.clone(),
+            roles: Vec::new(),
             active: agent.active,
-            roles: agent.roles.clone(),
             metadata,
             service_id: agent.service_id,
         })
@@ -98,7 +142,29 @@ impl Handler<ListAgents> for DbExecutor {
 
         let paging = Paging::new("/agent", agent_list.paging, msg.service_id.as_deref());
 
-        Ok(AgentListSlice { data, paging })
+        let mut agent_slices = Vec::new();
+
+        for agent in data {
+            let mut roles = Vec::new();
+
+            for r in &agent.roles {
+                let role: Option<Role> = self
+                    .pike_store
+                    .fetch_role(&r.name, &r.org_id, msg.service_id.as_deref())
+                    .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?;
+
+                if let Some(role) = role {
+                    roles.push(RoleSlice::try_from(role)?)
+                }
+            }
+
+            agent_slices.push(AgentSlice::try_from((agent, roles))?);
+        }
+
+        Ok(AgentListSlice {
+            data: agent_slices,
+            paging,
+        })
     }
 }
 
@@ -137,7 +203,42 @@ impl Handler<FetchAgent> for DbExecutor {
             .pike_store
             .fetch_agent(&msg.public_key, msg.service_id.as_deref())?
         {
-            Some(agent) => AgentSlice::try_from(agent),
+            Some(agent) => {
+                let mut roles = Vec::new();
+
+                let byte_roles = agent.roles.clone();
+
+                for r in byte_roles {
+                    if r.contains('.') {
+                        let split: Vec<&str> = r.split('.').collect();
+                        let org_id = split[0];
+                        let role_name = split[1];
+                        let role: Option<Role> = self
+                            .pike_store
+                            .fetch_role(role_name, org_id, msg.service_id.as_deref())
+                            .map_err(|err| {
+                                RestApiResponseError::DatabaseError(format!("{}", err))
+                            })?;
+
+                        if let Some(role) = role {
+                            roles.push(RoleSlice::try_from(role)?)
+                        }
+                    } else {
+                        let role: Option<Role> = self
+                            .pike_store
+                            .fetch_role(&r, &agent.org_id, msg.service_id.as_deref())
+                            .map_err(|err| {
+                                RestApiResponseError::DatabaseError(format!("{}", err))
+                            })?;
+
+                        if let Some(role) = role {
+                            roles.push(RoleSlice::try_from(role)?)
+                        }
+                    }
+                }
+
+                Ok(AgentSlice::try_from((agent, roles))?)
+            }
             None => Err(RestApiResponseError::NotFoundError(format!(
                 "Could not find agent with public key: {}",
                 msg.public_key

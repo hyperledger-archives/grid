@@ -22,16 +22,34 @@ use crate::rest_api::{
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
 use grid_sdk::{
-    pike::store::{Organization, OrganizationMetadata},
+    pike::store::{AlternateID, Organization, OrganizationMetadata},
     rest_api::resources::paging::v1::Paging,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct AlternateIDSlice {
+    pub id_type: String,
+    pub id: String,
+}
+
+impl TryFrom<AlternateID> for AlternateIDSlice {
+    type Error = RestApiResponseError;
+
+    fn try_from(id: AlternateID) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id_type: id.alternate_id_type,
+            id: id.alternate_id,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OrganizationSlice {
     pub org_id: String,
     pub name: String,
-    pub address: String,
+    pub locations: Vec<String>,
+    pub alternate_ids: Vec<AlternateIDSlice>,
     pub metadata: Vec<OrganizationMetadataSlice>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -57,10 +75,26 @@ impl TryFrom<Organization> for OrganizationSlice {
     type Error = RestApiResponseError;
 
     fn try_from(organization: Organization) -> Result<Self, Self::Error> {
+        let mut alternate_ids = Vec::new();
+
+        for id in organization.alternate_ids {
+            alternate_ids.push(
+                AlternateIDSlice::try_from(id)
+                    .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?,
+            );
+        }
+
+        let locations = organization
+            .locations
+            .into_iter()
+            .map(String::from)
+            .collect();
+
         Ok(Self {
             org_id: organization.org_id.clone(),
             name: organization.name.clone(),
-            address: organization.address.clone(),
+            locations,
+            alternate_ids,
             metadata: organization
                 .metadata
                 .iter()
