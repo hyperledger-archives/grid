@@ -30,7 +30,6 @@ mod integration {
 
     static ORG_ID: &str = "762";
     static ORG_NAME: &str = "MyOrg";
-    static ORG_ADDRESS: &str = "hq";
 
     static SCHEMA_CREATE_FILE: &str = "tests/products/test_product_schema.yaml";
 
@@ -56,7 +55,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .args(&["--file", &PRODUCT_CREATE_FILE])
-            .args(&["--wait", "10000"]);
+            .args(&["--wait", "20000"]);
         cmd_product_create.assert().success();
     }
 
@@ -76,7 +75,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .args(&["--file", &PRODUCT_CREATE_FILE])
-            .args(&["--wait", "10000"]);
+            .args(&["--wait", "20000"]);
         cmd_product_create.assert().success();
 
         //run `grid product update`
@@ -86,7 +85,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("update")
             .args(&["--file", &PRODUCT_UPDATE_FILE])
-            .args(&["--wait", "10000"]);
+            .args(&["--wait", "20000"]);
         cmd_product_update.assert().success();
     }
 
@@ -106,7 +105,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .args(&["--file", &PRODUCT_CREATE_FILE])
-            .args(&["--wait", "10000"]);
+            .args(&["--wait", "20000"]);
         cmd_product_create.assert().success();
 
         //run `grid product delete`
@@ -117,7 +116,7 @@ mod integration {
             .arg("delete")
             .arg(&PRODUCT_DELETE_ID)
             .args(&["--namespace", "GS1"]) //product type
-            .args(&["--wait", "10000"]);
+            .args(&["--wait", "20000"]);
         cmd_product_delete.assert().success();
     }
 
@@ -154,10 +153,24 @@ mod integration {
             .arg("create")
             .arg(&org_id)
             .arg(&ORG_NAME)
-            .arg(&ORG_ADDRESS)
             .args(&["--metadata", &format!("gs1_company_prefixes={}", &org_id)])
-            .args(&["--wait", "10000"]);
+            .args(&["--wait", "20000"]);
         cmd_org_create.assert().success();
+
+        //run `grid role create for necessary permissions`
+        let mut cmd_role_create = make_grid_command();
+        let permissions = "schema::can-create-schema,schema::can-update-schema,product::can-create-product,product::can-update-product,product::can-delete-product";
+        cmd_role_create
+            .arg("role")
+            .args(&["--url", &url])
+            .arg("create")
+            .arg(&org_id)
+            .arg("test")
+            .arg("Schema/product perms")
+            .args(&["--permissions", &permissions])
+            .arg("--active")
+            .args(&["--wait", "20000"]);
+        cmd_role_create.assert().success();
 
         //run `grid agent create`
         let mut pub_key = fs::read_to_string(PUB_KEY_FILE).unwrap();
@@ -171,13 +184,9 @@ mod integration {
             .arg(&org_id)
             .arg(&pub_key)
             .arg("--active")
-            .args(&["--role", "admin"])
-            .args(&["--role", "can_create_product"])
-            .args(&["--role", "can_update_product"])
-            .args(&["--role", "can_delete_product"])
-            .args(&["--role", "can_create_schema"])
-            .args(&["--role", "can_update_schema"])
-            .args(&["--wait", "10000"]);
+            .args(&["--role", "test"])
+            .args(&["--role", &org_id])
+            .args(&["--wait", "20000"]);
         cmd_agent_update.assert().success();
 
         let mut cmd_schema_create = make_grid_command();
@@ -186,7 +195,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .arg(&SCHEMA_CREATE_FILE)
-            .args(&["--wait", "10000"]);
+            .args(&["--wait", "20000"]);
         cmd_schema_create.assert().success();
     }
 
@@ -206,7 +215,7 @@ mod integration {
     ///     between tests.
     fn get_setup() {
         INIT.call_once(|| {
-            setup("test");
+            setup("");
         })
     }
 }
