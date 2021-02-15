@@ -164,6 +164,7 @@ impl SchemaPayloadBuilder {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SchemaCreateAction {
     schema_name: String,
+    owner: String,
     description: String,
     properties: Vec<PropertyDefinition>,
 }
@@ -171,6 +172,10 @@ pub struct SchemaCreateAction {
 impl SchemaCreateAction {
     pub fn schema_name(&self) -> &str {
         &self.schema_name
+    }
+
+    pub fn owner(&self) -> &str {
+        &self.owner
     }
 
     pub fn description(&self) -> &str {
@@ -188,6 +193,7 @@ impl FromProto<protos::schema_payload::SchemaCreateAction> for SchemaCreateActio
     ) -> Result<Self, ProtoConversionError> {
         Ok(SchemaCreateAction {
             schema_name: schema_create.get_schema_name().to_string(),
+            owner: schema_create.get_owner().to_string(),
             description: schema_create.get_description().to_string(),
             properties: schema_create
                 .get_properties()
@@ -204,6 +210,7 @@ impl FromNative<SchemaCreateAction> for protos::schema_payload::SchemaCreateActi
         let mut proto_schema_create = protos::schema_payload::SchemaCreateAction::new();
 
         proto_schema_create.set_schema_name(schema_create.schema_name().to_string());
+        proto_schema_create.set_owner(schema_create.owner().to_string());
         proto_schema_create.set_description(schema_create.description().to_string());
         proto_schema_create.set_properties(
             RepeatedField::from_vec(
@@ -273,6 +280,7 @@ impl std::fmt::Display for SchemaCreateBuildError {
 #[derive(Default, Clone)]
 pub struct SchemaCreateBuilder {
     schema_name: Option<String>,
+    owner: Option<String>,
     description: Option<String>,
     properties: Vec<PropertyDefinition>,
 }
@@ -284,6 +292,11 @@ impl SchemaCreateBuilder {
 
     pub fn with_schema_name(mut self, schema_name: String) -> SchemaCreateBuilder {
         self.schema_name = Some(schema_name);
+        self
+    }
+
+    pub fn with_owner(mut self, owner: String) -> SchemaCreateBuilder {
+        self.owner = Some(owner);
         self
     }
 
@@ -302,6 +315,10 @@ impl SchemaCreateBuilder {
             SchemaCreateBuildError::MissingField("'schema_name' field is required".to_string())
         })?;
 
+        let owner = self.owner.ok_or_else(|| {
+            SchemaCreateBuildError::MissingField("'owner' field is required".to_string())
+        })?;
+
         let description = self.description.unwrap_or_default();
 
         let properties = {
@@ -316,6 +333,7 @@ impl SchemaCreateBuilder {
 
         Ok(SchemaCreateAction {
             schema_name,
+            owner,
             description,
             properties,
         })
@@ -325,6 +343,7 @@ impl SchemaCreateBuilder {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SchemaUpdateAction {
     schema_name: String,
+    owner: String,
     properties: Vec<PropertyDefinition>,
 }
 
@@ -332,6 +351,10 @@ pub struct SchemaUpdateAction {
 impl SchemaUpdateAction {
     pub fn schema_name(&self) -> &str {
         &self.schema_name
+    }
+
+    pub fn owner(&self) -> &str {
+        &self.owner
     }
 
     pub fn properties(&self) -> &[PropertyDefinition] {
@@ -345,6 +368,7 @@ impl FromProto<protos::schema_payload::SchemaUpdateAction> for SchemaUpdateActio
     ) -> Result<Self, ProtoConversionError> {
         Ok(SchemaUpdateAction {
             schema_name: schema_update.get_schema_name().to_string(),
+            owner: schema_update.get_owner().to_string(),
             properties: schema_update
                 .get_properties()
                 .to_vec()
@@ -360,6 +384,7 @@ impl FromNative<SchemaUpdateAction> for protos::schema_payload::SchemaUpdateActi
         let mut proto_schema_update = protos::schema_payload::SchemaUpdateAction::new();
 
         proto_schema_update.set_schema_name(schema_update.schema_name().to_string());
+        proto_schema_update.set_owner(schema_update.owner().to_string());
         proto_schema_update.set_properties(
             RepeatedField::from_vec(
             schema_update.properties().to_vec().into_iter()
@@ -428,6 +453,7 @@ impl std::fmt::Display for SchemaUpdateBuildError {
 #[derive(Default, Clone)]
 pub struct SchemaUpdateBuilder {
     schema_name: Option<String>,
+    owner: Option<String>,
     description: Option<String>,
     properties: Vec<PropertyDefinition>,
 }
@@ -442,6 +468,11 @@ impl SchemaUpdateBuilder {
         self
     }
 
+    pub fn with_owner(mut self, owner: String) -> SchemaUpdateBuilder {
+        self.owner = Some(owner);
+        self
+    }
+
     pub fn with_properties(mut self, properties: Vec<PropertyDefinition>) -> SchemaUpdateBuilder {
         self.properties = properties;
         self
@@ -450,6 +481,10 @@ impl SchemaUpdateBuilder {
     pub fn build(self) -> Result<SchemaUpdateAction, SchemaUpdateBuildError> {
         let schema_name = self.schema_name.ok_or_else(|| {
             SchemaUpdateBuildError::MissingField("'schema field is required".to_string())
+        })?;
+
+        let owner = self.owner.ok_or_else(|| {
+            SchemaUpdateBuildError::MissingField("'owner field is required".to_string())
         })?;
 
         let properties = {
@@ -464,6 +499,7 @@ impl SchemaUpdateBuilder {
 
         Ok(SchemaUpdateAction {
             schema_name,
+            owner,
             properties,
         })
     }
@@ -488,6 +524,7 @@ mod tests {
         let builder = SchemaCreateBuilder::new();
         let action = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_description("Test Schema".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
@@ -512,6 +549,7 @@ mod tests {
         let builder = SchemaCreateBuilder::new();
         let original = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_description("Test Schema".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
@@ -537,6 +575,7 @@ mod tests {
         let builder = SchemaUpdateBuilder::new();
         let action = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
             .unwrap();
@@ -559,6 +598,7 @@ mod tests {
         let builder = SchemaUpdateBuilder::new();
         let original = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
             .unwrap();
@@ -583,6 +623,7 @@ mod tests {
         let builder = SchemaCreateBuilder::new();
         let action = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_description("Test Schema".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
@@ -611,6 +652,7 @@ mod tests {
         let builder = SchemaUpdateBuilder::new();
         let action = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
             .unwrap();
@@ -638,6 +680,7 @@ mod tests {
         let builder = SchemaUpdateBuilder::new();
         let action = builder
             .with_schema_name("TestSchema".to_string())
+            .with_owner("test_org".to_string())
             .with_properties(vec![property_definition.clone()])
             .build()
             .unwrap();
