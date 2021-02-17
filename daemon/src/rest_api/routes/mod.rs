@@ -29,8 +29,6 @@ mod batches;
 mod locations;
 #[cfg(feature = "pike")]
 mod organizations;
-#[cfg(feature = "pike")]
-mod paging;
 #[cfg(feature = "product")]
 mod products;
 #[cfg(feature = "track-and-trace")]

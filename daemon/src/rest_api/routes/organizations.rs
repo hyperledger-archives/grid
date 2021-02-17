@@ -15,14 +15,16 @@
 use std::convert::TryFrom;
 
 use crate::rest_api::{
-    error::RestApiResponseError,
-    routes::{paging::Paging, DbExecutor},
-    AcceptServiceIdParam, AppState, QueryPaging, QueryServiceId,
+    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryPaging,
+    QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::pike::store::{Organization, OrganizationMetadata};
+use grid_sdk::{
+    pike::store::{Organization, OrganizationMetadata},
+    rest_api::resources::paging::v1::Paging,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]

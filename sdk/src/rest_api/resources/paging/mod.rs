@@ -12,6 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod error;
-pub mod paging;
-pub mod submit;
+pub mod v1;
