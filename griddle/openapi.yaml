@@ -1,0 +1,873 @@
+# Copyright 2017 Intel Corporation
+# Copyright 2019 Bitwise IO, Inc.
+# Copyright 2020-2021 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+openapi: 3.0.0
+info:
+  version: 0.0.0
+  title: Grid Integration Component REST API
+  description: A REST API providing HTTP/JSON interface for the Grid Integration Component.
+  contact:
+    name: Hyperledger Grid community
+    url: https://grid.hyperledger.org/community/
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0
+paths:
+  /submit:
+    post:
+      tags:
+        - Grid Integration Component
+      description: |
+        Endpoint used to submit batches. It supports pike, location, schema, product
+        smart contract.
+      operationId: submit_batches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitBatchRequest"
+        required: true
+      responses:
+        "200":
+          description: Returns a list of database IDs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitBatchResponse"
+        "400":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal Service Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /batch/{id}:
+    get:
+      tags:
+        - Grid Integration Component
+      description: |
+        Retrieve a batch that was previously submitted
+      parameters:
+        - name: id
+          in: path
+          description: Header signature of batch requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returns the requested batch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetBatchResponse"
+        "400":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal Service Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /receipts/{transaction_id}:
+    get:
+      tags:
+        - Grid Integration Component
+      description: |
+        Retrieves the transaction receipt for the transaction with `transaction_id`
+      parameters:
+        - name: transaction_id
+          in: path
+          description: Transaction ID of the transaction
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returns the requested receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetTransaction"
+        "400":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal Service Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /receipts/{transaction_id}/external-status:
+    patch:
+      tags:
+        - Grid Integration Component
+      description: |
+        Update the external status of a transaction. The `external_status`
+        indicates whether or not a transaction was successfully applied or
+        stored by a third party service.
+      parameters:
+        - name: transaction_id
+          in: path
+          description: Transaction ID of the transaction
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalStatusRequest"
+        required: true
+      responses:
+        "200":
+          description: A message stating the status update was successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalStatusResponse"
+        "400":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal Service Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /state-change/{smart_contract_family}:
+    get:
+      tags:
+        - Grid Integration Component
+      description: |
+        Retrieve a paged list of state changes that have been applied.
+      parameters:
+        - name: smart_contract_family
+          in: path
+          description: |
+            The name of contract for which state changes will be returned.
+            Pike, Product, Schema, and Location are supported by default
+          required: true
+          schema:
+            type: string
+        - name: service_id
+          in: query
+          description: The service ID for a splinter node
+          required: true
+          schema:
+            type: string
+        - name: offset
+          in: query
+          description: |
+            The index of the first element to be in the page
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: |
+            The maximum number of elements in a page
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Returns a paged list of state changes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateChangeList"
+        "400":
+          description: The payload was malformed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal Service Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ws/subscribe:
+    get:
+      tags:
+        - Grid Integration Component
+      description: Subscribe to receipt, state change, and batch status events
+      responses:
+        "101":
+          description: Subscription request was successful
+components:
+  schemas:
+    SubmitBatchRequest:
+      properties:
+        circuit_id:
+          description: Circuit ID required when grid daemon is connected to a splinter node
+          type: string
+          example: 01234567-0123-0123-0123-012345678901
+        service_id:
+          description: Service ID required when grid daemon is connected to a splinter node
+          type: string
+          example: gsAA
+        batches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Batch"
+    Batch:
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+    Transaction:
+      properties:
+        family_name:
+          description: |
+            The family name of the transaction, pike, product, location, and
+            schema are the families currently supported.
+          type: string
+          example: pike
+        version:
+          description: The smart contract version
+          type: string
+          example: "1.0"
+        dependencies:
+          type: array
+          description: A list of dependencies the transaction has
+          items:
+            type: string
+            example: 0ef124
+        inputs:
+          type: array
+          description: A list of inputs for the transaction family
+          items:
+            type: string
+            example: cad11d
+        outputs:
+          type: array
+          description: A list of outputs for the transaction family
+          items:
+            type: string
+            example: cad11d
+        payload:
+          type: object
+          description: Represents the transaction payload accepted by the transaction family
+          items:
+            $ref: "#/components/schemas/Payload"
+    Payload:
+      type: object
+      properties:
+        schema:
+          oneOf:
+            - $ref: "#/components/schemas/AgentAction"
+            - $ref: "#/components/schemas/OrganizationAction"
+            - $ref: "#/components/schemas/CreateSchemaAction"
+            - $ref: "#/components/schemas/UpdateSchemaAction"
+            - $ref: "#/components/schemas/CreateProductAction"
+            - $ref: "#/components/schemas/UpdateProductAction"
+            - $ref: "#/components/schemas/DeleteProductAction"
+            - $ref: "#/components/schemas/CreateLocationAction"
+            - $ref: "#/components/schemas/UpdateLocationAction"
+            - $ref: "#/components/schemas/DeleteLocationAction"
+    AgentAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "CreateAgent"
+            - "UpdateAgent"
+        org_id:
+          type: string
+          description: Organization ID
+          example: cgl
+        public_key:
+          type: string
+          description: Agent public key
+          example: 02ced6707de14209d5493b7e021606d76dd759637207818205895bb63c94c6a352
+        active:
+          type: boolean
+          description: Is the agent active
+        roles:
+          type: array
+          items:
+            type: string
+            example: "can_update_schema"
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+    Agent:
+      properties:
+        org_id:
+          type: string
+          description: Organization ID
+          example: cgl
+        public_key:
+          type: string
+          description: Agent public key
+          example: 02ced6707de14209d5493b7e021606d76dd759637207818205895bb63c94c6a352
+        active:
+          type: boolean
+          description: Is the agent active
+        roles:
+          type: array
+          items:
+            type: string
+            example: "can_update_schema"
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+    OrganizationAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "CreateOrganization"
+            - "UpdateOrganization"
+        org_id:
+          type: string
+          description: Organization ID
+          example: cgl
+        name:
+          type: string
+          description: Name of the organization
+          example: Cargill
+        address:
+          type: string
+          description: Organization Address
+          example: "612 worf ave."
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+    Organization:
+      properties:
+        org_id:
+          type: string
+          description: Organization ID
+          example: cgl
+        name:
+          type: string
+          description: Name of the organization
+          example: Cargill
+        address:
+          type: string
+          description: Organization Address
+          example: "612 worf ave."
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+    CreateSchemaAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "SchemaCreate"
+        schema_name:
+          type: string
+          example: Lightbulb
+        description:
+          type: string
+          example: Example Lightbulb schema
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyDefinition"
+    UpdateSchemaAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "SchemaUpdate"
+        schema_name:
+          type: string
+          example: Lightbulb
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyDefinition"
+    Schema:
+      properties:
+        schema_name:
+          type: string
+          example: Lightbulb
+        description:
+          type: string
+          example: Example Lightbulb schema
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyDefinition"
+    CreateProductAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "ProductCreate"
+        product_id:
+          type: string
+          example: 00122765988220
+        product_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+    UpdateProductAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "ProductUpdate"
+        product_id:
+          type: string
+          example: 00122765988220
+        product_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+    DeleteProductAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "ProductDelete"
+        product_id:
+          type: string
+          example: 00122765988220
+        product_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+    Product:
+      properties:
+        product_id:
+          type: string
+          example: 00122765988220
+        product_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+    CreateLocationAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "LocationCreate"
+        location_id:
+          type: string
+          example: 0099474000005
+        location_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+    UpdateLocationAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "LocationUpdate"
+        location_id:
+          type: string
+          example: 0099474000005
+        location_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+    DeleteLocationAction:
+      type: object
+      properties:
+        "type":
+          type: string
+          enum:
+            - "LocationUpdate"
+        location_id:
+          type: string
+          example: 0099474000005
+        location_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+    Location:
+      properties:
+        location_id:
+          type: string
+          example: 0099474000005
+        location_namespace:
+          $ref: "#/components/schemas/NamespaceEnum"
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+    PropertyDefinition:
+      properties:
+        name:
+          type: string
+          example: size
+        data_type:
+          $ref: "#/components/schemas/DataTypeEnum"
+        description:
+          type: string
+          example: Lightbulb radius, in millimeters
+        required:
+          type: boolean
+          example: true
+        number_exponent:
+          type: integer
+          format: int32
+          example: -6
+        enum_options:
+          type: array
+          items:
+            type: string
+          example:
+            - filament
+            - CF
+            - LED
+        struct_properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyDefinition"
+    DataTypeEnum:
+      type: string
+      enum:
+        - BYTES
+        - BOOLEAN
+        - NUMBER
+        - STRING
+        - ENUM
+        - STRUCT
+        - LOCATION
+    PropertyValue:
+      type: object
+      properties:
+        name:
+          type: string
+          example: brand_name
+        data_type:
+          type: string
+          example: boolean
+        bytes_value:
+          $ref: "#/components/schemas/BytesValue"
+        boolean_value:
+          type: boolean
+          example: false
+        number_value:
+          type: integer
+          format: int64
+          example: 0
+        string_value:
+          type: string
+          example: mybrand
+        enum_value:
+          type: integer
+          format: int32
+          example: 0
+        struct_values:
+          $ref: "#/components/schemas/StructValue"
+        lat_long_value:
+          $ref: "#/components/schemas/LatLong"
+    BytesValue:
+      type: string
+      format: byte
+      example: "AQIDBA=="
+    LatLong:
+      type: object
+      properties:
+        latitude:
+          type: integer
+          example: 46786299
+        longitude:
+          type: integer
+          example: -92051336
+    StructPropertyValue:
+      type: object
+      properties:
+        name:
+          type: string
+          example: location
+        type:
+          $ref: "#/components/schemas/DataTypeEnum"
+        value:
+          oneOf:
+            - type: string
+            - type: boolean
+            - type: number
+              format: int64
+            - type: integer
+              format: int32
+            - $ref: "#/components/schemas/StructValue"
+            - $ref: "#/components/schemas/LatLong"
+            - $ref: "#/components/schemas/BytesValue"
+          example: "AQIDBA=="
+    StructValue:
+      type: array
+      items:
+        $ref: "#/components/schemas/StructPropertyValue"
+    Paging:
+      type: object
+      properties:
+        current:
+          type: string
+          description: Link to the current page
+          example: /agent?offset0&limit=10
+        offset:
+          type: integer
+          description: Index of first element in page
+          example: 0
+        limit:
+          type: integer
+          description: The maximum number of elements per page
+          example: 10
+        total:
+          type: integer
+          description: The total number of elements that exist
+          example: 1000
+        prev:
+          type: string
+          description: Link to previous page
+          example: /agent?offset=0&limit=10
+        next:
+          type: string
+          description: Link to next page
+          example: /agent?offset=10&limit=10
+        last:
+          type: string
+          description: Link to last page
+          example: /agent?offset100&limit=10
+    Metadata:
+      type: object
+      properties:
+        key:
+          type: string
+          example: industry
+        value:
+          type: string
+          example: electronics
+    NamespaceEnum:
+      type: string
+      enum:
+        - UNSET_NAMESPACE
+        - GS1
+    SubmitBatchResponse:
+      type: object
+      properties:
+        ids:
+          type: array
+          description: |
+            A list of ids that correspond to each batch that was submitted.
+            These are ids are the batch header signatures for each batch.
+          items:
+            type: string
+            example: "acc079f6de1d5a03a248f71f7b1af4bf44b3f243b6ae20548de4110387051bf75ae8a6694f0b3b1c6284d7c3"
+        message:
+          type: string
+          description: Human readable message stating that the transaction was submitted successfully.
+    GetBatchResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Header signature of batch requested
+          example: 1
+        data_change_id:
+          type: string
+          description: |
+            Optional identifier defined by third party integration component that is unique to a batch
+          example: abcxyz
+        signer_public_key:
+          type: string
+          description: Grid Integration Component’s public key
+          example: "acc079f6de1d5a03a248f71f7b1af4bf44b3f243b6ae20548de4110387051bf75ae8a6694f0b3b1c6284d7c3"
+        trace:
+          type: boolean
+          description: |
+            Makes sawtooth instance processing transactions print addition debug information
+        submitted:
+          type: boolean
+          description: True if batch has been submitted, false otherwise
+        submission_error:
+          type: string
+          description: Error that is caused by submitted a batch
+        submission_error_message:
+          type: string
+          description: Human readable error describing issues submitting batch
+        dlt_status:
+          type: string
+          description: Batch status, either COMMITTED, PENDING, INVALID, OR UNKNOWN
+          enum:
+            - COMMITTED
+            - PENDING
+            - INVALID
+            - UNKNOWN
+        transaction:
+          type: array
+          description: List of transaction status objects
+          items:
+            $ref: "#/components/schemas/GetTransaction"
+    GetTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Database identifier for transaction
+          example: 1
+        family_name:
+          description: |
+            The family name of the transaction, pike, product, location, and
+            schema are the families currently supported.
+          type: string
+          example: pike
+        version:
+          description: The smart contract version
+          type: string
+          example: "1.0"
+        signer_public_key:
+          type: string
+          description: Grid Integration Component’s public key
+          example: "acc079f6de1d5a03a248f71f7b1af4bf44b3f243b6ae20548de4110387051bf75ae8a6694f0b3b1c6284d7c3"
+        result_valid:
+          type: string
+          description: True if transaction is valid and false otherwise
+        error_message:
+          type: string
+          description: Human readable error message if transaction failed to be applied
+        error_data:
+          type: string
+          description: Unstructured data pertaining to error
+        external_status:
+          type: string
+          description: |
+            Status indicating if a third party integration service was
+            able to apply transaction if applicable
+          example: SUCCESS
+        external_error_message:
+          type: string
+          description: Error message from third party service if applicable
+    ExternalStatusRequest:
+      type: object
+      properties:
+        external_status:
+          type: string
+          description: Third party service status
+          example: FAILED
+        error_message:
+          type: string
+          description: Optional message describing error
+          example: Failed to commit transaction abcxyz
+    ExternalStatusResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Message indicating the status was updated successfully
+          example: External status updated successfully
+    StateChangeList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StateChange"
+        paging:
+          $ref: "#/components/schemas/Paging"
+    StateChange:
+      type: object
+      properties:
+        "type":
+          type: string
+          description: |
+            The type of state change it was. Either a `SET` or `DELETE` operation
+          example: SET
+        address:
+          type: string
+          description: 70 character state address
+        state:
+          type: object
+          oneOf:
+            - $ref: "#/components/schemas/Agent"
+            - $ref: "#/components/schemas/Organization"
+            - $ref: "#/components/schemas/Schema"
+            - $ref: "#/components/schemas/Product"
+            - $ref: "#/components/schemas/Location"
+    ErrorResponse:
+      properties:
+        status_code:
+          description: The status code of the error
+          type: integer
+          example: 500
+        message:
+          description: Human readable description of the error
+          type: string
+          example: Failed to submit batches
