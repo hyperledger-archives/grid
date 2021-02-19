@@ -22,8 +22,10 @@ use grid_sdk::{
     agents::store::AgentStoreError, commits::store::CommitStoreError,
     locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
     products::store::ProductStoreError, schemas::store::SchemaStoreError,
-    track_and_trace::store::TrackAndTraceStoreError,
 };
+
+#[cfg(feature = "track-and-trace")]
+use grid_sdk::track_and_trace::store::TrackAndTraceStoreError;
 
 #[derive(Debug)]
 pub struct EventProcessorError(pub String);
@@ -83,6 +85,7 @@ impl From<SchemaStoreError> for EventError {
     }
 }
 
+#[cfg(feature = "track-and-trace")]
 impl From<TrackAndTraceStoreError> for EventError {
     fn from(err: TrackAndTraceStoreError) -> Self {
         EventError(format!("{}", err))

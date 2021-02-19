@@ -40,7 +40,7 @@ diesel = { version = "1.0.0", features = ["r2d2", "serde_json"] }
 diesel_migrations = "1.4"
 flexi_logger = "0.14"
 futures = "0.3"
-grid-sdk = { path = "../sdk", features = ["database", "experimental"] }
+grid-sdk = { path = "../sdk", features = ["database", "stable"] }
 log = "0.4"
 protobuf = "2.19"
 reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"] }
@@ -59,9 +59,7 @@ optional = true
 features = [ "events" ]
 
 [features]
-default = ["sawtooth-support"]
-
-stable = [
+default = [
     "sawtooth-support",
     "pike",
     "schema",
@@ -70,8 +68,16 @@ stable = [
     "splinter-support"
 ]
 
+stable = [
+    # The stable feature extends default:
+    "default",
+    # The following features are stable:
+]
+
 experimental = [
+    # The experimental feature extends stable:
     "stable",
+    # The following features are experimental:
     "track-and-trace"
 ]
 
@@ -82,7 +88,9 @@ pike = []
 schema = ["pike"]
 product = ["pike", "schema"]
 location = ["pike", "schema"]
-track-and-trace = []
+track-and-trace = [
+    "grid-sdk/track-and-trace"
+]
 
 
 [package.metadata.deb]

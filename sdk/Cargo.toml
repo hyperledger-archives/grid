@@ -70,9 +70,6 @@ experimental = [
 ]
 
 database = [
-    # The experimental feature extends stable:
-    "stable",
-    # The following features are experimental:
     "grid_db",
     "postgres",
     "sqlite"

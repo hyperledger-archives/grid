@@ -52,13 +52,27 @@ whoami = "0.7.0"
 [features]
 default = [
     "sawtooth",
+    "splinter",
     "database",
+    "location",
+    "pike",
+    "product",
+    "schema",
     "postgres",
+    "sqlite",
 ]
 
-stable = ["location", "pike", "product", "schema", "default"]
+stable = [
+    # The stable feature extends default:
+    "default",
+    # The following features are stable:
+]
 
-experimental = ["splinter", "stable", "sqlite"]
+experimental = [
+    # The experimental feature extends stable:
+    "stable"
+    # The following features are experimental:
+]
 
 database = ["diesel"]
 postgres = [
