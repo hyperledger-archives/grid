@@ -1,0 +1,436 @@
+# Copyright 2021 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+version: "3.6"
+
+volumes:
+  contracts-shared:
+  registry:
+  gridd-alpha:
+  gridd-beta:
+  gridd-gamma:
+  templates-shared:
+
+services:
+  # ---== shared services ==---
+
+  grid-contract-downloader:
+    image: hyperledger/sawtooth-sabre-cli:0.5
+    container_name: grid-contract-downloader
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        curl https://grid.hyperledger.org/scar/0.1.2/grid-track-and-trace_0.1.2.scar -o /usr/share/scar/grid-track-and-trace_0.1.2.scar
+        curl https://grid.hyperledger.org/scar/0.1.2/grid-schema_0.1.2.scar -o /usr/share/scar/grid-schema_0.1.2.scar
+        curl https://grid.hyperledger.org/scar/0.1.2/grid-pike_0.1.2.scar -o /usr/share/scar/grid-pike_0.1.2.scar
+        curl https://grid.hyperledger.org/scar/0.1.2/grid-product_0.1.2.scar -o /usr/share/scar/grid-product_0.1.2.scar
+        curl https://grid.hyperledger.org/scar/0.1.2/grid-location_0.1.2.scar -o /usr/share/scar/grid-location_0.1.2.scar
+      "
+
+  generate-registry:
+    image: splintercommunity/splinter-cli:0.4
+    volumes:
+      - registry:/registry
+    command: |
+      bash -c "
+        if [ ! -f /registry/registry.yaml ]
+        then
+          # generate keys
+          splinter admin keygen alpha -d /registry
+          splinter admin keygen beta -d /registry
+          splinter admin keygen gamma -d /registry
+          # check if splinterd-alpha is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # check if splinterd-beta is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # check if splinterd-gamma is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-gamma:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # build the registry
+          splinter registry build \
+            http://splinterd-alpha:8085 \
+            --file /registry/registry.yaml \
+            --key-file /registry/alpha.pub \
+            --metadata organization='Alpha'
+          splinter registry build \
+            http://splinterd-beta:8085 \
+            --file /registry/registry.yaml \
+            --key-file /registry/beta.pub \
+            --metadata organization='Beta'
+          splinter registry build \
+            http://splinterd-gamma:8085 \
+            --file /registry/registry.yaml \
+            --key-file /registry/gamma.pub \
+            --metadata organization='Gamma'
+        fi
+      "
+
+  registry-server:
+    image: httpd:2.4
+    container_name: registry-server
+    restart: always
+    expose:
+      - 80
+    ports:
+      - "8099:80"
+    volumes:
+      - registry:/usr/local/apache2/htdocs
+
+  # ---== alpha node ==---
+
+  db-alpha:
+    image: postgres
+    container_name: db-alpha
+    hostname: db-alpha
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid
+
+  gridd-alpha:
+    image: hyperledger/gridd:0.1.2
+    container_name: gridd-alpha
+    hostname: gridd-alpha
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - gridd-alpha:/etc/grid/keys
+      - templates-shared:/usr/share/splinter/circuit-templates
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
+    environment:
+      GRID_DAEMON_KEY: "alpha-agent"
+      GRID_DAEMON_ENDPOINT: "http://gridd-alpha:8080"
+    entrypoint: |
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q' > /dev/null 2>&1; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        grid -vv admin keygen --skip && \
+        grid -vv database migrate \
+            -C postgres://grid:grid_example@db-alpha/grid &&
+        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
+            --database-url postgres://grid:grid_example@db-alpha/grid
+      "
+
+  scabbard-cli-alpha:
+    image: splintercommunity/scabbard-cli:0.4
+    container_name: scabbard-cli-alpha
+    hostname: scabbard-cli-alpha
+    volumes:
+      - gridd-alpha:/root/.splinter/keys
+    command: tail -f /dev/null
+
+  splinterd-alpha:
+    image: splintercommunity/splinterd:0.4
+    container_name: splinterd-alpha
+    hostname: splinterd-alpha
+    expose:
+      - 8044
+      - 8085
+    ports:
+      - "8044:8044"
+      - "8085:8085"
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - registry:/registry
+      - templates-shared:/usr/share/splinter/circuit-templates
+    entrypoint: |
+      bash -c "
+        until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
+        splinterd -vv \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
+        --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoint tcps://splinterd-alpha:8044 \
+        --node-id alpha-node-000 \
+        --service-endpoint tcp://0.0.0.0:8043 \
+        --storage yaml \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-alpha:5432/splinter \
+        --tls-insecure
+      "
+
+  splinter-db-alpha:
+    image: postgres
+    container_name: splinter-db-alpha
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  grid-ui-alpha:
+    image: hyperledger/grid-ui:0.1
+    container_name: grid-ui-alpha
+    expose:
+      - 80
+    ports:
+      - "3030:80"
+    environment:
+      SPLINTER_URL: "http://splinterd-alpha:8085"
+      SAPLING_URL: " http://sapling-dev-server-alpha:80"
+      GRID_URL: "http://gridd-alpha:8080"
+
+  # ---== beta node ==---
+
+  db-beta:
+    image: postgres
+    container_name: db-beta
+    hostname: db-beta
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid
+
+  gridd-beta:
+    image: hyperledger/gridd:0.1.2
+    container_name: gridd-beta
+    hostname: gridd-beta
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - gridd-beta:/etc/grid/keys
+      - templates-shared:/usr/share/splinter/circuit-templates
+    expose:
+      - 8080
+    ports:
+      - "8081:8080"
+    environment:
+      GRID_DAEMON_KEY: "beta-agent"
+      GRID_DAEMON_ENDPOINT: "http://gridd-beta:8080"
+    entrypoint: |
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        grid -vv admin keygen --skip && \
+        grid -vv database migrate \
+            -C postgres://grid:grid_example@db-beta/grid &&
+        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
+            --database-url postgres://grid:grid_example@db-beta/grid
+      "
+
+  scabbard-cli-beta:
+    image: splintercommunity/scabbard-cli:0.4
+    container_name: scabbard-cli-beta
+    hostname: scabbard-cli-beta
+    volumes:
+      - gridd-beta:/root/.splinter/keys
+    command: tail -f /dev/null
+
+  splinterd-beta:
+    image: splintercommunity/splinterd:0.4
+    container_name: splinterd-beta
+    hostname: splinterd-beta
+    expose:
+      - 8044
+      - 8085
+    ports:
+      - "8045:8044"
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - registry:/registry
+      - templates-shared:/usr/share/splinter/circuit-templates
+    entrypoint: |
+      bash -c "
+        until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
+        splinterd -vv \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
+        --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoint tcps://splinterd-beta:8044 \
+        --node-id beta-node-000 \
+        --service-endpoint tcp://0.0.0.0:8043 \
+        --storage yaml \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-beta:5432/splinter \
+        --tls-insecure
+      "
+
+  splinter-db-beta:
+    image: postgres
+    container_name: splinter-db-beta
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  grid-ui-beta:
+    image: hyperledger/grid-ui:0.1
+    container_name: grid-ui-beta
+    expose:
+      - 80
+    ports:
+      - "3031:80"
+    environment:
+      SPLINTER_URL: "http://splinterd-beta:8085"
+      SAPLING_URL: " http://sapling-dev-server-beta:80"
+      GRID_URL: "http://gridd-beta:8080"
+
+  # ---== gamma node ==---
+
+  db-gamma:
+    image: postgres
+    container_name: db-gamma
+    hostname: db-gamma
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid
+
+  gridd-gamma:
+    image: hyperledger/gridd:0.1.2
+    container_name: gridd-gamma
+    hostname: gridd-gamma
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - gridd-gamma:/etc/grid/keys
+      - templates-shared:/usr/share/splinter/circuit-templates
+    expose:
+      - 8080
+    ports:
+      - "8082:8080"
+    environment:
+      GRID_DAEMON_KEY: "gamma-agent"
+      GRID_DAEMON_ENDPOINT: "http://gridd-gamma:8080"
+    entrypoint: |
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_example psql -h db-gamma -U grid -c '\q' > /dev/null 2>&1; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        grid -vv admin keygen --skip && \
+        grid -vv database migrate \
+            -C postgres://grid:grid_example@db-gamma/grid &&
+        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-gamma:8085 \
+            --database-url postgres://grid:grid_example@db-gamma/grid
+      "
+
+  splinterd-gamma:
+    image: splintercommunity/splinterd:0.4
+    container_name: splinterd-gamma
+    hostname: splinterd-gamma
+    expose:
+      - 8044
+      - 8085
+    ports:
+      - "8046:8044"
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - registry:/registry
+      - templates-shared:/usr/share/splinter/circuit-templates
+    entrypoint: |
+      bash -c "
+        until PGPASSWORD=admin psql -h splinter-db-gamma -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-gamma:5432/splinter && \
+        splinterd -vv \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
+        --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoint tcps://splinterd-gamma:8044 \
+        --node-id gamma-node-000 \
+        --service-endpoint tcp://0.0.0.0:8043 \
+        --storage yaml \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-gamma:5432/splinter \
+        --tls-insecure
+      "
+
+  splinter-db-gamma:
+    image: postgres
+    container_name: splinter-db-gamma
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  grid-ui-gamma:
+
+    image: hyperledger/grid-ui:0.1
+    container_name: grid-ui-gamma
+    expose:
+      - 80
+    ports:
+      - "3032:80"
+    environment:
+      SPLINTER_URL: "http://splinterd-gamma:8085"
+      SAPLING_URL: " http://sapling-dev-server-gamma:80"
+      GRID_URL: "http://gridd-gamma:8080"
