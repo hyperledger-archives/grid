@@ -15,9 +15,8 @@
 use std::sync::Arc;
 
 use grid_sdk::{
-    agents::{AgentStore, DieselAgentStore},
     locations::{DieselLocationStore, LocationStore},
-    organizations::{DieselOrganizationStore, OrganizationStore},
+    pike::{DieselPikeStore, PikeStore},
     products::{DieselProductStore, ProductStore},
     schemas::{DieselSchemaStore, SchemaStore},
     track_and_trace::{DieselTrackAndTraceStore, TrackAndTraceStore},
@@ -59,9 +58,8 @@ use actix::{Actor, SyncContext};
 
 #[derive(Clone)]
 pub struct DbExecutor {
-    agent_store: Arc<dyn AgentStore>,
     location_store: Arc<dyn LocationStore>,
-    organization_store: Arc<dyn OrganizationStore>,
+    pike_store: Arc<dyn PikeStore>,
     product_store: Arc<dyn ProductStore>,
     schema_store: Arc<dyn SchemaStore>,
     tnt_store: Arc<dyn TrackAndTraceStore>,
@@ -73,18 +71,15 @@ impl Actor for DbExecutor {
 
 impl DbExecutor {
     pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> DbExecutor {
-        let agent_store = Arc::new(DieselAgentStore::new(connection_pool.pool.clone()));
         let location_store = Arc::new(DieselLocationStore::new(connection_pool.pool.clone()));
-        let organization_store =
-            Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
+        let pike_store = Arc::new(DieselPikeStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
 
         Self {
-            agent_store,
             location_store,
-            organization_store,
+            pike_store,
             product_store,
             schema_store,
             tnt_store,
@@ -94,18 +89,15 @@ impl DbExecutor {
     pub fn from_sqlite_pool(
         connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
     ) -> DbExecutor {
-        let agent_store = Arc::new(DieselAgentStore::new(connection_pool.pool.clone()));
         let location_store = Arc::new(DieselLocationStore::new(connection_pool.pool.clone()));
-        let organization_store =
-            Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
+        let pike_store = Arc::new(DieselPikeStore::new(connection_pool.pool.clone()));
         let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
 
         Self {
-            agent_store,
             location_store,
-            organization_store,
+            pike_store,
             product_store,
             schema_store,
             tnt_store,
@@ -149,9 +141,8 @@ mod test {
         Record, ReportedValue, Reporter,
     };
     use grid_sdk::{
-        agents::store::{diesel::DieselAgentStore, Agent},
         locations::store::{diesel::DieselLocationStore, Location, LocationAttribute},
-        organizations::store::{diesel::DieselOrganizationStore, Organization},
+        pike::store::{diesel::DieselPikeStore, Agent, Organization},
         products::store::{diesel::DieselProductStore, Product, PropertyValue},
         schemas::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema},
     };
@@ -2999,7 +2990,7 @@ mod test {
 
     fn populate_agent_table(agents: Vec<Agent>) {
         let pool = get_connection_pool();
-        let store = DieselAgentStore::new(pool.pool);
+        let store = DieselPikeStore::new(pool.pool);
         agents
             .into_iter()
             .for_each(|agent| store.add_agent(agent).unwrap());
@@ -3042,7 +3033,7 @@ mod test {
 
     fn populate_organization_table(organizations: Vec<Organization>) {
         let pool = get_connection_pool();
-        let store = DieselOrganizationStore::new(pool.pool);
+        let store = DieselPikeStore::new(pool.pool);
         store.add_organizations(organizations).unwrap();
     }
 

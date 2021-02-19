@@ -12,41 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::AgentStoreOperations;
-use crate::{
-    agents::store::diesel::{
-        schema::{agent, role},
-        Agent, AgentList, AgentStoreError,
-    },
-    paging::Paging,
+use super::PikeStoreOperations;
+use crate::paging::Paging;
+use crate::pike::store::diesel::{
+    schema::{agent, role},
+    Agent, AgentList, PikeStoreError,
 };
 
-use crate::agents::store::diesel::models::{AgentModel, RoleModel};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
+use crate::pike::store::diesel::models::{AgentModel, RoleModel};
 use diesel::prelude::*;
 
-pub(in crate::agents::store::diesel) trait AgentStoreListAgentsOperation {
+pub(in crate::pike::store::diesel) trait PikeStoreListAgentsOperation {
     fn list_agents(
         &self,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
-    ) -> Result<AgentList, AgentStoreError>;
+    ) -> Result<AgentList, PikeStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::PgConnection> {
+impl<'a> PikeStoreListAgentsOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
     fn list_agents(
         &self,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
-    ) -> Result<AgentList, AgentStoreError> {
+    ) -> Result<AgentList, PikeStoreError> {
         self.conn
             .build_transaction()
             .read_write()
-            .run::<_, AgentStoreError, _>(|| {
+            .run::<_, PikeStoreError, _>(|| {
                 let mut query = agent::table
                     .into_boxed()
                     .select(agent::all_columns)
@@ -61,7 +59,7 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                 }
 
                 let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
-                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
                 let mut count_query = agent::table.into_boxed().select(agent::all_columns);
@@ -90,7 +88,7 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                     }
 
                     let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                     agents.push(Agent::from((a, roles)));
@@ -102,67 +100,66 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> AgentStoreListAgentsOperation
-    for AgentStoreOperations<'a, diesel::sqlite::SqliteConnection>
+impl<'a> PikeStoreListAgentsOperation
+    for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn list_agents(
         &self,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
-    ) -> Result<AgentList, AgentStoreError> {
-        self.conn
-            .immediate_transaction::<_, AgentStoreError, _>(|| {
-                let mut query = agent::table
-                    .into_boxed()
-                    .select(agent::all_columns)
-                    .offset(offset)
-                    .limit(limit)
-                    .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+    ) -> Result<AgentList, PikeStoreError> {
+        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+            let mut query = agent::table
+                .into_boxed()
+                .select(agent::all_columns)
+                .offset(offset)
+                .limit(limit)
+                .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+
+            if let Some(service_id) = service_id {
+                query = query.filter(agent::service_id.eq(service_id));
+            } else {
+                query = query.filter(agent::service_id.is_null());
+            }
+
+            let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            let mut count_query = agent::table.into_boxed().select(agent::all_columns);
+
+            if let Some(service_id) = service_id {
+                count_query = count_query.filter(agent::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(agent::service_id.is_null());
+            }
+
+            let total = count_query.count().get_result(self.conn)?;
+
+            let mut agents = Vec::new();
+
+            for a in agent_models {
+                let mut query = role::table.into_boxed().select(role::all_columns).filter(
+                    role::public_key
+                        .eq(&a.public_key)
+                        .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
                 if let Some(service_id) = service_id {
-                    query = query.filter(agent::service_id.eq(service_id));
+                    query = query.filter(role::service_id.eq(service_id));
                 } else {
-                    query = query.filter(agent::service_id.is_null());
+                    query = query.filter(role::service_id.is_null());
                 }
 
-                let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
-                    AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-                let mut count_query = agent::table.into_boxed().select(agent::all_columns);
+                agents.push(Agent::from((a, roles)));
+            }
 
-                if let Some(service_id) = service_id {
-                    count_query = count_query.filter(agent::service_id.eq(service_id));
-                } else {
-                    count_query = count_query.filter(agent::service_id.is_null());
-                }
-
-                let total = count_query.count().get_result(self.conn)?;
-
-                let mut agents = Vec::new();
-
-                for a in agent_models {
-                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
-                        role::public_key
-                            .eq(&a.public_key)
-                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
-
-                    if let Some(service_id) = service_id {
-                        query = query.filter(role::service_id.eq(service_id));
-                    } else {
-                        query = query.filter(role::service_id.is_null());
-                    }
-
-                    let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
-                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                    agents.push(Agent::from((a, roles)));
-                }
-
-                Ok(AgentList::new(agents, Paging::new(offset, limit, total)))
-            })
+            Ok(AgentList::new(agents, Paging::new(offset, limit, total)))
+        })
     }
 }

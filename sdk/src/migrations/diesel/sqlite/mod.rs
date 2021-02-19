@@ -15,6 +15,8 @@
 use crate::commits::store::diesel::schema::{chain_record::dsl::*, commits::dsl::*};
 #[cfg(feature = "location")]
 use crate::locations::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
+#[cfg(feature = "pike")]
+use crate::pike::store::diesel::schema::{agent::dsl::*, organization::dsl::*, role::dsl::role};
 #[cfg(feature = "product")]
 use crate::products::store::diesel::schema::{product::dsl::*, product_property_value::dsl::*};
 #[cfg(feature = "schema")]
@@ -25,11 +27,6 @@ use crate::schemas::store::diesel::schema::{
 use crate::track_and_trace::store::diesel::schema::{
     associated_agent::dsl::*, property::dsl::*, proposal::dsl::*, record::dsl::*,
     reported_value::dsl::*, reporter::dsl::*,
-};
-#[cfg(feature = "pike")]
-use crate::{
-    agents::store::diesel::schema::{agent::dsl::*, role::dsl::role},
-    organizations::store::diesel::schema::organization::dsl::*,
 };
 
 use diesel::RunQueryDsl;

@@ -70,7 +70,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                     evt_processor,
                 )
             }
-            ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+            ConnectionUri::Sqlite(_) => {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())?;
                 let evt_processor = EventProcessor::start(
@@ -100,7 +100,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                 connection_pool.pool,
             )
         }
-        ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+        ConnectionUri::Sqlite(_) => {
             let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                 ConnectionPool::new(config.database_url())?;
             IntegrationState::with_sqlite_pool(

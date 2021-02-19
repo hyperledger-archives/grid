@@ -12,40 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::AgentStoreOperations;
-use crate::agents::store::diesel::{
+use super::PikeStoreOperations;
+use crate::pike::store::diesel::{
     schema::{agent, role},
-    AgentStoreError,
+    PikeStoreError,
 };
 
-use crate::agents::store::diesel::models::{AgentModel, NewAgentModel, NewRoleModel, RoleModel};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
+use crate::pike::store::diesel::models::{AgentModel, NewAgentModel, NewRoleModel, RoleModel};
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
     result::{DatabaseErrorKind, Error as dsl_error},
 };
 
-pub(in crate::agents::store::diesel) trait AgentStoreAddAgentOperation {
+pub(in crate::pike::store::diesel) trait PikeStoreAddAgentOperation {
     fn add_agent(
         &self,
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
-    ) -> Result<(), AgentStoreError>;
+    ) -> Result<(), PikeStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::PgConnection> {
+impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
     fn add_agent(
         &self,
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
-    ) -> Result<(), AgentStoreError> {
+    ) -> Result<(), PikeStoreError> {
         self.conn
             .build_transaction()
             .read_write()
-            .run::<_, AgentStoreError, _>(|| {
+            .run::<_, PikeStoreError, _>(|| {
                 let duplicate_agent = agent::table
                     .filter(
                         agent::public_key
@@ -63,7 +63,7 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                         }
                     })
                     .map_err(|err| {
-                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
                 if duplicate_agent.is_some() {
@@ -79,7 +79,7 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                         .map(|_| ())
                         .map_err(|err| match err {
                             dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::Unique,
                                         Box::new(err),
@@ -87,14 +87,14 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                                 )
                             }
                             dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
                                 )
                             }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                            _ => PikeStoreError::InternalError(InternalError::from_source(
                                 Box::new(err),
                             )),
                         })?;
@@ -106,7 +106,7 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                     .map(|_| ())
                     .map_err(|err| match err {
                         dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::Unique,
                                     Box::new(err),
@@ -114,16 +114,16 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                             )
                         }
                         dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
+                            PikeStoreError::ConstraintViolationError(
                                 ConstraintViolationError::from_source_with_violation_type(
                                     ConstraintViolationType::ForeignKey,
                                     Box::new(err),
                                 ),
                             )
                         }
-                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                            err,
-                        ))),
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
                     })?;
 
                 for role in roles {
@@ -145,9 +145,7 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                             }
                         })
                         .map_err(|err| {
-                            AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                                err,
-                            )))
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                         })?;
 
                     if duplicate_role.is_some() {
@@ -164,7 +162,7 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                             .map(|_| ())
                             .map_err(|err| match err {
                                 dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                    AgentStoreError::ConstraintViolationError(
+                                    PikeStoreError::ConstraintViolationError(
                                         ConstraintViolationError::from_source_with_violation_type(
                                             ConstraintViolationType::Unique,
                                             Box::new(err),
@@ -174,13 +172,13 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                                 dsl_error::DatabaseError(
                                     DatabaseErrorKind::ForeignKeyViolation,
                                     _,
-                                ) => AgentStoreError::ConstraintViolationError(
+                                ) => PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
                                 ),
-                                _ => AgentStoreError::InternalError(InternalError::from_source(
+                                _ => PikeStoreError::InternalError(InternalError::from_source(
                                     Box::new(err),
                                 )),
                             })?;
@@ -192,7 +190,7 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                         .map(|_| ())
                         .map_err(|err| match err {
                             dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::Unique,
                                         Box::new(err),
@@ -200,14 +198,14 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
                                 )
                             }
                             dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
                                 )
                             }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                            _ => PikeStoreError::InternalError(InternalError::from_source(
                                 Box::new(err),
                             )),
                         })?;
@@ -219,24 +217,101 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> AgentStoreAddAgentOperation
-    for AgentStoreOperations<'a, diesel::sqlite::SqliteConnection>
-{
+impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection> {
     fn add_agent(
         &self,
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
-    ) -> Result<(), AgentStoreError> {
-        self.conn
-            .immediate_transaction::<_, AgentStoreError, _>(|| {
-                let duplicate_agent = agent::table
+    ) -> Result<(), PikeStoreError> {
+        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+            let duplicate_agent = agent::table
+                .filter(
+                    agent::public_key
+                        .eq(&agent.public_key)
+                        .and(agent::service_id.eq(&agent.service_id))
+                        .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                )
+                .first::<AgentModel>(self.conn)
+                .map(Some)
+                .or_else(|err| {
+                    if err == dsl_error::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
+                })
+                .map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            if duplicate_agent.is_some() {
+                update(agent::table)
                     .filter(
                         agent::public_key
                             .eq(&agent.public_key)
                             .and(agent::service_id.eq(&agent.service_id))
                             .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
-                    .first::<AgentModel>(self.conn)
+                    .set(agent::end_commit_num.eq(agent.start_commit_num))
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
+                    })?;
+            }
+
+            insert_into(agent::table)
+                .values(&agent)
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
+                })?;
+
+            for role in roles {
+                let duplicate_role = role::table
+                    .filter(
+                        role::public_key
+                            .eq(&role.public_key)
+                            .and(role::role_name.eq(&role.role_name))
+                            .and(role::service_id.eq(&role.service_id))
+                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    )
+                    .first::<RoleModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
                         if err == dsl_error::NotFound {
@@ -246,71 +321,11 @@ impl<'a> AgentStoreAddAgentOperation
                         }
                     })
                     .map_err(|err| {
-                        AgentStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
-                if duplicate_agent.is_some() {
-                    update(agent::table)
-                        .filter(
-                            agent::public_key
-                                .eq(&agent.public_key)
-                                .and(agent::service_id.eq(&agent.service_id))
-                                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(agent::end_commit_num.eq(agent.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
-                                Box::new(err),
-                            )),
-                        })?;
-                }
-
-                insert_into(agent::table)
-                    .values(&agent)
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            AgentStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                            err,
-                        ))),
-                    })?;
-
-                for role in roles {
-                    let duplicate_role = role::table
+                if duplicate_role.is_some() {
+                    update(role::table)
                         .filter(
                             role::public_key
                                 .eq(&role.public_key)
@@ -318,64 +333,12 @@ impl<'a> AgentStoreAddAgentOperation
                                 .and(role::service_id.eq(&role.service_id))
                                 .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
                         )
-                        .first::<RoleModel>(self.conn)
-                        .map(Some)
-                        .or_else(|err| {
-                            if err == dsl_error::NotFound {
-                                Ok(None)
-                            } else {
-                                Err(err)
-                            }
-                        })
-                        .map_err(|err| {
-                            AgentStoreError::InternalError(InternalError::from_source(Box::new(
-                                err,
-                            )))
-                        })?;
-
-                    if duplicate_role.is_some() {
-                        update(role::table)
-                            .filter(
-                                role::public_key
-                                    .eq(&role.public_key)
-                                    .and(role::role_name.eq(&role.role_name))
-                                    .and(role::service_id.eq(&role.service_id))
-                                    .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                            )
-                            .set(role::end_commit_num.eq(role.start_commit_num))
-                            .execute(self.conn)
-                            .map(|_| ())
-                            .map_err(|err| match err {
-                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                    AgentStoreError::ConstraintViolationError(
-                                        ConstraintViolationError::from_source_with_violation_type(
-                                            ConstraintViolationType::Unique,
-                                            Box::new(err),
-                                        ),
-                                    )
-                                }
-                                dsl_error::DatabaseError(
-                                    DatabaseErrorKind::ForeignKeyViolation,
-                                    _,
-                                ) => AgentStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                ),
-                                _ => AgentStoreError::InternalError(InternalError::from_source(
-                                    Box::new(err),
-                                )),
-                            })?;
-                    }
-
-                    insert_into(role::table)
-                        .values(&role)
+                        .set(role::end_commit_num.eq(role.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
                         .map_err(|err| match err {
                             dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::Unique,
                                         Box::new(err),
@@ -383,20 +346,47 @@ impl<'a> AgentStoreAddAgentOperation
                                 )
                             }
                             dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                AgentStoreError::ConstraintViolationError(
+                                PikeStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
                                 )
                             }
-                            _ => AgentStoreError::InternalError(InternalError::from_source(
+                            _ => PikeStoreError::InternalError(InternalError::from_source(
                                 Box::new(err),
                             )),
                         })?;
                 }
 
-                Ok(())
-            })
+                insert_into(role::table)
+                    .values(&role)
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
+                    })?;
+            }
+
+            Ok(())
+        })
     }
 }

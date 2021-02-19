@@ -30,7 +30,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    agents::addressing::PIKE_NAMESPACE,
+    pike::addressing::PIKE_NAMESPACE,
     protocol::{
         errors::BuilderError,
         schema::state::{PropertyDefinition, PropertyValue},
@@ -1077,7 +1077,7 @@ mod tests {
     use std::collections::HashMap;
 
     use grid_sdk::{
-        agents::addressing::compute_agent_address,
+        pike::addressing::compute_agent_address,
         protocol::{
             pike::state::{AgentBuilder, AgentListBuilder},
             schema::state::{

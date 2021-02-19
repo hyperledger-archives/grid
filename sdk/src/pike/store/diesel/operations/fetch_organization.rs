@@ -12,31 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::OrganizationStoreOperations;
+use super::PikeStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::organizations::store::diesel::models::OrganizationModel;
-use crate::organizations::store::diesel::{schema::organization, OrganizationStoreError};
-use crate::organizations::store::Organization;
+use crate::pike::store::diesel::models::OrganizationModel;
+use crate::pike::store::diesel::{schema::organization, PikeStoreError};
+use crate::pike::store::Organization;
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::organizations::store::diesel) trait OrganizationStoreFetchOrganizationOperation {
+pub(in crate::pike::store::diesel) trait PikeStoreFetchOrganizationOperation {
     fn fetch_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
-    ) -> Result<Option<Organization>, OrganizationStoreError>;
+    ) -> Result<Option<Organization>, PikeStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> OrganizationStoreFetchOrganizationOperation
-    for OrganizationStoreOperations<'a, diesel::pg::PgConnection>
-{
+impl<'a> PikeStoreFetchOrganizationOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
     fn fetch_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
-    ) -> Result<Option<Organization>, OrganizationStoreError> {
+    ) -> Result<Option<Organization>, PikeStoreError> {
         let mut query = organization::table
             .into_boxed()
             .select(organization::all_columns)
@@ -57,21 +55,19 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
             .map(Organization::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+            .map_err(|err| PikeStoreError::InternalError(InternalError::from_source(Box::new(err))))
     }
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> OrganizationStoreFetchOrganizationOperation
-    for OrganizationStoreOperations<'a, diesel::sqlite::SqliteConnection>
+impl<'a> PikeStoreFetchOrganizationOperation
+    for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn fetch_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
-    ) -> Result<Option<Organization>, OrganizationStoreError> {
+    ) -> Result<Option<Organization>, PikeStoreError> {
         let mut query = organization::table
             .into_boxed()
             .select(organization::all_columns)
@@ -92,8 +88,6 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
             .map(Organization::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                OrganizationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+            .map_err(|err| PikeStoreError::InternalError(InternalError::from_source(Box::new(err))))
     }
 }

@@ -31,8 +31,6 @@ extern crate diesel_migrations;
 #[cfg(feature = "diesel")]
 extern crate log;
 
-#[cfg(feature = "pike")]
-pub mod agents;
 #[cfg(feature = "batch-store")]
 pub mod batches;
 pub mod commits;
@@ -41,11 +39,11 @@ mod hex;
 #[cfg(feature = "location")]
 pub mod locations;
 pub mod migrations;
-#[cfg(feature = "pike")]
-pub mod organizations;
 pub mod paging;
 #[cfg(feature = "pike")]
 pub mod permissions;
+#[cfg(feature = "pike")]
+pub mod pike;
 #[cfg(feature = "product")]
 pub mod products;
 pub mod protocol;

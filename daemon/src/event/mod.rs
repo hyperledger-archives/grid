@@ -22,7 +22,7 @@ use std::cell::RefCell;
 use std::thread;
 
 #[cfg(feature = "pike")]
-use grid_sdk::agents::addressing::PIKE_NAMESPACE;
+use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 
 cfg_if! {
     if #[cfg(feature = "schema")] {

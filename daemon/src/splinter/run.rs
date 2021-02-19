@@ -58,7 +58,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
                 )
             }
-            ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+            ConnectionUri::Sqlite(_) => {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())?;
                 (
@@ -85,7 +85,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 connection_pool.pool,
             )
         }
-        ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+        ConnectionUri::Sqlite(_) => {
             let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                 ConnectionPool::new(config.database_url())?;
             IntegrationState::with_sqlite_pool(
