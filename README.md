@@ -46,6 +46,14 @@ discussion](https://grid.hyperledger.org/community/join_the_discussion.html).
 
 ## Building Grid
 
+Before building, make sure you `libzmq3-dev package` installed in Debian(Ubuntu). 
+
+This can be installed with:
+
+```
+	sudo apt install libzmq3-dev -y
+```
+
 To build Grid, run `cargo build` from the root directory. This command
 builds all of the Grid components, including `gridd` (the grid daemon),
 the CLI, and all of the smart contracts in the `contracts` directory.
