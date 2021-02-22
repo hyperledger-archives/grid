@@ -1,5 +1,46 @@
 # Release Notes
 
+## Changes in Grid 0.1.2
+
+### Overview
+
+This release reorganizes and updates some features in Grid. With this release,
+we are able to run a working version of Grid without using any experimental
+features.
+
+### Grid CLI
+
+Moved the following features from "experimental" to "default":
+ - `splinter`
+ - `sqlite`
+
+These features are now stable in Grid 0.1.2.
+
+Moved the following features from "stable" to "default":
+ - `location`
+ - `pike`
+ - `product`
+ - `schema`
+
+### Grid Daemon
+
+The Grid daemon now requires the stable version of the Grid SDK instead of
+experimental by default. `track-and-trace` functionality in gridd was moved
+behind a feature which depends on the `grid-sdk/track-and-trace` feature, since
+the track and trace SDK feature is not part of the stable API.
+
+Moved the following features from "stable" to "default":
+ - `pike`
+ - `schema`
+ - `product`
+ - `location`
+ - `splinter-support`
+
+### Grid SDK
+
+`stable` was removed from the `database` feature, since the features in
+`database` are already included in `stable`.
+
 ## Changes in Grid 0.1
 
 ### Highlights
