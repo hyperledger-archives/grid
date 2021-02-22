@@ -55,7 +55,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .args(&["--file", &PRODUCT_CREATE_FILE])
-            .args(&["--wait", "20000"]);
+            .args(&["--wait", "300000"]);
         cmd_product_create.assert().success();
     }
 
@@ -75,7 +75,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .args(&["--file", &PRODUCT_CREATE_FILE])
-            .args(&["--wait", "20000"]);
+            .args(&["--wait", "300000"]);
         cmd_product_create.assert().success();
 
         //run `grid product update`
@@ -85,7 +85,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("update")
             .args(&["--file", &PRODUCT_UPDATE_FILE])
-            .args(&["--wait", "20000"]);
+            .args(&["--wait", "300000"]);
         cmd_product_update.assert().success();
     }
 
@@ -105,7 +105,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .args(&["--file", &PRODUCT_CREATE_FILE])
-            .args(&["--wait", "20000"]);
+            .args(&["--wait", "300000"]);
         cmd_product_create.assert().success();
 
         //run `grid product delete`
@@ -116,7 +116,7 @@ mod integration {
             .arg("delete")
             .arg(&PRODUCT_DELETE_ID)
             .args(&["--namespace", "GS1"]) //product type
-            .args(&["--wait", "20000"]);
+            .args(&["--wait", "300000"]);
         cmd_product_delete.assert().success();
     }
 
@@ -124,7 +124,7 @@ mod integration {
     ///
     ///     Necessary to run product commands
     ///
-    fn setup(org_suffix: &str) {
+    fn setup() {
         let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
         //run `grid keygen`
         let key_name: String = get_current_username().unwrap().into_string().unwrap();
@@ -146,30 +146,29 @@ mod integration {
 
         //run `grid organization create`
         let mut cmd_org_create = make_grid_command();
-        let org_id = format!("{}{}", &ORG_ID, &org_suffix);
         cmd_org_create
             .arg("organization")
             .args(&["--url", &url])
             .arg("create")
-            .arg(&org_id)
+            .arg(&ORG_ID)
             .arg(&ORG_NAME)
-            .args(&["--metadata", &format!("gs1_company_prefixes={}", &org_id)])
-            .args(&["--wait", "20000"]);
+            .args(&["--metadata", &format!("gs1_company_prefixes={}", &ORG_ID)])
+            .args(&["--wait", "300000"]);
         cmd_org_create.assert().success();
 
         //run `grid role create for necessary permissions`
         let mut cmd_role_create = make_grid_command();
-        let permissions = "schema::can-create-schema,schema::can-update-schema,product::can-create-product,product::can-update-product,product::can-delete-product";
+        let permissions = "schema::can-create-schema,product::can-create-product,product::can-update-product,product::can-delete-product";
         cmd_role_create
             .arg("role")
             .args(&["--url", &url])
             .arg("create")
-            .arg(&org_id)
+            .arg(&ORG_ID)
             .arg("test")
-            .arg("Schema/product perms")
+            .args(&["-d", "Schema/product perms"])
             .args(&["--permissions", &permissions])
             .arg("--active")
-            .args(&["--wait", "20000"]);
+            .args(&["--wait", "300000"]);
         cmd_role_create.assert().success();
 
         //run `grid agent create`
@@ -181,12 +180,12 @@ mod integration {
             .arg("agent")
             .args(&["--url", &url])
             .arg("update")
-            .arg(&org_id)
+            .arg(&ORG_ID)
             .arg(&pub_key)
             .arg("--active")
             .args(&["--role", "test"])
-            .args(&["--role", &org_id])
-            .args(&["--wait", "20000"]);
+            .args(&["--role", "admin"])
+            .args(&["--wait", "300000"]);
         cmd_agent_update.assert().success();
 
         let mut cmd_schema_create = make_grid_command();
@@ -195,7 +194,7 @@ mod integration {
             .args(&["--url", &url])
             .arg("create")
             .arg(&SCHEMA_CREATE_FILE)
-            .args(&["--wait", "20000"]);
+            .args(&["--wait", "300000"]);
         cmd_schema_create.assert().success();
     }
 
@@ -215,7 +214,7 @@ mod integration {
     ///     between tests.
     fn get_setup() {
         INIT.call_once(|| {
-            setup("");
+            setup();
         })
     }
 }
