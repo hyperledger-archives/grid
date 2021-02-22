@@ -28,8 +28,10 @@ export const NavItem = props => {
 
   return (
     <a href={path} className={classes}>
-      <div className="icon">
-        <Icon>{logo}</Icon>
+      <div className="border">
+        <div className="icon">
+          <Icon>{logo}</Icon>
+        </div>
       </div>
       <div className="label">{label}</div>
     </a>

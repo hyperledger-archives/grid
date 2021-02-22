@@ -23,6 +23,7 @@
   width: 75px;
   height: 100vh;
   background: #595C60;
+  box-shadow: 0 0 6px rgba(0,0,0,.25);
 
   hr {
     margin: 0;
@@ -65,38 +66,62 @@
     text-decoration: none;
     transition: $transitionDuration-s;
 
-    .icon {
-      background-color: #FFFFFF;
+    .border{
+      height: 51px;
+      width: 51px;
+      border-radius: 17px;
       display: flex;
-      justify-content: center;
-      border: none;
-      color: var(--color-primary);
-      width: 37px;
-      height: 37px;
+      align-self: center;
       align-items: center;
-      border-radius: 10px;
-      outline: none;
-      transition: $transitionDuration-s;
+      justify-content: center;
+
+      .icon {
+        background-color: #FFFFFF;
+        display: flex;
+        justify-content: center;
+        border: none;
+        color: var(--color-primary);
+        width: 37px;
+        height: 37px;
+        align-items: center;
+        border-radius: 10px;
+        outline: none;
+        transition: $transitionDuration-s;
+      }
     }
 
     .label {
-      margin-top: 10px;
+      margin-top: 5px;
       font-size: 11px;
       text-align: center;
       color: #FFFFFF;
     }
 
     &:hover {
-      .icon {
-        background-color: rgba(255, 255, 255, 0.15);
-        cursor: pointer;
+      .border {
+        border: 3px solid #999999;
+
+        .icon {
+          color: var(--color-primary-light);
+          cursor: pointer;
+        }
       }
     }
   }
   .page-active {
     @extend .nav-tab;
-    .icon {
-      background-color: rgba(255, 255, 255, 0.15);
+    .border {
+      border: 3px solid #ffffff;
+
+      .icon {
+        cursor: pointer;
+      }
+    }
+    &:hover {
+      .border {
+        color: var(--color-primary-light);
+        border: 3px solid #ffffff;
+      }
     }
   }
 }
@@ -117,38 +142,61 @@
     height: 75px;
     text-decoration: none;
 
-    .icon {
-      background-color: #FFFFFF;
+    .border{
+      height: 51px;
+      width: 51px;
+      border-radius: 17px;
       display: flex;
-      justify-content: center;
-      border: none;
-      color: var(--color-primary);
-      width: 37px;
-      height: 37px;
+      align-self: center;
       align-items: center;
-      border-radius: 10px;
-      outline: none;
-      transition: $transitionDuration-s;
+      justify-content: center;
+
+      .icon {
+        background-color: #FFFFFF;
+        display: flex;
+        justify-content: center;
+        border: none;
+        color: var(--color-primary);
+        width: 37px;
+        height: 37px;
+        align-items: center;
+        border-radius: 10px;
+        outline: none;
+        transition: $transitionDuration-s;
+      }
     }
 
     .label {
-      margin-top: 10px;
+      margin-top: 5px;
       font-size: 11px;
       text-align: center;
       color: #FFFFFF;
     }
 
     &:hover {
-      .icon {
-        background-color: rgba(255, 255, 255, 0.15);
+      .border {
+        border: 3px solid #999999;
+
+        .icon {
+          color: var(--color-primary-light);
+        }
       }
     }
   }
 
   .page-active {
     @extend .tab;
-    .icon {
-      background-color: rgba(255, 255, 255, 0.15);
+    .border {
+      border: 3px solid #ffffff;
+
+      .icon {
+      }
+    }
+    &:hover {
+      .border {
+        color: var(--color-primary-light);
+        border: 3px solid #ffffff;
+      }
     }
   }
 }
