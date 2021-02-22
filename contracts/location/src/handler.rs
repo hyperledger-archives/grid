@@ -959,9 +959,9 @@ mod tests {
 
         match create_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InternalError(ref msg)) => {
+            Err(ApplyError::InvalidTransaction(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have the correct permissions",
+                    "The signer \"agent_no_perms\" does not have the \"location::can-create-location\" permission for org \"prefix_org\"",
                     msg
                 );
             }
@@ -1250,9 +1250,9 @@ mod tests {
 
         match update_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InternalError(ref msg)) => {
+            Err(ApplyError::InvalidTransaction(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have the correct permissions",
+                    "The signer \"agent_no_perms\" does not have the \"location::can-update-location\" permission for org \"prefix_org\"",
                     msg
                 );
             }
@@ -1425,9 +1425,9 @@ mod tests {
 
         match delete_location(&payload, &mut state, "agent_no_perms", &perm_checker) {
             Ok(()) => panic!("Unexpected positive result"),
-            Err(ApplyError::InternalError(ref msg)) => {
+            Err(ApplyError::InvalidTransaction(ref msg)) => {
                 assert_eq!(
-                    "Agent agent_no_perms does not have the correct permissions",
+                    "The signer \"agent_no_perms\" does not have the \"location::can-delete-location\" permission for org \"prefix_org\"",
                     msg
                 );
             }
