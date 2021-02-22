@@ -42,73 +42,72 @@ impl<'a> PikeStoreListOrganizationsOperation for PikeStoreOperations<'a, diesel:
         offset: i64,
         limit: i64,
     ) -> Result<OrganizationList, PikeStoreError> {
-        self.conn
-            .build_transaction()
-            .read_write()
-            .run::<_, PikeStoreError, _>(|| {
-                let mut query = pike_organization::table
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
+            let mut query = pike_organization::table
+                .into_boxed()
+                .select(pike_organization::all_columns)
+                .filter(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM));
+
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_organization::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization::service_id.is_null());
+            }
+
+            let org_models = query.load::<OrganizationModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            let mut count_query = pike_organization::table
+                .into_boxed()
+                .select(pike_organization::all_columns);
+
+            if let Some(service_id) = service_id {
+                count_query = count_query.filter(pike_organization::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(pike_organization::service_id.is_null());
+            }
+
+            let total = count_query.count().get_result(self.conn)?;
+
+            let mut orgs = Vec::new();
+
+            for org in org_models {
+                let mut query = pike_organization_metadata::table
                     .into_boxed()
-                    .select(pike_organization::all_columns)
-                    .filter(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM));
+                    .select(pike_organization_metadata::all_columns)
+                    .filter(
+                        pike_organization_metadata::org_id
+                            .eq(&org.org_id)
+                            .and(pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
 
                 if let Some(service_id) = service_id {
-                    query = query.filter(pike_organization::service_id.eq(service_id));
+                    query = query.filter(pike_organization_metadata::service_id.eq(service_id));
                 } else {
-                    query = query.filter(pike_organization::service_id.is_null());
+                    query = query.filter(pike_organization_metadata::service_id.is_null());
                 }
 
-                let org_models = query.load::<OrganizationModel>(self.conn).map_err(|err| {
-                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
-
-                let mut count_query = pike_organization::table
-                    .into_boxed()
-                    .select(pike_organization::all_columns);
-
-                if let Some(service_id) = service_id {
-                    count_query = count_query.filter(pike_organization::service_id.eq(service_id));
-                } else {
-                    count_query = count_query.filter(pike_organization::service_id.is_null());
-                }
-
-                let total = count_query.count().get_result(self.conn)?;
-
-                let mut orgs = Vec::new();
-
-                for org in org_models {
-                    let mut query =
-                        pike_organization_metadata::table
-                            .into_boxed()
-                            .select(pike_organization_metadata::all_columns)
-                            .filter(pike_organization_metadata::org_id.eq(&org.org_id).and(
-                                pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM),
-                            ));
-
-                    if let Some(service_id) = service_id {
-                        query = query.filter(pike_organization_metadata::service_id.eq(service_id));
-                    } else {
-                        query = query.filter(pike_organization_metadata::service_id.is_null());
-                    }
-
-                    let metadata_models = query
+                let metadata_models =
+                    query
                         .load::<OrganizationMetadataModel>(self.conn)
                         .map_err(|err| {
                             PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                         })?;
 
-                    let metadata = metadata_models
-                        .iter()
-                        .map(OrganizationMetadata::from)
-                        .collect();
+                let metadata = metadata_models
+                    .iter()
+                    .map(OrganizationMetadata::from)
+                    .collect();
 
-                    orgs.push(Organization::from((org, metadata)));
-                }
+                orgs.push(Organization::from((org, metadata)));
+            }
 
-                Ok(OrganizationList::new(
-                    orgs,
-                    Paging::new(offset, limit, total),
-                ))
-            })
+            Ok(OrganizationList::new(
+                orgs,
+                Paging::new(offset, limit, total),
+            ))
+        })
     }
 }
 
@@ -122,7 +121,7 @@ impl<'a> PikeStoreListOrganizationsOperation
         offset: i64,
         limit: i64,
     ) -> Result<OrganizationList, PikeStoreError> {
-        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
             let mut query = pike_organization::table
                 .into_boxed()
                 .select(pike_organization::all_columns)

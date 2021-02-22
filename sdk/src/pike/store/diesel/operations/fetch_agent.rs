@@ -38,54 +38,51 @@ impl<'a> PikeStoreFetchAgentOperation for PikeStoreOperations<'a, diesel::pg::Pg
         pub_key: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Agent>, PikeStoreError> {
-        self.conn
-            .build_transaction()
-            .read_write()
-            .run::<_, PikeStoreError, _>(|| {
-                let mut query = pike_agent::table
-                    .into_boxed()
-                    .select(pike_agent::all_columns)
-                    .filter(
-                        pike_agent::public_key
-                            .eq(&pub_key)
-                            .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
+            let mut query = pike_agent::table
+                .into_boxed()
+                .select(pike_agent::all_columns)
+                .filter(
+                    pike_agent::public_key
+                        .eq(&pub_key)
+                        .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-                if let Some(service_id) = service_id {
-                    query = query.filter(pike_agent::service_id.eq(service_id));
-                } else {
-                    query = query.filter(pike_agent::service_id.is_null());
-                }
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_agent::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_agent::service_id.is_null());
+            }
 
-                let agent = query
-                    .first::<AgentModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| {
-                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                let mut query = pike_role::table
-                    .into_boxed()
-                    .select(pike_role::all_columns)
-                    .filter(
-                        pike_role::public_key
-                            .eq(&pub_key)
-                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
-
-                if let Some(service_id) = service_id {
-                    query = query.filter(pike_role::service_id.eq(service_id));
-                } else {
-                    query = query.filter(pike_role::service_id.is_null());
-                }
-
-                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+            let agent = query
+                .first::<AgentModel>(self.conn)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-                Ok(agent.map(|agent| Agent::from((agent, roles))))
-            })
+            let mut query = pike_role::table
+                .into_boxed()
+                .select(pike_role::all_columns)
+                .filter(
+                    pike_role::public_key
+                        .eq(&pub_key)
+                        .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_role::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_role::service_id.is_null());
+            }
+
+            let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            Ok(agent.map(|agent| Agent::from((agent, roles))))
+        })
     }
 }
 
@@ -98,7 +95,7 @@ impl<'a> PikeStoreFetchAgentOperation
         pub_key: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Agent>, PikeStoreError> {
-        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
             let mut query = pike_agent::table
                 .into_boxed()
                 .select(pike_agent::all_columns)

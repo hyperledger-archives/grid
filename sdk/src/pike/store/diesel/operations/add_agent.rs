@@ -42,66 +42,36 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
     ) -> Result<(), PikeStoreError> {
-        self.conn
-            .build_transaction()
-            .read_write()
-            .run::<_, PikeStoreError, _>(|| {
-                let duplicate_agent = pike_agent::table
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
+            let duplicate_agent = pike_agent::table
+                .filter(
+                    pike_agent::public_key
+                        .eq(&agent.public_key)
+                        .and(pike_agent::service_id.eq(&agent.service_id))
+                        .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                )
+                .first::<AgentModel>(self.conn)
+                .map(Some)
+                .or_else(|err| {
+                    if err == dsl_error::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
+                })
+                .map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            if duplicate_agent.is_some() {
+                update(pike_agent::table)
                     .filter(
                         pike_agent::public_key
                             .eq(&agent.public_key)
                             .and(pike_agent::service_id.eq(&agent.service_id))
                             .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
-                    .first::<AgentModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| {
-                        if err == dsl_error::NotFound {
-                            Ok(None)
-                        } else {
-                            Err(err)
-                        }
-                    })
-                    .map_err(|err| {
-                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                if duplicate_agent.is_some() {
-                    update(pike_agent::table)
-                        .filter(
-                            pike_agent::public_key
-                                .eq(&agent.public_key)
-                                .and(pike_agent::service_id.eq(&agent.service_id))
-                                .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                PikeStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                PikeStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            _ => PikeStoreError::InternalError(InternalError::from_source(
-                                Box::new(err),
-                            )),
-                        })?;
-                }
-
-                insert_into(pike_agent::table)
-                    .values(&agent)
+                    .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {
@@ -125,9 +95,56 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                             PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                         }
                     })?;
+            }
 
-                for role in roles {
-                    let duplicate_role = pike_role::table
+            insert_into(pike_agent::table)
+                .values(&agent)
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        PikeStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
+                })?;
+
+            for role in roles {
+                let duplicate_role = pike_role::table
+                    .filter(
+                        pike_role::public_key
+                            .eq(&role.public_key)
+                            .and(pike_role::role_name.eq(&role.role_name))
+                            .and(pike_role::service_id.eq(&role.service_id))
+                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    )
+                    .first::<RoleModel>(self.conn)
+                    .map(Some)
+                    .or_else(|err| {
+                        if err == dsl_error::NotFound {
+                            Ok(None)
+                        } else {
+                            Err(err)
+                        }
+                    })
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+                if duplicate_role.is_some() {
+                    update(pike_role::table)
                         .filter(
                             pike_role::public_key
                                 .eq(&role.public_key)
@@ -135,57 +152,7 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                                 .and(pike_role::service_id.eq(&role.service_id))
                                 .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
                         )
-                        .first::<RoleModel>(self.conn)
-                        .map(Some)
-                        .or_else(|err| {
-                            if err == dsl_error::NotFound {
-                                Ok(None)
-                            } else {
-                                Err(err)
-                            }
-                        })
-                        .map_err(|err| {
-                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                        })?;
-
-                    if duplicate_role.is_some() {
-                        update(pike_role::table)
-                            .filter(
-                                pike_role::public_key
-                                    .eq(&role.public_key)
-                                    .and(pike_role::role_name.eq(&role.role_name))
-                                    .and(pike_role::service_id.eq(&role.service_id))
-                                    .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                            )
-                            .set(pike_role::end_commit_num.eq(role.start_commit_num))
-                            .execute(self.conn)
-                            .map(|_| ())
-                            .map_err(|err| match err {
-                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                    PikeStoreError::ConstraintViolationError(
-                                        ConstraintViolationError::from_source_with_violation_type(
-                                            ConstraintViolationType::Unique,
-                                            Box::new(err),
-                                        ),
-                                    )
-                                }
-                                dsl_error::DatabaseError(
-                                    DatabaseErrorKind::ForeignKeyViolation,
-                                    _,
-                                ) => PikeStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                ),
-                                _ => PikeStoreError::InternalError(InternalError::from_source(
-                                    Box::new(err),
-                                )),
-                            })?;
-                    }
-
-                    insert_into(pike_role::table)
-                        .values(&role)
+                        .set(pike_role::end_commit_num.eq(role.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
                         .map_err(|err| match err {
@@ -211,8 +178,35 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                         })?;
                 }
 
-                Ok(())
-            })
+                insert_into(pike_role::table)
+                    .values(&role)
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(|err| match err {
+                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::Unique,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                            PikeStoreError::ConstraintViolationError(
+                                ConstraintViolationError::from_source_with_violation_type(
+                                    ConstraintViolationType::ForeignKey,
+                                    Box::new(err),
+                                ),
+                            )
+                        }
+                        _ => {
+                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                        }
+                    })?;
+            }
+
+            Ok(())
+        })
     }
 }
 
@@ -223,7 +217,7 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
         agent: NewAgentModel,
         roles: Vec<NewRoleModel>,
     ) -> Result<(), PikeStoreError> {
-        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
             let duplicate_agent = pike_agent::table
                 .filter(
                     pike_agent::public_key
