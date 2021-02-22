@@ -331,7 +331,7 @@ mod tests {
             let builder = RoleBuilder::new();
             let role = builder
                 .with_org_id("test_org".to_string())
-                .with_name("test_org.schema".to_string())
+                .with_name("schema".to_string())
                 .with_description("schema roles".to_string())
                 .with_permissions(vec![
                     "schema::can-create-schema".to_string(),
@@ -492,8 +492,8 @@ mod tests {
 
         match schema_create(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
-            Err(ApplyError::InternalError(err)) => {
-                assert!(err.contains("Failed to check permissions: InvalidPublicKey: The signer is not an Agent: agent_public_key"));
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("The signer is not an Agent: agent_public_key"));
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
@@ -529,8 +529,8 @@ mod tests {
 
         match schema_create(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
-            Err(ApplyError::InternalError(err)) => {
-                assert!(err.contains("Failed to check permissions: InvalidPublicKey: The signer is not an active agent: agent_public_key"));
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert_eq!("The signer \"agent_public_key\" does not have the \"schema::can-create-schema\" permission for org \"test_org\"", err);
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
@@ -566,9 +566,7 @@ mod tests {
         match schema_create(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not have roles, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(
-                    "The signer \"agent_public_key\" does not have the \"can_create_schema\" permission for org \"test_org\""
-                ));
+                assert_eq!("The signer \"agent_public_key\" does not have the \"schema::can-create-schema\" permission for org \"test_org\"", err);
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
@@ -666,8 +664,8 @@ mod tests {
 
         match schema_update(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
-            Err(ApplyError::InternalError(err)) => {
-                assert!(err.contains("Failed to check permissions: InvalidPublicKey: The signer is not an active agent: agent_public_key"));
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("The signer is not an active Agent: agent_public_key"));
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
