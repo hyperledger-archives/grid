@@ -16,7 +16,6 @@
 pub mod diesel;
 mod error;
 
-use crate::hex::as_hex;
 use crate::paging::Paging;
 
 pub use error::PikeStoreError;
@@ -47,16 +46,13 @@ pub struct Role {
     pub service_id: Option<String>,
 }
 
-/// Represents a Grid commit
+/// Represents a Grid Organization
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Organization {
     pub org_id: String,
     pub name: String,
     pub address: String,
-    #[serde(serialize_with = "as_hex")]
-    #[serde(deserialize_with = "deserialize_hex")]
-    #[serde(default)]
-    pub metadata: Vec<u8>,
+    pub metadata: Vec<OrganizationMetadata>,
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_commit_num: i64,
     pub end_commit_num: i64,
@@ -66,6 +62,12 @@ pub struct Organization {
 pub struct OrganizationList {
     pub data: Vec<Organization>,
     pub paging: Paging,
+}
+
+impl OrganizationList {
+    pub fn new(data: Vec<Organization>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -80,10 +82,14 @@ impl AgentList {
     }
 }
 
-impl OrganizationList {
-    pub fn new(data: Vec<Organization>, paging: Paging) -> Self {
-        Self { data, paging }
-    }
+/// Represents a Grid Organization metadata key-value pair
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct OrganizationMetadata {
+    pub key: String,
+    pub value: String,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
 }
 
 pub trait PikeStore: Send + Sync {
@@ -131,8 +137,8 @@ pub trait PikeStore: Send + Sync {
     ///
     /// # Arguments
     ///
-    ///  * `orgs` - The commit to be added
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), PikeStoreError>;
+    ///  * `org` - The Organization to be added
+    fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError>;
 
     ///  Lists organizations from the underlying storage
     ///
@@ -190,8 +196,8 @@ where
         (**self).update_agent(agent)
     }
 
-    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), PikeStoreError> {
-        (**self).add_organizations(orgs)
+    fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError> {
+        (**self).add_organization(org)
     }
 
     fn list_organizations(

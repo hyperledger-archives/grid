@@ -14,43 +14,46 @@
 
 use super::PikeStoreOperations;
 use crate::pike::store::diesel::{
-    schema::{pike_agent, pike_role},
+    schema::{pike_organization, pike_organization_metadata},
     PikeStoreError,
 };
 
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
-use crate::pike::store::diesel::models::{AgentModel, NewAgentModel, NewRoleModel, RoleModel};
+use crate::pike::store::diesel::models::{
+    NewOrganizationMetadataModel, NewOrganizationModel, OrganizationMetadataModel,
+    OrganizationModel,
+};
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
     result::{DatabaseErrorKind, Error as dsl_error},
 };
 
-pub(in crate::pike::store::diesel) trait PikeStoreAddAgentOperation {
-    fn add_agent(
+pub(in crate::pike::store::diesel) trait PikeStoreAddOrganizationOperation {
+    fn add_organization(
         &self,
-        agent: NewAgentModel,
-        roles: Vec<NewRoleModel>,
+        org: NewOrganizationModel,
+        metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
-    fn add_agent(
+impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
+    fn add_organization(
         &self,
-        agent: NewAgentModel,
-        roles: Vec<NewRoleModel>,
+        org: NewOrganizationModel,
+        metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
-            let duplicate_agent = pike_agent::table
+            let duplicate_org = pike_organization::table
                 .filter(
-                    pike_agent::public_key
-                        .eq(&agent.public_key)
-                        .and(pike_agent::service_id.eq(&agent.service_id))
-                        .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    pike_organization::org_id
+                        .eq(&org.org_id)
+                        .and(pike_organization::service_id.eq(&org.service_id))
+                        .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
                 )
-                .first::<AgentModel>(self.conn)
+                .first::<OrganizationModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
                     if err == dsl_error::NotFound {
@@ -63,15 +66,15 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            if duplicate_agent.is_some() {
-                update(pike_agent::table)
+            if duplicate_org.is_some() {
+                update(pike_organization::table)
                     .filter(
-                        pike_agent::public_key
-                            .eq(&agent.public_key)
-                            .and(pike_agent::service_id.eq(&agent.service_id))
-                            .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        pike_organization::org_id
+                            .eq(&org.org_id)
+                            .and(pike_organization::service_id.eq(&org.service_id))
+                            .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
-                    .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
+                    .set(pike_organization::end_commit_num.eq(org.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {
@@ -96,9 +99,8 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                         }
                     })?;
             }
-
-            insert_into(pike_agent::table)
-                .values(&agent)
+            insert_into(pike_organization::table)
+                .values(org)
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(|err| match err {
@@ -121,16 +123,24 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                     _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
                 })?;
 
-            for role in roles {
-                let duplicate_role = pike_role::table
+            for data in metadata {
+                let mut query = pike_organization_metadata::table
+                    .into_boxed()
+                    .select(pike_organization_metadata::all_columns)
                     .filter(
-                        pike_role::public_key
-                            .eq(&role.public_key)
-                            .and(pike_role::role_name.eq(&role.role_name))
-                            .and(pike_role::service_id.eq(&role.service_id))
-                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .first::<RoleModel>(self.conn)
+                        pike_organization_metadata::org_id
+                            .eq(&data.org_id)
+                            .and(pike_organization_metadata::key.eq(&data.key)),
+                    );
+
+                if let Some(service_id) = &data.service_id {
+                    query = query.filter(pike_organization_metadata::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_organization_metadata::service_id.is_null());
+                }
+
+                let duplicate = query
+                    .first::<OrganizationMetadataModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
                         if err == dsl_error::NotFound {
@@ -143,16 +153,15 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                         PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
-                if duplicate_role.is_some() {
-                    update(pike_role::table)
+                if duplicate.is_some() {
+                    update(pike_organization_metadata::table)
                         .filter(
-                            pike_role::public_key
-                                .eq(&role.public_key)
-                                .and(pike_role::role_name.eq(&role.role_name))
-                                .and(pike_role::service_id.eq(&role.service_id))
-                                .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            pike_organization_metadata::org_id
+                                .eq(&data.org_id)
+                                .and(pike_organization_metadata::service_id.eq(&data.service_id))
+                                .and(pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM)),
                         )
-                        .set(pike_role::end_commit_num.eq(role.start_commit_num))
+                        .set(pike_organization_metadata::end_commit_num.eq(data.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
                         .map_err(|err| match err {
@@ -177,9 +186,8 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                             )),
                         })?;
                 }
-
-                insert_into(pike_role::table)
-                    .values(&role)
+                insert_into(pike_organization_metadata::table)
+                    .values(data)
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {
@@ -211,21 +219,23 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn add_agent(
+impl<'a> PikeStoreAddOrganizationOperation
+    for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn add_organization(
         &self,
-        agent: NewAgentModel,
-        roles: Vec<NewRoleModel>,
+        org: NewOrganizationModel,
+        metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
-            let duplicate_agent = pike_agent::table
+            let duplicate_org = pike_organization::table
                 .filter(
-                    pike_agent::public_key
-                        .eq(&agent.public_key)
-                        .and(pike_agent::service_id.eq(&agent.service_id))
-                        .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    pike_organization::org_id
+                        .eq(&org.org_id)
+                        .and(pike_organization::service_id.eq(&org.service_id))
+                        .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
                 )
-                .first::<AgentModel>(self.conn)
+                .first::<OrganizationModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
                     if err == dsl_error::NotFound {
@@ -238,15 +248,15 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            if duplicate_agent.is_some() {
-                update(pike_agent::table)
+            if duplicate_org.is_some() {
+                update(pike_organization::table)
                     .filter(
-                        pike_agent::public_key
-                            .eq(&agent.public_key)
-                            .and(pike_agent::service_id.eq(&agent.service_id))
-                            .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        pike_organization::org_id
+                            .eq(&org.org_id)
+                            .and(pike_organization::service_id.eq(&org.service_id))
+                            .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
-                    .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
+                    .set(pike_organization::end_commit_num.eq(org.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {
@@ -271,9 +281,8 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                         }
                     })?;
             }
-
-            insert_into(pike_agent::table)
-                .values(&agent)
+            insert_into(pike_organization::table)
+                .values(org)
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(|err| match err {
@@ -296,16 +305,24 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                     _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
                 })?;
 
-            for role in roles {
-                let duplicate_role = pike_role::table
+            for data in metadata {
+                let mut query = pike_organization_metadata::table
+                    .into_boxed()
+                    .select(pike_organization_metadata::all_columns)
                     .filter(
-                        pike_role::public_key
-                            .eq(&role.public_key)
-                            .and(pike_role::role_name.eq(&role.role_name))
-                            .and(pike_role::service_id.eq(&role.service_id))
-                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .first::<RoleModel>(self.conn)
+                        pike_organization_metadata::org_id
+                            .eq(&data.org_id)
+                            .and(pike_organization_metadata::key.eq(&data.key)),
+                    );
+
+                if let Some(service_id) = &data.service_id {
+                    query = query.filter(pike_organization_metadata::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_organization_metadata::service_id.is_null());
+                }
+
+                let duplicate = query
+                    .first::<OrganizationMetadataModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
                         if err == dsl_error::NotFound {
@@ -318,16 +335,15 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                         PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?;
 
-                if duplicate_role.is_some() {
-                    update(pike_role::table)
+                if duplicate.is_some() {
+                    update(pike_organization_metadata::table)
                         .filter(
-                            pike_role::public_key
-                                .eq(&role.public_key)
-                                .and(pike_role::role_name.eq(&role.role_name))
-                                .and(pike_role::service_id.eq(&role.service_id))
-                                .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            pike_organization_metadata::org_id
+                                .eq(&data.org_id)
+                                .and(pike_organization_metadata::service_id.eq(&data.service_id))
+                                .and(pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM)),
                         )
-                        .set(pike_role::end_commit_num.eq(role.start_commit_num))
+                        .set(pike_organization_metadata::end_commit_num.eq(data.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
                         .map_err(|err| match err {
@@ -352,9 +368,8 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                             )),
                         })?;
                 }
-
-                insert_into(pike_role::table)
-                    .values(&role)
+                insert_into(pike_organization_metadata::table)
+                    .values(data)
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(|err| match err {

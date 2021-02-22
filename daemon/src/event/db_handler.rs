@@ -40,7 +40,7 @@ use grid_sdk::{
 use grid_sdk::{
     pike::{
         addressing::{PIKE_AGENT_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE},
-        store::{Agent, Organization},
+        store::{Agent, Organization, OrganizationMetadata},
         DieselPikeStore, PikeStore,
     },
     protocol::pike::state::{AgentList, OrganizationList},
@@ -213,7 +213,8 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
                         debug!("Inserting {} organizations", orgs.len());
-                        self.pike_store.add_organizations(orgs)?;
+                        orgs.into_iter()
+                            .try_for_each(|org| self.pike_store.add_organization(org))?;
                     }
                     #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
@@ -383,7 +384,8 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
                         debug!("Inserting {} organizations", orgs.len());
-                        self.pike_store.add_organizations(orgs)?;
+                        orgs.into_iter()
+                            .try_for_each(|org| self.pike_store.add_organization(org))?;
                     }
 
                     #[cfg(feature = "schema")]
@@ -515,15 +517,17 @@ fn state_change_to_db_operation(
                         org_id: org.org_id().to_string(),
                         name: org.name().to_string(),
                         address: org.address().to_string(),
-                        metadata: json!(org.metadata().iter().fold(
-                            HashMap::new(),
-                            |mut acc, md| {
-                                acc.insert(md.key().to_string(), md.value().to_string());
-                                acc
-                            }
-                        ))
-                        .to_string()
-                        .into_bytes(),
+                        metadata: org
+                            .metadata()
+                            .iter()
+                            .map(|m| OrganizationMetadata {
+                                key: m.key().to_string(),
+                                value: m.value().to_string(),
+                                start_commit_num: commit_num,
+                                end_commit_num: MAX_COMMIT_NUM,
+                                service_id: service_id.cloned(),
+                            })
+                            .collect(),
                         start_commit_num: commit_num,
                         end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),

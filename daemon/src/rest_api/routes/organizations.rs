@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{convert::TryFrom, str::FromStr};
+use std::convert::TryFrom;
 
 use crate::rest_api::{
     error::RestApiResponseError,
@@ -22,16 +22,24 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::pike::store::Organization;
+use grid_sdk::pike::store::{Organization, OrganizationMetadata};
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrganizationSlice {
     pub org_id: String,
     pub name: String,
     pub address: String,
-    pub metadata: JsonValue,
+    pub metadata: Vec<OrganizationMetadataSlice>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OrganizationMetadataSlice {
+    pub key: String,
+    pub value: String,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
@@ -47,22 +55,28 @@ impl TryFrom<Organization> for OrganizationSlice {
     type Error = RestApiResponseError;
 
     fn try_from(organization: Organization) -> Result<Self, Self::Error> {
-        let metadata = if !organization.metadata.is_empty() {
-            JsonValue::from_str(
-                &String::from_utf8(organization.metadata.clone())
-                    .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?,
-            )
-            .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?
-        } else {
-            json!([])
-        };
-
         Ok(Self {
             org_id: organization.org_id.clone(),
             name: organization.name.clone(),
             address: organization.address.clone(),
-            metadata,
+            metadata: organization
+                .metadata
+                .iter()
+                .map(|m| OrganizationMetadataSlice::try_from(m).unwrap())
+                .collect(),
             service_id: organization.service_id,
+        })
+    }
+}
+
+impl TryFrom<&OrganizationMetadata> for OrganizationMetadataSlice {
+    type Error = RestApiResponseError;
+
+    fn try_from(metadata: &OrganizationMetadata) -> Result<Self, Self::Error> {
+        Ok(Self {
+            key: metadata.key.clone(),
+            value: metadata.value.clone(),
+            service_id: metadata.service_id.clone(),
         })
     }
 }

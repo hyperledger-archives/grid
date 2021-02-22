@@ -15,8 +15,14 @@
 use crate::commits::store::diesel::schema::{chain_record::dsl::*, commits::dsl::*};
 #[cfg(feature = "location")]
 use crate::locations::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
+#[cfg(all(feature = "pike", feature = "location"))]
+use crate::pike::store::diesel::schema::pike_organization_location_assoc::dsl::*;
 #[cfg(feature = "pike")]
-use crate::pike::store::diesel::schema::{agent::dsl::*, organization::dsl::*, role::dsl::role};
+use crate::pike::store::diesel::schema::{
+    pike_agent::dsl::*, pike_agent_role_assoc::dsl::*, pike_allowed_orgs::dsl::*,
+    pike_inherit_from::dsl::*, pike_organization::dsl::*, pike_organization_alternate_id::dsl::*,
+    pike_organization_metadata::dsl::*, pike_permissions::dsl::*, pike_role::dsl::*,
+};
 #[cfg(feature = "product")]
 use crate::products::store::diesel::schema::{product::dsl::*, product_property_value::dsl::*};
 #[cfg(feature = "schema")]
@@ -62,14 +68,24 @@ pub fn clear_database(conn: &SqliteConnection) -> Result<(), MigrationsError> {
     conn.transaction::<_, MigrationsError, _>(|| {
         #[cfg(feature = "pike")]
         {
-            diesel::delete(agent).execute(conn)?;
-            diesel::delete(organization).execute(conn)?;
-            diesel::delete(role).execute(conn)?;
+            diesel::delete(pike_agent).execute(conn)?;
+            diesel::delete(pike_inherit_from).execute(conn)?;
+            diesel::delete(pike_permissions).execute(conn)?;
+            diesel::delete(pike_allowed_orgs).execute(conn)?;
+            diesel::delete(pike_agent_role_assoc).execute(conn)?;
+            diesel::delete(pike_organization_metadata).execute(conn)?;
+            diesel::delete(pike_organization_alternate_id).execute(conn)?;
+            diesel::delete(pike_organization).execute(conn)?;
+            diesel::delete(pike_role).execute(conn)?;
         }
         #[cfg(feature = "location")]
         {
             diesel::delete(location_attribute).execute(conn)?;
             diesel::delete(location).execute(conn)?;
+        }
+        #[cfg(all(feature = "pike", feature = "location"))]
+        {
+            diesel::delete(pike_organization_location_assoc).execute(conn)?;
         }
         #[cfg(feature = "product")]
         {

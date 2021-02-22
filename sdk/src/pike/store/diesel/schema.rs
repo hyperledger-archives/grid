@@ -13,7 +13,7 @@
 // limitations under the License.
 
 table! {
-    agent (id) {
+    pike_agent (id) {
         id -> Int8,
         public_key -> Varchar,
         org_id -> Varchar,
@@ -26,10 +26,10 @@ table! {
 }
 
 table! {
-    role (id) {
+    pike_role (id) {
         id -> Int8,
         public_key -> Varchar,
-        role_name -> Text,
+        role_name -> Varchar,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,
@@ -37,14 +37,108 @@ table! {
 }
 
 table! {
-    organization (id) {
+    pike_inherit_from (id) {
         id -> Int8,
+        role_name -> Varchar,
         org_id -> Varchar,
-        name -> Varchar,
-        address -> Varchar,
-        metadata -> Binary,
+        inherit_from_org_id -> Varchar,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,
     }
 }
+
+table! {
+    pike_permissions (id) {
+        id -> Int8,
+        role_name -> Varchar,
+        org_id -> Varchar,
+        name -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    pike_allowed_orgs (id) {
+        id -> Int8,
+        role_name -> Varchar,
+        org_id -> Varchar,
+        allowed_org_id -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    pike_agent_role_assoc (id) {
+        id -> Int8,
+        agent_public_key -> Varchar,
+        org_id -> Varchar,
+        role_name -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    pike_organization (id) {
+        id -> Int8,
+        org_id -> Varchar,
+        name -> Varchar,
+        address -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    pike_organization_metadata (id) {
+        id -> Int8,
+        org_id -> Varchar,
+        key -> Varchar,
+        value -> Binary,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    pike_organization_alternate_id (id) {
+        id -> Int8,
+        org_id -> Varchar,
+        alternate_id_type -> Varchar,
+        alternate_id -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    pike_organization_location_assoc (id) {
+        id -> Int8,
+        location_id -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+allow_tables_to_appear_in_same_query!(
+    pike_agent,
+    pike_agent_role_assoc,
+    pike_role,
+    pike_inherit_from,
+    pike_permissions,
+    pike_allowed_orgs,
+    pike_organization,
+    pike_organization_metadata,
+    pike_organization_alternate_id,
+    pike_organization_location_assoc,
+);
