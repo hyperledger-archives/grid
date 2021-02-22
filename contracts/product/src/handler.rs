@@ -461,7 +461,7 @@ mod tests {
 
     const AGENT_ORG_ID: &str = "test_org";
     const PUBLIC_KEY: &str = "test_public_key";
-    const ROLE_NAME: &str = "test_org.product_roles";
+    const ROLE_NAME: &str = "product_roles";
     const PRODUCT_ID: &str = "688955434684";
     const PRODUCT_2_ID: &str = "9781981855728";
 
@@ -740,10 +740,7 @@ mod tests {
                 "Agent's organization should not exist, InvalidTransaction should be returned"
             ),
             Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains(&format!(
-                    "The Agent's organization does not exist: {}",
-                    PUBLIC_KEY
-                )));
+                assert_eq!("The signer \"test_public_key\" does not have the \"product::can-create-product\" permission for org \"test_org\"", err);
             }
             Err(err) => panic!("Should have gotten invalid error but go {}", err),
         }
@@ -784,6 +781,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_role();
         transaction_context.add_product(PRODUCT_ID);
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
@@ -947,10 +945,11 @@ mod tests {
             Ok(()) => panic!(
                 "Agent should not have can_delete_product role, InvalidTransaction should be returned"
             ),
-            Err(ApplyError::InternalError(err)) => {
-                assert!(err.contains(&format!(
-                    "The signer \"test_public_key\" does not have the \"can_delete_product\" permission for org \"test_org\"",
-                )));
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert_eq!(
+                    "The signer \"test_public_key\" does not have the \"product::can-delete-product\" permission for org \"test_org\"",
+                    err
+                );
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
