@@ -16,16 +16,18 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 
 use crate::rest_api::{
-    error::RestApiResponseError,
-    routes::{paging::Paging, DbExecutor},
-    AcceptServiceIdParam, AppState, QueryPaging, QueryServiceId,
+    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryPaging,
+    QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use grid_sdk::track_and_trace::store::{
-    AssociatedAgent, LatLongValue, Property, Proposal, Record,
-    ReportedValueReporterToAgentMetadata, TrackAndTraceStore,
+use grid_sdk::{
+    rest_api::resources::paging::v1::Paging,
+    track_and_trace::store::{
+        AssociatedAgent, LatLongValue, Property, Proposal, Record,
+        ReportedValueReporterToAgentMetadata, TrackAndTraceStore,
+    },
 };
 use serde::{Deserialize, Serialize};
 
