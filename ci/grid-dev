@@ -57,6 +57,7 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
 WORKDIR /build
 RUN USER=root cargo new --bin cli
 RUN USER=root cargo new --bin daemon
+RUN USER=root cargo new --bin griddle
 RUN USER=root cargo new --bin sdk
 
 # Create empty Cargo projects for contracts
@@ -70,6 +71,7 @@ RUN USER=root cargo new --bin contracts/track_and_trace
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
+COPY griddle/Cargo.toml /build/griddle/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
