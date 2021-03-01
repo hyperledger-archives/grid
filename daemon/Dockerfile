@@ -18,6 +18,7 @@ FROM hyperledger/grid-dev:v6 as gridd-builder
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
+COPY griddle/Cargo.toml /build/griddle/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
@@ -30,7 +31,6 @@ COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo
 COPY cli /build/cli
 COPY daemon /build/daemon
 COPY sdk /build/sdk
-COPY griddle/ /build/griddle/
 
 # Build the gridd package
 WORKDIR /build/daemon

@@ -14,10 +14,14 @@
 
 FROM hyperledger/grid-dev:v5 as grid-cli-builder
 
+# Temporary workaround until sabre is updated to focal
+RUN USER=root cargo new --bin griddle
+
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
+COPY griddle/Cargo.toml /build/griddle/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
@@ -30,7 +34,6 @@ COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo
 COPY cli /build/cli
 COPY daemon /build/daemon
 COPY sdk /build/sdk
-COPY griddle/ /build/griddle/
 
 # Build the grid-cli package
 WORKDIR /build/cli
