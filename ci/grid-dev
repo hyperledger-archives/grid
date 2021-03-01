@@ -86,7 +86,7 @@ RUN find . -name 'Cargo.toml'| xargs -I '{}' \
 
 # Do wasm builds for the contracts
 RUN find contracts -name 'Cargo.toml' | xargs -I '{}' \
-    cargo build --target wasm32-unknown-unknown --manifest-path '{}'
+    cargo build --release --target wasm32-unknown-unknown --manifest-path '{}'
 
 # Clean up built files
 RUN rm -f \
