@@ -81,12 +81,12 @@ COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
 COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo.toml
 
 # Do release builds for each Cargo.toml
-RUN find . -name 'Cargo.toml' -exec \
-    sh -c 'x="{}"; cargo build --release --manifest-path "$x" ' \;
+RUN find . -name 'Cargo.toml'| xargs -I '{}' \
+    cargo build --release --manifest-path '{}'
 
 # Do wasm builds for the contracts
-RUN find contracts -name 'Cargo.toml' -exec \
-    sh -c 'x="{}"; cargo build --target wasm32-unknown-unknown --release --manifest-path "$x" ' \;
+RUN find contracts -name 'Cargo.toml' | xargs -I '{}' \
+    cargo build --target wasm32-unknown-unknown --manifest-path '{}'
 
 # Clean up built files
 RUN rm -f \
