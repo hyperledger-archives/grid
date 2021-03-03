@@ -348,6 +348,71 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
+  /role/{org_id}:
+    get:
+      tags:
+        - Pike
+      summary: Lists all roles for a single organization
+      operationId: list_roles_for_organization
+      parameters:
+        - name: org_id
+          in: path
+          description: Org ID of the organization to list roles for
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON list of the roles for the
+            requested organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /role/{org_id}/{name}:
+    get:
+      tags:
+        - Pike
+      summary: Fetches a role for a single organization
+      operationId: fetch_role
+      parameters:
+        - name: org_id
+          in: path
+          description: Org ID of the organization that the role belongs to
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          description: Name of the role to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object representing the role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
 
   # Product
   /product:
@@ -615,8 +680,7 @@ components:
         roles:
           type: array
           items:
-            type: string
-            example: admin
+            $ref: "#/components/schemas/Role"
         metadata:
           type: array
           items:
@@ -640,15 +704,59 @@ components:
         name:
           type: string
           example: Philips
-        address:
-          type: string
-          example: Amstelplein 2 1096 BC Amsterdam The Netherlands
+        locations:
+          type: array
+          items:
+            type: string
+            example: 0012276598822
+        alternate_ids:
+          type: array
+          items:
+            type: string
+            example: test:test
         metadata:
           type: array
           items:
             $ref: "#/components/schemas/Metadata"
         service_id:
           $ref: "#/components/schemas/ServiceID"
+    RoleList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        paging:
+          $ref: "#/components/schemas/Paging"
+    Role:
+      type: object
+      properties:
+        name:
+          type: string
+          example: alpha.Drivers
+        org_id:
+          type: string
+          example: 314156
+        permissions:
+          type: array
+          items:
+            type: string
+            example: tank::can_drive
+        allowed_organizations:
+          type: array
+          items:
+            type: string
+            example: beta
+        super_roles:
+          type: array
+          items:
+            type: string
+            example: beta.Drivers
+        inherit_from:
+          type: array
+          items:
+            type: string
+            example: beta.Tank
 
     # Product models
     ProductList:
