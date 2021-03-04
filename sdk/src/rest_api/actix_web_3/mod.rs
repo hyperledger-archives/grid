@@ -33,8 +33,13 @@ use crate::submitter::BatchSubmitter;
 #[cfg(feature = "track-and-trace")]
 use crate::track_and_trace::{store::diesel::DieselTrackAndTraceStore, TrackAndTraceStore};
 
-use actix_web::{App, HttpServer};
+use actix_web::{
+    dev, http::StatusCode, web, App, FromRequest, HttpRequest, HttpResponse, HttpServer, Result,
+};
 use diesel::r2d2::{ConnectionManager, Pool};
+use futures::future;
+
+pub use routes::submit;
 
 #[derive(Clone)]
 pub struct State {
@@ -133,7 +138,33 @@ impl State {
         self.batch_submitter = Some(batch_submitter);
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryServiceId {
+    pub service_id: Option<String>,
+    pub wait: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryPaging {
+    pub offset: Option<u64>,
+    pub limit: Option<u16>,
+}
+
+impl QueryPaging {
+    pub fn offset(&self) -> u64 {
+        self.offset.unwrap_or(0)
+    }
+
+    pub fn limit(&self) -> u16 {
+        self.limit
+            .map(|l| if l > 1024 { 1024 } else { l })
+            .unwrap_or(10)
+    }
+}
         }
+
+        future::ok(AcceptServiceIdParam)
     }
 }
 
