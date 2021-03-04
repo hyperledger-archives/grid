@@ -57,6 +57,7 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
 WORKDIR /build
 RUN USER=root cargo new --bin cli
 RUN USER=root cargo new --bin daemon
+RUN USER=root cargo new --bin griddle
 RUN USER=root cargo new --bin sdk
 
 # Create empty Cargo projects for contracts
@@ -70,6 +71,7 @@ RUN USER=root cargo new --bin contracts/track_and_trace
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
+COPY griddle/Cargo.toml /build/griddle/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
@@ -79,12 +81,12 @@ COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
 COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo.toml
 
 # Do release builds for each Cargo.toml
-RUN find . -name 'Cargo.toml' -exec \
-    sh -c 'x="{}"; cargo build --release --manifest-path "$x" ' \;
+RUN find . -name 'Cargo.toml'| xargs -I '{}' \
+    cargo build --release --manifest-path '{}'
 
 # Do wasm builds for the contracts
-RUN find contracts -name 'Cargo.toml' -exec \
-    sh -c 'x="{}"; cargo build --target wasm32-unknown-unknown --release --manifest-path "$x" ' \;
+RUN find contracts -name 'Cargo.toml' | xargs -I '{}' \
+    cargo build --release --target wasm32-unknown-unknown --manifest-path '{}'
 
 # Clean up built files
 RUN rm -f \
