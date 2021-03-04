@@ -23,7 +23,10 @@ use std::str::FromStr;
 use clap::{App, Arg};
 use diesel::r2d2::{ConnectionManager, Pool};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
-use grid_sdk::{rest_api::actix_web_3, store::ConnectionUri};
+use grid_sdk::{
+    rest_api::actix_web_3::{self, KeyState, StoreState},
+    store::ConnectionUri,
+};
 use log::Record;
 use users::get_current_username;
 
@@ -37,7 +40,7 @@ fn log_format(
     write!(w, "{}", record.args(),)
 }
 
-fn griddle_state(key_file_name: &str, db_url: &str) -> Result<actix_web_3::State, Error> {
+fn griddle_store_state(db_url: &str) -> Result<StoreState, Error> {
     let connection_url =
         ConnectionUri::from_str(&db_url).map_err(|err| Error::from_message(&format!("{}", err)))?;
 
@@ -48,7 +51,7 @@ fn griddle_state(key_file_name: &str, db_url: &str) -> Result<actix_web_3::State
             let pool = pool_builder
                 .build(connection_manager)
                 .map_err(|err| Error::from_message(&format!("{}", err)))?;
-            actix_web_3::State::with_pg_pool(key_file_name, pool)
+            StoreState::with_pg_pool(pool)
         }
         ConnectionUri::Sqlite(_) => {
             let connection_manager =
@@ -58,7 +61,7 @@ fn griddle_state(key_file_name: &str, db_url: &str) -> Result<actix_web_3::State
                 .build(connection_manager)
                 .map_err(|err| Error::from_message(&format!("{}", err)))?;
 
-            actix_web_3::State::with_sqlite_pool(key_file_name, pool)
+            StoreState::with_sqlite_pool(pool)
         }
     })
 }
@@ -143,9 +146,10 @@ async fn run() -> Result<(), Error> {
         .or_else(|| env::var("GRIDDLE_DATABASE_URL").ok())
         .unwrap_or_else(|| "sqlite_db_file".into());
 
-    let state = griddle_state(&key, &database_url)?;
+    let store_state = griddle_store_state(&database_url)?;
+    let key_state = KeyState::new(&key);
 
-    actix_web_3::run(&bind, state)
+    actix_web_3::run(&bind, store_state, key_state)
         .await
         .map_err(|err| Error::from_message(&format!("{}", err)))?;
 

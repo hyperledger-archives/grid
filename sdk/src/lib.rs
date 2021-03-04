@@ -18,7 +18,7 @@
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-#[cfg(all(feature = "rest-api-resources", feature = "pike"))]
+#[cfg(feature = "serde_json")]
 #[macro_use]
 extern crate serde_json;
 #[macro_use]

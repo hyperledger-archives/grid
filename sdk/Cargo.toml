@@ -80,6 +80,7 @@ experimental = [
     # The following features are experimental:
     "batch-store",
     "postgres",
+    "pike-rest-api",
     "rest-api-resources",
     "rest-api-actix-web-3",
     "sawtooth-compat",
@@ -90,6 +91,7 @@ experimental = [
 
 location = ["pike", "schema"]
 pike = []
+pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
 product = ["pike", "schema"]
 schema = ["pike"]
 track-and-trace = ["base64"]
@@ -97,7 +99,8 @@ batch-store = []
 batch-submitter = ["base64", "futures", "reqwest", "uuid", "url"]
 
 postgres = ["diesel/postgres", "diesel_migrations", "log"]
-rest-api-actix-web-3 = ["actix-web", "futures-util", "rest-api-resources", "sqlite", "postgres"]
+rest-api-actix-web-3 = [
+    "actix-web", "futures", "futures-util", "rest-api-resources", "sqlite", "postgres", "url"]
 rest-api-resources = ["cylinder", "sabre-sdk", "log", "reqwest", "serde_json", "url"]
 sawtooth-compat = [
     "sabre-sdk",

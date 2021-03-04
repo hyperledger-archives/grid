@@ -12,33 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{dev, http::StatusCode, post, web, FromRequest, HttpRequest, HttpResponse};
-use futures_util::future::{FutureExt, LocalBoxFuture};
+use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpResponse};
+use futures::future;
 
-use crate::rest_api::actix_web_3::{KeyState, StoreState};
-use crate::rest_api::resources::{
-    error::ErrorResponse,
-    submit::v1::{submit_batches, SubmitBatchRequest},
+use crate::rest_api::{
+    actix_web_3::{AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    resources::schemas::v1,
 };
 
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
-#[post("/submit")]
-async fn submit(
-    store_state: web::Data<StoreState>,
-    key_state: web::Data<KeyState>,
+#[get("/schema/{name}")]
+pub async fn fetch_schema(
+    state: web::Data<StoreState>,
+    name: web::Path<String>,
+    query: web::Query<QueryServiceId>,
     version: ProtocolVersion,
+    _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1(payload) => {
-            match submit_batches(
-                &key_state.key_file_name,
-                store_state.batch_store.clone(),
-                payload,
+        ProtocolVersion::V1 => {
+            match v1::fetch_schema(
+                state.schema_store.clone(),
+                name.into_inner(),
+                query.into_inner().service_id.as_deref(),
             )
             .await
             {
-                Ok(res) => HttpResponse::Accepted().json(res),
+                Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
                         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
@@ -49,16 +50,47 @@ async fn submit(
     }
 }
 
-enum ProtocolVersion {
-    V1(SubmitBatchRequest),
+#[get("/schema")]
+pub async fn list_schemas(
+    state: web::Data<StoreState>,
+    query_service_id: web::Query<QueryServiceId>,
+    query_paging: web::Query<QueryPaging>,
+    version: ProtocolVersion,
+    _: AcceptServiceIdParam,
+) -> HttpResponse {
+    match version {
+        ProtocolVersion::V1 => {
+            let paging = query_paging.into_inner();
+            let service_id = query_service_id.into_inner().service_id;
+            match v1::list_schemas(
+                state.schema_store.clone(),
+                service_id.as_deref(),
+                paging.offset(),
+                paging.limit(),
+            )
+            .await
+            {
+                Ok(res) => HttpResponse::Ok().json(res),
+                Err(err) => HttpResponse::build(
+                    StatusCode::from_u16(err.status_code())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(err),
+            }
+        }
+    }
+}
+
+pub enum ProtocolVersion {
+    V1,
 }
 
 impl FromRequest for ProtocolVersion {
     type Error = HttpResponse;
-    type Future = LocalBoxFuture<'static, Result<Self, HttpResponse>>;
+    type Future = future::Ready<Result<Self, Self::Error>>;
     type Config = ();
 
-    fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
+    fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         let protocol_version = match req
             .headers()
             .get("GridProtocolVersion")
@@ -82,24 +114,8 @@ impl FromRequest for ProtocolVersion {
         };
 
         match protocol_version.as_str() {
-            "1" => dev::JsonBody::new(req, payload, None)
-                .map(|result| match result {
-                    Ok(data) => Ok(ProtocolVersion::V1(data)),
-                    Err(err) => Err(HttpResponse::build(
-                        StatusCode::from_u16(400).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-                    )
-                    .json(ErrorResponse::new(400, &format!("{}", err)))),
-                })
-                .boxed_local(),
-            _ => dev::JsonBody::new(req, payload, None)
-                .map(|res| match res {
-                    Ok(data) => Ok(ProtocolVersion::V1(data)),
-                    Err(err) => Err(HttpResponse::build(
-                        StatusCode::from_u16(400).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-                    )
-                    .json(ErrorResponse::new(400, &format!("{}", err)))),
-                })
-                .boxed_local(),
+            "1" => future::ok(ProtocolVersion::V1),
+            _ => future::ok(ProtocolVersion::V1),
         }
     }
 }

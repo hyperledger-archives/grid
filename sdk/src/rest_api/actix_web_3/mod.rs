@@ -29,7 +29,7 @@ use crate::rest_api::resources::error::ErrorResponse;
 #[cfg(feature = "schema")]
 use crate::schemas::{store::diesel::DieselSchemaStore, SchemaStore};
 #[cfg(feature = "batch-submitter")]
-use crate::submitter::BatchSubmitter;
+use crate::submitter::{BatchSubmitter, SawtoothBatchSubmitter, SplinterBatchSubmitter};
 #[cfg(feature = "track-and-trace")]
 use crate::track_and_trace::{store::diesel::DieselTrackAndTraceStore, TrackAndTraceStore};
 
@@ -42,10 +42,7 @@ use futures::future;
 pub use routes::submit;
 
 #[derive(Clone)]
-pub struct State {
-    pub key_file_name: String,
-    #[cfg(feature = "batch-submitter")]
-    pub batch_submitter: Option<Arc<dyn BatchSubmitter + 'static>>,
+pub struct StoreState {
     #[cfg(feature = "batch-store")]
     pub batch_store: Arc<dyn BatchStore>,
     #[cfg(feature = "location")]
@@ -60,9 +57,8 @@ pub struct State {
     pub tnt_store: Arc<dyn TrackAndTraceStore>,
 }
 
-impl State {
+impl StoreState {
     pub fn with_pg_pool(
-        key_file_name: &str,
         connection_pool: Pool<ConnectionManager<diesel::pg::PgConnection>>,
     ) -> Self {
         #[cfg(feature = "batch-store")]
@@ -79,9 +75,6 @@ impl State {
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool));
 
         Self {
-            key_file_name: key_file_name.to_string(),
-            #[cfg(feature = "batch-submitter")]
-            batch_submitter: None,
             #[cfg(feature = "batch-store")]
             batch_store,
             #[cfg(feature = "location")]
@@ -98,7 +91,6 @@ impl State {
     }
 
     pub fn with_sqlite_pool(
-        key_file_name: &str,
         connection_pool: Pool<ConnectionManager<diesel::sqlite::SqliteConnection>>,
     ) -> Self {
         #[cfg(feature = "batch-store")]
@@ -115,9 +107,6 @@ impl State {
         let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool));
 
         Self {
-            key_file_name: key_file_name.to_string(),
-            #[cfg(feature = "batch-submitter")]
-            batch_submitter: None,
             #[cfg(feature = "batch-store")]
             batch_store,
             #[cfg(feature = "location")]
@@ -132,10 +121,42 @@ impl State {
             tnt_store,
         }
     }
+}
 
-    #[cfg(feature = "batch-submitter")]
-    pub fn set_batch_submitter(&mut self, batch_submitter: Arc<dyn BatchSubmitter + 'static>) {
-        self.batch_submitter = Some(batch_submitter);
+#[cfg(feature = "batch-submitter")]
+#[derive(Clone)]
+pub struct BatchSubmitterState {
+    pub batch_submitter: Arc<dyn BatchSubmitter + 'static>,
+}
+
+impl BatchSubmitterState {
+    pub fn new(batch_submitter: Arc<dyn BatchSubmitter + 'static>) -> Self {
+        Self { batch_submitter }
+    }
+
+    pub fn with_sawtooth(submitter: SawtoothBatchSubmitter) -> Self {
+        Self {
+            batch_submitter: Arc::new(submitter),
+        }
+    }
+
+    pub fn with_splinter(submitter: SplinterBatchSubmitter) -> Self {
+        Self {
+            batch_submitter: Arc::new(submitter),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct KeyState {
+    key_file_name: String,
+}
+
+impl KeyState {
+    pub fn new(key_file_name: &str) -> Self {
+        Self {
+            key_file_name: key_file_name.to_string(),
+        }
     }
 }
 
@@ -165,8 +186,8 @@ impl QueryPaging {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Endpoint {
-    backend: Backend,
-    url: String,
+    pub backend: Backend,
+    pub url: String,
 }
 
 impl Endpoint {
@@ -271,11 +292,85 @@ impl FromRequest for AcceptServiceIdParam {
     }
 }
 
-pub async fn run(bind: &str, state: State) -> Result<(), InternalError> {
-    HttpServer::new(move || App::new().data(state.clone()).service(submit))
-        .bind(bind)
-        .map_err(|err| InternalError::from_source(Box::new(err)))?
-        .run()
-        .await
-        .map_err(|err| InternalError::from_source(Box::new(err)))
+pub async fn run(
+    bind: &str,
+    store_state: StoreState,
+    key_state: KeyState,
+) -> Result<(), InternalError> {
+    HttpServer::new(move || {
+        App::new()
+            .data(store_state.clone())
+            .data(key_state.clone())
+            .service(submit)
+    })
+    .bind(bind)
+    .map_err(|err| InternalError::from_source(Box::new(err)))?
+    .run()
+    .await
+    .map_err(|err| InternalError::from_source(Box::new(err)))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_endpoint_splinter_prefix() {
+        let endpoint = Endpoint::from("splinter:tcp://localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Splinter,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_sawtooth_prefix() {
+        let endpoint = Endpoint::from("sawtooth:tcp://localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_no_prefix() {
+        let endpoint = Endpoint::from("tcp://localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_capitals() {
+        let endpoint = Endpoint::from("SAWTOOTH:TCP://LOCALHOST:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_no_protocol() {
+        let endpoint = Endpoint::from("splinter:localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Splinter,
+                url: "localhost:8080".into()
+            }
+        );
+    }
 }

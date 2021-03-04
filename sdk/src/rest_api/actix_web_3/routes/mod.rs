@@ -12,6 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "pike")]
+mod agents;
+#[cfg(feature = "batch-submitter")]
+mod batches;
+#[cfg(feature = "location")]
+mod locations;
+#[cfg(feature = "pike")]
+mod organizations;
+#[cfg(feature = "product")]
+mod products;
+#[cfg(feature = "track-and-trace")]
+mod records;
+#[cfg(feature = "pike")]
+mod roles;
+#[cfg(feature = "schema")]
+mod schemas;
 mod submit;
 
+#[cfg(feature = "pike")]
+pub use agents::*;
+#[cfg(feature = "batch-submitter")]
+pub use batches::*;
+#[cfg(feature = "location")]
+pub use locations::*;
+#[cfg(feature = "pike")]
+pub use organizations::*;
+#[cfg(feature = "product")]
+pub use products::*;
+#[cfg(feature = "track-and-trace")]
+pub use records::*;
+#[cfg(feature = "pike")]
+pub use roles::*;
+#[cfg(feature = "schema")]
+pub use schemas::*;
 pub use submit::*;
