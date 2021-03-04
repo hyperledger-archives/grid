@@ -162,6 +162,109 @@ impl QueryPaging {
             .unwrap_or(10)
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Endpoint {
+    backend: Backend,
+    url: String,
+}
+
+impl Endpoint {
+    pub fn url(&self) -> String {
+        self.url.clone()
+    }
+
+    pub fn is_sawtooth(&self) -> bool {
+        self.backend == Backend::Sawtooth
+    }
+
+    pub fn backend(&self) -> &Backend {
+        &self.backend
+    }
+}
+
+impl From<&str> for Endpoint {
+    fn from(s: &str) -> Self {
+        let s = s.to_lowercase();
+
+        if s.starts_with("splinter:") {
+            let url = s.replace("splinter:", "");
+            Endpoint {
+                backend: Backend::Splinter,
+                url,
+            }
+        } else if s.starts_with("sawtooth:") {
+            let url = s.replace("sawtooth:", "");
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url,
+            }
+        } else {
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: s,
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Backend {
+    Splinter,
+    Sawtooth,
+}
+
+pub struct AcceptServiceIdParam;
+
+impl FromRequest for AcceptServiceIdParam {
+    type Error = HttpResponse;
+    type Future = future::Ready<Result<Self, Self::Error>>;
+    type Config = ();
+
+    fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
+        let endpoint: Endpoint = if let Some(endpoint) = req.app_data::<Endpoint>() {
+            endpoint.clone()
+        } else {
+            return future::err(
+                HttpResponse::build(
+                    StatusCode::from_u16(500).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(ErrorResponse::new(500, "App state not found")),
+            );
+        };
+
+        let service_id =
+            if let Ok(query) = web::Query::<QueryServiceId>::from_query(req.query_string()) {
+                query.service_id.clone()
+            } else {
+                return future::err(
+                    HttpResponse::build(
+                        StatusCode::from_u16(400).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                    )
+                    .json(ErrorResponse::new(400, "Malformed query param")),
+                );
+            };
+
+        if service_id.is_some() && endpoint.is_sawtooth() {
+            return future::err(
+                HttpResponse::build(
+                    StatusCode::from_u16(400).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(ErrorResponse::new(
+                    400,
+                    "Circuit ID present, but grid is running in sawtooth mode",
+                )),
+            );
+        } else if service_id.is_none() && !endpoint.is_sawtooth() {
+            return future::err(
+                HttpResponse::build(
+                    StatusCode::from_u16(400).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(ErrorResponse::new(
+                    400,
+                    "Circuit ID is not present, but grid is running in splinter mode",
+                )),
+            );
         }
 
         future::ok(AcceptServiceIdParam)
