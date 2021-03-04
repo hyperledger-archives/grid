@@ -12,23 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "pike")]
-pub mod agents;
-#[cfg(feature = "batch-submitter")]
-pub mod batches;
-pub mod error;
-#[cfg(feature = "location")]
-pub mod locations;
-#[cfg(feature = "pike")]
-pub mod organizations;
-pub mod paging;
-#[cfg(feature = "product")]
-pub mod products;
-#[cfg(feature = "pike")]
-pub mod roles;
-#[cfg(feature = "schema")]
-pub mod schemas;
-#[cfg(feature = "batch-store")]
-pub mod submit;
-#[cfg(feature = "track-and-trace")]
-pub mod track_and_trace;
+mod handler;
+mod payloads;
+
+pub use handler::{fetch_product, list_products};
+pub use payloads::{LatLongSlice, ProductListSlice, ProductPropertyValueSlice, ProductSlice};
