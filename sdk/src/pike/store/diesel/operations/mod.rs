@@ -15,6 +15,7 @@
 pub(super) mod add_agent;
 pub(super) mod add_organization;
 pub(super) mod add_role;
+pub(super) mod delete_role;
 pub(super) mod fetch_agent;
 pub(super) mod fetch_organization;
 pub(super) mod fetch_role;

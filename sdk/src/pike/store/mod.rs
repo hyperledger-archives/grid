@@ -203,6 +203,14 @@ pub trait PikeStore: Send + Sync {
     ///  * `role` - The role to update
     fn update_role(&self, role: Role) -> Result<(), PikeStoreError>;
 
+    /// Deletes a role from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `address` - The state address of the role to delete
+    ///  * `current_commit_num` - The current commit number to update the chain record
+    fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError>;
+
     /// Adds an organization to the underlying storage
     ///
     /// # Arguments
@@ -291,6 +299,10 @@ where
 
     fn update_role(&self, role: Role) -> Result<(), PikeStoreError> {
         (**self).update_role(role)
+    }
+
+    fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
+        (**self).delete_role(address, current_commit_num)
     }
 
     fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError> {
