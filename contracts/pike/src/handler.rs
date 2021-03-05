@@ -156,7 +156,7 @@ impl<'a> PikeState<'a> {
 
         let filtered_roles = roles
             .into_iter()
-            .filter(|role| role.name() == name && role.org_id() == org_id)
+            .filter(|role| role.name() != name && role.org_id() != org_id)
             .collect::<Vec<_>>();
 
         if filtered_roles.is_empty() {
