@@ -119,6 +119,16 @@ CREATE TABLE pike_allowed_orgs (
     service_id TEXT
 );
 
+CREATE TABLE pike_role_state_address_assoc (
+    id BIGSERIAL PRIMARY KEY,
+    state_address VARCHAR(70) NOT NULL,
+    name VARCHAR(256) NOT NULL,
+    org_id VARCHAR(256) NOT NULL,
+    start_commit_num BIGINT NOT NULL,
+    end_commit_num BIGINT NOT NULL,
+    service_id TEXT
+);
+
 CREATE VIEW reporter_to_agent_metadata
 AS
   SELECT id,

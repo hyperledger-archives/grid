@@ -147,3 +147,4 @@ DROP TABLE pike_organization_location_assoc;
 DROP TABLE pike_inherit_from;
 DROP TABLE pike_permissions;
 DROP TABLE pike_allowed_orgs;
+DROP TABLE pike_role_state_address_assoc;

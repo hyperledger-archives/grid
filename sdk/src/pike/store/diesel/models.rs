@@ -14,11 +14,15 @@
 
 use super::{Agent, AlternateID, Organization, OrganizationMetadata, Role};
 use crate::commits::MAX_COMMIT_NUM;
+use crate::pike::addressing::{
+    compute_agent_address, compute_organization_address, compute_role_address,
+};
 use crate::pike::store::diesel::schema::*;
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "pike_agent"]
 pub struct NewAgentModel {
+    pub state_address: String,
     pub public_key: String,
     pub org_id: String,
     pub active: bool,
@@ -32,6 +36,7 @@ pub struct NewAgentModel {
 #[table_name = "pike_agent"]
 pub struct AgentModel {
     pub id: i64,
+    pub state_address: String,
     pub public_key: String,
     pub org_id: String,
     pub active: bool,
@@ -44,6 +49,7 @@ pub struct AgentModel {
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "pike_role"]
 pub struct NewRoleModel {
+    pub state_address: String,
     pub org_id: String,
     pub name: String,
     pub description: String,
@@ -57,6 +63,7 @@ pub struct NewRoleModel {
 #[table_name = "pike_role"]
 pub struct RoleModel {
     pub id: i64,
+    pub state_address: String,
     pub org_id: String,
     pub name: String,
     pub description: String,
@@ -84,6 +91,29 @@ pub struct RoleAssociationModel {
     pub agent_public_key: String,
     pub org_id: String,
     pub role_name: String,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
+}
+
+#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[table_name = "pike_role_state_address_assoc"]
+pub struct NewRoleStateAddressAssociationModel {
+    pub state_address: String,
+    pub org_id: String,
+    pub name: String,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
+}
+
+#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[table_name = "pike_role_state_address_assoc"]
+pub struct RoleStateAddressAssociationModel {
+    pub id: i64,
+    pub state_address: String,
+    pub org_id: String,
+    pub name: String,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
@@ -163,6 +193,7 @@ pub struct AllowedOrgModel {
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "pike_organization"]
 pub struct NewOrganizationModel {
+    pub state_address: String,
     pub org_id: String,
     pub name: String,
     pub start_commit_num: i64,
@@ -175,6 +206,7 @@ pub struct NewOrganizationModel {
 pub struct OrganizationModel {
     ///  This is the record id for the slowly-changing-dimensions table.
     pub id: i64,
+    pub state_address: String,
     pub org_id: String,
     pub name: String,
     pub start_commit_num: i64,
@@ -249,6 +281,19 @@ pub struct LocationAssociationModel {
     pub service_id: Option<String>,
 }
 
+impl From<&NewRoleModel> for NewRoleStateAddressAssociationModel {
+    fn from(role: &NewRoleModel) -> Self {
+        Self {
+            state_address: compute_role_address(&role.name, &role.org_id),
+            org_id: role.org_id.to_string(),
+            name: role.name.to_string(),
+            start_commit_num: role.start_commit_num,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id: role.service_id.clone(),
+        }
+    }
+}
+
 impl
     From<(
         RoleModel,
@@ -296,6 +341,7 @@ impl
 impl Into<NewRoleModel> for Role {
     fn into(self) -> NewRoleModel {
         NewRoleModel {
+            state_address: compute_role_address(&self.name, &self.org_id),
             org_id: self.org_id,
             name: self.name,
             description: self.description,
@@ -399,6 +445,7 @@ impl From<(AgentModel, Vec<RoleAssociationModel>)> for Agent {
 impl Into<NewAgentModel> for Agent {
     fn into(self) -> NewAgentModel {
         NewAgentModel {
+            state_address: compute_agent_address(&self.public_key),
             public_key: self.public_key,
             org_id: self.org_id,
             active: self.active,
@@ -516,6 +563,7 @@ impl
 impl Into<NewOrganizationModel> for Organization {
     fn into(self) -> NewOrganizationModel {
         NewOrganizationModel {
+            state_address: compute_organization_address(&self.org_id),
             org_id: self.org_id,
             name: self.name,
             start_commit_num: self.start_commit_num,
