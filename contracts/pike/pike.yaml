@@ -13,9 +13,9 @@
 # limitations under the License.
 
 name: pike
-version: '1'
+version: '2'
 wasm: /tmp/grid-pike-tp.wasm
 inputs:
-  - 'cad11d'
+  - '621dee05'
 outputs:
-  - 'cad11d'
+  - '621dee05'

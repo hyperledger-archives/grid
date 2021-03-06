@@ -40,9 +40,7 @@ cfg_if! {
 }
 
 pub mod handler;
-
-//use sawtooth_sdk::processor::TransactionProcessor;
-//use handler::PikeTransactionHandler;
+pub mod permissions;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), CliError> {

@@ -15,12 +15,17 @@
 use super::PikeStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::pike::store::diesel::models::{OrganizationMetadataModel, OrganizationModel};
+use crate::pike::store::diesel::models::{
+    AlternateIDModel, LocationAssociationModel, OrganizationMetadataModel, OrganizationModel,
+};
 use crate::pike::store::diesel::{
-    schema::{pike_organization, pike_organization_metadata},
+    schema::{
+        pike_organization, pike_organization_alternate_id, pike_organization_location_assoc,
+        pike_organization_metadata,
+    },
     PikeStoreError,
 };
-use crate::pike::store::{Organization, OrganizationMetadata};
+use crate::pike::store::Organization;
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in crate::pike::store::diesel) trait PikeStoreFetchOrganizationOperation {
@@ -85,12 +90,50 @@ impl<'a> PikeStoreFetchOrganizationOperation for PikeStoreOperations<'a, diesel:
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let metadata = metadata_models
-                .iter()
-                .map(OrganizationMetadata::from)
-                .collect();
+            let mut query = pike_organization_alternate_id::table
+                .into_boxed()
+                .select(pike_organization_alternate_id::all_columns)
+                .filter(
+                    pike_organization_alternate_id::org_id
+                        .eq(&org_id)
+                        .and(pike_organization_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-            Ok(org_model.map(|org| Organization::from((org, metadata))))
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_organization_alternate_id::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization_alternate_id::service_id.is_null());
+            }
+
+            let alternate_ids = query.load::<AlternateIDModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            let mut query = pike_organization_location_assoc::table
+                .into_boxed()
+                .select(pike_organization_location_assoc::all_columns)
+                .filter(
+                    pike_organization_location_assoc::org_id
+                        .eq(&org_id)
+                        .and(pike_organization_location_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_organization_location_assoc::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization_location_assoc::service_id.is_null());
+            }
+
+            let location_models =
+                query
+                    .load::<LocationAssociationModel>(self.conn)
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+            Ok(org_model.map(|org| {
+                Organization::from((org, metadata_models, alternate_ids, location_models))
+            }))
         })
     }
 }
@@ -151,12 +194,50 @@ impl<'a> PikeStoreFetchOrganizationOperation
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let metadata = metadata_models
-                .iter()
-                .map(OrganizationMetadata::from)
-                .collect();
+            let mut query = pike_organization_alternate_id::table
+                .into_boxed()
+                .select(pike_organization_alternate_id::all_columns)
+                .filter(
+                    pike_organization_alternate_id::org_id
+                        .eq(&org_id)
+                        .and(pike_organization_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-            Ok(org_model.map(|org| Organization::from((org, metadata))))
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_organization_alternate_id::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization_alternate_id::service_id.is_null());
+            }
+
+            let alternate_ids = query.load::<AlternateIDModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            let mut query = pike_organization_location_assoc::table
+                .into_boxed()
+                .select(pike_organization_location_assoc::all_columns)
+                .filter(
+                    pike_organization_location_assoc::org_id
+                        .eq(&org_id)
+                        .and(pike_organization_location_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_organization_location_assoc::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization_location_assoc::service_id.is_null());
+            }
+
+            let location_models =
+                query
+                    .load::<LocationAssociationModel>(self.conn)
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+            Ok(org_model.map(|org| {
+                Organization::from((org, metadata_models, alternate_ids, location_models))
+            }))
         })
     }
 }

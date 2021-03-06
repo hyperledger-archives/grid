@@ -164,7 +164,6 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
     use grid_sdk::protocol::schema::state::{DataType, PropertyDefinitionBuilder, SchemaBuilder};
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
 
@@ -216,47 +215,6 @@ mod tests {
         ) -> Result<(), ContextError> {
             unimplemented!()
         }
-    }
-
-    #[test]
-    // Test that if an agent does not exist in state, None is returned
-    fn test_get_agent_none() {
-        let transaction_context = MockTransactionContext::default();
-        let state = GridSchemaState::new(&transaction_context);
-
-        let result = state.get_agent("agent_public_key").unwrap();
-        assert!(result.is_none())
-    }
-
-    #[test]
-    // Test that if an agent does exists in state, Some(Agent) is returned;
-    fn test_get_agent_some() {
-        let transaction_context = MockTransactionContext::default();
-
-        let builder = AgentBuilder::new();
-        let agent = builder
-            .with_org_id("organization".to_string())
-            .with_public_key("agent_public_key".to_string())
-            .with_active(true)
-            .with_roles(vec!["Role".to_string()])
-            .build()
-            .unwrap();
-
-        let builder = AgentListBuilder::new();
-        let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
-        let agent_bytes = agent_list.into_bytes().unwrap();
-        let agent_address = compute_agent_address("agent_public_key");
-        transaction_context
-            .set_state_entry(agent_address, agent_bytes)
-            .unwrap();
-
-        let state = GridSchemaState::new(&transaction_context);
-
-        let result = state.get_agent("agent_public_key").unwrap();
-        assert!(result.is_some());
-        let agent = result.unwrap();
-
-        assert_eq!(agent.public_key(), "agent_public_key");
     }
 
     #[test]

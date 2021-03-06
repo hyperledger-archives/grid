@@ -14,11 +14,15 @@
 
 pub(super) mod add_agent;
 pub(super) mod add_organization;
+pub(super) mod add_role;
 pub(super) mod fetch_agent;
 pub(super) mod fetch_organization;
+pub(super) mod fetch_role;
 pub(super) mod list_agents;
 pub(super) mod list_organizations;
+pub(super) mod list_roles_for_organization;
 pub(super) mod update_agent;
+pub(super) mod update_role;
 
 pub(super) struct PikeStoreOperations<'a, C> {
     conn: &'a C,

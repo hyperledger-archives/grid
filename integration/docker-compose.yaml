@@ -18,35 +18,8 @@ volumes:
   grid-shared:
 
 services:
-  tnt-contract-builder:
-    logging:
-      driver: none
-    image: tnt-contract-builder
-    container_name: tnt-contract-builder
-    build:
-      context: ..
-      dockerfile: contracts/track_and_trace/Dockerfile
-      args:
-        - REPO_VERSION=${REPO_VERSION}
-    volumes:
-      - grid-shared:/grid-shared
-    entrypoint: |
-      bash -c "
-        while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        sabre cr --create grid_track_and_trace --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre upload --filename /tmp/track_and_trace.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre ns --create a43b46 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm a43b46 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm 621dee01 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm cad11d grid_track_and_trace --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
-        echo '---------========= track and trace contract is loaded =========---------'
-        tail -f /dev/null
-      "
-
   schema-contract-builder:
-    logging:
-      driver: none
-    image: schema-contract-builder
+    image: schema-contract-builder:${ISOLATION_ID}
     container_name: schema-contract-builder
     build:
       context: ..
@@ -62,15 +35,13 @@ services:
         sabre upload --filename /tmp/schema.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee01 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm 621dee01 grid_schema --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm cad11d grid_schema --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee05 grid_schema --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= grid schema contract is loaded =========---------'
         tail -f /dev/null
       "
 
   pike-contract-builder:
-    logging:
-      driver: none
-    image: pike-contract-builder
+    image: pike-contract-builder:${ISOLATION_ID}
     container_name: pike-contract-builder
     build:
       context: ..
@@ -84,16 +55,14 @@ services:
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         sabre cr --create pike --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre upload --filename /tmp/pike.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre ns --create cad11d --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm cad11d pike --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre ns --create 621dee05 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee05 pike --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= pike contract is loaded =========---------'
         tail -f /dev/null
       "
 
   product-contract-builder:
-    logging:
-      driver: none
-    image: product-contract-builder
+    image: product-contract-builder:${ISOLATION_ID}
     container_name: product-contract-builder
     build:
       context: ..
@@ -107,10 +76,10 @@ services:
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         sabre cr --create grid_product --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre upload --filename /tmp/product.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre ns --create cad11d --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre ns --create 621dee05 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee01 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee02 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm cad11d grid_product --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee05 grid_product --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm 621dee01 grid_product --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm 621dee02 grid_product --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= grid_product contract is loaded =========---------'
@@ -118,8 +87,6 @@ services:
       "
 
   validator:
-    logging:
-      driver: none
     image: hyperledger/sawtooth-validator:1.1
     container_name: grid-sawtooth-validator
     expose:
@@ -155,8 +122,6 @@ services:
       "
 
   devmode-engine:
-    logging:
-      driver: none
     image: hyperledger/sawtooth-devmode-engine-rust:1.1
     container_name: sawtooth-devmode-engine-rust-default
     depends_on:
@@ -164,8 +129,6 @@ services:
     entrypoint: devmode-engine-rust -C tcp://validator:5050
 
   settings-tp:
-    logging:
-      driver: none
     image: hyperledger/sawtooth-settings-tp:1.1
     container_name: grid-sawtooth-settings-tp
     depends_on:
@@ -173,8 +136,6 @@ services:
     entrypoint: settings-tp -vv -C tcp://validator:4004
 
   rest-api:
-    logging:
-      driver: none
     image: hyperledger/sawtooth-rest-api:1.1
     container_name: grid-sawtooth-rest-api
     expose:
@@ -212,6 +173,9 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec023b83af696f65e0579200b7f066089db00fe628034c405c1a9acda1dc16a5e961 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec027e3e56bcd14d28d036fcfcde2cd2e3c83e83256dc986b5f27d65cc3ef1693cf3 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec02bb0b4ad88592b206787ba6a3adef17774763b03ce516281dcafe538254553219 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         cp /project/grid/target/debug/gridd /usr/sbin/gridd && \
         cp /project/grid/target/debug/grid /usr/bin/grid && \
         grid database migrate \
@@ -224,8 +188,6 @@ services:
       "
 
   grid-cli:
-    logging:
-      driver: none
     image: grid-cli:${ISOLATION_ID}
     container_name: grid-cli
     build:
@@ -238,8 +200,6 @@ services:
       tail -f /dev/null
 
   sabre-tp:
-    logging:
-      driver: none
     image: hyperledger/sawtooth-sabre-tp:0.5
     container_name: sawtooth-sabre-tp
     depends_on:
@@ -247,8 +207,6 @@ services:
     entrypoint: sawtooth-sabre -vv --connect tcp://validator:4004
 
   sawtooth-shell:
-    logging:
-      driver: none
     image: hyperledger/sawtooth-shell:1.1
     container_name: grid-sawtooth-shell
     command: |
@@ -257,8 +215,6 @@ services:
         tail -f /dev/null
       "
   db:
-    logging:
-      driver: none
     image: postgres
     restart: always
     expose:

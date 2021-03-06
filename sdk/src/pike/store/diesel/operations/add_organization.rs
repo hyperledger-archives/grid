@@ -19,7 +19,7 @@ use crate::pike::store::diesel::{
 };
 
 use crate::commits::MAX_COMMIT_NUM;
-use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
+use crate::error::InternalError;
 use crate::pike::store::diesel::models::{
     NewOrganizationMetadataModel, NewOrganizationModel, OrganizationMetadataModel,
     OrganizationModel,
@@ -27,7 +27,7 @@ use crate::pike::store::diesel::models::{
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
-    result::{DatabaseErrorKind, Error as dsl_error},
+    result::Error as dsl_error,
 };
 
 pub(in crate::pike::store::diesel) trait PikeStoreAddOrganizationOperation {
@@ -46,13 +46,20 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
-            let duplicate_org = pike_organization::table
-                .filter(
-                    pike_organization::org_id
-                        .eq(&org.org_id)
-                        .and(pike_organization::service_id.eq(&org.service_id))
-                        .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-                )
+            let mut query = pike_organization::table.into_boxed().filter(
+                pike_organization::org_id
+                    .eq(&org.org_id)
+                    .and(pike_organization::service_id.eq(&org.service_id))
+                    .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &org.service_id {
+                query = query.filter(pike_organization::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization::service_id.is_null());
+            }
+
+            let duplicate_org = query
                 .first::<OrganizationModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -77,51 +84,14 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
                     .set(pike_organization::end_commit_num.eq(org.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => {
-                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                        }
-                    })?;
+                    .map_err(PikeStoreError::from)?;
             }
+
             insert_into(pike_organization::table)
                 .values(org)
                 .execute(self.conn)
                 .map(|_| ())
-                .map_err(|err| match err {
-                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                        PikeStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::Unique,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                        PikeStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::ForeignKey,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
-                })?;
+                .map_err(PikeStoreError::from)?;
 
             for data in metadata {
                 let mut query = pike_organization_metadata::table
@@ -164,53 +134,14 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
                         .set(pike_organization_metadata::end_commit_num.eq(data.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                PikeStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                PikeStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            _ => PikeStoreError::InternalError(InternalError::from_source(
-                                Box::new(err),
-                            )),
-                        })?;
+                        .map_err(PikeStoreError::from)?;
                 }
+
                 insert_into(pike_organization_metadata::table)
                     .values(data)
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => {
-                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                        }
-                    })?;
+                    .map_err(PikeStoreError::from)?;
             }
 
             Ok(())
@@ -228,13 +159,20 @@ impl<'a> PikeStoreAddOrganizationOperation
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
-            let duplicate_org = pike_organization::table
-                .filter(
-                    pike_organization::org_id
-                        .eq(&org.org_id)
-                        .and(pike_organization::service_id.eq(&org.service_id))
-                        .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-                )
+            let mut query = pike_organization::table.into_boxed().filter(
+                pike_organization::org_id
+                    .eq(&org.org_id)
+                    .and(pike_organization::service_id.eq(&org.service_id))
+                    .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &org.service_id {
+                query = query.filter(pike_organization::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_organization::service_id.is_null());
+            }
+
+            let duplicate_org = query
                 .first::<OrganizationModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -259,51 +197,14 @@ impl<'a> PikeStoreAddOrganizationOperation
                     .set(pike_organization::end_commit_num.eq(org.start_commit_num))
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => {
-                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                        }
-                    })?;
+                    .map_err(PikeStoreError::from)?;
             }
+
             insert_into(pike_organization::table)
                 .values(org)
                 .execute(self.conn)
                 .map(|_| ())
-                .map_err(|err| match err {
-                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                        PikeStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::Unique,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                        PikeStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::ForeignKey,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    _ => PikeStoreError::InternalError(InternalError::from_source(Box::new(err))),
-                })?;
+                .map_err(PikeStoreError::from)?;
 
             for data in metadata {
                 let mut query = pike_organization_metadata::table
@@ -346,53 +247,14 @@ impl<'a> PikeStoreAddOrganizationOperation
                         .set(pike_organization_metadata::end_commit_num.eq(data.start_commit_num))
                         .execute(self.conn)
                         .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                PikeStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                PikeStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::ForeignKey,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            _ => PikeStoreError::InternalError(InternalError::from_source(
-                                Box::new(err),
-                            )),
-                        })?;
+                        .map_err(PikeStoreError::from)?;
                 }
+
                 insert_into(pike_organization_metadata::table)
                     .values(data)
                     .execute(self.conn)
                     .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            PikeStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => {
-                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                        }
-                    })?;
+                    .map_err(PikeStoreError::from)?;
             }
 
             Ok(())

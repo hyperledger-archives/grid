@@ -17,6 +17,6 @@ version: '1'
 wasm: /tmp/grid-schema-tp.wasm
 inputs:
   - '621dee01'
-  - 'cad11d'
+  - '621dee05'
 outputs:
   - '621dee01'

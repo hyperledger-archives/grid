@@ -18,6 +18,6 @@ wasm: /tmp/grid-location-tp.wasm
 inputs:
   - '621dee01'
   - '621dee04'
-  - 'cad11d'
+  - '621dee05'
 outputs:
   - '621dee04'

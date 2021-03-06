@@ -15,6 +15,7 @@
 
 - name: gs1_product
   description: "Example product schema"
+  owner: "762"
   properties:
     - name: "width"
       data_type: NUMBER

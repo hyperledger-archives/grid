@@ -22,18 +22,30 @@ message PikePayload {
 
     CREATE_AGENT = 1;
     UPDATE_AGENT = 2;
+    DELETE_AGENT = 8;
 
     CREATE_ORGANIZATION = 3;
     UPDATE_ORGANIZATION = 4;
+    DELETE_ORGANIZATION = 9;
+
+    CREATE_ROLE = 5;
+    UPDATE_ROLE = 6;
+    DELETE_ROLE = 7;
   }
 
   Action action = 1;
 
   CreateAgentAction create_agent = 2;
   UpdateAgentAction update_agent = 3;
+  DeleteAgentAction delete_agent = 4;
 
-  CreateOrganizationAction create_organization = 4;
-  UpdateOrganizationAction update_organization = 5;
+  CreateOrganizationAction create_organization = 5;
+  UpdateOrganizationAction update_organization = 6;
+  DeleteOrganizationAction delete_organization = 7;
+
+  CreateRoleAction create_role = 8;
+  UpdateRoleAction update_role = 9;
+  DeleteRoleAction delete_role = 10;
 }
 
 message CreateAgentAction {
@@ -52,16 +64,51 @@ message UpdateAgentAction {
   repeated KeyValueEntry metadata = 5;
 }
 
+message DeleteAgentAction {
+  string org_id = 1;
+  string public_key = 2;
+}
+
 message CreateOrganizationAction {
   string id = 1;
   string name = 2;
-  string address = 3;
+  repeated AlternateID alternate_ids = 3;
   repeated KeyValueEntry metadata = 4;
 }
 
 message UpdateOrganizationAction {
   string id = 1;
   string name = 2;
-  string address = 3;
-  repeated KeyValueEntry metadata = 4;
+  repeated string locations = 3;
+  repeated AlternateID alternate_ids = 4;
+  repeated KeyValueEntry metadata = 5;
+}
+
+message DeleteOrganizationAction {
+  string id = 1;
+}
+
+message CreateRoleAction {
+  string org_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string permissions = 4;
+  repeated string allowed_organizations = 5;
+  repeated string inherit_from = 6;
+  bool active = 7;
+}
+
+message UpdateRoleAction {
+  string org_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string permissions = 4;
+  repeated string allowed_organizations = 5;
+  repeated string inherit_from = 6;
+  bool active = 7;
+}
+
+message DeleteRoleAction {
+  string org_id = 1;
+  string name = 2;
 }

@@ -17,7 +17,7 @@ use protobuf::RepeatedField;
 
 use std::error::Error as StdError;
 
-use crate::protocol::pike::state::KeyValueEntry;
+use crate::protocol::pike::state::{AlternateID, KeyValueEntry};
 use crate::protos;
 use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
@@ -28,8 +28,13 @@ use crate::protos::{
 pub enum Action {
     CreateAgent,
     UpdateAgent,
+    DeleteAgent,
     CreateOrganization,
     UpdateOrganization,
+    DeleteOrganization,
+    CreateRole,
+    UpdateRole,
+    DeleteRole,
 }
 
 impl FromProto<protos::pike_payload::PikePayload_Action> for Action {
@@ -39,12 +44,19 @@ impl FromProto<protos::pike_payload::PikePayload_Action> for Action {
         match actions {
             protos::pike_payload::PikePayload_Action::CREATE_AGENT => Ok(Action::CreateAgent),
             protos::pike_payload::PikePayload_Action::UPDATE_AGENT => Ok(Action::UpdateAgent),
+            protos::pike_payload::PikePayload_Action::DELETE_AGENT => Ok(Action::DeleteAgent),
             protos::pike_payload::PikePayload_Action::CREATE_ORGANIZATION => {
                 Ok(Action::CreateOrganization)
             }
             protos::pike_payload::PikePayload_Action::UPDATE_ORGANIZATION => {
                 Ok(Action::UpdateOrganization)
             }
+            protos::pike_payload::PikePayload_Action::DELETE_ORGANIZATION => {
+                Ok(Action::DeleteOrganization)
+            }
+            protos::pike_payload::PikePayload_Action::CREATE_ROLE => Ok(Action::CreateRole),
+            protos::pike_payload::PikePayload_Action::UPDATE_ROLE => Ok(Action::UpdateRole),
+            protos::pike_payload::PikePayload_Action::DELETE_ROLE => Ok(Action::DeleteRole),
             protos::pike_payload::PikePayload_Action::ACTION_UNSET => {
                 Err(ProtoConversionError::InvalidTypeError(
                     "Cannot convert PikePayload_Action with type unset.".to_string(),
@@ -59,12 +71,19 @@ impl FromNative<Action> for protos::pike_payload::PikePayload_Action {
         match action {
             Action::CreateAgent => Ok(protos::pike_payload::PikePayload_Action::CREATE_AGENT),
             Action::UpdateAgent => Ok(protos::pike_payload::PikePayload_Action::UPDATE_AGENT),
+            Action::DeleteAgent => Ok(protos::pike_payload::PikePayload_Action::DELETE_AGENT),
             Action::CreateOrganization => {
                 Ok(protos::pike_payload::PikePayload_Action::CREATE_ORGANIZATION)
             }
             Action::UpdateOrganization => {
                 Ok(protos::pike_payload::PikePayload_Action::UPDATE_ORGANIZATION)
             }
+            Action::DeleteOrganization => {
+                Ok(protos::pike_payload::PikePayload_Action::DELETE_ORGANIZATION)
+            }
+            Action::CreateRole => Ok(protos::pike_payload::PikePayload_Action::CREATE_ROLE),
+            Action::UpdateRole => Ok(protos::pike_payload::PikePayload_Action::UPDATE_ROLE),
+            Action::DeleteRole => Ok(protos::pike_payload::PikePayload_Action::DELETE_ROLE),
         }
     }
 }
@@ -454,12 +473,78 @@ impl UpdateAgentActionBuilder {
     }
 }
 
-/// Native implementation for CreageOrganizationAction
+/// Native implementation for DeleteAgentAction
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DeleteAgentAction {
+    org_id: String,
+    public_key: String,
+}
+
+impl DeleteAgentAction {
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    pub fn public_key(&self) -> &str {
+        &self.public_key
+    }
+}
+
+impl FromProto<protos::pike_payload::DeleteAgentAction> for DeleteAgentAction {
+    fn from_proto(
+        delete_agent: protos::pike_payload::DeleteAgentAction,
+    ) -> Result<Self, ProtoConversionError> {
+        Ok(DeleteAgentAction {
+            org_id: delete_agent.get_org_id().to_string(),
+            public_key: delete_agent.get_public_key().to_string(),
+        })
+    }
+}
+
+impl FromNative<DeleteAgentAction> for protos::pike_payload::DeleteAgentAction {
+    fn from_native(delete_agent: DeleteAgentAction) -> Result<Self, ProtoConversionError> {
+        let mut proto_delete_agent = protos::pike_payload::DeleteAgentAction::new();
+
+        proto_delete_agent.set_org_id(delete_agent.org_id().to_string());
+        proto_delete_agent.set_public_key(delete_agent.public_key().to_string());
+
+        Ok(proto_delete_agent)
+    }
+}
+
+impl FromBytes<DeleteAgentAction> for DeleteAgentAction {
+    fn from_bytes(bytes: &[u8]) -> Result<DeleteAgentAction, ProtoConversionError> {
+        let proto: protos::pike_payload::DeleteAgentAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get DeleteAgentAction from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for DeleteAgentAction {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from DeleteAgentAction".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_payload::DeleteAgentAction> for DeleteAgentAction {}
+impl IntoNative<DeleteAgentAction> for protos::pike_payload::DeleteAgentAction {}
+
+/// Native implementation for CreateOrganizationAction
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreateOrganizationAction {
     org_id: String,
     name: String,
-    address: String,
+    alternate_ids: Vec<AlternateID>,
     metadata: Vec<KeyValueEntry>,
 }
 
@@ -472,8 +557,8 @@ impl CreateOrganizationAction {
         &self.name
     }
 
-    pub fn address(&self) -> &str {
-        &self.address
+    pub fn alternate_ids(&self) -> &[AlternateID] {
+        &self.alternate_ids
     }
 
     pub fn metadata(&self) -> &[KeyValueEntry] {
@@ -488,7 +573,12 @@ impl FromProto<protos::pike_payload::CreateOrganizationAction> for CreateOrganiz
         Ok(CreateOrganizationAction {
             org_id: create_org.get_id().to_string(),
             name: create_org.get_name().to_string(),
-            address: create_org.get_address().to_string(),
+            alternate_ids: create_org
+                .get_alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(AlternateID::from_proto)
+                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
             metadata: create_org
                 .get_metadata()
                 .to_vec()
@@ -505,7 +595,14 @@ impl FromNative<CreateOrganizationAction> for protos::pike_payload::CreateOrgani
 
         proto_create_org.set_id(create_org.org_id().to_string());
         proto_create_org.set_name(create_org.name().to_string());
-        proto_create_org.set_address(create_org.address().to_string());
+        proto_create_org.set_alternate_ids(RepeatedField::from_vec(
+            create_org
+                .alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(AlternateID::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+        ));
         proto_create_org.set_metadata(RepeatedField::from_vec(
             create_org
                 .metadata()
@@ -581,7 +678,7 @@ impl std::fmt::Display for CreateOrganizationActionBuildError {
 pub struct CreateOrganizationActionBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
-    pub address: Option<String>,
+    pub alternate_ids: Vec<AlternateID>,
     pub metadata: Vec<KeyValueEntry>,
 }
 
@@ -600,8 +697,11 @@ impl CreateOrganizationActionBuilder {
         self
     }
 
-    pub fn with_address(mut self, address: String) -> CreateOrganizationActionBuilder {
-        self.address = Some(address);
+    pub fn with_alternate_ids(
+        mut self,
+        alternate_ids: Vec<AlternateID>,
+    ) -> CreateOrganizationActionBuilder {
+        self.alternate_ids = alternate_ids;
         self
     }
 
@@ -624,18 +724,14 @@ impl CreateOrganizationActionBuilder {
             CreateOrganizationActionBuildError::MissingField("'name' field is required".to_string())
         })?;
 
-        let address = self.address.ok_or_else(|| {
-            CreateOrganizationActionBuildError::MissingField(
-                "'address' field is required".to_string(),
-            )
-        })?;
+        let alternate_ids = self.alternate_ids;
 
         let metadata = self.metadata;
 
         Ok(CreateOrganizationAction {
             org_id,
             name,
-            address,
+            alternate_ids,
             metadata,
         })
     }
@@ -646,7 +742,8 @@ impl CreateOrganizationActionBuilder {
 pub struct UpdateOrganizationAction {
     org_id: String,
     name: String,
-    address: String,
+    locations: Vec<String>,
+    alternate_ids: Vec<AlternateID>,
     metadata: Vec<KeyValueEntry>,
 }
 
@@ -659,8 +756,12 @@ impl UpdateOrganizationAction {
         &self.name
     }
 
-    pub fn address(&self) -> &str {
-        &self.address
+    pub fn locations(&self) -> &[String] {
+        &self.locations
+    }
+
+    pub fn alternate_ids(&self) -> &[AlternateID] {
+        &self.alternate_ids
     }
 
     pub fn metadata(&self) -> &[KeyValueEntry] {
@@ -675,7 +776,13 @@ impl FromProto<protos::pike_payload::UpdateOrganizationAction> for UpdateOrganiz
         Ok(UpdateOrganizationAction {
             org_id: create_org.get_id().to_string(),
             name: create_org.get_name().to_string(),
-            address: create_org.get_address().to_string(),
+            locations: create_org.get_locations().to_vec(),
+            alternate_ids: create_org
+                .get_alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(AlternateID::from_proto)
+                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
             metadata: create_org
                 .get_metadata()
                 .to_vec()
@@ -692,7 +799,15 @@ impl FromNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
 
         proto_update_org.set_id(update_org.org_id().to_string());
         proto_update_org.set_name(update_org.name().to_string());
-        proto_update_org.set_address(update_org.address().to_string());
+        proto_update_org.set_locations(RepeatedField::from_vec(update_org.locations().to_vec()));
+        proto_update_org.set_alternate_ids(RepeatedField::from_vec(
+            update_org
+                .alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(AlternateID::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+        ));
         proto_update_org.set_metadata(RepeatedField::from_vec(
             update_org
                 .metadata()
@@ -768,7 +883,8 @@ impl std::fmt::Display for UpdateOrganizationActionBuildError {
 pub struct UpdateOrganizationActionBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
-    pub address: Option<String>,
+    pub locations: Vec<String>,
+    pub alternate_ids: Vec<AlternateID>,
     pub metadata: Vec<KeyValueEntry>,
 }
 
@@ -787,8 +903,16 @@ impl UpdateOrganizationActionBuilder {
         self
     }
 
-    pub fn with_address(mut self, address: String) -> UpdateOrganizationActionBuilder {
-        self.address = Some(address);
+    pub fn with_locations(mut self, locations: Vec<String>) -> UpdateOrganizationActionBuilder {
+        self.locations = locations;
+        self
+    }
+
+    pub fn with_alternate_ids(
+        mut self,
+        alternate_ids: Vec<AlternateID>,
+    ) -> UpdateOrganizationActionBuilder {
+        self.alternate_ids = alternate_ids;
         self
     }
 
@@ -809,16 +933,712 @@ impl UpdateOrganizationActionBuilder {
 
         let name = self.name.unwrap_or_default();
 
-        let address = self.address.unwrap_or_default();
+        let locations = self.locations;
+
+        let alternate_ids = self.alternate_ids;
 
         let metadata = self.metadata;
 
         Ok(UpdateOrganizationAction {
             org_id,
             name,
-            address,
+            locations,
+            alternate_ids,
             metadata,
         })
+    }
+}
+
+/// Native implementation for DeleteOrganizationAction
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DeleteOrganizationAction {
+    id: String,
+}
+
+impl DeleteOrganizationAction {
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+}
+
+impl FromProto<protos::pike_payload::DeleteOrganizationAction> for DeleteOrganizationAction {
+    fn from_proto(
+        delete_organization: protos::pike_payload::DeleteOrganizationAction,
+    ) -> Result<Self, ProtoConversionError> {
+        Ok(DeleteOrganizationAction {
+            id: delete_organization.get_id().to_string(),
+        })
+    }
+}
+
+impl FromNative<DeleteOrganizationAction> for protos::pike_payload::DeleteOrganizationAction {
+    fn from_native(
+        delete_organization: DeleteOrganizationAction,
+    ) -> Result<Self, ProtoConversionError> {
+        let mut proto_delete_organization = protos::pike_payload::DeleteOrganizationAction::new();
+
+        proto_delete_organization.set_id(delete_organization.id().to_string());
+
+        Ok(proto_delete_organization)
+    }
+}
+
+impl FromBytes<DeleteOrganizationAction> for DeleteOrganizationAction {
+    fn from_bytes(bytes: &[u8]) -> Result<DeleteOrganizationAction, ProtoConversionError> {
+        let proto: protos::pike_payload::DeleteOrganizationAction =
+            Message::parse_from_bytes(bytes).map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get DeleteOrganizationAction from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for DeleteOrganizationAction {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from DeleteOrganizationAction".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_payload::DeleteOrganizationAction> for DeleteOrganizationAction {}
+impl IntoNative<DeleteOrganizationAction> for protos::pike_payload::DeleteOrganizationAction {}
+
+#[derive(Debug)]
+pub enum DeleteOrganizationActionBuildError {
+    MissingField(String),
+}
+
+impl StdError for DeleteOrganizationActionBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            DeleteOrganizationActionBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            DeleteOrganizationActionBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for DeleteOrganizationActionBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            DeleteOrganizationActionBuildError::MissingField(ref s) => {
+                write!(f, "MissingField: {}", s)
+            }
+        }
+    }
+}
+
+/// Builder used to create a DeleteOrganizationAction
+#[derive(Default, Clone)]
+pub struct DeleteOrganizationActionBuilder {
+    pub id: Option<String>,
+}
+
+impl DeleteOrganizationActionBuilder {
+    pub fn new() -> Self {
+        DeleteOrganizationActionBuilder::default()
+    }
+
+    pub fn with_id(mut self, id: String) -> DeleteOrganizationActionBuilder {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn build(self) -> Result<DeleteOrganizationAction, DeleteOrganizationActionBuildError> {
+        let id = self.id.ok_or_else(|| {
+            DeleteOrganizationActionBuildError::MissingField("'id' field is required".to_string())
+        })?;
+
+        Ok(DeleteOrganizationAction { id })
+    }
+}
+
+/// Native implementation for CreateRoleAction
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct CreateRoleAction {
+    org_id: String,
+    name: String,
+    description: String,
+    permissions: Vec<String>,
+    allowed_organizations: Vec<String>,
+    inherit_from: Vec<String>,
+    active: bool,
+}
+
+impl CreateRoleAction {
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn permissions(&self) -> &[String] {
+        &self.permissions
+    }
+
+    pub fn allowed_organizations(&self) -> &[String] {
+        &self.allowed_organizations
+    }
+
+    pub fn inherit_from(&self) -> &[String] {
+        &self.inherit_from
+    }
+
+    pub fn active(&self) -> &bool {
+        &self.active
+    }
+}
+
+impl FromProto<protos::pike_payload::CreateRoleAction> for CreateRoleAction {
+    fn from_proto(
+        create_role: protos::pike_payload::CreateRoleAction,
+    ) -> Result<Self, ProtoConversionError> {
+        Ok(CreateRoleAction {
+            org_id: create_role.get_org_id().to_string(),
+            name: create_role.get_name().to_string(),
+            description: create_role.get_description().to_string(),
+            permissions: create_role.get_permissions().to_vec(),
+            allowed_organizations: create_role.get_allowed_organizations().to_vec(),
+            inherit_from: create_role.get_inherit_from().to_vec(),
+            active: create_role.get_active(),
+        })
+    }
+}
+
+impl FromNative<CreateRoleAction> for protos::pike_payload::CreateRoleAction {
+    fn from_native(create_role: CreateRoleAction) -> Result<Self, ProtoConversionError> {
+        let mut proto_create_role = protos::pike_payload::CreateRoleAction::new();
+
+        proto_create_role.set_org_id(create_role.org_id().to_string());
+        proto_create_role.set_name(create_role.name().to_string());
+        proto_create_role.set_description(create_role.description().to_string());
+        proto_create_role
+            .set_permissions(RepeatedField::from_vec(create_role.permissions().to_vec()));
+        proto_create_role.set_allowed_organizations(RepeatedField::from_vec(
+            create_role.allowed_organizations().to_vec(),
+        ));
+        proto_create_role
+            .set_inherit_from(RepeatedField::from_vec(create_role.inherit_from().to_vec()));
+        proto_create_role.set_active(*create_role.active());
+
+        Ok(proto_create_role)
+    }
+}
+
+impl FromBytes<CreateRoleAction> for CreateRoleAction {
+    fn from_bytes(bytes: &[u8]) -> Result<CreateRoleAction, ProtoConversionError> {
+        let proto: protos::pike_payload::CreateRoleAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get CreateRoleAction from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for CreateRoleAction {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from CreateRoleAction".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_payload::CreateRoleAction> for CreateRoleAction {}
+impl IntoNative<CreateRoleAction> for protos::pike_payload::CreateRoleAction {}
+
+#[derive(Debug)]
+pub enum CreateRoleActionBuildError {
+    MissingField(String),
+}
+
+impl StdError for CreateRoleActionBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            CreateRoleActionBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            CreateRoleActionBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for CreateRoleActionBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            CreateRoleActionBuildError::MissingField(ref s) => {
+                write!(f, "MissingField: {}", s)
+            }
+        }
+    }
+}
+
+/// Builder used to create a CreateRoleAction
+#[derive(Default, Clone)]
+pub struct CreateRoleActionBuilder {
+    pub org_id: Option<String>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub permissions: Vec<String>,
+    pub allowed_organizations: Vec<String>,
+    pub inherit_from: Vec<String>,
+    pub active: Option<bool>,
+}
+
+impl CreateRoleActionBuilder {
+    pub fn new() -> Self {
+        CreateRoleActionBuilder::default()
+    }
+
+    pub fn with_org_id(mut self, org_id: String) -> CreateRoleActionBuilder {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    pub fn with_name(mut self, name: String) -> CreateRoleActionBuilder {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn with_description(mut self, description: String) -> CreateRoleActionBuilder {
+        self.description = Some(description);
+        self
+    }
+
+    pub fn with_permissions(mut self, permissions: Vec<String>) -> CreateRoleActionBuilder {
+        self.permissions = permissions;
+        self
+    }
+
+    pub fn with_allowed_organizations(
+        mut self,
+        allowed_organizations: Vec<String>,
+    ) -> CreateRoleActionBuilder {
+        self.allowed_organizations = allowed_organizations;
+        self
+    }
+
+    pub fn with_inherit_from(mut self, inherit_from: Vec<String>) -> CreateRoleActionBuilder {
+        self.inherit_from = inherit_from;
+        self
+    }
+
+    pub fn with_active(mut self, active: bool) -> CreateRoleActionBuilder {
+        self.active = Some(active);
+        self
+    }
+
+    pub fn build(self) -> Result<CreateRoleAction, CreateRoleActionBuildError> {
+        let org_id = self.org_id.ok_or_else(|| {
+            CreateRoleActionBuildError::MissingField("'org_id' field is required".to_string())
+        })?;
+
+        let name = self.name.ok_or_else(|| {
+            CreateRoleActionBuildError::MissingField("'name' field is required".to_string())
+        })?;
+
+        let description = self.description.ok_or_else(|| {
+            CreateRoleActionBuildError::MissingField("'description' field is required".to_string())
+        })?;
+
+        let permissions = self.permissions;
+
+        let allowed_organizations = self.allowed_organizations;
+
+        let inherit_from = self.inherit_from;
+
+        let active = self.active.ok_or_else(|| {
+            CreateRoleActionBuildError::MissingField("'active' field is required".to_string())
+        })?;
+
+        Ok(CreateRoleAction {
+            org_id,
+            name,
+            description,
+            permissions,
+            allowed_organizations,
+            inherit_from,
+            active,
+        })
+    }
+}
+
+/// Native implementation for UpdateRoleAction
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct UpdateRoleAction {
+    org_id: String,
+    name: String,
+    description: String,
+    permissions: Vec<String>,
+    allowed_organizations: Vec<String>,
+    inherit_from: Vec<String>,
+    active: bool,
+}
+
+impl UpdateRoleAction {
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn permissions(&self) -> &[String] {
+        &self.permissions
+    }
+
+    pub fn allowed_organizations(&self) -> &[String] {
+        &self.allowed_organizations
+    }
+
+    pub fn inherit_from(&self) -> &[String] {
+        &self.inherit_from
+    }
+
+    pub fn active(&self) -> &bool {
+        &self.active
+    }
+}
+
+impl FromProto<protos::pike_payload::UpdateRoleAction> for UpdateRoleAction {
+    fn from_proto(
+        update_role: protos::pike_payload::UpdateRoleAction,
+    ) -> Result<Self, ProtoConversionError> {
+        Ok(UpdateRoleAction {
+            org_id: update_role.get_org_id().to_string(),
+            name: update_role.get_name().to_string(),
+            description: update_role.get_description().to_string(),
+            permissions: update_role.get_permissions().to_vec(),
+            allowed_organizations: update_role.get_allowed_organizations().to_vec(),
+            inherit_from: update_role.get_inherit_from().to_vec(),
+            active: update_role.get_active(),
+        })
+    }
+}
+
+impl FromNative<UpdateRoleAction> for protos::pike_payload::UpdateRoleAction {
+    fn from_native(update_role: UpdateRoleAction) -> Result<Self, ProtoConversionError> {
+        let mut proto_update_role = protos::pike_payload::UpdateRoleAction::new();
+
+        proto_update_role.set_org_id(update_role.org_id().to_string());
+        proto_update_role.set_name(update_role.name().to_string());
+        proto_update_role.set_description(update_role.description().to_string());
+        proto_update_role
+            .set_permissions(RepeatedField::from_vec(update_role.permissions().to_vec()));
+        proto_update_role.set_allowed_organizations(RepeatedField::from_vec(
+            update_role.allowed_organizations().to_vec(),
+        ));
+        proto_update_role
+            .set_inherit_from(RepeatedField::from_vec(update_role.inherit_from().to_vec()));
+        proto_update_role.set_active(*update_role.active());
+
+        Ok(proto_update_role)
+    }
+}
+
+impl FromBytes<UpdateRoleAction> for UpdateRoleAction {
+    fn from_bytes(bytes: &[u8]) -> Result<UpdateRoleAction, ProtoConversionError> {
+        let proto: protos::pike_payload::UpdateRoleAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get UpdateRoleAction from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for UpdateRoleAction {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from UpdateRoleAction".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_payload::UpdateRoleAction> for UpdateRoleAction {}
+impl IntoNative<UpdateRoleAction> for protos::pike_payload::UpdateRoleAction {}
+
+#[derive(Debug)]
+pub enum UpdateRoleActionBuildError {
+    MissingField(String),
+}
+
+impl StdError for UpdateRoleActionBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            UpdateRoleActionBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            UpdateRoleActionBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for UpdateRoleActionBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            UpdateRoleActionBuildError::MissingField(ref s) => {
+                write!(f, "MissingField: {}", s)
+            }
+        }
+    }
+}
+
+/// Builder used to create a UpdateRoleAction
+#[derive(Default, Clone)]
+pub struct UpdateRoleActionBuilder {
+    pub org_id: Option<String>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub permissions: Vec<String>,
+    pub allowed_organizations: Vec<String>,
+    pub inherit_from: Vec<String>,
+    pub active: Option<bool>,
+}
+
+impl UpdateRoleActionBuilder {
+    pub fn new() -> Self {
+        UpdateRoleActionBuilder::default()
+    }
+
+    pub fn with_org_id(mut self, org_id: String) -> UpdateRoleActionBuilder {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    pub fn with_name(mut self, name: String) -> UpdateRoleActionBuilder {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn with_description(mut self, description: String) -> UpdateRoleActionBuilder {
+        self.description = Some(description);
+        self
+    }
+
+    pub fn with_permissions(mut self, permissions: Vec<String>) -> UpdateRoleActionBuilder {
+        self.permissions = permissions;
+        self
+    }
+
+    pub fn with_allowed_organizations(
+        mut self,
+        allowed_organizations: Vec<String>,
+    ) -> UpdateRoleActionBuilder {
+        self.allowed_organizations = allowed_organizations;
+        self
+    }
+
+    pub fn with_inherit_from(mut self, inherit_from: Vec<String>) -> UpdateRoleActionBuilder {
+        self.inherit_from = inherit_from;
+        self
+    }
+
+    pub fn with_active(mut self, active: bool) -> UpdateRoleActionBuilder {
+        self.active = Some(active);
+        self
+    }
+
+    pub fn build(self) -> Result<UpdateRoleAction, UpdateRoleActionBuildError> {
+        let org_id = self.org_id.ok_or_else(|| {
+            UpdateRoleActionBuildError::MissingField("'org_id' field is required".to_string())
+        })?;
+
+        let name = self.name.ok_or_else(|| {
+            UpdateRoleActionBuildError::MissingField("'name' field is required".to_string())
+        })?;
+
+        let description = self.description.ok_or_else(|| {
+            UpdateRoleActionBuildError::MissingField("'description' field is required".to_string())
+        })?;
+
+        let permissions = self.permissions;
+
+        let allowed_organizations = self.allowed_organizations;
+
+        let inherit_from = self.inherit_from;
+
+        let active = self.active.ok_or_else(|| {
+            UpdateRoleActionBuildError::MissingField("'active' field is required".to_string())
+        })?;
+
+        Ok(UpdateRoleAction {
+            org_id,
+            name,
+            description,
+            permissions,
+            allowed_organizations,
+            inherit_from,
+            active,
+        })
+    }
+}
+
+/// Native implementation for DeleteRoleAction
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DeleteRoleAction {
+    org_id: String,
+    name: String,
+}
+
+impl DeleteRoleAction {
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl FromProto<protos::pike_payload::DeleteRoleAction> for DeleteRoleAction {
+    fn from_proto(
+        delete_role: protos::pike_payload::DeleteRoleAction,
+    ) -> Result<Self, ProtoConversionError> {
+        Ok(DeleteRoleAction {
+            org_id: delete_role.get_org_id().to_string(),
+            name: delete_role.get_name().to_string(),
+        })
+    }
+}
+
+impl FromNative<DeleteRoleAction> for protos::pike_payload::DeleteRoleAction {
+    fn from_native(delete_role: DeleteRoleAction) -> Result<Self, ProtoConversionError> {
+        let mut proto_delete_role = protos::pike_payload::DeleteRoleAction::new();
+
+        proto_delete_role.set_org_id(delete_role.org_id().to_string());
+        proto_delete_role.set_name(delete_role.name().to_string());
+
+        Ok(proto_delete_role)
+    }
+}
+
+impl FromBytes<DeleteRoleAction> for DeleteRoleAction {
+    fn from_bytes(bytes: &[u8]) -> Result<DeleteRoleAction, ProtoConversionError> {
+        let proto: protos::pike_payload::DeleteRoleAction = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get DeleteRoleAction from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for DeleteRoleAction {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from DeleteRoleAction".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_payload::DeleteRoleAction> for DeleteRoleAction {}
+impl IntoNative<DeleteRoleAction> for protos::pike_payload::DeleteRoleAction {}
+
+#[derive(Debug)]
+pub enum DeleteRoleActionBuildError {
+    MissingField(String),
+}
+
+impl StdError for DeleteRoleActionBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            DeleteRoleActionBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            DeleteRoleActionBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for DeleteRoleActionBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            DeleteRoleActionBuildError::MissingField(ref s) => {
+                write!(f, "MissingField: {}", s)
+            }
+        }
+    }
+}
+
+/// Builder used to create a DeleteRoleAction
+#[derive(Default, Clone)]
+pub struct DeleteRoleActionBuilder {
+    pub org_id: Option<String>,
+    pub name: Option<String>,
+}
+
+impl DeleteRoleActionBuilder {
+    pub fn new() -> Self {
+        DeleteRoleActionBuilder::default()
+    }
+
+    pub fn with_org_id(mut self, org_id: String) -> DeleteRoleActionBuilder {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    pub fn with_name(mut self, name: String) -> DeleteRoleActionBuilder {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn build(self) -> Result<DeleteRoleAction, DeleteRoleActionBuildError> {
+        let org_id = self.org_id.ok_or_else(|| {
+            DeleteRoleActionBuildError::MissingField("'org_id' field is required".to_string())
+        })?;
+
+        let name = self.name.ok_or_else(|| {
+            DeleteRoleActionBuildError::MissingField("'name' field is required".to_string())
+        })?;
+
+        Ok(DeleteRoleAction { org_id, name })
     }
 }
 
@@ -828,8 +1648,13 @@ pub struct PikePayload {
     action: Action,
     create_agent: CreateAgentAction,
     update_agent: UpdateAgentAction,
+    delete_agent: DeleteAgentAction,
     create_organization: CreateOrganizationAction,
     update_organization: UpdateOrganizationAction,
+    delete_organization: DeleteOrganizationAction,
+    create_role: CreateRoleAction,
+    update_role: UpdateRoleAction,
+    delete_role: DeleteRoleAction,
 }
 
 impl PikePayload {
@@ -845,12 +1670,32 @@ impl PikePayload {
         &self.update_agent
     }
 
+    pub fn delete_agent(&self) -> &DeleteAgentAction {
+        &self.delete_agent
+    }
+
     pub fn create_organization(&self) -> &CreateOrganizationAction {
         &self.create_organization
     }
 
     pub fn update_organization(&self) -> &UpdateOrganizationAction {
         &self.update_organization
+    }
+
+    pub fn delete_organization(&self) -> &DeleteOrganizationAction {
+        &self.delete_organization
+    }
+
+    pub fn create_role(&self) -> &CreateRoleAction {
+        &self.create_role
+    }
+
+    pub fn update_role(&self) -> &UpdateRoleAction {
+        &self.update_role
+    }
+
+    pub fn delete_role(&self) -> &DeleteRoleAction {
+        &self.delete_role
     }
 }
 
@@ -862,12 +1707,19 @@ impl FromProto<protos::pike_payload::PikePayload> for PikePayload {
             action: Action::from_proto(payload.get_action())?,
             create_agent: CreateAgentAction::from_proto(payload.get_create_agent().clone())?,
             update_agent: UpdateAgentAction::from_proto(payload.get_update_agent().clone())?,
+            delete_agent: DeleteAgentAction::from_proto(payload.get_delete_agent().clone())?,
             create_organization: CreateOrganizationAction::from_proto(
                 payload.get_create_organization().clone(),
             )?,
             update_organization: UpdateOrganizationAction::from_proto(
                 payload.get_update_organization().clone(),
             )?,
+            delete_organization: DeleteOrganizationAction::from_proto(
+                payload.get_delete_organization().clone(),
+            )?,
+            create_role: CreateRoleAction::from_proto(payload.get_create_role().clone())?,
+            update_role: UpdateRoleAction::from_proto(payload.get_update_role().clone())?,
+            delete_role: DeleteRoleAction::from_proto(payload.get_delete_role().clone())?,
         })
     }
 }
@@ -879,8 +1731,13 @@ impl FromNative<PikePayload> for protos::pike_payload::PikePayload {
         proto_payload.set_action(payload.action().clone().into_proto()?);
         proto_payload.set_create_agent(payload.create_agent().clone().into_proto()?);
         proto_payload.set_update_agent(payload.update_agent().clone().into_proto()?);
+        proto_payload.set_delete_agent(payload.delete_agent().clone().into_proto()?);
         proto_payload.set_create_organization(payload.create_organization().clone().into_proto()?);
         proto_payload.set_update_organization(payload.update_organization().clone().into_proto()?);
+        proto_payload.set_delete_organization(payload.delete_organization().clone().into_proto()?);
+        proto_payload.set_create_role(payload.create_role().clone().into_proto()?);
+        proto_payload.set_update_role(payload.update_role().clone().into_proto()?);
+        proto_payload.set_delete_role(payload.delete_role().clone().into_proto()?);
 
         Ok(proto_payload)
     }
@@ -946,8 +1803,13 @@ pub struct PikePayloadBuilder {
     pub action: Option<Action>,
     pub create_agent: Option<CreateAgentAction>,
     pub update_agent: Option<UpdateAgentAction>,
+    pub delete_agent: Option<DeleteAgentAction>,
     pub create_organization: Option<CreateOrganizationAction>,
     pub update_organization: Option<UpdateOrganizationAction>,
+    pub delete_organization: Option<DeleteOrganizationAction>,
+    pub create_role: Option<CreateRoleAction>,
+    pub update_role: Option<UpdateRoleAction>,
+    pub delete_role: Option<DeleteRoleAction>,
 }
 
 impl PikePayloadBuilder {
@@ -970,6 +1832,11 @@ impl PikePayloadBuilder {
         self
     }
 
+    pub fn with_delete_agent(mut self, delete_agent: DeleteAgentAction) -> PikePayloadBuilder {
+        self.delete_agent = Some(delete_agent);
+        self
+    }
+
     pub fn with_create_organization(
         mut self,
         create_organization: CreateOrganizationAction,
@@ -983,6 +1850,29 @@ impl PikePayloadBuilder {
         update_organization: UpdateOrganizationAction,
     ) -> PikePayloadBuilder {
         self.update_organization = Some(update_organization);
+        self
+    }
+
+    pub fn with_delete_organization(
+        mut self,
+        delete_organization: DeleteOrganizationAction,
+    ) -> PikePayloadBuilder {
+        self.delete_organization = Some(delete_organization);
+        self
+    }
+
+    pub fn with_create_role(mut self, create_role: CreateRoleAction) -> PikePayloadBuilder {
+        self.create_role = Some(create_role);
+        self
+    }
+
+    pub fn with_update_role(mut self, update_role: UpdateRoleAction) -> PikePayloadBuilder {
+        self.update_role = Some(update_role);
+        self
+    }
+
+    pub fn with_delete_role(mut self, delete_role: DeleteRoleAction) -> PikePayloadBuilder {
+        self.delete_role = Some(delete_role);
         self
     }
 
@@ -1015,6 +1905,18 @@ impl PikePayloadBuilder {
             }
         };
 
+        let delete_agent = {
+            if action == Action::DeleteAgent {
+                self.delete_agent.ok_or_else(|| {
+                    PikePayloadBuildError::MissingField(
+                        "'delete_agent' field is required".to_string(),
+                    )
+                })?
+            } else {
+                DeleteAgentAction::default()
+            }
+        };
+
         let create_organization = {
             if action == Action::CreateOrganization {
                 self.create_organization.ok_or_else(|| {
@@ -1039,12 +1941,65 @@ impl PikePayloadBuilder {
             }
         };
 
+        let delete_organization = {
+            if action == Action::DeleteOrganization {
+                self.delete_organization.ok_or_else(|| {
+                    PikePayloadBuildError::MissingField(
+                        "'delete_organization' field is required".to_string(),
+                    )
+                })?
+            } else {
+                DeleteOrganizationAction::default()
+            }
+        };
+
+        let create_role = {
+            if action == Action::CreateRole {
+                self.create_role.ok_or_else(|| {
+                    PikePayloadBuildError::MissingField(
+                        "'create_role' field is required".to_string(),
+                    )
+                })?
+            } else {
+                CreateRoleAction::default()
+            }
+        };
+
+        let update_role = {
+            if action == Action::UpdateRole {
+                self.update_role.ok_or_else(|| {
+                    PikePayloadBuildError::MissingField(
+                        "'update_role' field is required".to_string(),
+                    )
+                })?
+            } else {
+                UpdateRoleAction::default()
+            }
+        };
+
+        let delete_role = {
+            if action == Action::DeleteRole {
+                self.delete_role.ok_or_else(|| {
+                    PikePayloadBuildError::MissingField(
+                        "'delete_role' field is required".to_string(),
+                    )
+                })?
+            } else {
+                DeleteRoleAction::default()
+            }
+        };
+
         Ok(PikePayload {
             action,
             create_agent,
             update_agent,
+            delete_agent,
             create_organization,
             update_organization,
+            delete_organization,
+            create_role,
+            update_role,
+            delete_role,
         })
     }
 }
@@ -1173,14 +2128,12 @@ mod tests {
         let create_organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
             .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 
         assert_eq!(create_organization.org_id(), "organization");
         assert_eq!(create_organization.name(), "name");
-        assert_eq!(create_organization.address(), "address");
         assert_eq!(create_organization.metadata(), [key_value]);
     }
 
@@ -1198,7 +2151,6 @@ mod tests {
         let original = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
             .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
@@ -1215,13 +2167,13 @@ mod tests {
         let update_organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["location".to_string()])
             .build()
             .unwrap();
 
         assert_eq!(update_organization.org_id(), "organization");
         assert_eq!(update_organization.name(), "name");
-        assert_eq!(update_organization.address(), "address");
+        assert_eq!(update_organization.locations(), ["location"]);
     }
 
     #[test]
@@ -1231,7 +2183,7 @@ mod tests {
         let original = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["location".to_string()])
             .build()
             .unwrap();
 
@@ -1327,7 +2279,6 @@ mod tests {
         let action = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
             .build()
             .unwrap();
 
@@ -1355,7 +2306,7 @@ mod tests {
         let action = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["location".to_string()])
             .build()
             .unwrap();
 
@@ -1383,7 +2334,7 @@ mod tests {
         let action = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
-            .with_address("address".to_string())
+            .with_locations(vec!["location".to_string()])
             .build()
             .unwrap();
 

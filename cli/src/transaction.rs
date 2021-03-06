@@ -36,7 +36,7 @@ use crate::key;
 use crate::CliError;
 
 const PIKE_FAMILY_NAME: &str = "pike";
-const PIKE_FAMILY_VERSION: &str = "1";
+const PIKE_FAMILY_VERSION: &str = "2";
 
 const GRID_SCHEMA_FAMILY_NAME: &str = "grid_schema";
 const GRID_SCHEMA_FAMILY_VERSION: &str = "1";

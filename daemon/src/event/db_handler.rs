@@ -39,11 +39,13 @@ use grid_sdk::{
 #[cfg(feature = "pike")]
 use grid_sdk::{
     pike::{
-        addressing::{PIKE_AGENT_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE},
-        store::{Agent, Organization, OrganizationMetadata},
+        addressing::{
+            PIKE_AGENT_NAMESPACE, PIKE_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE, PIKE_ROLE_NAMESPACE,
+        },
+        store::{Agent, AlternateID, Organization, OrganizationMetadata, Role},
         DieselPikeStore, PikeStore,
     },
-    protocol::pike::state::{AgentList, OrganizationList},
+    protocol::pike::state::{AgentList, OrganizationList, RoleList},
 };
 #[cfg(feature = "product")]
 use grid_sdk::{
@@ -216,6 +218,13 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                         orgs.into_iter()
                             .try_for_each(|org| self.pike_store.add_organization(org))?;
                     }
+                    #[cfg(feature = "pike")]
+                    DbInsertOperation::Roles(roles) => {
+                        debug!("Inserting {} roles", roles.len());
+                        roles
+                            .into_iter()
+                            .try_for_each(|role| self.pike_store.add_role(role))?;
+                    }
                     #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
                         debug!("Inserting {} schemas", schemas.len());
@@ -387,6 +396,13 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
                         orgs.into_iter()
                             .try_for_each(|org| self.pike_store.add_organization(org))?;
                     }
+                    #[cfg(feature = "pike")]
+                    DbInsertOperation::Roles(roles) => {
+                        debug!("Inserting {} roles", roles.len());
+                        roles
+                            .into_iter()
+                            .try_for_each(|role| self.pike_store.add_role(role))?;
+                    }
 
                     #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
@@ -478,64 +494,102 @@ fn state_change_to_db_operation(
     match state_change {
         StateChange::Set { key, value } => match &key[0..8] {
             #[cfg(feature = "pike")]
-            PIKE_AGENT_NAMESPACE => {
-                let agents = AgentList::from_bytes(&value)
-                    .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
-                    .agents()
-                    .iter()
-                    .map(|agent| Agent {
-                        public_key: agent.public_key().to_string(),
-                        org_id: agent.org_id().to_string(),
-                        active: *agent.active(),
-                        roles: agent.roles().to_vec(),
-                        metadata: json!(agent.metadata().iter().fold(
-                            HashMap::new(),
-                            |mut acc, md| {
-                                acc.insert(md.key().to_string(), md.value().to_string());
-                                acc
-                            }
-                        ))
-                        .to_string()
-                        .into_bytes(),
-                        start_commit_num: commit_num,
-                        end_commit_num: MAX_COMMIT_NUM,
-                        service_id: service_id.cloned(),
-                    })
-                    .collect::<Vec<Agent>>();
+            PIKE_NAMESPACE => match &key[0..10] {
+                PIKE_AGENT_NAMESPACE => {
+                    let agents = AgentList::from_bytes(&value)
+                        .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
+                        .agents()
+                        .iter()
+                        .map(|agent| Agent {
+                            public_key: agent.public_key().to_string(),
+                            org_id: agent.org_id().to_string(),
+                            active: *agent.active(),
+                            metadata: json!(agent.metadata().iter().fold(
+                                HashMap::new(),
+                                |mut acc, md| {
+                                    acc.insert(md.key().to_string(), md.value().to_string());
+                                    acc
+                                }
+                            ))
+                            .to_string()
+                            .into_bytes(),
+                            roles: agent.roles().to_vec(),
+                            start_commit_num: commit_num,
+                            end_commit_num: MAX_COMMIT_NUM,
+                            service_id: service_id.cloned(),
+                        })
+                        .collect::<Vec<Agent>>();
 
-                Ok(Some(DbInsertOperation::Agents(agents)))
-            }
-            #[cfg(feature = "pike")]
-            PIKE_ORGANIZATION_NAMESPACE => {
-                let orgs = OrganizationList::from_bytes(&value)
-                    .map_err(|err| {
-                        EventError(format!("Failed to parse organization list {}", err))
-                    })?
-                    .organizations()
-                    .iter()
-                    .map(|org| Organization {
-                        org_id: org.org_id().to_string(),
-                        name: org.name().to_string(),
-                        address: org.address().to_string(),
-                        metadata: org
-                            .metadata()
-                            .iter()
-                            .map(|m| OrganizationMetadata {
-                                key: m.key().to_string(),
-                                value: m.value().to_string(),
-                                start_commit_num: commit_num,
-                                end_commit_num: MAX_COMMIT_NUM,
-                                service_id: service_id.cloned(),
-                            })
-                            .collect(),
-                        start_commit_num: commit_num,
-                        end_commit_num: MAX_COMMIT_NUM,
-                        service_id: service_id.cloned(),
-                    })
-                    .collect::<Vec<Organization>>();
+                    Ok(Some(DbInsertOperation::Agents(agents)))
+                }
+                PIKE_ORGANIZATION_NAMESPACE => {
+                    let orgs = OrganizationList::from_bytes(&value)
+                        .map_err(|err| {
+                            EventError(format!("Failed to parse organization list {}", err))
+                        })?
+                        .organizations()
+                        .iter()
+                        .map(|org| Organization {
+                            org_id: org.org_id().to_string(),
+                            name: org.name().to_string(),
+                            locations: org.locations().to_vec(),
+                            alternate_ids: org
+                                .alternate_ids()
+                                .iter()
+                                .map(|a| AlternateID {
+                                    alternate_id: a.id().to_string(),
+                                    alternate_id_type: a.id_type().to_string(),
+                                    org_id: org.org_id().to_string(),
+                                    start_commit_num: commit_num,
+                                    end_commit_num: MAX_COMMIT_NUM,
+                                    service_id: service_id.cloned(),
+                                })
+                                .collect(),
+                            metadata: org
+                                .metadata()
+                                .iter()
+                                .map(|md| OrganizationMetadata {
+                                    key: md.key().to_string(),
+                                    value: md.value().to_string(),
+                                    start_commit_num: commit_num,
+                                    end_commit_num: MAX_COMMIT_NUM,
+                                    service_id: service_id.cloned(),
+                                })
+                                .collect(),
+                            start_commit_num: commit_num,
+                            end_commit_num: MAX_COMMIT_NUM,
+                            service_id: service_id.cloned(),
+                        })
+                        .collect::<Vec<Organization>>();
 
-                Ok(Some(DbInsertOperation::Organizations(orgs)))
-            }
+                    Ok(Some(DbInsertOperation::Organizations(orgs)))
+                }
+                PIKE_ROLE_NAMESPACE => {
+                    let roles = RoleList::from_bytes(&value)
+                        .map_err(|err| EventError(format!("Failed to parse role list {}", err)))?
+                        .roles()
+                        .iter()
+                        .map(|role| Role {
+                            org_id: role.org_id().to_string(),
+                            name: role.name().to_string(),
+                            description: role.description().to_string(),
+                            active: *role.active(),
+                            permissions: role.permissions().to_vec(),
+                            allowed_organizations: role.allowed_organizations().to_vec(),
+                            inherit_from: role.inherit_from().to_vec(),
+                            start_commit_num: commit_num,
+                            end_commit_num: MAX_COMMIT_NUM,
+                            service_id: service_id.cloned(),
+                        })
+                        .collect::<Vec<Role>>();
+
+                    Ok(Some(DbInsertOperation::Roles(roles)))
+                }
+                _ => {
+                    debug!("received state change for unknown address: {}", key);
+                    Ok(None)
+                }
+            },
             #[cfg(feature = "schema")]
             GRID_SCHEMA_NAMESPACE => {
                 let schemas = SchemaList::from_bytes(&value)
@@ -819,6 +873,8 @@ enum DbInsertOperation {
     Agents(Vec<Agent>),
     #[cfg(feature = "pike")]
     Organizations(Vec<Organization>),
+    #[cfg(feature = "pike")]
+    Roles(Vec<Role>),
     #[cfg(feature = "schema")]
     GridSchemas(Vec<Schema>),
     #[cfg(feature = "location")]

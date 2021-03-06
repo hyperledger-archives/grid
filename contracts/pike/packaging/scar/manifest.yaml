@@ -13,8 +13,8 @@
 # limitations under the License.
 
 name: pike
-version: '1'
+version: '2'
 inputs:
-  - 'cad11d'
+  - '621dee05'
 outputs:
-  - 'cad11d'
+  - '621dee05'

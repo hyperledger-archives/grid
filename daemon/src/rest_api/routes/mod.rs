@@ -33,6 +33,8 @@ mod organizations;
 mod products;
 #[cfg(feature = "track-and-trace")]
 mod records;
+#[cfg(feature = "pike")]
+mod roles;
 #[cfg(feature = "schema")]
 mod schemas;
 
@@ -47,6 +49,8 @@ pub use organizations::*;
 pub use products::*;
 #[cfg(feature = "track-and-trace")]
 pub use records::*;
+#[cfg(feature = "pike")]
+pub use roles::*;
 #[cfg(feature = "schema")]
 pub use schemas::*;
 
@@ -818,14 +822,15 @@ mod test {
             .send()
             .await
             .unwrap();
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let body: OrganizationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.data.len(), 1);
         let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        let locs: Vec<String> = vec![];
+        assert_eq!(org.locations, locs);
     }
 
     ///
@@ -850,14 +855,15 @@ mod test {
             .send()
             .await
             .unwrap();
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let body: OrganizationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.data.len(), 1);
         let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        let locs: Vec<String> = vec![];
+        assert_eq!(org.locations, locs);
         assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
@@ -883,7 +889,7 @@ mod test {
             .send()
             .await
             .unwrap();
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let body: OrganizationListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.data.len(), 1);
@@ -891,7 +897,7 @@ mod test {
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
-        assert_eq!(org.address, UPDATED_ADDRESS_2.to_string());
+        assert_eq!(org.locations, vec![UPDATED_ADDRESS_2.to_string()]);
     }
 
     ///
@@ -959,12 +965,14 @@ mod test {
             .send()
             .await
             .unwrap();
-        assert!(response.status().is_success());
+
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let org: OrganizationSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        let locs: Vec<String> = vec![];
+        assert_eq!(org.locations, locs);
     }
 
     ///
@@ -992,13 +1000,13 @@ mod test {
             .send()
             .await
             .unwrap();
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let org: OrganizationSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
-        assert_eq!(org.address, UPDATED_ADDRESS_2.to_string());
+        assert_eq!(org.locations, vec![UPDATED_ADDRESS_2.to_string()]);
     }
 
     ///
@@ -1026,12 +1034,12 @@ mod test {
             .send()
             .await
             .unwrap();
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let org: OrganizationSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        assert_eq!(org.address, ADDRESS_1.to_string());
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
         assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
@@ -1054,7 +1062,7 @@ mod test {
             .await
             .unwrap();
 
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let agent: AgentSlice = serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
@@ -1082,7 +1090,7 @@ mod test {
             .await
             .unwrap();
 
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let agent: AgentSlice = serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
@@ -2998,11 +3006,12 @@ mod test {
         vec![Organization {
             org_id: KEY2.to_string(),
             name: ORG_NAME_1.to_string(),
-            address: ADDRESS_1.to_string(),
+            locations: vec![],
+            alternate_ids: vec![],
             metadata: vec![],
             start_commit_num: 1,
             end_commit_num: i64::MAX,
-            service_id,
+            service_id: service_id.clone(),
         }]
     }
 
@@ -3011,7 +3020,8 @@ mod test {
             Organization {
                 org_id: KEY3.to_string(),
                 name: ORG_NAME_2.to_string(),
-                address: ADDRESS_2.to_string(),
+                locations: vec![ADDRESS_2.to_string()],
+                alternate_ids: vec![],
                 metadata: vec![],
                 start_commit_num: 2,
                 end_commit_num: 4,
@@ -3020,7 +3030,8 @@ mod test {
             Organization {
                 org_id: KEY3.to_string(),
                 name: ORG_NAME_2.to_string(),
-                address: UPDATED_ADDRESS_2.to_string(),
+                locations: vec![UPDATED_ADDRESS_2.to_string()],
+                alternate_ids: vec![],
                 metadata: vec![],
                 start_commit_num: 4,
                 end_commit_num: i64::MAX,
