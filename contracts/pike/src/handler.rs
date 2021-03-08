@@ -446,6 +446,13 @@ fn create_role(
 
     let name = &payload.get_name();
 
+    if name.eq(&"admin") {
+        return Err(ApplyError::InvalidTransaction(
+            "Role name 'admin' is reserved for the Pike administrator and cannot be overwritten"
+                .to_string(),
+        ));
+    }
+
     if name.contains('.') {
         return Err(ApplyError::InvalidTransaction(
             "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
@@ -527,6 +534,13 @@ fn update_role(
 
     let name = &payload.get_name();
 
+    if name.eq(&"admin") {
+        return Err(ApplyError::InvalidTransaction(
+            "Role name 'admin' is reserved for the Pike administrator and cannot be overwritten"
+                .to_string(),
+        ));
+    }
+
     if name.contains('.') {
         return Err(ApplyError::InvalidTransaction(
             "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
@@ -600,6 +614,13 @@ fn delete_role(
     if name.contains('.') {
         return Err(ApplyError::InvalidTransaction(
             "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
+                .to_string(),
+        ));
+    }
+
+    if name.eq(&"admin") {
+        return Err(ApplyError::InvalidTransaction(
+            "Role name 'admin' is reserved for the Pike administrator and cannot be overwritten"
                 .to_string(),
         ));
     }
@@ -739,6 +760,16 @@ fn update_agent(
                     .to_string(),
             ));
         }
+
+        if let Some(signing_agent) = state.get_agent(signer)? {
+            if !signing_agent.roles.contains(&"admin".to_string())
+                && !payload.get_roles().iter().any(|role| role == "admin")
+            {
+                return Err(ApplyError::InvalidTransaction(
+                    "Only agents with the 'admin' permission can remove other admins".to_string(),
+                ));
+            }
+        };
 
         agent.set_roles(protobuf::RepeatedField::from_vec(
             payload.get_roles().to_vec(),
