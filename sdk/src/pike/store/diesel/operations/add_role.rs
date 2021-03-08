@@ -14,7 +14,10 @@
 
 use super::PikeStoreOperations;
 use crate::pike::store::diesel::{
-    schema::{pike_allowed_orgs, pike_inherit_from, pike_permissions, pike_role},
+    schema::{
+        pike_allowed_orgs, pike_inherit_from, pike_permissions, pike_role,
+        pike_role_state_address_assoc,
+    },
     PikeStoreError,
 };
 
@@ -22,7 +25,7 @@ use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::pike::store::diesel::models::{
     AllowedOrgModel, InheritFromModel, NewAllowedOrgModel, NewInheritFromModel, NewPermissionModel,
-    NewRoleModel, PermissionModel, RoleModel,
+    NewRoleModel, NewRoleStateAddressAssociationModel, PermissionModel, RoleModel,
 };
 use diesel::{
     dsl::{insert_into, update},
@@ -89,10 +92,30 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::pg::PgCon
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(PikeStoreError::from)?;
+
+                update(pike_role_state_address_assoc::table)
+                    .filter(
+                        pike_role_state_address_assoc::name
+                            .eq(&role.name)
+                            .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
+                            .and(pike_role_state_address_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    )
+                    .set(pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num))
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(PikeStoreError::from)?;
             }
 
             insert_into(pike_role::table)
                 .values(&role)
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(PikeStoreError::from)?;
+
+            let role_state_address_assoc = NewRoleStateAddressAssociationModel::from(&role);
+
+            insert_into(pike_role_state_address_assoc::table)
+                .values(&role_state_address_assoc)
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(PikeStoreError::from)?;
@@ -310,10 +333,30 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::sqlite::S
                     .execute(self.conn)
                     .map(|_| ())
                     .map_err(PikeStoreError::from)?;
+
+                update(pike_role_state_address_assoc::table)
+                    .filter(
+                        pike_role_state_address_assoc::name
+                            .eq(&role.name)
+                            .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
+                            .and(pike_role_state_address_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    )
+                    .set(pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num))
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(PikeStoreError::from)?;
             }
 
             insert_into(pike_role::table)
                 .values(&role)
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(PikeStoreError::from)?;
+
+            let role_state_address_assoc = NewRoleStateAddressAssociationModel::from(&role);
+
+            insert_into(pike_role_state_address_assoc::table)
+                .values(&role_state_address_assoc)
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(PikeStoreError::from)?;
