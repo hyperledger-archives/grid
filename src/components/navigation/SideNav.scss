@@ -166,6 +166,19 @@
       }
     }
 
+    .Logout {
+      width: 0;
+      height: 0;
+      background: none;
+      overflow: hidden;
+      position: absolute;
+      border: unset;
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      text-decoration: none;
+    }
+
     .label {
       margin-top: 5px;
       font-size: 11px;
@@ -179,6 +192,31 @@
 
         .icon {
           color: var(--color-primary-light);
+        }
+      }
+      .Logout {
+        width: 75px;
+        height: 75px;
+        margin-bottom: 144px;
+        outline: none;
+
+        .border {
+          border: none;
+        }
+
+        .icon {
+          color: var(--color-primary);
+        }
+
+        &:hover {
+          .border {
+            border: 3px solid #999999;
+
+            .icon {
+              color: var(--color-primary-light);
+              cursor: pointer;
+            }
+          }
         }
       }
     }

@@ -17,6 +17,7 @@
 import React from 'react';
 import classnames from 'classnames';
 import Icon from '@material-ui/core/Icon';
+import { Logout } from './Logout';
 import { useUserSaplings } from '../../CanopyContext';
 
 import { NavItem } from './NavItem';
@@ -73,6 +74,7 @@ function ProfileTab() {
         </div>
       </div>
       <div className="label">Profile</div>
+      <Logout />
     </a>
   );
 }
