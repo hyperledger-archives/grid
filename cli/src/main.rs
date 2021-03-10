@@ -40,7 +40,8 @@ use grid_sdk::protocol::{
     pike::{
         payload::{
             CreateAgentActionBuilder, CreateOrganizationActionBuilder, CreateRoleActionBuilder,
-            UpdateAgentActionBuilder, UpdateOrganizationActionBuilder, UpdateRoleActionBuilder,
+            DeleteRoleActionBuilder, UpdateAgentActionBuilder, UpdateOrganizationActionBuilder,
+            UpdateRoleActionBuilder,
         },
         state::{AlternateID, AlternateIDBuilder, KeyValueEntry, KeyValueEntryBuilder},
     },
@@ -546,6 +547,35 @@ fn run() -> Result<(), CliError> {
                                 .long("inactive")
                                 .conflicts_with("active")
                                 .help("Set role as inactive"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file")
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed")
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("delete")
+                        .about("Delete a Role")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Unique ID for owning organization"),
+                        )
+                        .arg(
+                            Arg::with_name("name")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Name for the role"),
                         )
                         .arg(
                             Arg::with_name("key")
@@ -1278,6 +1308,23 @@ fn run() -> Result<(), CliError> {
 
                     info!("Submitting request to update role...");
                     roles::do_update_role(&url, key, wait, update_role, service_id)?;
+                }
+                ("delete", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let delete_role = DeleteRoleActionBuilder::new()
+                        .with_org_id(m.value_of("org_id").unwrap().into())
+                        .with_name(m.value_of("name").unwrap().into())
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to delete role...");
+                    roles::do_delete_role(&url, key, wait, delete_role, service_id)?;
                 }
                 ("show", Some(m)) => roles::do_show_role(
                     &url,

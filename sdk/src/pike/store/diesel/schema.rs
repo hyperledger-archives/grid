@@ -15,6 +15,7 @@
 table! {
     pike_agent (id) {
         id -> Int8,
+        state_address -> Varchar,
         public_key -> Varchar,
         org_id -> Varchar,
         active -> Bool,
@@ -28,6 +29,7 @@ table! {
 table! {
     pike_role (id) {
         id -> Int8,
+        state_address -> Varchar,
         org_id -> Varchar,
         name -> Varchar,
         description -> Text,
@@ -90,6 +92,7 @@ table! {
 table! {
     pike_organization (id) {
         id -> Int8,
+        state_address -> Varchar,
         org_id -> Varchar,
         name -> Varchar,
         start_commit_num -> Int8,
@@ -127,6 +130,18 @@ table! {
         id -> Int8,
         org_id -> Varchar,
         location_id -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    pike_role_state_address_assoc (id) {
+        id -> Int8,
+        state_address -> Varchar,
+        org_id -> Varchar,
+        name -> Varchar,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,

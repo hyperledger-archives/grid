@@ -30,6 +30,7 @@ use models::{
 use operations::add_agent::PikeStoreAddAgentOperation as _;
 use operations::add_organization::PikeStoreAddOrganizationOperation as _;
 use operations::add_role::PikeStoreAddRoleOperation as _;
+use operations::delete_role::PikeStoreDeleteRoleOperation as _;
 use operations::fetch_agent::PikeStoreFetchAgentOperation as _;
 use operations::fetch_organization::PikeStoreFetchOrganizationOperation as _;
 use operations::fetch_role::PikeStoreFetchRoleOperation as _;
@@ -196,6 +197,15 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
             make_allowed_orgs_models(&role),
         )
     }
+
+    fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .delete_role(address, current_commit_num)
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -336,5 +346,14 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
             make_permissions_models(&role),
             make_allowed_orgs_models(&role),
         )
+    }
+
+    fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PikeStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .delete_role(address, current_commit_num)
     }
 }

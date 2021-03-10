@@ -723,7 +723,7 @@ mod test {
             .await
             .unwrap();
 
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let body: AgentListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.data.len(), 1);
@@ -772,7 +772,7 @@ mod test {
             .await
             .unwrap();
 
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
         let body: AgentListSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.data.len(), 1);

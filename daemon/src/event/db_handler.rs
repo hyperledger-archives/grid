@@ -225,6 +225,10 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                             .into_iter()
                             .try_for_each(|role| self.pike_store.add_role(role))?;
                     }
+                    #[cfg(feature = "pike")]
+                    DbInsertOperation::RemoveRole(ref address, current_commit_num) => {
+                        self.pike_store.delete_role(address, current_commit_num)?;
+                    }
                     #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
                         debug!("Inserting {} schemas", schemas.len());
@@ -402,6 +406,10 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
                         roles
                             .into_iter()
                             .try_for_each(|role| self.pike_store.add_role(role))?;
+                    }
+                    #[cfg(feature = "pike")]
+                    DbInsertOperation::RemoveRole(ref address, current_commit_num) => {
+                        self.pike_store.delete_role(address, current_commit_num)?;
                     }
 
                     #[cfg(feature = "schema")]
@@ -849,6 +857,14 @@ fn state_change_to_db_operation(
             }
         },
         StateChange::Delete { key } => match &key[0..8] {
+            #[cfg(feature = "pike")]
+            PIKE_NAMESPACE => match &key[0..10] {
+                PIKE_ROLE_NAMESPACE => Ok(Some(DbInsertOperation::RemoveRole(
+                    key.to_string(),
+                    commit_num,
+                ))),
+                _ => Ok(None),
+            },
             #[cfg(feature = "product")]
             GRID_PRODUCT_NAMESPACE => Ok(Some(DbInsertOperation::RemoveProduct(
                 key.to_string(),
@@ -875,6 +891,8 @@ enum DbInsertOperation {
     Organizations(Vec<Organization>),
     #[cfg(feature = "pike")]
     Roles(Vec<Role>),
+    #[cfg(feature = "pike")]
+    RemoveRole(String, i64),
     #[cfg(feature = "schema")]
     GridSchemas(Vec<Schema>),
     #[cfg(feature = "location")]

@@ -21,7 +21,9 @@ use crate::http::submit_batches;
 use crate::transaction::pike_batch_builder;
 use grid_sdk::{
     pike::addressing::PIKE_NAMESPACE,
-    protocol::pike::payload::{Action, CreateRoleAction, PikePayloadBuilder, UpdateRoleAction},
+    protocol::pike::payload::{
+        Action, CreateRoleAction, DeleteRoleAction, PikePayloadBuilder, UpdateRoleAction,
+    },
     protos::IntoProto,
 };
 use reqwest::Client;
@@ -109,6 +111,30 @@ pub fn do_update_role(
     let payload = PikePayloadBuilder::new()
         .with_action(Action::UpdateRole)
         .with_update_role(update_role)
+        .build()
+        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+    let batch_list = pike_batch_builder(key)
+        .add_transaction(
+            &payload.into_proto()?,
+            &[PIKE_NAMESPACE.to_string()],
+            &[PIKE_NAMESPACE.to_string()],
+        )?
+        .create_batch_list();
+
+    submit_batches(url, wait, &batch_list, service_id.as_deref())
+}
+
+pub fn do_delete_role(
+    url: &str,
+    key: Option<String>,
+    wait: u64,
+    delete_role: DeleteRoleAction,
+    service_id: Option<String>,
+) -> Result<(), CliError> {
+    let payload = PikePayloadBuilder::new()
+        .with_action(Action::DeleteRole)
+        .with_delete_role(delete_role)
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
