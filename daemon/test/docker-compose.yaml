@@ -43,9 +43,10 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        cd daemon
-        cargo test --features test-postgres,experimental -- --test-threads=1
-        cd ../cli
-        cargo test --features stable actions -- --test-threads=1
+        cd daemon &&
+        cargo test --features stable -- --test-threads=1 &&
+        cargo test --features test-postgres,experimental -- --test-threads=1 &&
+        cd ../cli &&
+        cargo test --features stable actions -- --test-threads=1 &&
         cargo test --features stable yaml_parser -- --test-threads=1
         "
