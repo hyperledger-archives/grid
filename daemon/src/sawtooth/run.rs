@@ -20,8 +20,10 @@ use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "integration")]
-use grid_sdk::rest_api::actix_web_3::State as IntegrationState;
+use grid_sdk::rest_api::actix_web_3::KeyState;
+use grid_sdk::rest_api::actix_web_3::{BatchSubmitterState, StoreState};
 use grid_sdk::store::{create_store_factory, ConnectionUri};
+use grid_sdk::submitter::SawtoothBatchSubmitter;
 
 use crate::config::GridConfig;
 use crate::database::{ConnectionPool, DatabaseError};
@@ -29,7 +31,7 @@ use crate::error::DaemonError;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 use crate::rest_api;
 
-use super::{batch_submitter::SawtoothBatchSubmitter, connection::SawtoothConnection};
+use super::connection::SawtoothConnection;
 
 pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     let connection_uri = config
@@ -41,10 +43,9 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
         .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
 
     let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
-    let batch_submitter = Box::new(SawtoothBatchSubmitter::new(
-        sawtooth_connection.get_sender(),
-    ));
-    let (db_executor, evt_processor) = {
+    let batch_submitter = SawtoothBatchSubmitter::new(sawtooth_connection.get_sender());
+    let batch_submitter_state = BatchSubmitterState::with_sawtooth(batch_submitter);
+    let (store_state, evt_processor) = {
         let commit_store = store_factory.get_grid_commit_store();
         let current_commit =
             commit_store
@@ -66,7 +67,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                 .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
                 (
-                    rest_api::DbExecutor::from_pg_pool(connection_pool),
+                    StoreState::with_pg_pool(connection_pool.pool),
                     evt_processor,
                 )
             }
@@ -83,7 +84,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                 .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
                 (
-                    rest_api::DbExecutor::from_sqlite_pool(connection_pool),
+                    StoreState::with_sqlite_pool(connection_pool.pool),
                     evt_processor,
                 )
             }
@@ -91,32 +92,15 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     };
 
     #[cfg(feature = "integration")]
-    let integration_state = match connection_uri {
-        ConnectionUri::Postgres(_) => {
-            let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
-                ConnectionPool::new(config.database_url())?;
-            IntegrationState::with_pg_pool(
-                &config.key_file_name().to_string(),
-                connection_pool.pool,
-            )
-        }
-        ConnectionUri::Sqlite(_) => {
-            let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
-                ConnectionPool::new(config.database_url())?;
-            IntegrationState::with_sqlite_pool(
-                &config.key_file_name().to_string(),
-                connection_pool.pool,
-            )
-        }
-    };
+    let key_state = KeyState::new(&config.key_file_name());
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
-        db_executor,
-        batch_submitter,
-        config.endpoint().clone(),
+        store_state,
+        batch_submitter_state,
         #[cfg(feature = "integration")]
-        integration_state,
+        key_state,
+        config.endpoint().clone(),
     )?;
 
     let (event_processor_shutdown_handle, event_processor_join_handle) =

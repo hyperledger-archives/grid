@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use grid_sdk::rest_api::actix_web_3::{Backend, Endpoint};
+
 use crate::error::ConfigurationError;
 
 #[derive(Debug)]
@@ -56,58 +58,6 @@ impl GridConfig {
     pub fn key_file_name(&self) -> &str {
         &self.key_file_name
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Endpoint {
-    backend: Backend,
-    url: String,
-}
-
-impl Endpoint {
-    pub fn url(&self) -> String {
-        self.url.clone()
-    }
-
-    #[cfg(feature = "rest-api")]
-    pub fn is_sawtooth(&self) -> bool {
-        self.backend == Backend::Sawtooth
-    }
-
-    pub fn backend(&self) -> &Backend {
-        &self.backend
-    }
-}
-
-impl From<&str> for Endpoint {
-    fn from(s: &str) -> Self {
-        let s = s.to_lowercase();
-
-        if s.starts_with("splinter:") {
-            let url = s.replace("splinter:", "");
-            Endpoint {
-                backend: Backend::Splinter,
-                url,
-            }
-        } else if s.starts_with("sawtooth:") {
-            let url = s.replace("sawtooth:", "");
-            Endpoint {
-                backend: Backend::Sawtooth,
-                url,
-            }
-        } else {
-            Endpoint {
-                backend: Backend::Sawtooth,
-                url: s,
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Backend {
-    Splinter,
-    Sawtooth,
 }
 
 pub struct GridConfigBuilder {
@@ -237,65 +187,5 @@ mod test {
 
         assert_eq!("tcp://127.0.0.1:4004", config.endpoint().url());
         assert_eq!("127.0.0.1:8080", config.rest_api_endpoint());
-    }
-
-    #[test]
-    fn test_endpoint_splinter_prefix() {
-        let endpoint = Endpoint::from("splinter:tcp://localhost:8080");
-        assert_eq!(
-            endpoint,
-            Endpoint {
-                backend: Backend::Splinter,
-                url: "tcp://localhost:8080".into()
-            }
-        );
-    }
-
-    #[test]
-    fn test_endpoint_sawtooth_prefix() {
-        let endpoint = Endpoint::from("sawtooth:tcp://localhost:8080");
-        assert_eq!(
-            endpoint,
-            Endpoint {
-                backend: Backend::Sawtooth,
-                url: "tcp://localhost:8080".into()
-            }
-        );
-    }
-
-    #[test]
-    fn test_endpoint_no_prefix() {
-        let endpoint = Endpoint::from("tcp://localhost:8080");
-        assert_eq!(
-            endpoint,
-            Endpoint {
-                backend: Backend::Sawtooth,
-                url: "tcp://localhost:8080".into()
-            }
-        );
-    }
-
-    #[test]
-    fn test_endpoint_capitals() {
-        let endpoint = Endpoint::from("SAWTOOTH:TCP://LOCALHOST:8080");
-        assert_eq!(
-            endpoint,
-            Endpoint {
-                backend: Backend::Sawtooth,
-                url: "tcp://localhost:8080".into()
-            }
-        );
-    }
-
-    #[test]
-    fn test_endpoint_no_protocol() {
-        let endpoint = Endpoint::from("splinter:localhost:8080");
-        assert_eq!(
-            endpoint,
-            Endpoint {
-                backend: Backend::Splinter,
-                url: "localhost:8080".into()
-            }
-        );
     }
 }
