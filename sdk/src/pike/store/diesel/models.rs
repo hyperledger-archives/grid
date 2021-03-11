@@ -379,6 +379,24 @@ pub fn make_inherit_from_models(role: &Role) -> Vec<NewInheritFromModel> {
     models
 }
 
+pub fn make_location_association_models(org: &Organization) -> Vec<NewLocationAssociationModel> {
+    let mut models = Vec::new();
+
+    for l in &org.locations {
+        let model = NewLocationAssociationModel {
+            org_id: org.org_id.to_string(),
+            location_id: l.to_string(),
+            start_commit_num: org.start_commit_num,
+            end_commit_num: org.end_commit_num,
+            service_id: org.service_id.clone(),
+        };
+
+        models.push(model);
+    }
+
+    models
+}
+
 pub fn make_permissions_models(role: &Role) -> Vec<NewPermissionModel> {
     let mut models = Vec::new();
 

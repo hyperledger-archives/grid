@@ -14,15 +14,15 @@
 
 use super::PikeStoreOperations;
 use crate::pike::store::diesel::{
-    schema::{pike_organization, pike_organization_metadata},
+    schema::{pike_organization, pike_organization_location_assoc, pike_organization_metadata},
     PikeStoreError,
 };
 
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::pike::store::diesel::models::{
-    NewOrganizationMetadataModel, NewOrganizationModel, OrganizationMetadataModel,
-    OrganizationModel,
+    LocationAssociationModel, NewLocationAssociationModel, NewOrganizationMetadataModel,
+    NewOrganizationModel, OrganizationMetadataModel, OrganizationModel,
 };
 use diesel::{
     dsl::{insert_into, update},
@@ -34,6 +34,7 @@ pub(in crate::pike::store::diesel) trait PikeStoreAddOrganizationOperation {
     fn add_organization(
         &self,
         org: NewOrganizationModel,
+        locations: Vec<NewLocationAssociationModel>,
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError>;
 }
@@ -43,6 +44,7 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
     fn add_organization(
         &self,
         org: NewOrganizationModel,
+        locations: Vec<NewLocationAssociationModel>,
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
@@ -88,10 +90,77 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
             }
 
             insert_into(pike_organization::table)
-                .values(org)
+                .values(&org)
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(PikeStoreError::from)?;
+
+            for location in locations {
+                let mut query = pike_organization_location_assoc::table
+                    .into_boxed()
+                    .select(pike_organization_location_assoc::all_columns)
+                    .filter(
+                        pike_organization_location_assoc::org_id
+                            .eq(&org.org_id)
+                            .and(
+                                pike_organization_location_assoc::location_id
+                                    .eq(&location.location_id),
+                            )
+                            .and(
+                                pike_organization_location_assoc::end_commit_num.eq(MAX_COMMIT_NUM),
+                            ),
+                    );
+
+                if let Some(service_id) = &location.service_id {
+                    query =
+                        query.filter(pike_organization_location_assoc::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_organization_location_assoc::service_id.is_null());
+                }
+
+                let duplicate = query
+                    .first::<LocationAssociationModel>(self.conn)
+                    .map(Some)
+                    .or_else(|err| {
+                        if err == dsl_error::NotFound {
+                            Ok(None)
+                        } else {
+                            Err(err)
+                        }
+                    })
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+                if duplicate.is_some() {
+                    update(pike_organization_location_assoc::table)
+                        .filter(
+                            pike_organization_location_assoc::org_id
+                                .eq(&org.org_id)
+                                .and(
+                                    pike_organization_location_assoc::location_id
+                                        .eq(&location.location_id),
+                                )
+                                .and(
+                                    pike_organization_location_assoc::end_commit_num
+                                        .eq(MAX_COMMIT_NUM),
+                                ),
+                        )
+                        .set(
+                            pike_organization_location_assoc::end_commit_num
+                                .eq(location.start_commit_num),
+                        )
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
+
+                insert_into(pike_organization_location_assoc::table)
+                    .values(location)
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(PikeStoreError::from)?;
+            }
 
             for data in metadata {
                 let mut query = pike_organization_metadata::table
@@ -156,6 +225,7 @@ impl<'a> PikeStoreAddOrganizationOperation
     fn add_organization(
         &self,
         org: NewOrganizationModel,
+        locations: Vec<NewLocationAssociationModel>,
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
@@ -201,10 +271,77 @@ impl<'a> PikeStoreAddOrganizationOperation
             }
 
             insert_into(pike_organization::table)
-                .values(org)
+                .values(&org)
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(PikeStoreError::from)?;
+
+            for location in locations {
+                let mut query = pike_organization_location_assoc::table
+                    .into_boxed()
+                    .select(pike_organization_location_assoc::all_columns)
+                    .filter(
+                        pike_organization_location_assoc::org_id
+                            .eq(&org.org_id)
+                            .and(
+                                pike_organization_location_assoc::location_id
+                                    .eq(&location.location_id),
+                            )
+                            .and(
+                                pike_organization_location_assoc::end_commit_num.eq(MAX_COMMIT_NUM),
+                            ),
+                    );
+
+                if let Some(service_id) = &location.service_id {
+                    query =
+                        query.filter(pike_organization_location_assoc::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_organization_location_assoc::service_id.is_null());
+                }
+
+                let duplicate = query
+                    .first::<LocationAssociationModel>(self.conn)
+                    .map(Some)
+                    .or_else(|err| {
+                        if err == dsl_error::NotFound {
+                            Ok(None)
+                        } else {
+                            Err(err)
+                        }
+                    })
+                    .map_err(|err| {
+                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+                if duplicate.is_some() {
+                    update(pike_organization_location_assoc::table)
+                        .filter(
+                            pike_organization_location_assoc::org_id
+                                .eq(&org.org_id)
+                                .and(
+                                    pike_organization_location_assoc::location_id
+                                        .eq(&location.location_id),
+                                )
+                                .and(
+                                    pike_organization_location_assoc::end_commit_num
+                                        .eq(MAX_COMMIT_NUM),
+                                ),
+                        )
+                        .set(
+                            pike_organization_location_assoc::end_commit_num
+                                .eq(location.start_commit_num),
+                        )
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
+
+                insert_into(pike_organization_location_assoc::table)
+                    .values(location)
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(PikeStoreError::from)?;
+            }
 
             for data in metadata {
                 let mut query = pike_organization_metadata::table
