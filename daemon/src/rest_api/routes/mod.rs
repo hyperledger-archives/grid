@@ -829,8 +829,7 @@ mod test {
         let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        let locs: Vec<String> = vec![];
-        assert_eq!(org.locations, locs);
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
     }
 
     ///
@@ -862,8 +861,7 @@ mod test {
         let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        let locs: Vec<String> = vec![];
-        assert_eq!(org.locations, locs);
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
         assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
@@ -971,8 +969,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
-        let locs: Vec<String> = vec![];
-        assert_eq!(org.locations, locs);
+        assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
     }
 
     ///
@@ -3006,7 +3003,7 @@ mod test {
         vec![Organization {
             org_id: KEY2.to_string(),
             name: ORG_NAME_1.to_string(),
-            locations: vec![],
+            locations: vec![ADDRESS_1.to_string()],
             alternate_ids: vec![],
             metadata: vec![],
             start_commit_num: 1,

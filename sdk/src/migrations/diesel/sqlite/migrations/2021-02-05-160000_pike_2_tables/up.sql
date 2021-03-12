@@ -20,7 +20,8 @@ DROP TABLE role;
 DROP TABLE organization;
 
 CREATE TABLE pike_agent (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
+    state_address VARCHAR(70) NOT NULL,
     public_key VARCHAR(70) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     active BOOLEAN NOT NULL,
@@ -31,7 +32,8 @@ CREATE TABLE pike_agent (
 );
 
 CREATE TABLE pike_organization (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
+    state_address VARCHAR(70) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     name VARCHAR(256) NOT NULL,
     start_commit_num BIGINT NOT NULL,
@@ -40,7 +42,7 @@ CREATE TABLE pike_organization (
 );
 
 CREATE TABLE pike_agent_role_assoc (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     agent_public_key VARCHAR(70) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     role_name VARCHAR(256) NOT NULL,
@@ -50,17 +52,19 @@ CREATE TABLE pike_agent_role_assoc (
 );
 
 CREATE TABLE pike_role (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR NOT NULL,
+    id INTEGER PRIMARY KEY,
+    state_address VARCHAR(70) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
+    name VARCHAR NOT NULL,
     description TEXT NOT NULL,
+    active BOOLEAN NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
 );
 
 CREATE TABLE pike_organization_metadata (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     org_id VARCHAR(256) NOT NULL,
     key VARCHAR NOT NULL,
     value BYTEA NOT NULL,
@@ -70,7 +74,7 @@ CREATE TABLE pike_organization_metadata (
 );
 
 CREATE TABLE pike_organization_alternate_id (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     org_id VARCHAR(256) NOT NULL,
     alternate_id_type VARCHAR NOT NULL,
     alternate_id VARCHAR NOT NULL,
@@ -80,7 +84,7 @@ CREATE TABLE pike_organization_alternate_id (
 );
 
 CREATE TABLE pike_organization_location_assoc (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     org_id VARCHAR(256) NOT NULL,
     location_id VARCHAR(256) NOT NULL,
     start_commit_num BIGINT NOT NULL,
@@ -89,7 +93,7 @@ CREATE TABLE pike_organization_location_assoc (
 );
 
 CREATE TABLE pike_inherit_from (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     role_name VARCHAR(256) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     inherit_from_role_name VARCHAR(256) NOT NULL,
@@ -100,7 +104,7 @@ CREATE TABLE pike_inherit_from (
 );
 
 CREATE TABLE pike_permissions (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     role_name VARCHAR(256) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     name VARCHAR(256) NOT NULL,
@@ -110,7 +114,7 @@ CREATE TABLE pike_permissions (
 );
 
 CREATE TABLE pike_allowed_orgs (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     role_name VARCHAR(256) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     allowed_org_id VARCHAR(256) NOT NULL,
@@ -120,7 +124,7 @@ CREATE TABLE pike_allowed_orgs (
 );
 
 CREATE TABLE pike_role_state_address_assoc (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     state_address VARCHAR(70) NOT NULL,
     name VARCHAR(256) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
