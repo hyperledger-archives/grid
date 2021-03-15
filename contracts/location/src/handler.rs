@@ -171,16 +171,16 @@ fn create_location(
     )?;
 
     // check if organization has gln in gs1_company_prefix metadata
-    let mut has_gs1_prefix = false;
-    for metadata in organization.metadata() {
-        if metadata.key() == "gs1_company_prefixes"
-            && payload.location_id().contains(metadata.value())
+    let mut has_gs1_alt_id = false;
+    for alternate_id in organization.alternate_ids() {
+        if alternate_id.id_type() == "gs1_company_prefix"
+            && payload.location_id().contains(alternate_id.id())
         {
-            has_gs1_prefix = true;
+            has_gs1_alt_id = true;
         }
     }
 
-    if !has_gs1_prefix {
+    if !has_gs1_alt_id {
         return Err(ApplyError::InvalidTransaction(format!(
             "Organization {} does not have the correct gs1 prefix",
             organization.org_id()
@@ -429,7 +429,7 @@ mod tests {
                 LocationUpdateActionBuilder,
             },
             pike::state::{
-                AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
+                AgentBuilder, AgentListBuilder, AlternateIDBuilder, OrganizationBuilder,
                 OrganizationListBuilder, RoleBuilder, RoleListBuilder,
             },
             schema::state::{
@@ -453,16 +453,16 @@ mod tests {
             let mut entries = Vec::new();
 
             // create organization with prefix
-            let key_value = KeyValueEntryBuilder::new()
-                .with_key("gs1_company_prefixes".to_string())
-                .with_value("9012".to_string())
+            let alternate_id = AlternateIDBuilder::new()
+                .with_id_type("gs1_company_prefix".to_string())
+                .with_id("9012".to_string())
                 .build()
                 .unwrap();
             let prefix_org = OrganizationBuilder::new()
                 .with_org_id("prefix_org".to_string())
                 .with_name("test_org_name".to_string())
                 .with_locations(vec![])
-                .with_metadata(vec![key_value.clone()])
+                .with_alternate_ids(vec![alternate_id.clone()])
                 .build()
                 .unwrap();
             let prefix_org_list = OrganizationListBuilder::new()

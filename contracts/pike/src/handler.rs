@@ -32,9 +32,13 @@ cfg_if! {
 use grid_sdk::{
     permissions::PermissionChecker,
     pike::addressing::{
-        compute_agent_address, compute_organization_address, compute_role_address, PIKE_NAMESPACE,
+        compute_agent_address, compute_alternate_id_index_entry_address,
+        compute_organization_address, compute_role_address, PIKE_NAMESPACE,
     },
-    protocol::pike::state::{Role, RoleBuilder, RoleList, RoleListBuilder},
+    protocol::pike::state::{
+        AlternateIDIndexEntry, AlternateIDIndexEntryBuilder, AlternateIDIndexEntryList,
+        AlternateIDIndexEntryListBuilder, Role, RoleBuilder, RoleList, RoleListBuilder,
+    },
     protos::{
         pike_payload::{
             CreateAgentAction, CreateOrganizationAction, CreateRoleAction, DeleteRoleAction,
@@ -334,6 +338,145 @@ impl<'a> PikeState<'a> {
         self.context
             .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+
+        Ok(())
+    }
+
+    pub fn get_alternate_id_index(
+        &self,
+        id_type: &str,
+        id: &str,
+    ) -> Result<Option<AlternateIDIndexEntry>, ApplyError> {
+        let address = compute_alternate_id_index_entry_address(id_type, id);
+        match self.context.get_state_entry(&address)? {
+            Some(packed) => {
+                let entries: AlternateIDIndexEntryList =
+                    match AlternateIDIndexEntryList::from_bytes(packed.as_slice()) {
+                        Ok(entry) => entry,
+                        Err(err) => {
+                            return Err(ApplyError::InvalidTransaction(format!(
+                                "Cannot deseralize alternate ID index entry list: {:?}",
+                                err,
+                            )));
+                        }
+                    };
+
+                for entry in entries.entries() {
+                    if entry.id_type() == id_type && entry.id() == id {
+                        return Ok(Some(entry.clone()));
+                    }
+                }
+
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub fn set_alternate_id_index(&self, alt_id: AlternateIDIndexEntry) -> Result<(), ApplyError> {
+        let address = compute_alternate_id_index_entry_address(alt_id.id_type(), alt_id.id());
+        let mut entries = match self.context.get_state_entry(&address)? {
+            Some(packed) => match AlternateIDIndexEntryList::from_bytes(packed.as_slice()) {
+                Ok(entry_list) => entry_list.entries().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Cannot deseralize alternate ID index entry list: {:?}",
+                        err,
+                    )));
+                }
+            },
+            None => vec![],
+        };
+
+        let mut index = None;
+        for (i, e) in entries.iter().enumerate() {
+            if alt_id.id_type() == e.id_type() && alt_id.id() == e.id() {
+                index = Some(i);
+                break;
+            }
+        }
+
+        if let Some(i) = index {
+            entries.remove(i);
+        }
+
+        entries.push(alt_id);
+        entries.sort_by_key(|alt_id| alt_id.id().to_string());
+        let entry_list = AlternateIDIndexEntryListBuilder::new()
+            .with_entries(entries)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!(
+                    "Cannot build alternate ID index entry list: {:?}",
+                    err
+                ))
+            })?;
+
+        let serialized = match entry_list.into_bytes() {
+            Ok(serialized) => serialized,
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Cannot serialize alternate ID index entry list: {:?}",
+                    err
+                )));
+            }
+        };
+
+        self.context
+            .set_state_entry(address, serialized)
+            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        Ok(())
+    }
+
+    pub fn remove_alternate_id_index(&mut self, id_type: &str, id: &str) -> Result<(), ApplyError> {
+        let address = compute_alternate_id_index_entry_address(&id_type, &id);
+        let entries = match self.context.get_state_entry(&address)? {
+            Some(packed) => match AlternateIDIndexEntryList::from_bytes(packed.as_slice()) {
+                Ok(entry_list) => entry_list.entries().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Cannot serialize alternate ID index entry list: {:?}",
+                        err
+                    )));
+                }
+            },
+            None => vec![],
+        };
+
+        let filtered_entries = entries
+            .into_iter()
+            .filter(|entry| entry.id_type() != id_type && entry.id() != id)
+            .collect::<Vec<_>>();
+
+        if filtered_entries.is_empty() {
+            self.context
+                .delete_state_entries(&[address])
+                .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        } else {
+            let entry_list = AlternateIDIndexEntryListBuilder::new()
+                .with_entries(filtered_entries)
+                .build()
+                .map_err(|err| {
+                    ApplyError::InvalidTransaction(format!(
+                        "Cannot build alternate ID index entry list: {:?}",
+                        err
+                    ))
+                })?;
+
+            let serialized = match entry_list.into_bytes() {
+                Ok(serialized) => serialized,
+                Err(_) => {
+                    return Err(ApplyError::InvalidTransaction(String::from(
+                        "Cannot serialize alternate ID index entry list",
+                    )));
+                }
+            };
+
+            self.context
+                .set_state_entry(address, serialized)
+                .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        }
+
         Ok(())
     }
 }
@@ -428,12 +571,6 @@ fn create_role(
         return Err(ApplyError::InvalidTransaction("Name required".into()));
     }
 
-    if payload.get_description().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Description required".into(),
-        ));
-    }
-
     let agent = match state.get_agent(signer)? {
         Some(agent) => agent,
         None => {
@@ -514,12 +651,6 @@ fn update_role(
 
     if payload.get_name().is_empty() {
         return Err(ApplyError::InvalidTransaction("Name required".into()));
-    }
-
-    if payload.get_description().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Description required".into(),
-        ));
     }
 
     let agent = match state.get_agent(signer)? {
@@ -833,6 +964,9 @@ fn create_org(
     let mut organization = Organization::new();
     organization.set_org_id(payload.get_id().to_string());
     organization.set_name(payload.get_name().to_string());
+    organization.set_alternate_ids(protobuf::RepeatedField::from_vec(
+        payload.get_alternate_ids().to_vec(),
+    ));
     organization.set_metadata(protobuf::RepeatedField::from_vec(
         payload.get_metadata().to_vec(),
     ));
@@ -861,13 +995,54 @@ fn create_org(
         .unwrap();
     state.set_role(role)?;
 
+    for entry in payload.get_alternate_ids() {
+        match state.get_alternate_id_index(entry.get_id_type(), entry.get_id()) {
+            Ok(None) => (),
+            Ok(Some(entry_index)) => {
+                if entry_index.grid_identity_id() != payload.get_id() {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Alternate ID index entry already exists: {}:{}",
+                        entry.get_id_type(),
+                        entry.get_id(),
+                    )));
+                }
+            }
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Failed to retrieve state: {}",
+                    err,
+                )))
+            }
+        }
+
+        let alt_id_entry_builder = AlternateIDIndexEntryBuilder::new();
+        let alt_id_entry = alt_id_entry_builder
+            .with_id_type(entry.get_id_type().to_string())
+            .with_id(entry.get_id().to_string())
+            .with_grid_identity_id(payload.get_id().to_string())
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!(
+                    "Cannot build alternate ID index entry: {}",
+                    err
+                ))
+            })?;
+
+        state.set_alternate_id_index(alt_id_entry).map_err(|e| {
+            ApplyError::InternalError(format!(
+                "Failed to create alternate ID index entry: {:?}",
+                e
+            ))
+        })?;
+    }
+
     // Check if the agent already exists
     match state.get_agent(signer) {
         Ok(None) => (),
         Ok(Some(_)) => {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Agent already exists: {}",
-                payload.get_id(),
+                signer.to_string(),
             )))
         }
         Err(err) => {
@@ -907,6 +1082,47 @@ fn update_org(
         payload.get_id(),
     )?;
 
+    for entry in payload.get_alternate_ids() {
+        match state.get_alternate_id_index(&entry.id_type, &entry.id) {
+            Ok(None) => (),
+            Ok(Some(entry_index)) => {
+                if entry_index.grid_identity_id() != payload.get_id() {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Alternate ID index entry already exists: {}:{}",
+                        entry.get_id_type(),
+                        entry.get_id(),
+                    )));
+                }
+            }
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Failed to retrieve state: {}",
+                    err,
+                )))
+            }
+        }
+
+        let alt_id_entry_builder = AlternateIDIndexEntryBuilder::new();
+        let alt_id_entry = alt_id_entry_builder
+            .with_id_type(entry.get_id_type().to_string())
+            .with_id(entry.get_id().to_string())
+            .with_grid_identity_id(payload.get_id().to_string())
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!(
+                    "Cannot build alternate ID index entry: {}",
+                    err
+                ))
+            })?;
+
+        state.set_alternate_id_index(alt_id_entry).map_err(|e| {
+            ApplyError::InternalError(format!(
+                "Failed to create alternate ID index entry: {:?}",
+                e
+            ))
+        })?;
+    }
+
     // Make sure the organization already exists
     let mut organization = match state.get_organization(payload.get_id()) {
         Ok(None) => {
@@ -935,6 +1151,11 @@ fn update_org(
     if !payload.get_metadata().is_empty() {
         organization.set_metadata(protobuf::RepeatedField::from_vec(
             payload.get_metadata().to_vec(),
+        ));
+    }
+    if !payload.get_alternate_ids().is_empty() {
+        organization.set_alternate_ids(protobuf::RepeatedField::from_vec(
+            payload.get_alternate_ids().to_vec(),
         ));
     }
     state.set_organization(payload.get_id(), organization)
