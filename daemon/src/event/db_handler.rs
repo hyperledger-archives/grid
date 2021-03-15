@@ -545,9 +545,9 @@ fn state_change_to_db_operation(
                                 .alternate_ids()
                                 .iter()
                                 .map(|a| AlternateID {
-                                    alternate_id: a.id().to_string(),
-                                    alternate_id_type: a.id_type().to_string(),
                                     org_id: org.org_id().to_string(),
+                                    alternate_id_type: a.id_type().to_string(),
+                                    alternate_id: a.id().to_string(),
                                     start_commit_num: commit_num,
                                     end_commit_num: MAX_COMMIT_NUM,
                                     service_id: service_id.cloned(),
