@@ -260,6 +260,24 @@ pub struct AlternateIDModel {
     pub service_id: Option<String>,
 }
 
+pub fn make_alternate_id_models(org: &Organization) -> Vec<NewAlternateIDModel> {
+    let mut models = Vec::new();
+    for entry in &org.alternate_ids {
+        let model = NewAlternateIDModel {
+            org_id: org.org_id.to_string(),
+            alternate_id_type: entry.alternate_id_type.to_string(),
+            alternate_id: entry.alternate_id.to_string(),
+            start_commit_num: org.start_commit_num,
+            end_commit_num: org.end_commit_num,
+            service_id: org.service_id.clone(),
+        };
+
+        models.push(model);
+    }
+
+    models
+}
+
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "pike_organization_location_assoc"]
 pub struct NewLocationAssociationModel {
@@ -604,15 +622,15 @@ impl From<&AlternateIDModel> for AlternateID {
     }
 }
 
-impl Into<NewAlternateIDModel> for AlternateID {
+impl Into<NewAlternateIDModel> for &AlternateID {
     fn into(self) -> NewAlternateIDModel {
         NewAlternateIDModel {
-            org_id: self.org_id,
-            alternate_id_type: self.alternate_id_type,
-            alternate_id: self.alternate_id,
+            org_id: self.org_id.to_string(),
+            alternate_id_type: self.alternate_id_type.to_string(),
+            alternate_id: self.alternate_id.to_string(),
             start_commit_num: self.start_commit_num,
             end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+            service_id: self.service_id.clone(),
         }
     }
 }

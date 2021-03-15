@@ -555,6 +555,224 @@ impl IntoBytes for AlternateIDIndexEntry {
 impl IntoProto<protos::pike_state::AlternateIDIndexEntry> for AlternateIDIndexEntry {}
 impl IntoNative<AlternateIDIndexEntry> for protos::pike_state::AlternateIDIndexEntry {}
 
+#[derive(Debug)]
+pub enum AlternateIDIndexEntryBuildError {
+    MissingField(String),
+}
+
+impl StdError for AlternateIDIndexEntryBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            AlternateIDIndexEntryBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            AlternateIDIndexEntryBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for AlternateIDIndexEntryBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            AlternateIDIndexEntryBuildError::MissingField(ref s) => {
+                write!(f, "MissingField: {}", s)
+            }
+        }
+    }
+}
+
+/// Builder used to create a AlternateIDIndexEntry
+#[derive(Default, Clone)]
+pub struct AlternateIDIndexEntryBuilder {
+    pub id_type: Option<String>,
+    pub id: Option<String>,
+    pub grid_identity_id: Option<String>,
+}
+
+impl AlternateIDIndexEntryBuilder {
+    pub fn new() -> Self {
+        AlternateIDIndexEntryBuilder::default()
+    }
+
+    pub fn with_id_type(mut self, id_type: String) -> AlternateIDIndexEntryBuilder {
+        self.id_type = Some(id_type);
+        self
+    }
+
+    pub fn with_id(mut self, id: String) -> AlternateIDIndexEntryBuilder {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn with_grid_identity_id(
+        mut self,
+        grid_identity_id: String,
+    ) -> AlternateIDIndexEntryBuilder {
+        self.grid_identity_id = Some(grid_identity_id);
+        self
+    }
+
+    pub fn build(self) -> Result<AlternateIDIndexEntry, AlternateIDIndexEntryBuildError> {
+        let id_type = self.id_type.ok_or_else(|| {
+            AlternateIDIndexEntryBuildError::MissingField("'id_type' field is required".to_string())
+        })?;
+
+        let id = self.id.ok_or_else(|| {
+            AlternateIDIndexEntryBuildError::MissingField("'id' field is required".to_string())
+        })?;
+
+        let grid_identity_id = self.grid_identity_id.ok_or_else(|| {
+            AlternateIDIndexEntryBuildError::MissingField(
+                "'grid_identity_id' field is required".to_string(),
+            )
+        })?;
+
+        Ok(AlternateIDIndexEntry {
+            id_type,
+            id,
+            grid_identity_id,
+        })
+    }
+}
+
+/// Native implementation of AlternateIDIndexEntryList
+#[derive(Debug, Clone, PartialEq)]
+pub struct AlternateIDIndexEntryList {
+    entries: Vec<AlternateIDIndexEntry>,
+}
+
+impl AlternateIDIndexEntryList {
+    pub fn entries(&self) -> &[AlternateIDIndexEntry] {
+        &self.entries
+    }
+}
+
+impl FromProto<protos::pike_state::AlternateIDIndexEntryList> for AlternateIDIndexEntryList {
+    fn from_proto(
+        entry_list: protos::pike_state::AlternateIDIndexEntryList,
+    ) -> Result<Self, ProtoConversionError> {
+        Ok(AlternateIDIndexEntryList {
+            entries: entry_list
+                .get_entries()
+                .to_vec()
+                .into_iter()
+                .map(AlternateIDIndexEntry::from_proto)
+                .collect::<Result<Vec<AlternateIDIndexEntry>, ProtoConversionError>>()?,
+        })
+    }
+}
+
+impl FromNative<AlternateIDIndexEntryList> for protos::pike_state::AlternateIDIndexEntryList {
+    fn from_native(entry_list: AlternateIDIndexEntryList) -> Result<Self, ProtoConversionError> {
+        let mut entry_list_proto = protos::pike_state::AlternateIDIndexEntryList::new();
+
+        entry_list_proto.set_entries(RepeatedField::from_vec(
+            entry_list
+                .entries()
+                .to_vec()
+                .into_iter()
+                .map(AlternateIDIndexEntry::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateIDIndexEntry>, ProtoConversionError>>()?,
+        ));
+
+        Ok(entry_list_proto)
+    }
+}
+
+impl FromBytes<AlternateIDIndexEntryList> for AlternateIDIndexEntryList {
+    fn from_bytes(bytes: &[u8]) -> Result<AlternateIDIndexEntryList, ProtoConversionError> {
+        let proto: protos::pike_state::AlternateIDIndexEntryList = Message::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get AlternateIDIndexEntryList from bytes".to_string(),
+                )
+            })?;
+
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for AlternateIDIndexEntryList {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from AlternateIDIndexEntryList".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::pike_state::AlternateIDIndexEntryList> for AlternateIDIndexEntryList {}
+impl IntoNative<AlternateIDIndexEntryList> for protos::pike_state::AlternateIDIndexEntryList {}
+
+#[derive(Debug)]
+pub enum AlternateIDIndexEntryListBuildError {
+    MissingField(String),
+}
+
+impl StdError for AlternateIDIndexEntryListBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            AlternateIDIndexEntryListBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn StdError> {
+        match *self {
+            AlternateIDIndexEntryListBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for AlternateIDIndexEntryListBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            AlternateIDIndexEntryListBuildError::MissingField(ref s) => {
+                write!(f, "MissingField: {}", s)
+            }
+        }
+    }
+}
+
+/// Builder used to create a AlternateIDIndexEntryList
+#[derive(Default, Clone)]
+pub struct AlternateIDIndexEntryListBuilder {
+    pub entries: Vec<AlternateIDIndexEntry>,
+}
+
+impl AlternateIDIndexEntryListBuilder {
+    pub fn new() -> Self {
+        AlternateIDIndexEntryListBuilder::default()
+    }
+
+    pub fn with_entries(
+        mut self,
+        entries: Vec<AlternateIDIndexEntry>,
+    ) -> AlternateIDIndexEntryListBuilder {
+        self.entries = entries;
+        self
+    }
+
+    pub fn build(self) -> Result<AlternateIDIndexEntryList, AlternateIDIndexEntryListBuildError> {
+        let entries = {
+            if self.entries.is_empty() {
+                return Err(AlternateIDIndexEntryListBuildError::MissingField(
+                    "'entries' cannot be empty".to_string(),
+                ));
+            } else {
+                self.entries
+            }
+        };
+
+        Ok(AlternateIDIndexEntryList { entries })
+    }
+}
+
 /// Native implementation of AlternateID
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlternateID {
@@ -1031,7 +1249,7 @@ impl FromProto<protos::pike_state::Organization> for Organization {
             name: org.get_name().to_string(),
             locations: org.get_locations().to_vec(),
             alternate_ids: org
-                .get_alternate_id()
+                .get_alternate_ids()
                 .to_vec()
                 .into_iter()
                 .map(AlternateID::from_proto)
@@ -1053,7 +1271,7 @@ impl FromNative<Organization> for protos::pike_state::Organization {
         org_proto.set_org_id(org.org_id().to_string());
         org_proto.set_name(org.name().to_string());
         org_proto.set_locations(RepeatedField::from_vec(org.locations().to_vec()));
-        org_proto.set_alternate_id(RepeatedField::from_vec(
+        org_proto.set_alternate_ids(RepeatedField::from_vec(
             org.alternate_ids()
                 .to_vec()
                 .into_iter()

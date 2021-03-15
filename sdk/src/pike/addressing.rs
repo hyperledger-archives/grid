@@ -58,9 +58,10 @@ pub fn compute_role_address(name: &str, org_id: &str) -> String {
 }
 
 /// Computes the address a Pike Alternate ID Index is stored at based on its name
-pub fn compute_alternate_id_index_entry_address(id: &str) -> String {
+pub fn compute_alternate_id_index_entry_address(id_type: &str, id: &str) -> String {
+    let uname = format!("{}:{}", id_type, id);
     let mut sha = Sha512::new();
-    sha.input(id.as_bytes());
+    sha.input(uname.as_bytes());
     // (pike namespace) + (alternate ID namespace) + hash
     let hash_str =
         String::from(PIKE_NAMESPACE) + ALTERNATE_ID_INDEX_ENTRY_PREFIX + &sha.result_str();

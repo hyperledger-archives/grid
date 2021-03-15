@@ -24,8 +24,9 @@ use super::{
 };
 use crate::error::ResourceTemporarilyUnavailableError;
 use models::{
-    make_allowed_orgs_models, make_inherit_from_models, make_location_association_models,
-    make_org_metadata_models, make_permissions_models, make_role_association_models,
+    make_allowed_orgs_models, make_alternate_id_models, make_inherit_from_models,
+    make_location_association_models, make_org_metadata_models, make_permissions_models,
+    make_role_association_models,
 };
 use operations::add_agent::PikeStoreAddAgentOperation as _;
 use operations::add_organization::PikeStoreAddOrganizationOperation as _;
@@ -157,6 +158,7 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
         .add_organization(
             org.clone().into(),
             make_location_association_models(&org),
+            make_alternate_id_models(&org),
             make_org_metadata_models(&org),
         )
     }
@@ -311,6 +313,7 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
         .add_organization(
             org.clone().into(),
             make_location_association_models(&org),
+            make_alternate_id_models(&org),
             make_org_metadata_models(&org),
         )
     }
