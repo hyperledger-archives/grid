@@ -25,10 +25,13 @@ function errorResponse(request, message) {
   };
 }
 
-export function get(url) {
+export function get(url, headerFn = null) {
   return new Promise(resolve => {
     const request = new XMLHttpRequest();
     request.open('GET', url, true);
+    if (headerFn) {
+      headerFn(request);
+    }
     request.timeout = 5000;
 
     request.onload = () => {
