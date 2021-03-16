@@ -152,7 +152,10 @@ mod integration {
             .arg("create")
             .arg(&ORG_ID)
             .arg(&ORG_NAME)
-            .args(&["--metadata", &format!("gs1_company_prefixes={}", &ORG_ID)])
+            .args(&[
+                "--alternate-ids",
+                &format!("gs1_company_prefix:{}", &ORG_ID),
+            ])
             .args(&["--wait", "300000"]);
         cmd_org_create.assert().success();
 
