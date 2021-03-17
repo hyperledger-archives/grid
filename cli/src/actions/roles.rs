@@ -27,6 +27,7 @@ use grid_sdk::{
     protos::IntoProto,
 };
 use reqwest::Client;
+use std::cmp::max;
 
 use serde::Deserialize;
 
@@ -64,6 +65,50 @@ pub fn display_role(role: &GridRole) {
         role.org_id, role.name, role.description, role.active, role.permissions, role.allowed_organizations,
     );
     display_inherit_from(&role.inherit_from);
+}
+
+/**
+ * Prints general info for a list Grid Roles
+ *
+ * roles - Roles to be printed
+ */
+pub fn display_roles_info(roles: &[GridRole]) {
+    let mut width_org_id = "Organization ID".len();
+    let mut width_role_name = "Role Name".len();
+    let width_active = "Active".len();
+    let mut width_description = "Description".len();
+
+    roles.iter().for_each(|role| {
+        width_org_id = max(width_org_id, role.org_id.len());
+        width_role_name = max(width_role_name, role.name.len());
+        width_description = max(width_description, role.description.len());
+    });
+
+    println!(
+        "{:<width_org_id$} {:<width_role_name$} {:<width_active$} {:<width_description$}",
+        "Organization ID",
+        "Role Name",
+        "Active",
+        "Description",
+        width_org_id = width_org_id,
+        width_role_name = width_role_name,
+        width_active = width_active,
+        width_description = width_description
+    );
+
+    roles.iter().for_each(|role| {
+        println!(
+            "{:<width_org_id$} {:<width_role_name$} {:<width_active$} {:<width_description$}",
+            role.org_id,
+            role.name,
+            role.active,
+            role.description,
+            width_org_id = width_org_id,
+            width_role_name = width_role_name,
+            width_active = width_active,
+            width_description = width_description
+        )
+    });
 }
 
 /**
@@ -176,5 +221,36 @@ pub fn do_show_role(
 
     let role = response.json::<GridRole>()?;
     display_role(&role);
+    Ok(())
+}
+
+pub fn do_list_roles(url: &str, org_id: &str, service_id: Option<String>) -> Result<(), CliError> {
+    let client = Client::new();
+    let mut final_url = format!("{}/role/{}", url, org_id);
+    if let Some(service_id) = service_id {
+        final_url = format!("{}?service_id={}", final_url, service_id);
+    }
+
+    let mut roles = Vec::new();
+
+    loop {
+        let mut response = client.get(&final_url).send()?;
+
+        if !response.status().is_success() {
+            return Err(CliError::DaemonError(response.text()?));
+        }
+
+        let mut role_list = response.json::<GridRoleList>()?;
+
+        roles.append(&mut role_list.data);
+
+        if let Some(next) = role_list.paging.next {
+            final_url = format!("{}{}", url, next);
+        } else {
+            break;
+        }
+    }
+
+    display_roles_info(&roles);
     Ok(())
 }

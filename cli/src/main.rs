@@ -606,6 +606,16 @@ fn run() -> Result<(), CliError> {
                                 .required(true)
                                 .help("Name of role"),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("List all roles for a given org ID")
+                        .arg(
+                            Arg::with_name("org_id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Org ID of role"),
+                        )
                 ),
         );
     }
@@ -1332,6 +1342,9 @@ fn run() -> Result<(), CliError> {
                     m.value_of("name").unwrap(),
                     service_id,
                 )?,
+                ("list", Some(m)) => {
+                    roles::do_list_roles(&url, m.value_of("org_id").unwrap(), service_id)?
+                }
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
