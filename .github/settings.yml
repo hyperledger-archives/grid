@@ -1,0 +1,16 @@
+repository:
+  name: grid
+  description: Grid provides reference implementations of supply-chain-centric
+    items – data types, data models, smart contracts, and more – that are
+    anchored on existing open standards and industry best practices.
+  homepage: https://grid.hyperledger.org/
+  topics: supply chain, distributed ledger, smart contract, blockchain
+  private: false
+  has_issues: true
+  has_projects: false
+  has_wiki: false
+  has_downloads: false
+  default_branch: main
+  allow_squash_merge: false
+  allow_merge_commit: true
+  allow_rebase_merge: true
