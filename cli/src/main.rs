@@ -329,7 +329,7 @@ fn run() -> Result<(), CliError> {
                                 .long("alternate-ids")
                                 .multiple(true)
                                 .use_delimiter(true)
-                                .help("Alternate IDs for organization"),
+                                .help("Alternate IDs for organization (format: <id_type>:<id>) in a comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("metadata")
@@ -369,9 +369,19 @@ fn run() -> Result<(), CliError> {
                                 .help("Name of organization"),
                         )
                         .arg(
-                            Arg::with_name("address")
+                            Arg::with_name("locations")
+                                .long("locations")
                                 .takes_value(true)
-                                .help("Physical address for organization"),
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("Locations for an organization"),
+                        )
+                        .arg(
+                            Arg::with_name("alternate_ids")
+                                .long("alternate-ids")
+                                .multiple(true)
+                                .use_delimiter(true)
+                                .help("Alternate IDs for organization (format: <id_type>:<id>) in a comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("metadata")

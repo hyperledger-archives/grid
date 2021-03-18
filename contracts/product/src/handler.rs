@@ -133,27 +133,27 @@ impl ProductTransactionHandler {
             }
         };
 
-        /* Check if the agents organization contain GS1 Company Prefix key in its metadata
-        (gs1_company_prefixes), and the prefix must match the company prefix in the product_id */
+        /* Check if the agents organization contain GS1 Company Prefix key in its alternate IDs
+        (gs1_company_prefix), and the prefix must match the company prefix in the product_id */
         if payload.product_namespace() == &ProductNamespace::GS1 {
-            let metadata = org.metadata().to_vec();
-            let gs1_company_prefix_kv = match metadata
+            let metadata = org.alternate_ids().to_vec();
+            let gs1_company_prefix = match metadata
                 .iter()
-                .find(|kv| kv.key() == "gs1_company_prefixes")
+                .find(|p| p.id_type() == "gs1_company_prefix")
             {
-                Some(gs1_company_prefix_kv) => gs1_company_prefix_kv,
+                Some(gs1_company_prefix) => gs1_company_prefix,
                 None => {
                     return Err(ApplyError::InvalidTransaction(format!(
-                    "The agents organization does not have the gs1_company_prefixes key in its metadata: {:?}",
-                    org.metadata()
-                )));
+                        "The agents organization does not have the gs1_company_prefix prefix: {:?}",
+                        org.alternate_ids()
+                    )));
                 }
             };
             // If the gtin identifer does not contain the organizations gs1 prefix
-            if !product_id.contains(gs1_company_prefix_kv.value()) {
+            if !product_id.contains(gs1_company_prefix.id()) {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "The agents organization does not own the GS1 company prefix in the GTIN product_id: {:?}",
-                    org.metadata()
+                    org.alternate_ids()
                 )));
             }
         }
@@ -438,7 +438,7 @@ mod tests {
         products::addressing::compute_gs1_product_address,
         protocol::{
             pike::state::{
-                AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
+                AgentBuilder, AgentListBuilder, AlternateIDBuilder, OrganizationBuilder,
                 OrganizationListBuilder, RoleBuilder, RoleListBuilder,
             },
             product::{
@@ -574,19 +574,17 @@ mod tests {
         fn add_org(&self, org_id: &str) {
             // Products can only be created when there is a gs1 prefix
             // within the product organization's metadata
-            let builder = KeyValueEntryBuilder::new();
-            let key_value = builder
-                .with_key("gs1_company_prefixes".to_string())
-                .with_value("6889".to_string())
+            let alternate_id = AlternateIDBuilder::new()
+                .with_id_type("gs1_company_prefix".to_string())
+                .with_id("6889".to_string())
                 .build()
                 .unwrap();
-
             let builder = OrganizationBuilder::new();
             let org = builder
                 .with_org_id(org_id.to_string())
                 .with_name("test_org_name".to_string())
                 .with_locations(vec!["test".to_string()])
-                .with_metadata(vec![key_value.clone()])
+                .with_alternate_ids(vec![alternate_id.clone()])
                 .build()
                 .unwrap();
 
@@ -768,7 +766,7 @@ mod tests {
         ) {
             Ok(()) => panic!("Agent's organization should not have a gs1 prefix key, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains("The agents organization does not have the gs1_company_prefixes key in its metadata: []"));
+                assert!(err.contains("The agents organization does not have the gs1_company_prefix prefix: []"));
             }
             Err(err) => panic!("Should have gotten invalid error but go {}", err),
         }
