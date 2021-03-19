@@ -127,7 +127,7 @@ pub trait PikeStore: Send + Sync {
     ///  * `agent` - The agent to be added
     fn add_agent(&self, agent: Agent) -> Result<(), PikeStoreError>;
 
-    /// Adds a role to the underlying storage
+    /// Adds or updates a role to the underlying storage
     ///
     /// # Arguments
     ///
