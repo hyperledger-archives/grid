@@ -39,7 +39,6 @@ use operations::list_agents::PikeStoreListAgentsOperation as _;
 use operations::list_organizations::PikeStoreListOrganizationsOperation as _;
 use operations::list_roles_for_organization::PikeStoreListRolesForOrganizationOperation as _;
 use operations::update_agent::PikeStoreUpdateAgentOperation as _;
-use operations::update_role::PikeStoreUpdateRoleOperation as _;
 use operations::PikeStoreOperations;
 
 /// Manages creating agents in the database
@@ -190,20 +189,6 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
         .fetch_organization(org_id, service_id)
     }
 
-    fn update_role(&self, role: Role) -> Result<(), PikeStoreError> {
-        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            PikeStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .update_role(
-            role.clone().into(),
-            make_inherit_from_models(&role),
-            make_permissions_models(&role),
-            make_allowed_orgs_models(&role),
-        )
-    }
-
     fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
         PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             PikeStoreError::ResourceTemporarilyUnavailableError(
@@ -343,20 +328,6 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .fetch_organization(org_id, service_id)
-    }
-
-    fn update_role(&self, role: Role) -> Result<(), PikeStoreError> {
-        PikeStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            PikeStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .update_role(
-            role.clone().into(),
-            make_inherit_from_models(&role),
-            make_permissions_models(&role),
-            make_allowed_orgs_models(&role),
-        )
     }
 
     fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
