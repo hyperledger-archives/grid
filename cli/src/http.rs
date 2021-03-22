@@ -50,7 +50,13 @@ pub fn submit_batches(
 
     let batch_link = response.json::<BatchStatusLink>()?;
 
-    info!("Response: {:#?}", batch_link);
+    let params: Vec<&str> = batch_link.link.split('?').collect();
+
+    let id_param: Vec<&str> = params[1].split('=').collect();
+
+    let id = id_param[1];
+
+    info!("Submitted batch: {}", id);
 
     while wait > 0 {
         let time = Instant::now();
@@ -72,7 +78,21 @@ pub fn submit_batches(
 
         let batch_status = response.json::<BatchStatusResponse>()?;
 
-        info!("Batch Status: {:#?}", batch_status);
+        for t in &batch_status.data {
+            if t.status == "Invalid" {
+                for i in &t.invalid_transactions {
+                    error!(
+                        "Error: {}",
+                        i.get("message")
+                            .unwrap_or(&"Batch contained invalid transactions".to_string())
+                    );
+                }
+            }
+        }
+
+        if batch_status.data.iter().all(|d| d.status == "Valid") {
+            info!("Batch and transaction structure was valid. Batch queued.");
+        }
 
         if batch_status.data.iter().all(|x| x.status != "PENDING") {
             break;
