@@ -20,6 +20,11 @@
 # Rust
 Cargo.lock
 target/
+cli/target/
+contracts/*/target
+daemon/target/
+griddle/target/
+sdk/target/
 
 contracts/*/bin/
 

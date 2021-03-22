@@ -60,7 +60,7 @@ ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
 COPY --from=builder /build/target/debian/grid-cli_*.deb /tmp
-COPY --from=builder /build/target/debian/grid-griddle*.deb /tmp
+COPY --from=builder /build/target/debian/griddle*.deb /tmp
 COPY --from=builder /commit-hash /commit-hash
 
 RUN apt-get update \
