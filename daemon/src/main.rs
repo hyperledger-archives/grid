@@ -45,12 +45,11 @@ mod rest_api;
 mod sawtooth;
 #[cfg(feature = "splinter-support")]
 mod splinter;
-#[cfg(feature = "submitter")]
-mod submitter;
 
 use flexi_logger::{LogSpecBuilder, Logger};
+use grid_sdk::rest_api::actix_web_3::Backend;
 
-use crate::config::{Backend, GridConfigBuilder};
+use crate::config::GridConfigBuilder;
 use crate::error::DaemonError;
 #[cfg(feature = "sawtooth-support")]
 use crate::sawtooth::run_sawtooth;

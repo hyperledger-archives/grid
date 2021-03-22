@@ -1,19 +1,16 @@
-/*
- * Copyright 2020 Cargill Incorporated
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * -----------------------------------------------------------------------------
- */
+// Copyright 2018-2021 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use std::pin::Pin;
 use std::str::FromStr;
@@ -22,10 +19,11 @@ use futures::prelude::*;
 use protobuf::Message;
 use sawtooth_sdk::messages::batch::Batch;
 
-use crate::rest_api::error::RestApiResponseError;
 use crate::submitter::{
     BatchStatus, BatchStatusLink, BatchStatuses, BatchSubmitter, InvalidTransaction, SubmitBatches,
 };
+
+use super::error::BatchSubmitterError;
 
 macro_rules! try_fut {
     ($try_expr:expr) => {
@@ -53,9 +51,9 @@ impl BatchSubmitter for SplinterBatchSubmitter {
     fn submit_batches(
         &self,
         msg: SubmitBatches,
-    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, RestApiResponseError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BatchSubmitterError>> + Send>> {
         let service_arg = try_fut!(msg.service_id.ok_or_else(|| {
-            RestApiResponseError::BadRequest("A service id must be provided".into())
+            BatchSubmitterError::BadRequestError("A service id must be provided".into())
         }));
 
         let service_info = try_fut!(SplinterService::from_str(&service_arg));
@@ -66,7 +64,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
         );
 
         let batch_list_bytes = try_fut!(msg.batch_list.write_to_bytes().map_err(|err| {
-            RestApiResponseError::BadRequest(format!("Malformed batch list: {}", err))
+            BatchSubmitterError::BadRequestError(format!("Malformed batch list: {}", err))
         }));
 
         let batch_query = msg
@@ -90,7 +88,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
             .then(|res| {
                 future::ready(match res {
                     Ok(_) => Ok(BatchStatusLink { link }),
-                    Err(err) => Err(RestApiResponseError::RequestHandlerError(format!(
+                    Err(err) => Err(BatchSubmitterError::InternalError(format!(
                         "Unable to submit batch: {}",
                         err
                     ))),
@@ -102,9 +100,9 @@ impl BatchSubmitter for SplinterBatchSubmitter {
     fn batch_status(
         &self,
         msg: BatchStatuses,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, RestApiResponseError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BatchSubmitterError>> + Send>> {
         let service_arg = try_fut!(msg.service_id.ok_or_else(|| {
-            RestApiResponseError::BadRequest("A service id must be provided".into())
+            BatchSubmitterError::BadRequestError("A service id must be provided".into())
         }));
 
         let service_info = try_fut!(SplinterService::from_str(&service_arg));
@@ -140,7 +138,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
                         stats.into_iter().map(|status| status.into()).collect()
                     })
                     .map_err(|err| {
-                        RestApiResponseError::RequestHandlerError(format!(
+                        BatchSubmitterError::InternalError(format!(
                             "Unable to retrieve batch statuses: {}",
                             err
                         ))
@@ -207,20 +205,20 @@ struct SplinterService {
 }
 
 impl FromStr for SplinterService {
-    type Err = RestApiResponseError;
+    type Err = BatchSubmitterError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split("::");
         let circuit_id: String = parts
             .next()
             .ok_or_else(|| {
-                RestApiResponseError::BadRequest("Empty service_id parameter provided".into())
+                BatchSubmitterError::BadRequestError("Empty service_id parameter provided".into())
             })?
             .into();
         let service_id: String = parts
             .next()
             .ok_or_else(|| {
-                RestApiResponseError::BadRequest(
+                BatchSubmitterError::BadRequestError(
                     "Must provide a fully-qualified service_id: <circuit_id>::<service_id>".into(),
                 )
             })?

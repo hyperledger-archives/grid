@@ -18,6 +18,9 @@
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[cfg(feature = "serde_json")]
+#[macro_use]
+extern crate serde_json;
 #[macro_use]
 #[cfg(feature = "pike")]
 extern crate cfg_if;
@@ -52,6 +55,8 @@ pub mod rest_api;
 #[cfg(feature = "schema")]
 pub mod schemas;
 pub mod store;
+#[cfg(feature = "batch-submitter")]
+pub mod submitter;
 #[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;
 #[cfg(feature = "workflow")]

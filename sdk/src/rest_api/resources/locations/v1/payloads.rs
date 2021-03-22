@@ -1,4 +1,4 @@
-// Copyright 2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::convert::TryFrom;
-
-use crate::rest_api::{
-    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryPaging,
-    QueryServiceId,
-};
-
-use actix::{Handler, Message, SyncContext};
-use actix_web::{web, HttpResponse};
-use grid_sdk::{
+use crate::{
     locations::store::{LatLongValue, Location, LocationAttribute},
     rest_api::resources::paging::v1::Paging,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LocationSlice {
@@ -111,98 +101,4 @@ impl From<LatLongValue> for LatLongSlice {
             longitude: lat_long_value.1,
         }
     }
-}
-
-struct ListLocations {
-    service_id: Option<String>,
-    offset: u64,
-    limit: u16,
-}
-
-impl Message for ListLocations {
-    type Result = Result<LocationListSlice, RestApiResponseError>;
-}
-
-impl Handler<ListLocations> for DbExecutor {
-    type Result = Result<LocationListSlice, RestApiResponseError>;
-
-    fn handle(&mut self, msg: ListLocations, _: &mut SyncContext<Self>) -> Self::Result {
-        let offset = i64::try_from(msg.offset).unwrap_or(i64::MAX);
-
-        let limit = i64::try_from(msg.limit).unwrap_or(10);
-
-        let location_list =
-            self.location_store
-                .list_locations(msg.service_id.as_deref(), offset, limit)?;
-
-        let data = location_list
-            .data
-            .into_iter()
-            .map(LocationSlice::from)
-            .collect();
-
-        let paging = Paging::new("/location", location_list.paging, msg.service_id.as_deref());
-
-        Ok(LocationListSlice { data, paging })
-    }
-}
-
-pub async fn list_locations(
-    state: web::Data<AppState>,
-    query_service_id: web::Query<QueryServiceId>,
-    query_paging: web::Query<QueryPaging>,
-    _: AcceptServiceIdParam,
-) -> Result<HttpResponse, RestApiResponseError> {
-    let paging = query_paging.into_inner();
-    state
-        .database_connection
-        .send(ListLocations {
-            service_id: query_service_id.into_inner().service_id,
-            offset: paging.offset(),
-            limit: paging.limit(),
-        })
-        .await?
-        .map(|locations| HttpResponse::Ok().json(locations))
-}
-
-struct FetchLocation {
-    location_id: String,
-    service_id: Option<String>,
-}
-
-impl Message for FetchLocation {
-    type Result = Result<LocationSlice, RestApiResponseError>;
-}
-
-impl Handler<FetchLocation> for DbExecutor {
-    type Result = Result<LocationSlice, RestApiResponseError>;
-
-    fn handle(&mut self, msg: FetchLocation, _: &mut SyncContext<Self>) -> Self::Result {
-        match self
-            .location_store
-            .fetch_location(&msg.location_id, msg.service_id.as_deref())?
-        {
-            Some(location) => Ok(LocationSlice::from(location)),
-            None => Err(RestApiResponseError::NotFoundError(format!(
-                "Could not find location with id: {}",
-                msg.location_id
-            ))),
-        }
-    }
-}
-
-pub async fn fetch_location(
-    state: web::Data<AppState>,
-    location_id: web::Path<String>,
-    query: web::Query<QueryServiceId>,
-    _: AcceptServiceIdParam,
-) -> Result<HttpResponse, RestApiResponseError> {
-    state
-        .database_connection
-        .send(FetchLocation {
-            location_id: location_id.into_inner(),
-            service_id: query.into_inner().service_id,
-        })
-        .await?
-        .map(|location| HttpResponse::Ok().json(location))
 }

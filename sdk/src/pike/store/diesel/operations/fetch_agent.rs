@@ -62,7 +62,7 @@ impl<'a> PikeStoreFetchAgentOperation for PikeStoreOperations<'a, diesel::pg::Pg
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            return match agent {
+            match agent {
                 Some(agent) => {
                     let mut query = pike_agent_role_assoc::table
                         .into_boxed()
@@ -89,7 +89,7 @@ impl<'a> PikeStoreFetchAgentOperation for PikeStoreOperations<'a, diesel::pg::Pg
                     Ok(Some(Agent::from((agent, roles))))
                 }
                 None => Ok(None),
-            };
+            }
         })
     }
 }
@@ -127,7 +127,7 @@ impl<'a> PikeStoreFetchAgentOperation
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            return match agent {
+            match agent {
                 Some(agent) => {
                     let mut query = pike_agent_role_assoc::table
                         .into_boxed()
@@ -154,7 +154,7 @@ impl<'a> PikeStoreFetchAgentOperation
                     Ok(Some(Agent::from((agent, roles))))
                 }
                 None => Ok(None),
-            };
+            }
         })
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod error;
+pub mod sawtooth;
+pub mod splinter;
+
 use std::pin::Pin;
 
 use futures::prelude::*;
@@ -19,20 +23,22 @@ use sawtooth_sdk::messages::batch::BatchList;
 use sawtooth_sdk::messages::client_batch_submit::ClientBatchStatus;
 use url::Url;
 
-use crate::rest_api::error::RestApiResponseError;
+pub use error::BatchSubmitterError;
+pub use sawtooth::SawtoothBatchSubmitter;
+pub use splinter::SplinterBatchSubmitter;
 
 pub const DEFAULT_TIME_OUT: u32 = 300; // Max timeout 300 seconds == 5 minutes
 
-pub trait BatchSubmitter: Send + 'static {
+pub trait BatchSubmitter: Send + Sync + 'static {
     fn submit_batches(
         &self,
         submit_batches: SubmitBatches,
-    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, RestApiResponseError>> + Send>>;
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BatchSubmitterError>> + Send>>;
 
     fn batch_status(
         &self,
         batch_statuses: BatchStatuses,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, RestApiResponseError>> + Send>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BatchSubmitterError>> + Send>>;
 
     fn clone_box(&self) -> Box<dyn BatchSubmitter>;
 }
@@ -42,6 +48,7 @@ impl Clone for Box<dyn BatchSubmitter> {
         self.clone_box()
     }
 }
+
 pub struct SubmitBatches {
     pub batch_list: BatchList,
     pub response_url: Url,

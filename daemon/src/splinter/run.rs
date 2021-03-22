@@ -20,8 +20,10 @@ use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "integration")]
-use grid_sdk::rest_api::actix_web_3::State as IntegrationState;
+use grid_sdk::rest_api::actix_web_3::KeyState;
+use grid_sdk::rest_api::actix_web_3::{BatchSubmitterState, StoreState};
 use grid_sdk::store::ConnectionUri;
+use grid_sdk::submitter::SplinterBatchSubmitter;
 use splinter::events::Reactor;
 
 use crate::config::GridConfig;
@@ -31,8 +33,7 @@ use crate::event::{db_handler::DatabaseEventHandler, EventHandler};
 use crate::rest_api;
 
 use super::{
-    app_auth_handler, batch_submitter::SplinterBatchSubmitter,
-    event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
+    app_auth_handler, event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
 };
 
 pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
@@ -44,7 +45,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
 
-    let (db_executor, db_handler): (rest_api::DbExecutor, Box<dyn EventHandler + Sync + 'static>) = {
+    let (store_state, db_handler): (StoreState, Box<dyn EventHandler + Sync + 'static>) = {
         let connection_uri = config
             .database_url()
             .parse()
@@ -54,7 +55,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
                     ConnectionPool::new(config.database_url())?;
                 (
-                    rest_api::DbExecutor::from_pg_pool(connection_pool.clone()),
+                    StoreState::with_pg_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
                 )
             }
@@ -62,36 +63,10 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())?;
                 (
-                    rest_api::DbExecutor::from_sqlite_pool(connection_pool.clone()),
+                    StoreState::with_sqlite_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
                 )
             }
-        }
-    };
-
-    #[cfg(feature = "integration")]
-    let connection_uri = config
-        .database_url()
-        .parse()
-        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
-
-    #[cfg(feature = "integration")]
-    let integration_state = match connection_uri {
-        ConnectionUri::Postgres(_) => {
-            let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
-                ConnectionPool::new(config.database_url())?;
-            IntegrationState::with_pg_pool(
-                &config.key_file_name().to_string(),
-                connection_pool.pool,
-            )
-        }
-        ConnectionUri::Sqlite(_) => {
-            let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
-                ConnectionPool::new(config.database_url())?;
-            IntegrationState::with_sqlite_pool(
-                &config.key_file_name().to_string(),
-                connection_pool.pool,
-            )
         }
     };
 
@@ -103,15 +78,19 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         scabbard_admin_key,
     )?;
 
-    let batch_submitter = Box::new(SplinterBatchSubmitter::new(config.endpoint().url()));
+    let batch_submitter = SplinterBatchSubmitter::new(config.endpoint().url());
+    let batch_submitter_state = BatchSubmitterState::with_splinter(batch_submitter);
+
+    #[cfg(feature = "integration")]
+    let key_state = KeyState::new(&config.key_file_name());
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
-        db_executor,
-        batch_submitter,
-        config.endpoint().clone(),
+        store_state,
+        batch_submitter_state,
         #[cfg(feature = "integration")]
-        integration_state,
+        key_state,
+        config.endpoint().clone(),
     )?;
 
     let reactor_shutdown_signaler = reactor.shutdown_signaler();

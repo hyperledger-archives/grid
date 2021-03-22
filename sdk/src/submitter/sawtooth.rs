@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,10 +26,11 @@ use sawtooth_sdk::messaging::stream::MessageSender;
 use sawtooth_sdk::messaging::zmq_stream::ZmqMessageSender;
 use uuid::Uuid;
 
-use crate::rest_api::error::RestApiResponseError;
 use crate::submitter::{
     BatchStatus, BatchStatusLink, BatchStatuses, BatchSubmitter, SubmitBatches, DEFAULT_TIME_OUT,
 };
+
+use super::error::BatchSubmitterError;
 
 #[derive(Clone)]
 pub struct SawtoothBatchSubmitter {
@@ -55,7 +56,7 @@ impl BatchSubmitter for SawtoothBatchSubmitter {
     fn submit_batches(
         &self,
         msg: SubmitBatches,
-    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, RestApiResponseError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BatchSubmitterError>> + Send>> {
         let mut client_submit_request = ClientBatchSubmitRequest::new();
         client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
             msg.batch_list.get_batches().to_vec(),
@@ -91,7 +92,7 @@ impl BatchSubmitter for SawtoothBatchSubmitter {
     fn batch_status(
         &self,
         msg: BatchStatuses,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, RestApiResponseError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BatchSubmitterError>> + Send>> {
         let mut batch_status_request = ClientBatchStatusRequest::new();
         batch_status_request.set_batch_ids(protobuf::RepeatedField::from_vec(msg.batch_ids));
         match msg.wait {
@@ -122,9 +123,9 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     sender: &MS,
     message_type: Message_MessageType,
     message: &C,
-) -> Result<T, RestApiResponseError> {
+) -> Result<T, BatchSubmitterError> {
     let content = protobuf::Message::write_to_bytes(message).map_err(|err| {
-        RestApiResponseError::RequestHandlerError(format!(
+        BatchSubmitterError::BadRequestError(format!(
             "Failed to serialize batch submit request. {}",
             err.to_string()
         ))
@@ -135,7 +136,7 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     let mut response_future = sender
         .send(message_type, &correlation_id, &content)
         .map_err(|err| {
-            RestApiResponseError::SawtoothConnectionError(format!(
+            BatchSubmitterError::ConnectionError(format!(
                 "Failed to send message to validator. {}",
                 err.to_string()
             ))
@@ -144,11 +145,11 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     protobuf::Message::parse_from_bytes(
         response_future
             .get_timeout(Duration::new(DEFAULT_TIME_OUT.into(), 0))
-            .map_err(|err| RestApiResponseError::RequestHandlerError(err.to_string()))?
+            .map_err(|err| BatchSubmitterError::InternalError(err.to_string()))?
             .get_content(),
     )
     .map_err(|err| {
-        RestApiResponseError::RequestHandlerError(format!(
+        BatchSubmitterError::InternalError(format!(
             "Failed to parse validator response from bytes. {}",
             err.to_string()
         ))
@@ -157,23 +158,26 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
 
 pub fn process_validator_response(
     status: ClientBatchSubmitResponse_Status,
-) -> Result<(), RestApiResponseError> {
+) -> Result<(), BatchSubmitterError> {
     match status {
         ClientBatchSubmitResponse_Status::OK => Ok(()),
-        ClientBatchSubmitResponse_Status::INVALID_BATCH => Err(RestApiResponseError::BadRequest(
-            "The submitted BatchList was rejected by the validator. It was '
+        ClientBatchSubmitResponse_Status::INVALID_BATCH => {
+            Err(BatchSubmitterError::BadRequestError(
+                "The submitted BatchList was rejected by the validator. It was '
             'poorly formed, or has an invalid signature."
-                .to_string(),
-        )),
-        _ => Err(RestApiResponseError::SawtoothValidatorResponseError(
-            format!("Validator responded with error {:?}", status),
-        )),
+                    .to_string(),
+            ))
+        }
+        _ => Err(BatchSubmitterError::InternalError(format!(
+            "Validator responded with error {:?}",
+            status
+        ))),
     }
 }
 
 pub fn process_batch_status_response(
     response: ClientBatchStatusResponse,
-) -> Result<Vec<BatchStatus>, RestApiResponseError> {
+) -> Result<Vec<BatchStatus>, BatchSubmitterError> {
     let status = response.get_status();
     match status {
         ClientBatchStatusResponse_Status::OK => Ok(response
@@ -181,13 +185,14 @@ pub fn process_batch_status_response(
             .iter()
             .map(BatchStatus::from_proto)
             .collect()),
-        ClientBatchStatusResponse_Status::INVALID_ID => Err(RestApiResponseError::BadRequest(
+        ClientBatchStatusResponse_Status::INVALID_ID => Err(BatchSubmitterError::BadRequestError(
             "Blockchain items are identified by 128 character hex-strings. A submitted \
              batch id was invalid"
                 .to_string(),
         )),
-        _ => Err(RestApiResponseError::SawtoothValidatorResponseError(
-            format!("Validator responded with error {:?}", status),
-        )),
+        _ => Err(BatchSubmitterError::InternalError(format!(
+            "Validator responded with error {:?}",
+            status
+        ))),
     }
 }

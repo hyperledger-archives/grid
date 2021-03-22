@@ -29,17 +29,23 @@ license = "Apache-2.0"
 
 [dependencies]
 actix-web = { version = "3", optional = true }
+base64 = { version = "0.10", optional = true }
 byteorder = "1"
 cfg-if = "0.1"
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 log = { version = "0.4", optional = true }
+futures = { version = "0.3", optional = true }
 futures-util = { version = "0.3", optional = true }
+reqwest = { version = "0.10.1", features = ["json"], optional = true }
 protobuf = "2.19"
 sabre-sdk = { version = "0.5", optional = true }
-sawtooth-sdk = { version = "0.4", features = ["transact-compat"], optional=true }
+sawtooth-sdk = { version = "0.4", features = ["transact-compat"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = { version = "1.0" }
+serde_json = { version = "1.0", optional = true }
+url = { version = "2.1", optional = true }
+uuid = { version = "0.6", features = ["v4"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rust-crypto-wasm = "0.3"
@@ -61,6 +67,7 @@ stable = [
     # The stable feature extends default:
     "default",
     # The following features are stable:
+    "batch-submitter",
     "location",
     "pike",
     "product",
@@ -73,6 +80,7 @@ experimental = [
     # The following features are experimental:
     "batch-store",
     "postgres",
+    "pike-rest-api",
     "rest-api-resources",
     "rest-api-actix-web-3",
     "sawtooth-compat",
@@ -83,14 +91,17 @@ experimental = [
 
 location = ["pike", "schema"]
 pike = []
+pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
 product = ["pike", "schema"]
 schema = ["pike"]
-track-and-trace = []
+track-and-trace = ["base64"]
 batch-store = []
+batch-submitter = ["base64", "futures", "reqwest", "uuid", "url"]
 
 postgres = ["diesel/postgres", "diesel_migrations", "log"]
-rest-api-actix-web-3 = ["actix-web", "futures-util", "rest-api-resources", "sqlite", "postgres"]
-rest-api-resources = ["cylinder", "sabre-sdk", "log"]
+rest-api-actix-web-3 = [
+    "actix-web", "futures", "futures-util", "rest-api-resources", "sqlite", "postgres", "url"]
+rest-api-resources = ["cylinder", "sabre-sdk", "log", "reqwest", "serde_json", "url"]
 sawtooth-compat = [
     "sabre-sdk",
     "sawtooth-sdk"

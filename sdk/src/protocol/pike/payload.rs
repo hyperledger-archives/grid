@@ -1191,9 +1191,7 @@ impl StdError for CreateRoleActionBuildError {
 impl std::fmt::Display for CreateRoleActionBuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            CreateRoleActionBuildError::MissingField(ref s) => {
-                write!(f, "MissingField: {}", s)
-            }
+            CreateRoleActionBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
         }
     }
 }
@@ -1415,9 +1413,7 @@ impl StdError for UpdateRoleActionBuildError {
 impl std::fmt::Display for UpdateRoleActionBuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            UpdateRoleActionBuildError::MissingField(ref s) => {
-                write!(f, "MissingField: {}", s)
-            }
+            UpdateRoleActionBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
         }
     }
 }
@@ -1600,9 +1596,7 @@ impl StdError for DeleteRoleActionBuildError {
 impl std::fmt::Display for DeleteRoleActionBuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            DeleteRoleActionBuildError::MissingField(ref s) => {
-                write!(f, "MissingField: {}", s)
-            }
+            DeleteRoleActionBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
         }
     }
 }

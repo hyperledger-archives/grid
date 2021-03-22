@@ -15,7 +15,6 @@
  * -----------------------------------------------------------------------------
  */
 
-pub mod batch_submitter;
 pub mod connection;
 mod event;
 mod run;

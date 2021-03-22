@@ -48,9 +48,7 @@ impl fmt::Display for PermissionCheckerError {
             PermissionCheckerError::InvalidPublicKey(ref msg) => {
                 write!(f, "InvalidPublicKey: {}", msg)
             }
-            PermissionCheckerError::InvalidRole(ref msg) => {
-                write!(f, "InvalidRole: {}", msg)
-            }
+            PermissionCheckerError::InvalidRole(ref msg) => write!(f, "InvalidRole: {}", msg),
             PermissionCheckerError::ProtoConversion(ref e) => e.fmt(f),
         }
     }
@@ -160,10 +158,10 @@ impl<'a> PermissionChecker<'a> {
     ) -> bool {
         roles.iter().any(|r| {
             if r.permissions().iter().any(|p| p == permission) {
-                return record_owner == r.org_id()
+                record_owner == r.org_id()
                     || r.allowed_organizations()
                         .iter()
-                        .any(|org| org == record_owner);
+                        .any(|org| org == record_owner)
             } else {
                 if r.inherit_from().is_empty() {
                     return false;

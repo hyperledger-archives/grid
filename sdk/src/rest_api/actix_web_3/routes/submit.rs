@@ -15,7 +15,7 @@
 use actix_web::{dev, http::StatusCode, post, web, FromRequest, HttpRequest, HttpResponse};
 use futures_util::future::{FutureExt, LocalBoxFuture};
 
-use crate::rest_api::actix_web_3::State;
+use crate::rest_api::actix_web_3::{KeyState, StoreState};
 use crate::rest_api::resources::{
     error::ErrorResponse,
     submit::v1::{submit_batches, SubmitBatchRequest},
@@ -24,10 +24,20 @@ use crate::rest_api::resources::{
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
 #[post("/submit")]
-async fn submit(state: web::Data<State>, version: ProtocolVersion) -> HttpResponse {
+async fn submit(
+    store_state: web::Data<StoreState>,
+    key_state: web::Data<KeyState>,
+    version: ProtocolVersion,
+) -> HttpResponse {
     match version {
         ProtocolVersion::V1(payload) => {
-            match submit_batches(&state.key_file_name, state.batch_store.clone(), payload).await {
+            match submit_batches(
+                &key_state.key_file_name,
+                store_state.batch_store.clone(),
+                payload,
+            )
+            .await
+            {
                 Ok(res) => HttpResponse::Accepted().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
