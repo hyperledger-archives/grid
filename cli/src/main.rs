@@ -1745,6 +1745,39 @@ fn run() -> Result<(), CliError> {
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
+        #[cfg(feature = "purchase-order")]
+        ("po", Some(m)) => {
+            let _url = m
+                .value_of("url")
+                .map(String::from)
+                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+            let _service_id = m
+                .value_of("service_id")
+                .map(String::from)
+                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+            match m.subcommand() {
+                ("create", Some(_)) => unimplemented!(),
+                ("update", Some(_)) => unimplemented!(),
+                ("list", Some(_)) => unimplemented!(),
+                ("show", Some(_)) => unimplemented!(),
+                ("version", Some(m)) => match m.subcommand() {
+                    ("create", Some(_)) => unimplemented!(),
+                    ("update", Some(_)) => unimplemented!(),
+                    ("list", Some(_)) => unimplemented!(),
+                    ("show", Some(_)) => unimplemented!(),
+                    _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                },
+                ("revision", Some(m)) => match m.subcommand() {
+                    ("list", Some(_)) => unimplemented!(),
+                    ("show", Some(_)) => unimplemented!(),
+                    _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                },
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+            }
+        }
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),
     }
 
