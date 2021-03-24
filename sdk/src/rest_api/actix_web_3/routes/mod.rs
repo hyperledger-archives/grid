@@ -22,6 +22,8 @@ mod locations;
 mod organizations;
 #[cfg(feature = "product")]
 mod products;
+#[cfg(feature = "purchase-order")]
+mod purchase_orders;
 #[cfg(feature = "track-and-trace")]
 mod records;
 #[cfg(feature = "pike")]
@@ -40,6 +42,8 @@ pub use locations::*;
 pub use organizations::*;
 #[cfg(feature = "product")]
 pub use products::*;
+#[cfg(feature = "purchase-order")]
+pub use purchase_orders::*;
 #[cfg(feature = "track-and-trace")]
 pub use records::*;
 #[cfg(feature = "pike")]
