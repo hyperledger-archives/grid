@@ -141,6 +141,27 @@ services:
         echo '---------========= grid_location contract is loaded =========---------'
       "
 
+  purchase-order-contract-builder:
+    image: purchase-order-contract-builder:${ISOLATION_ID}
+    container_name: purchase-order-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/purchase_order/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - grid-shared:/grid-shared
+    entrypoint: |
+      bash -c "
+        while true; do curl -s http://sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        sabre cr --create grid_purchase_order --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename /tmp/purchase_order.yaml --key /grid-shared/my_key --url http://sawtooth-rest-api:8008 --wait 30
+        sabre ns --create 621dee06 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee05 grid_purchase_order --key /grid-shared/my_key --read --url http://sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee06 grid_purchase_order --key /grid-shared/my_key --read --write --url http://sawtooth-rest-api:8008 --wait 30
+        echo '---------========= grid_purchase_order contract is loaded =========---------'
+      "
+
   sawtooth-validator:
     image: hyperledger/sawtooth-validator:latest
     volumes:
