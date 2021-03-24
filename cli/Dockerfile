@@ -38,11 +38,11 @@ COPY daemon /build/daemon
 COPY sdk /build/sdk
 
 # Build the grid-cli package
-WORKDIR /build/cli
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml
+RUN cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
+RUN (cd cli && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
 
 # Log the commit hash
 COPY .git/ /tmp/.git/
