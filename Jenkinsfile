@@ -130,7 +130,7 @@ pipeline {
 
         stage("Build gridd with experimental features") {
             steps {
-                sh 'ISOLATION_ID=$ISOLATION_ID"experimental" CARGO_ARGS="-- --features experimental" docker-compose -f docker-compose.yaml build gridd'
+                sh 'ISOLATION_ID=$ISOLATION_ID"experimental" CARGO_ARGS=" --features experimental" docker-compose -f docker-compose.yaml build gridd'
             }
         }
 

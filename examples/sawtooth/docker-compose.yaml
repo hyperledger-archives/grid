@@ -251,7 +251,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
-        - CARGO_ARGS=-- --features experimental
+        - CARGO_ARGS= --features experimental
     volumes:
       - contracts-shared:/usr/share/scar
       - grid-shared:/grid-shared
@@ -301,7 +301,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
-        - CARGO_ARGS=-- --features experimental
+        - CARGO_ARGS= --features experimental
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-beta:/etc/grid/keys
