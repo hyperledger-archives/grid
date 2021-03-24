@@ -82,6 +82,7 @@ experimental = [
     "stable",
     # The following features are experimental:
     "integration",
+    "purchase-order",
     "splinter-support",
     "track-and-trace",
 ]
@@ -91,6 +92,7 @@ database = []
 location = ["pike", "schema"]
 pike = ["serde_json"]
 product = ["pike", "schema"]
+purchase-order = ["pike"]
 rest-api = ["database"]
 sawtooth-support = ["database", "event", "rest-api"]
 schema = ["pike"]
