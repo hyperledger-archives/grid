@@ -13,3 +13,6 @@
 // limitations under the License.
 
 pub mod addressing;
+pub mod store;
+
+pub use store::PurchaseOrderStore;
