@@ -70,6 +70,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "purchase-order",
     "splinter",
     "sqlite",
 ]
@@ -86,6 +87,7 @@ admin-keygen = []
 location = ["pike", "schema"]
 pike = []
 product = ["pike", "schema"]
+purchase-order = []
 sawtooth = []
 schema = ["pike"]
 splinter = ["admin-keygen"]
