@@ -1,0 +1,67 @@
+// Copyright 2021 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// -----------------------------------------------------------------------------
+
+syntax = "proto3";
+
+message PurchaseOrderPayload {
+  enum Action {
+    UNSET_ACTION = 0;
+    CREATE_PO = 1;
+    CREATE_VERSION = 2;
+    UPDATE_VERSION = 3;
+  }
+  Action action = 1;
+  string org_id = 2;
+  string public_key = 3;
+  uint64 timestamp = 4;
+
+  CreatePurchaseOrderPayload create_po_payload = 5;
+  UpdatePurchaseOrderPayload update_po_payload = 6;
+  CreateVersionPayload create_version_payload = 7;
+  UpdateVersionPayload update_version_payload = 8;
+}
+
+message CreatePurchaseOrderPayload {
+  uint64 created_at = 1;
+
+  PayloadRevision revision = 2;
+}
+
+message UpdatePurchaseOrderPayload {
+  string workflow_status = 1;
+  bool is_closed = 2;
+  string accepted_version_number = 3;
+}
+
+message CreateVersionPayload {
+  bool is_draft = 1;
+  PayloadRevision revision = 2;
+}
+
+message UpdateVersionPayload {
+  string version_id = 1;
+  string workflow_status = 2;
+  bool is_draft = 3;
+  string current_revision_number = 4;
+  PayloadRevision revision = 5;
+}
+
+message PayloadRevision {
+  uint64 revision_number = 1;
+  string submitter = 2;
+  uint64 created_at = 3;
+
+  string order_xml_v3_4 = 4;
+}

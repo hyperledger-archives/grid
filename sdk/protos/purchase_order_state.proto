@@ -1,0 +1,47 @@
+// Copyright 2021 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// -----------------------------------------------------------------------------
+
+syntax = "proto3";
+
+message PurchaseOrder {
+  string uuid = 1;
+  string workflow_status = 2;
+  PurchaseOrderVersion versions = 3;
+  string accepted_version_number = 4;
+  uint64 created_at = 5;
+  bool is_closed = 6;
+}
+
+message PurchaseOrderVersion {
+  string version_id = 1;
+  string workflow_status = 2;
+  bool is_draft = 3;
+  uint64 current_revision_number = 4;
+  PurchaseOrderRevision revisions = 5;
+}
+
+message PurchaseOrderRevision {
+  uint64 revision_number = 1;
+  string submitter = 2;
+  uint64 created_at = 3;
+
+  string order_xml_v3_4 = 4;
+}
+
+message PurchaseOrderAlternateID {
+  string id_type = 1;
+  string id = 2;
+  string org_id = 3;
+}
