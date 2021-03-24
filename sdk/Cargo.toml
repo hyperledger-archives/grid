@@ -81,6 +81,7 @@ experimental = [
     "batch-store",
     "postgres",
     "pike-rest-api",
+    "purchase-order",
     "rest-api-resources",
     "rest-api-actix-web-3",
     "sawtooth-compat",
@@ -92,6 +93,7 @@ experimental = [
 location = ["pike", "schema"]
 pike = []
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
+purchase-order = []
 product = ["pike", "schema"]
 schema = ["pike"]
 track-and-trace = ["base64"]
