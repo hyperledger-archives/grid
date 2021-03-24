@@ -79,6 +79,7 @@ experimental = [
     "stable",
     # The following features are experimental:
     "batch-store",
+    "client",
     "postgres",
     "pike-rest-api",
     "purchase-order",
@@ -90,6 +91,7 @@ experimental = [
     "workflow"
 ]
 
+client = []
 location = ["pike", "schema"]
 pike = []
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]

@@ -36,6 +36,8 @@ extern crate log;
 
 #[cfg(feature = "batch-store")]
 pub mod batches;
+#[cfg(feature = "client")]
+pub mod client;
 pub mod commits;
 pub mod error;
 mod hex;
