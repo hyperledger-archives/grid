@@ -34,9 +34,8 @@ message PurchaseOrderPayload {
 }
 
 message CreatePurchaseOrderPayload {
-  uint64 created_at = 1;
-
-  PayloadRevision revision = 2;
+  string uuid = 1;
+  uint64 created_at = 2;
 }
 
 message UpdatePurchaseOrderPayload {
