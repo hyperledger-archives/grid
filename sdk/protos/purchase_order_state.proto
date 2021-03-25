@@ -18,7 +18,7 @@ syntax = "proto3";
 message PurchaseOrder {
   string uuid = 1;
   string workflow_status = 2;
-  PurchaseOrderVersion versions = 3;
+  repeated PurchaseOrderVersion versions = 3;
   string accepted_version_number = 4;
   uint64 created_at = 5;
   bool is_closed = 6;
