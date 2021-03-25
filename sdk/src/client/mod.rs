@@ -21,16 +21,16 @@ use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
+use crate::batches::store::BatchList;
 use crate::error::InternalError;
 
 pub trait Client {
-    /// Adds the given `PurchaseOrder`.
+    /// Submits a list of batches
     ///
     /// # Arguments
     ///
-    /// * `purchase_order` - The `PurchaseOrder` to be added
-    #[cfg(feature = "purchase-order")]
-    fn add_purchase_order(&self, purchase_order: &PurchaseOrder) -> Result<(), InternalError>;
+    /// * `batches` - The `BatchList` to be submitted
+    fn post_batches(&self, batches: BatchList) -> Result<(), InternalError>;
 
     /// Retrieves the purchase order with the specified `id`.
     ///
@@ -39,19 +39,6 @@ pub trait Client {
     /// * `id` - The uuid of the `PurchaseOrder` to be retrieved
     #[cfg(feature = "purchase-order")]
     fn get_purchase_order(&self, id: String) -> Result<Option<PurchaseOrder>, InternalError>;
-
-    /// Adds the given `PurchaseOrderVersion`.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The uuid of the `PurchaseOrder` the purchase order version will be added to
-    /// * `purchase_order_version` - The `PurchaseOrderVersion` to be added
-    #[cfg(feature = "purchase-order")]
-    fn add_purchase_order_version(
-        &self,
-        id: String,
-        purchase_order_version: &PurchaseOrderVersion,
-    ) -> Result<(), InternalError>;
 
     /// Retrieves the purchase order version with the given `version_id` of the purchase
     /// order with the given `id`
@@ -66,21 +53,6 @@ pub trait Client {
         id: String,
         version_id: String,
     ) -> Result<Option<PurchaseOrderVersion>, InternalError>;
-
-    /// Adds the given `PurchaseOrderRevision`.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The uuid of the `PurchaseOrder` the purchase order revision will be added to
-    /// * `version_id` - The version id of the `PurchaseOrderVersion` the puchase order revision will be added to
-    /// * `purchase_order_version` - The `PurchaseOrderVersion` to be added
-    #[cfg(feature = "purchase-order")]
-    fn add_purchase_order_revision(
-        &self,
-        id: String,
-        version_id: String,
-        purchase_order_revision: &PurchaseOrderRevision,
-    ) -> Result<(), InternalError>;
 
     /// Retrieves the purchase order revision with the given `revision_id` of
     /// the purchase order version with the given `version_id` of the purchase order with the given `id`
@@ -137,29 +109,6 @@ pub trait Client {
         version_id: String,
         filter: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, InternalError>;
-
-    /// Updates the purchase order with the same id as the given `purchase_order`.
-    ///
-    /// # Arguments
-    ///
-    /// * `purchase_order` - The updated `PurchaseOrder` replacing the existing `PurchaseOrder` with the
-    ///   same uuid
-    #[cfg(feature = "purchase-order")]
-    fn update_purchase_order(&self, purchase_order: &PurchaseOrder) -> Result<(), InternalError>;
-
-    /// Updates the purchase order version with the same version_id as the given `purchase_order_version`.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderVersion` to be updated
-    /// * `purchase_order_version` - The updated `PurchaseOrderVersion` replacing the existing `PurchaseOrderVersion` with the
-    ///   same version_id
-    #[cfg(feature = "purchase-order")]
-    fn update_purchase_order_version(
-        &self,
-        id: String,
-        purchase_order_version: &PurchaseOrderVersion,
-    ) -> Result<(), InternalError>;
 }
 
 #[cfg(feature = "purchase-order")]
