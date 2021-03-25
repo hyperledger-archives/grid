@@ -42,7 +42,7 @@ use grid_sdk::{
         addressing::{
             PIKE_AGENT_NAMESPACE, PIKE_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE, PIKE_ROLE_NAMESPACE,
         },
-        store::{Agent, AlternateID, Organization, OrganizationMetadata, Role},
+        store::{Agent, AlternateId, Organization, OrganizationMetadata, Role},
         DieselPikeStore, PikeStore,
     },
     protocol::pike::state::{AgentList, OrganizationList, RoleList},
@@ -544,7 +544,7 @@ fn state_change_to_db_operation(
                             alternate_ids: org
                                 .alternate_ids()
                                 .iter()
-                                .map(|a| AlternateID {
+                                .map(|a| AlternateId {
                                     org_id: org.org_id().to_string(),
                                     alternate_id_type: a.id_type().to_string(),
                                     alternate_id: a.id().to_string(),

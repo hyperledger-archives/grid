@@ -13,18 +13,18 @@
 // limitations under the License.
 
 use crate::{
-    pike::store::{AlternateID, Organization, OrganizationMetadata},
+    pike::store::{AlternateId, Organization, OrganizationMetadata},
     rest_api::resources::paging::v1::Paging,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AlternateIDSlice {
+pub struct AlternateIdSlice {
     pub id_type: String,
     pub id: String,
 }
 
-impl From<AlternateID> for AlternateIDSlice {
-    fn from(id: AlternateID) -> Self {
+impl From<AlternateId> for AlternateIdSlice {
+    fn from(id: AlternateId) -> Self {
         Self {
             id_type: id.alternate_id_type,
             id: id.alternate_id,
@@ -37,7 +37,7 @@ pub struct OrganizationSlice {
     pub org_id: String,
     pub name: String,
     pub locations: Vec<String>,
-    pub alternate_ids: Vec<AlternateIDSlice>,
+    pub alternate_ids: Vec<AlternateIdSlice>,
     pub metadata: Vec<OrganizationMetadataSlice>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -72,7 +72,7 @@ impl From<Organization> for OrganizationSlice {
             alternate_ids: organization
                 .alternate_ids
                 .into_iter()
-                .map(AlternateIDSlice::from)
+                .map(AlternateIdSlice::from)
                 .collect(),
             metadata: organization
                 .metadata

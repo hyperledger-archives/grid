@@ -16,7 +16,7 @@ use super::PikeStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::pike::store::diesel::models::{
-    AlternateIDModel, LocationAssociationModel, OrganizationMetadataModel, OrganizationModel,
+    AlternateIdModel, LocationAssociationModel, OrganizationMetadataModel, OrganizationModel,
 };
 use crate::pike::store::diesel::{
     schema::{
@@ -105,7 +105,7 @@ impl<'a> PikeStoreFetchOrganizationOperation for PikeStoreOperations<'a, diesel:
                 query = query.filter(pike_organization_alternate_id::service_id.is_null());
             }
 
-            let alternate_ids = query.load::<AlternateIDModel>(self.conn).map_err(|err| {
+            let alternate_ids = query.load::<AlternateIdModel>(self.conn).map_err(|err| {
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
@@ -209,7 +209,7 @@ impl<'a> PikeStoreFetchOrganizationOperation
                 query = query.filter(pike_organization_alternate_id::service_id.is_null());
             }
 
-            let alternate_ids = query.load::<AlternateIDModel>(self.conn).map_err(|err| {
+            let alternate_ids = query.load::<AlternateIdModel>(self.conn).map_err(|err| {
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 

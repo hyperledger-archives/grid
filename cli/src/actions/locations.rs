@@ -194,7 +194,7 @@ pub fn create_location_payloads_from_file(
 
     for yml in ymls {
         let namespace = match yml.namespace {
-            Namespace::GS1 => "gs1_location",
+            Namespace::Gs1 => "gs1_location",
         };
         let schema = get_schema(url, namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
@@ -215,7 +215,7 @@ pub fn update_location_payloads_from_file(
 
     for yml in ymls {
         let namespace = match yml.namespace {
-            Namespace::GS1 => "gs1_location",
+            Namespace::Gs1 => "gs1_location",
         };
         let schema = get_schema(url, namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
@@ -496,13 +496,13 @@ impl LocationUpdateYaml {
 
 #[derive(Deserialize, Debug)]
 pub enum Namespace {
-    GS1,
+    Gs1,
 }
 
 impl Into<LocationNamespace> for Namespace {
     fn into(self) -> LocationNamespace {
         match self {
-            Namespace::GS1 => LocationNamespace::GS1,
+            Namespace::Gs1 => LocationNamespace::Gs1,
         }
     }
 }
@@ -510,7 +510,7 @@ impl Into<LocationNamespace> for Namespace {
 impl Into<String> for Namespace {
     fn into(self) -> String {
         match self {
-            Namespace::GS1 => "GS1".to_string(),
+            Namespace::Gs1 => "GS1".to_string(),
         }
     }
 }

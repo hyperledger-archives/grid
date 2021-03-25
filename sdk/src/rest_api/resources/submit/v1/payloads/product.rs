@@ -25,12 +25,12 @@ use super::{BuilderError, PropertyValue};
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub enum ProductNamespace {
-    GS1,
+    Gs1,
 }
 
 impl Default for ProductNamespace {
     fn default() -> Self {
-        ProductNamespace::GS1
+        ProductNamespace::Gs1
     }
 }
 
@@ -39,7 +39,7 @@ impl FromProto<protos::product_state::Product_ProductNamespace> for ProductNames
         product_namespace: protos::product_state::Product_ProductNamespace,
     ) -> Result<Self, ProtoConversionError> {
         match product_namespace {
-            protos::product_state::Product_ProductNamespace::GS1 => Ok(ProductNamespace::GS1),
+            protos::product_state::Product_ProductNamespace::GS1 => Ok(ProductNamespace::Gs1),
             protos::product_state::Product_ProductNamespace::UNSET_TYPE => {
                 Err(ProtoConversionError::InvalidTypeError(
                     "Cannot convert Product_ProductNamespace with type UNSET_TYPE".to_string(),
@@ -52,7 +52,7 @@ impl FromProto<protos::product_state::Product_ProductNamespace> for ProductNames
 impl FromNative<ProductNamespace> for protos::product_state::Product_ProductNamespace {
     fn from_native(product_namespace: ProductNamespace) -> Result<Self, ProtoConversionError> {
         match product_namespace {
-            ProductNamespace::GS1 => Ok(protos::product_state::Product_ProductNamespace::GS1),
+            ProductNamespace::Gs1 => Ok(protos::product_state::Product_ProductNamespace::GS1),
         }
     }
 }
