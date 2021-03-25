@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,12 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-pub mod errors;
-pub mod location;
-pub mod pike;
-pub mod product;
-#[cfg(feature = "purchase-order")]
-pub mod purchase_order;
-pub mod schema;
-pub mod track_and_trace;
