@@ -82,7 +82,7 @@ pub trait Client {
         purchase_order_revision: &PurchaseOrderRevision,
     ) -> Result<(), InternalError>;
 
-    /// Retrieves the purchase order revision with the given `revision_number` of
+    /// Retrieves the purchase order revision with the given `revision_id` of
     /// the purchase order version with the given `version_id` of the purchase order with the given `id`
     ///
     /// # Arguments
@@ -90,13 +90,13 @@ pub trait Client {
     /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderRevision` to be retrieved
     /// * `version_id` - The version id of the `PurchaseOrderVersion` containing the
     ///   `PurchaseOrderRevision` to be retrieved
-    /// * `revision_number` - The revision number of the `PurchaseOrderRevision` to be retrieved
+    /// * `revision_id` - The revision number of the `PurchaseOrderRevision` to be retrieved
     #[cfg(feature = "purchase-order")]
     fn get_purchase_order_revision(
         &self,
         id: String,
         version_id: String,
-        revision_number: String,
+        revision_id: String,
     ) -> Result<Option<PurchaseOrderRevision>, InternalError>;
 
     /// lists purchase orders.
@@ -180,14 +180,14 @@ pub struct PurchaseOrderVersion {
     version_id: String,
     workflow_status: String,
     is_draft: bool,
-    current_version_number: u64,
+    current_revision_id: u64,
     revisions: Vec<PurchaseOrderRevision>,
 }
 
 #[cfg(feature = "purchase-order")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PurchaseOrderRevision {
-    revision_number: u64,
+    revision_id: u64,
     order_xml_v3_4: String,
     submitter: String,
     created_at: u64,
