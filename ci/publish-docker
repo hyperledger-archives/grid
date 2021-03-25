@@ -37,7 +37,7 @@ else
     export ISOLATION_ID=$1
     if [ $1 == "experimental" ];
     then
-        export CARGO_ARGS="-- --features experimental"
+        export CARGO_ARGS=" --features experimental"
     else
         true
     fi

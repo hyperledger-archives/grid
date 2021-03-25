@@ -21,7 +21,7 @@ exitcode=0
 
 cd $top_dir/daemon/test
 
-CARGO_ARGS="-- --features experimental" docker-compose up --abort-on-container-exit --exit-code-from daemon
+CARGO_ARGS=" --features experimental" docker-compose up --abort-on-container-exit --exit-code-from daemon
 test_exit=$?
 
 if [[ $test_exit != 0 ]]; then
@@ -36,7 +36,7 @@ clean_up
 
 cd $top_dir/integration
 
-CARGO_ARGS="-- --features experimental" docker-compose up --abort-on-container-exit --exit-code-from gridd
+CARGO_ARGS=" --features experimental" docker-compose up --abort-on-container-exit --exit-code-from gridd
 test_exit=$?
 
 if [[ $test_exit != 0 ]]; then

@@ -34,7 +34,7 @@ CREATE TABLE purchase_order_version (
     current_revision_number BIGINT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
-    service_id TEXT,
+    service_id TEXT
 );
 
 CREATE TABLE purchase_order_version_revision (
