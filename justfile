@@ -44,6 +44,17 @@ build:
     done
     echo "\n\033[92mBuild Success\033[0m\n"
 
+build-experimental:
+    #!/usr/bin/env sh
+    set -e
+    for crate in $(echo {{crates}})
+    do
+        cmd="cargo build --tests --manifest-path=$crate/Cargo.toml --features=experimental"
+        echo "\033[1m$cmd\033[0m"
+        $cmd
+    done
+    echo "\n\033[92mBuild Success\033[0m\n"
+
 clean:
     cargo clean
 
@@ -63,6 +74,19 @@ lint:
     done
     echo "\n\033[92mLint Success\033[0m\n"
 
+lint-experimental:
+    #!/usr/bin/env sh
+    set -e
+    echo "\033[1mcargo fmt -- --check\033[0m"
+    cargo fmt -- --check
+    for crate in $(echo {{crates}})
+    do
+        cmd="cargo clippy --manifest-path=$crate/Cargo.toml --features=experimental -- -D warnings"
+        echo "\033[1m$cmd\033[0m"
+        $cmd
+    done
+    echo "\n\033[92mLint Success\033[0m\n"
+
 test: build
     #!/usr/bin/env sh
     set -e
@@ -74,5 +98,16 @@ test: build
             echo "\033[1m$cmd\033[0m"
             $cmd
         done
+    done
+    echo "\n\033[92mTest Success\033[0m\n"
+
+test-experimental: build-experimental
+    #!/usr/bin/env sh
+    set -e
+    for crate in $(echo {{crates}})
+    do
+        cmd="cargo test --manifest-path=$crate/Cargo.toml --features=experimental"
+        echo "\033[1m$cmd\033[0m"
+        $cmd
     done
     echo "\n\033[92mTest Success\033[0m\n"
