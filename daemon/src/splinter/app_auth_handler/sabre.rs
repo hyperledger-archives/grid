@@ -24,6 +24,8 @@ use grid_sdk::locations::addressing::GRID_LOCATION_NAMESPACE;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 #[cfg(feature = "product")]
 use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+#[cfg(feature = "purchase-order")]
+use grid_sdk::purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE;
 #[cfg(feature = "schema")]
 use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
 
@@ -40,6 +42,7 @@ use scabbard::client::{ScabbardClient, ServiceId};
     feature = "location",
     feature = "pike",
     feature = "product",
+    feature = "purchase-order",
     feature = "schema"
 ))]
 use transact::contract::archive::default_scar_path;
@@ -69,6 +72,10 @@ const SCHEMA_CONTRACT_NAME: &str = "grid-schema";
 #[cfg(feature = "location")]
 const LOCATION_CONTRACT_NAME: &str = "grid-location";
 
+// Purchase Order constants
+#[cfg(feature = "purchase-order")]
+const PURCHASE_ORDER_CONTRACT_NAME: &str = "grid-purchase-order";
+
 pub fn setup_grid(
     scabbard_admin_key: &str,
     proposed_admin_pubkeys: Vec<String>,
@@ -80,6 +87,7 @@ pub fn setup_grid(
         feature = "location",
         feature = "pike",
         feature = "product",
+        feature = "purchase-order",
         feature = "schema"
     ))]
     let version = env!("CARGO_PKG_VERSION");
@@ -183,6 +191,35 @@ pub fn setup_grid(
     let schema_pike_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &schema_contract, PIKE_NAMESPACE)?;
 
+    // Make Purchase Order transactions
+    #[cfg(feature = "purchase-order")]
+    let purchase_order_contract = SmartContractArchive::from_scar_file(
+        PURCHASE_ORDER_CONTRACT_NAME,
+        &version,
+        &default_scar_path(),
+    )?;
+    #[cfg(feature = "purchase-order")]
+    let purchase_order_contract_registry_txn =
+        make_contract_registry_txn(&signer, &purchase_order_contract.metadata.name)?;
+    #[cfg(feature = "purchase-order")]
+    let purchase_order_contract_txn = make_upload_contract_txn(
+        &signer,
+        &purchase_order_contract,
+        GRID_PURCHASE_ORDER_NAMESPACE,
+    )?;
+    #[cfg(feature = "purchase-order")]
+    let purchase_order_namespace_registry_txn =
+        make_namespace_registry_txn(&signer, GRID_PURCHASE_ORDER_NAMESPACE)?;
+    #[cfg(feature = "purchase-order")]
+    let purchase_order_namespace_permissions_txn = make_namespace_permissions_txn(
+        &signer,
+        &purchase_order_contract,
+        GRID_PURCHASE_ORDER_NAMESPACE,
+    )?;
+    #[cfg(feature = "purchase-order")]
+    let purchase_order_pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(&signer, &purchase_order_contract, PIKE_NAMESPACE)?;
+
     let txns = vec![
         #[cfg(feature = "pike")]
         pike_contract_registry_txn,
@@ -226,6 +263,16 @@ pub fn setup_grid(
         location_pike_namespace_permissions_txn,
         #[cfg(feature = "location")]
         location_schema_namespace_permissions_txn,
+        #[cfg(feature = "purchase-order")]
+        purchase_order_contract_registry_txn,
+        #[cfg(feature = "purchase-order")]
+        purchase_order_contract_txn,
+        #[cfg(feature = "purchase-order")]
+        purchase_order_namespace_registry_txn,
+        #[cfg(feature = "purchase-order")]
+        purchase_order_namespace_permissions_txn,
+        #[cfg(feature = "purchase-order")]
+        purchase_order_pike_namespace_permissions_txn,
     ];
     let batch = BatchBuilder::new().with_transactions(txns).build(&signer)?;
 
@@ -250,6 +297,7 @@ fn new_signer(private_key: &str) -> Result<TransactSigner, AppAuthHandlerError> 
     feature = "location",
     feature = "pike",
     feature = "product",
+    feature = "purchase-order",
     feature = "schema"
 ))]
 fn make_contract_registry_txn(
@@ -286,6 +334,7 @@ fn make_upload_contract_txn(
     feature = "location",
     feature = "pike",
     feature = "product",
+    feature = "purchase-order",
     feature = "schema"
 ))]
 fn make_namespace_registry_txn(
@@ -304,6 +353,7 @@ fn make_namespace_registry_txn(
     feature = "location",
     feature = "pike",
     feature = "product",
+    feature = "purchase-order",
     feature = "schema"
 ))]
 fn make_namespace_permissions_txn(
