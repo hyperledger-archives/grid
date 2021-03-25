@@ -111,3 +111,14 @@ test-experimental: build-experimental
         $cmd
     done
     echo "\n\033[92mTest Success\033[0m\n"
+
+test-experimental-hack: build-experimental
+    #!/usr/bin/env sh
+    set -e
+    for crate in $(echo {{crates}})
+    do
+        cmd="cargo test --manifest-path=$crate/Cargo.toml --features=experimental -- --test-threads=1"
+        echo "\033[1m$cmd\033[0m"
+        $cmd
+    done
+    echo "\n\033[92mTest Success\033[0m\n"
