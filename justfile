@@ -47,7 +47,7 @@ build:
 clean:
     cargo clean
 
-lint: clean
+lint:
     #!/usr/bin/env sh
     set -e
     echo "\033[1mcargo fmt -- --check\033[0m"
