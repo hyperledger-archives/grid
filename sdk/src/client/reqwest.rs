@@ -14,6 +14,7 @@
 
 //! A Reqwest-based implementation of Client
 
+use crate::batches::store::BatchList;
 use crate::error::InternalError;
 
 use super::Client;
@@ -36,25 +37,13 @@ impl ReqwestClient {
 }
 
 impl Client for ReqwestClient {
-    /// Adds the given `PurchaseOrder`.
-    #[cfg(feature = "purchase-order")]
-    fn add_purchase_order(&self, _purchase_order: &PurchaseOrder) -> Result<(), InternalError> {
+    fn post_batches(&self, _batches: BatchList) -> Result<(), InternalError> {
         unimplemented!()
     }
 
     /// Retrieves the purchase order with the specified `id`.
     #[cfg(feature = "purchase-order")]
     fn get_purchase_order(&self, _id: String) -> Result<Option<PurchaseOrder>, InternalError> {
-        unimplemented!()
-    }
-
-    /// Adds the given `PurchaseOrderVersion`.
-    #[cfg(feature = "purchase-order")]
-    fn add_purchase_order_version(
-        &self,
-        _id: String,
-        _purchase_order_version: &PurchaseOrderVersion,
-    ) -> Result<(), InternalError> {
         unimplemented!()
     }
 
@@ -66,17 +55,6 @@ impl Client for ReqwestClient {
         _id: String,
         _version_id: String,
     ) -> Result<Option<PurchaseOrderVersion>, InternalError> {
-        unimplemented!()
-    }
-
-    /// Adds the given `PurchaseOrderRevision`.
-    #[cfg(feature = "purchase-order")]
-    fn add_purchase_order_revision(
-        &self,
-        _id: String,
-        _version_id: String,
-        _purchase_order_revision: &PurchaseOrderRevision,
-    ) -> Result<(), InternalError> {
         unimplemented!()
     }
 
@@ -119,22 +97,6 @@ impl Client for ReqwestClient {
         _version_id: String,
         _filter: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, InternalError> {
-        unimplemented!()
-    }
-
-    /// Updates the purchase order with the same id as the given `purchase_order`.
-    #[cfg(feature = "purchase-order")]
-    fn update_purchase_order(&self, _purchase_order: &PurchaseOrder) -> Result<(), InternalError> {
-        unimplemented!()
-    }
-
-    /// Updates the purchase order version with the same version_id as the given `purchase_order_version`.
-    #[cfg(feature = "purchase-order")]
-    fn update_purchase_order_version(
-        &self,
-        _id: String,
-        _purchase_order_version: &PurchaseOrderVersion,
-    ) -> Result<(), InternalError> {
         unimplemented!()
     }
 }
