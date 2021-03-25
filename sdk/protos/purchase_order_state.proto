@@ -24,6 +24,10 @@ message PurchaseOrder {
   bool is_closed = 6;
 }
 
+message PurchaseOrderList {
+  repeated PurchaseOrder purchase_orders = 1;
+}
+
 message PurchaseOrderVersion {
   string version_id = 1;
   string workflow_status = 2;
@@ -44,4 +48,8 @@ message PurchaseOrderAlternateID {
   string id_type = 1;
   string id = 2;
   string org_id = 3;
+}
+
+message PurchaseOrderAlternateIDList {
+  repeated PurchaseOrderAlternateID alternate_ids = 1;
 }
