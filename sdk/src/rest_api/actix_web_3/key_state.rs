@@ -12,20 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod batch_submitter_state;
-mod endpoint;
-mod key_state;
-mod paging;
-pub mod routes;
-mod run;
-mod service;
-mod store_state;
+#[derive(Clone)]
+pub struct KeyState {
+    pub key_file_name: String,
+}
 
-pub use batch_submitter_state::BatchSubmitterState;
-pub use endpoint::{Backend, Endpoint};
-pub use key_state::KeyState;
-pub use paging::QueryPaging;
-pub use routes::submit;
-pub use run::run;
-pub use service::{AcceptServiceIdParam, QueryServiceId};
-pub use store_state::StoreState;
+impl KeyState {
+    pub fn new(key_file_name: &str) -> Self {
+        Self {
+            key_file_name: key_file_name.to_string(),
+        }
+    }
+}

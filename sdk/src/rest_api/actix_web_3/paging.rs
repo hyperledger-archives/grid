@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod batch_submitter_state;
-mod endpoint;
-mod key_state;
-mod paging;
-pub mod routes;
-mod run;
-mod service;
-mod store_state;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryPaging {
+    pub offset: Option<u64>,
+    pub limit: Option<u16>,
+}
 
-pub use batch_submitter_state::BatchSubmitterState;
-pub use endpoint::{Backend, Endpoint};
-pub use key_state::KeyState;
-pub use paging::QueryPaging;
-pub use routes::submit;
-pub use run::run;
-pub use service::{AcceptServiceIdParam, QueryServiceId};
-pub use store_state::StoreState;
+impl QueryPaging {
+    pub fn offset(&self) -> u64 {
+        self.offset.unwrap_or(0)
+    }
+
+    pub fn limit(&self) -> u16 {
+        self.limit
+            .map(|l| if l > 1024 { 1024 } else { l })
+            .unwrap_or(10)
+    }
+}
