@@ -72,4 +72,6 @@ RUN apt-get update \
  && dpkg --unpack /tmp/grid*.deb \
  && apt-get -f -y install
 
+RUN echo ". /usr/share/bash-completion/bash_completion" >> ~/.bashrc
+
 CMD ["gridd"]
