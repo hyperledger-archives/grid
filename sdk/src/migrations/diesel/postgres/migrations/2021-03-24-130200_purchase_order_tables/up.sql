@@ -30,7 +30,7 @@ CREATE TABLE purchase_order_version (
     version_id TEXT NOT NULL,
     is_draft BOOLEAN NOT NULL,
     current_revision_number BIGINT NOT NULL,
-    service_id TEXT,
+    service_id TEXT
 ) INHERITS (chain_record);
 
 CREATE TABLE purchase_order_version_revision (
