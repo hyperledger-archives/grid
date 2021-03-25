@@ -17,7 +17,6 @@ mod endpoint;
 mod key_state;
 mod paging;
 pub mod routes;
-mod run;
 mod service;
 mod store_state;
 
@@ -26,6 +25,5 @@ pub use endpoint::{Backend, Endpoint};
 pub use key_state::KeyState;
 pub use paging::QueryPaging;
 pub use routes::submit;
-pub use run::run;
 pub use service::{AcceptServiceIdParam, QueryServiceId};
 pub use store_state::StoreState;
