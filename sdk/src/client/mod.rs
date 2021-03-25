@@ -37,6 +37,19 @@ pub trait Client {
     #[cfg(feature = "purchase-order")]
     fn get_purchase_order(&self, id: String) -> Result<Option<PurchaseOrder>, InternalError>;
 
+    /// Adds the given `PurchaseOrderVersion`.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The uuid of the `PurchaseOrder` the purchase order version will be added to
+    /// * `purchase_order_version` - The `PurchaseOrderVersion` to be added
+    #[cfg(feature = "purchase-order")]
+    fn add_purchase_order_version(
+        &self,
+        id: String,
+        purchase_order_version: &PurchaseOrderVersion,
+    ) -> Result<(), InternalError>;
+
     /// Retrieves the purchase order version with the given `version_id` of the purchase
     /// order with the given `id`
     ///
@@ -50,6 +63,21 @@ pub trait Client {
         id: String,
         version_id: String,
     ) -> Result<Option<PurchaseOrderVersion>, InternalError>;
+
+    /// Adds the given `PurchaseOrderRevision`.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The uuid of the `PurchaseOrder` the purchase order revision will be added to
+    /// * `version_id` - The version id of the `PurchaseOrderVersion` the puchase order revision will be added to
+    /// * `purchase_order_version` - The `PurchaseOrderVersion` to be added
+    #[cfg(feature = "purchase-order")]
+    fn add_purchase_order_revision(
+        &self,
+        id: String,
+        version_id: String,
+        purchase_order_revision: &PurchaseOrderRevision,
+    ) -> Result<(), InternalError>;
 
     /// Retrieves the purchase order revision with the given `revision_number` of
     /// the purchase order version with the given `version_id` of the purchase order with the given `id`
@@ -115,6 +143,20 @@ pub trait Client {
     ///   same uuid
     #[cfg(feature = "purchase-order")]
     fn update_purchase_order(&self, purchase_order: &PurchaseOrder) -> Result<(), InternalError>;
+
+    /// Updates the purchase order version with the same version_id as the given `purchase_order_version`.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderVersion` to be updated
+    /// * `purchase_order_version` - The updated `PurchaseOrderVersion` replacing the existing `PurchaseOrderVersion` with the
+    ///   same version_id
+    #[cfg(feature = "purchase-order")]
+    fn update_purchase_order_version(
+        &self,
+        id: String,
+        purchase_order_version: &PurchaseOrderVersion,
+    ) -> Result<(), InternalError>;
 }
 
 #[cfg(feature = "purchase-order")]
