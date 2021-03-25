@@ -14,6 +14,9 @@
 
 //! Traits and implementations useful for interacting with the REST API.
 
+#[cfg(feature = "client-reqwest")]
+mod reqwest;
+
 use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
