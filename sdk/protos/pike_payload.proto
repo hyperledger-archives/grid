@@ -72,7 +72,7 @@ message DeleteAgentAction {
 message CreateOrganizationAction {
   string id = 1;
   string name = 2;
-  repeated AlternateID alternate_ids = 3;
+  repeated AlternateId alternate_ids = 3;
   repeated KeyValueEntry metadata = 4;
 }
 
@@ -80,7 +80,7 @@ message UpdateOrganizationAction {
   string id = 1;
   string name = 2;
   repeated string locations = 3;
-  repeated AlternateID alternate_ids = 4;
+  repeated AlternateId alternate_ids = 4;
   repeated KeyValueEntry metadata = 5;
 }
 

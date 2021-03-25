@@ -43,7 +43,7 @@ use grid_sdk::protocol::{
             DeleteRoleActionBuilder, UpdateAgentActionBuilder, UpdateOrganizationActionBuilder,
             UpdateRoleActionBuilder,
         },
-        state::{AlternateID, AlternateIDBuilder, KeyValueEntry, KeyValueEntryBuilder},
+        state::{AlternateId, AlternateIdBuilder, KeyValueEntry, KeyValueEntryBuilder},
     },
     product::{
         payload::{
@@ -1466,7 +1466,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                        "GS1" => ProductNamespace::GS1,
+                        "GS1" => ProductNamespace::Gs1,
                         unknown => {
                             return Err(CliError::UserError(format!(
                                 "Unrecognized namespace {}",
@@ -1519,7 +1519,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                        "GS1" => ProductNamespace::GS1,
+                        "GS1" => ProductNamespace::Gs1,
                         unknown => {
                             return Err(CliError::UserError(format!(
                                 "Unrecognized namespace {}",
@@ -1554,7 +1554,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                        "GS1" => ProductNamespace::GS1,
+                        "GS1" => ProductNamespace::Gs1,
                         unknown => {
                             return Err(CliError::UserError(format!(
                                 "Unrecognized namespace {}",
@@ -1618,7 +1618,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                        "GS1" => LocationNamespace::GS1,
+                        "GS1" => LocationNamespace::Gs1,
                         unknown => {
                             return Err(CliError::UserError(format!(
                                 "Unrecognized namespace {}",
@@ -1677,7 +1677,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                        "GS1" => LocationNamespace::GS1,
+                        "GS1" => LocationNamespace::Gs1,
                         unknown => {
                             return Err(CliError::UserError(format!(
                                 "Unrecognized namespace {}",
@@ -1718,7 +1718,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                        "GS1" => LocationNamespace::GS1,
+                        "GS1" => LocationNamespace::Gs1,
                         unknown => {
                             return Err(CliError::UserError(format!(
                                 "Unrecognized namespace {}",
@@ -1784,7 +1784,7 @@ fn run() -> Result<(), CliError> {
     Ok(())
 }
 
-fn parse_alternate_ids(matches: &ArgMatches) -> Result<Vec<AlternateID>, CliError> {
+fn parse_alternate_ids(matches: &ArgMatches) -> Result<Vec<AlternateId>, CliError> {
     let ids = matches
         .values_of("alternate_ids")
         .unwrap_or_default()
@@ -1806,7 +1806,7 @@ fn parse_alternate_ids(matches: &ArgMatches) -> Result<Vec<AlternateID>, CliErro
         };
 
         alternate_ids.push(
-            AlternateIDBuilder::new()
+            AlternateIdBuilder::new()
                 .with_id_type(id_type)
                 .with_id(alt_id)
                 .build()

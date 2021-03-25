@@ -68,7 +68,7 @@ pub struct Organization {
     pub org_id: String,
     pub name: String,
     pub locations: Vec<String>,
-    pub alternate_ids: Vec<AlternateID>,
+    pub alternate_ids: Vec<AlternateId>,
     pub metadata: Vec<OrganizationMetadata>,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
@@ -77,7 +77,7 @@ pub struct Organization {
 
 /// Represents a Grid Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
-pub struct AlternateID {
+pub struct AlternateId {
     pub org_id: String,
     pub alternate_id_type: String,
     pub alternate_id: String,

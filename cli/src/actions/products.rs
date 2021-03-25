@@ -289,7 +289,7 @@ pub fn create_product_payloads_from_file(
 
     for yml in ymls {
         let namespace = match yml.product_namespace {
-            Namespace::GS1 => "gs1_product",
+            Namespace::Gs1 => "gs1_product",
         };
         let schema = get_schema(url, namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
@@ -310,7 +310,7 @@ pub fn update_product_payloads_from_file(
 
     for yml in ymls {
         let namespace = match yml.product_namespace {
-            Namespace::GS1 => "gs1_product",
+            Namespace::Gs1 => "gs1_product",
         };
         let schema = get_schema(url, namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
@@ -523,21 +523,21 @@ fn submit_payloads(
 
 #[derive(Deserialize, Debug)]
 pub enum Namespace {
-    GS1,
+    Gs1,
 }
 
-impl Into<ProductNamespace> for Namespace {
-    fn into(self) -> ProductNamespace {
-        match self {
-            Namespace::GS1 => ProductNamespace::GS1,
+impl From<Namespace> for ProductNamespace {
+    fn from(namespace: Namespace) -> Self {
+        match namespace {
+            Namespace::Gs1 => ProductNamespace::Gs1,
         }
     }
 }
 
-impl Into<String> for Namespace {
-    fn into(self) -> String {
-        match self {
-            Namespace::GS1 => "GS1".to_string(),
+impl From<Namespace> for String {
+    fn from(namespace: Namespace) -> Self {
+        match namespace {
+            Namespace::Gs1 => "GS1".to_string(),
         }
     }
 }

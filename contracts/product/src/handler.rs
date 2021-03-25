@@ -111,7 +111,7 @@ impl ProductTransactionHandler {
         }
 
         // Check if the product namespace is a GS1 product
-        if product_namespace != &ProductNamespace::GS1 {
+        if product_namespace != &ProductNamespace::Gs1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product namespace enum for product".to_string(),
             ));
@@ -135,7 +135,7 @@ impl ProductTransactionHandler {
 
         /* Check if the agents organization contain GS1 Company Prefix key in its alternate IDs
         (gs1_company_prefix), and the prefix must match the company prefix in the product_id */
-        if payload.product_namespace() == &ProductNamespace::GS1 {
+        if payload.product_namespace() == &ProductNamespace::Gs1 {
             let metadata = org.alternate_ids().to_vec();
             let gs1_company_prefix = match metadata
                 .iter()
@@ -158,7 +158,7 @@ impl ProductTransactionHandler {
             }
         }
 
-        if payload.product_namespace() == &ProductNamespace::GS1 {
+        if payload.product_namespace() == &ProductNamespace::Gs1 {
             // Check if gs1 schema exists
             let schema = if let Some(schema) = state.get_schema("gs1_product")? {
                 schema
@@ -225,7 +225,7 @@ impl ProductTransactionHandler {
         let properties = payload.properties();
 
         // Check if the product namespace is a GS1 product
-        if product_namespace != &ProductNamespace::GS1 {
+        if product_namespace != &ProductNamespace::Gs1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product namespace enum for product".to_string(),
             ));
@@ -254,7 +254,7 @@ impl ProductTransactionHandler {
             return Err(ApplyError::InvalidTransaction(e.to_string()));
         }
 
-        if payload.product_namespace() == &ProductNamespace::GS1 {
+        if payload.product_namespace() == &ProductNamespace::Gs1 {
             // Check if gs1 schema exists
             let schema = if let Some(schema) = state.get_schema("gs1_product")? {
                 schema
@@ -321,7 +321,7 @@ impl ProductTransactionHandler {
         let product_namespace = payload.product_namespace();
 
         // Check if the product namespace is a GS1 product
-        if product_namespace != &ProductNamespace::GS1 {
+        if product_namespace != &ProductNamespace::Gs1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product namespace enum for product".to_string(),
             ));
@@ -438,7 +438,7 @@ mod tests {
         products::addressing::compute_gs1_product_address,
         protocol::{
             pike::state::{
-                AgentBuilder, AgentListBuilder, AlternateIDBuilder, OrganizationBuilder,
+                AgentBuilder, AgentListBuilder, AlternateIdBuilder, OrganizationBuilder,
                 OrganizationListBuilder, RoleBuilder, RoleListBuilder,
             },
             product::{
@@ -574,7 +574,7 @@ mod tests {
         fn add_org(&self, org_id: &str) {
             // Products can only be created when there is a gs1 prefix
             // within the product organization's metadata
-            let alternate_id = AlternateIDBuilder::new()
+            let alternate_id = AlternateIdBuilder::new()
                 .with_id_type("gs1_company_prefix".to_string())
                 .with_id("6889".to_string())
                 .build()
@@ -984,7 +984,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build new_product")
@@ -995,14 +995,14 @@ mod tests {
             ProductBuilder::new()
                 .with_product_id(product_ids[0].to_string())
                 .with_owner(AGENT_ORG_ID.to_string())
-                .with_product_namespace(ProductNamespace::GS1)
+                .with_product_namespace(ProductNamespace::Gs1)
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build new_product"),
             ProductBuilder::new()
                 .with_product_id(product_ids[1].to_string())
                 .with_owner(AGENT_ORG_ID.to_string())
-                .with_product_namespace(ProductNamespace::GS1)
+                .with_product_namespace(ProductNamespace::Gs1)
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build new_product"),
@@ -1013,7 +1013,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_properties(make_updated_properties())
             .build()
             .expect("Failed to build new_product")
@@ -1063,7 +1063,7 @@ mod tests {
         ProductCreateActionBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build ProductCreateAction")
@@ -1072,7 +1072,7 @@ mod tests {
     fn make_product_update_action() -> ProductUpdateAction {
         ProductUpdateActionBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_properties(make_updated_properties())
             .build()
             .expect("Failed to build ProductUpdateAction")
@@ -1081,7 +1081,7 @@ mod tests {
     fn make_product_delete_action(product_id: &str) -> ProductDeleteAction {
         ProductDeleteActionBuilder::new()
             .with_product_id(product_id.to_string())
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .build()
             .expect("Failed to build ProductDeleteAction")
     }

@@ -25,12 +25,12 @@ use super::{BuilderError, PropertyValue};
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 pub enum LocationNamespace {
-    GS1,
+    Gs1,
 }
 
 impl Default for LocationNamespace {
     fn default() -> Self {
-        LocationNamespace::GS1
+        LocationNamespace::Gs1
     }
 }
 
@@ -39,7 +39,7 @@ impl FromProto<protos::location_payload::LocationNamespace> for LocationNamespac
         namespace: protos::location_payload::LocationNamespace,
     ) -> Result<Self, ProtoConversionError> {
         match namespace {
-            protos::location_payload::LocationNamespace::GS1 => Ok(LocationNamespace::GS1),
+            protos::location_payload::LocationNamespace::GS1 => Ok(LocationNamespace::Gs1),
             protos::location_payload::LocationNamespace::UNSET_TYPE => {
                 Err(ProtoConversionError::InvalidTypeError(
                     "Cannot convert Location_LocationType with type UNSET_TYPE".to_string(),
@@ -52,7 +52,7 @@ impl FromProto<protos::location_payload::LocationNamespace> for LocationNamespac
 impl FromNative<LocationNamespace> for protos::location_payload::LocationNamespace {
     fn from_native(namespace: LocationNamespace) -> Result<Self, ProtoConversionError> {
         match namespace {
-            LocationNamespace::GS1 => Ok(protos::location_payload::LocationNamespace::GS1),
+            LocationNamespace::Gs1 => Ok(protos::location_payload::LocationNamespace::GS1),
         }
     }
 }

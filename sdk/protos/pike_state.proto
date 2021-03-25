@@ -31,7 +31,7 @@ message Organization {
   string org_id = 1;
   string name = 2;
   repeated string locations = 3;
-  repeated AlternateID alternate_ids = 4;
+  repeated AlternateId alternate_ids = 4;
   repeated KeyValueEntry metadata = 5;
 }
 
@@ -53,14 +53,14 @@ message RoleList {
   repeated Role roles = 1;
 }
 
-message AlternateIDIndexEntry {
+message AlternateIdIndexEntry {
   string id_type = 1;
   string id = 2;
   string grid_identity_id = 3;
 }
 
-message AlternateIDIndexEntryList {
-  repeated AlternateIDIndexEntry entries = 1;
+message AlternateIdIndexEntryList {
+  repeated AlternateIdIndexEntry entries = 1;
 }
 
 message KeyValueEntry {
@@ -68,7 +68,7 @@ message KeyValueEntry {
   string value = 2;
 }
 
-message AlternateID {
+message AlternateId {
   string id_type = 1;
   string id = 2;
 }

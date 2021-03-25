@@ -462,79 +462,79 @@ impl From<(i64, i64)> for LatLongValue {
     }
 }
 
-impl Into<NewAssociatedAgentModel> for AssociatedAgent {
-    fn into(self) -> NewAssociatedAgentModel {
-        NewAssociatedAgentModel {
-            record_id: self.record_id,
-            role: self.role,
-            agent_id: self.agent_id,
-            timestamp: self.timestamp,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+impl From<AssociatedAgent> for NewAssociatedAgentModel {
+    fn from(agent: AssociatedAgent) -> Self {
+        Self {
+            record_id: agent.record_id,
+            role: agent.role,
+            agent_id: agent.agent_id,
+            timestamp: agent.timestamp,
+            start_commit_num: agent.start_commit_num,
+            end_commit_num: agent.end_commit_num,
+            service_id: agent.service_id,
         }
     }
 }
 
-impl Into<NewPropertyModel> for Property {
-    fn into(self) -> NewPropertyModel {
-        NewPropertyModel {
-            name: self.name,
-            record_id: self.record_id,
-            property_definition: self.property_definition,
-            current_page: self.current_page,
-            wrapped: self.wrapped,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+impl From<Property> for NewPropertyModel {
+    fn from(property: Property) -> Self {
+        Self {
+            name: property.name,
+            record_id: property.record_id,
+            property_definition: property.property_definition,
+            current_page: property.current_page,
+            wrapped: property.wrapped,
+            start_commit_num: property.start_commit_num,
+            end_commit_num: property.end_commit_num,
+            service_id: property.service_id,
         }
     }
 }
 
-impl Into<NewProposalModel> for Proposal {
-    fn into(self) -> NewProposalModel {
-        NewProposalModel {
-            record_id: self.record_id,
-            timestamp: self.timestamp,
-            issuing_agent: self.issuing_agent,
-            receiving_agent: self.receiving_agent,
-            role: self.role,
-            properties: self.properties.join(","),
-            status: self.status,
-            terms: self.terms,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+impl From<Proposal> for NewProposalModel {
+    fn from(proposal: Proposal) -> Self {
+        Self {
+            record_id: proposal.record_id,
+            timestamp: proposal.timestamp,
+            issuing_agent: proposal.issuing_agent,
+            receiving_agent: proposal.receiving_agent,
+            role: proposal.role,
+            properties: proposal.properties.join(","),
+            status: proposal.status,
+            terms: proposal.terms,
+            start_commit_num: proposal.start_commit_num,
+            end_commit_num: proposal.end_commit_num,
+            service_id: proposal.service_id,
         }
     }
 }
 
-impl Into<NewRecordModel> for Record {
-    fn into(self) -> NewRecordModel {
-        NewRecordModel {
-            record_id: self.record_id,
-            schema: self.schema,
-            final_: self.final_,
-            owners: self.owners.join(","),
-            custodians: self.custodians.join(","),
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+impl From<Record> for NewRecordModel {
+    fn from(record: Record) -> Self {
+        Self {
+            record_id: record.record_id,
+            schema: record.schema,
+            final_: record.final_,
+            owners: record.owners.join(","),
+            custodians: record.custodians.join(","),
+            start_commit_num: record.start_commit_num,
+            end_commit_num: record.end_commit_num,
+            service_id: record.service_id,
         }
     }
 }
 
-impl Into<NewReporterModel> for Reporter {
-    fn into(self) -> NewReporterModel {
-        NewReporterModel {
-            property_name: self.property_name,
-            record_id: self.record_id,
-            public_key: self.public_key,
-            authorized: self.authorized,
-            reporter_index: self.reporter_index,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+impl From<Reporter> for NewReporterModel {
+    fn from(reporter: Reporter) -> Self {
+        Self {
+            property_name: reporter.property_name,
+            record_id: reporter.record_id,
+            public_key: reporter.public_key,
+            authorized: reporter.authorized,
+            reporter_index: reporter.reporter_index,
+            start_commit_num: reporter.start_commit_num,
+            end_commit_num: reporter.end_commit_num,
+            service_id: reporter.service_id,
         }
     }
 }

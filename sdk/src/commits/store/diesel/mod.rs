@@ -195,12 +195,12 @@ impl From<NewCommitModel> for Commit {
     }
 }
 
-impl Into<NewCommitModel> for Commit {
-    fn into(self) -> NewCommitModel {
-        NewCommitModel {
-            commit_id: self.commit_id,
-            commit_num: self.commit_num,
-            service_id: self.service_id,
+impl From<Commit> for NewCommitModel {
+    fn from(commit: Commit) -> Self {
+        Self {
+            commit_id: commit.commit_id,
+            commit_num: commit.commit_num,
+            service_id: commit.service_id,
         }
     }
 }

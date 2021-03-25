@@ -19,7 +19,7 @@ pub(in crate) mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{
-    Agent, AgentList, AlternateID, Organization, OrganizationList, OrganizationMetadata, PikeStore,
+    Agent, AgentList, AlternateId, Organization, OrganizationList, OrganizationMetadata, PikeStore,
     PikeStoreError, Role, RoleList,
 };
 use crate::error::ResourceTemporarilyUnavailableError;

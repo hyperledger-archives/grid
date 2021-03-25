@@ -467,7 +467,7 @@ impl DeleteAgentActionBuilder {
 pub struct CreateOrganizationAction {
     id: String,
     name: String,
-    alternate_ids: Vec<AlternateID>,
+    alternate_ids: Vec<AlternateId>,
     #[serde(default)]
     metadata: Vec<KeyValueEntry>,
 }
@@ -481,7 +481,7 @@ impl CreateOrganizationAction {
         &self.name
     }
 
-    pub fn alternate_ids(&self) -> &[AlternateID] {
+    pub fn alternate_ids(&self) -> &[AlternateId] {
         &self.alternate_ids
     }
 
@@ -501,8 +501,8 @@ impl FromProto<protos::pike_payload::CreateOrganizationAction> for CreateOrganiz
                 .get_alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::from_proto)
-                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::from_proto)
+                .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             metadata: create_org
                 .get_metadata()
                 .to_vec()
@@ -524,8 +524,8 @@ impl FromNative<CreateOrganizationAction> for protos::pike_payload::CreateOrgani
                 .alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::into_proto)
-                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         proto_create_org.set_metadata(RepeatedField::from_vec(
             create_org
@@ -572,7 +572,7 @@ impl IntoNative<CreateOrganizationAction> for protos::pike_payload::CreateOrgani
 pub struct CreateOrganizationActionBuilder {
     id: Option<String>,
     name: Option<String>,
-    alternate_ids: Vec<AlternateID>,
+    alternate_ids: Vec<AlternateId>,
     metadata: Vec<KeyValueEntry>,
 }
 
@@ -593,7 +593,7 @@ impl CreateOrganizationActionBuilder {
 
     pub fn with_alternate_ids(
         mut self,
-        alternate_ids: Vec<AlternateID>,
+        alternate_ids: Vec<AlternateId>,
     ) -> CreateOrganizationActionBuilder {
         self.alternate_ids = alternate_ids;
         self
@@ -633,7 +633,7 @@ impl CreateOrganizationActionBuilder {
 pub struct UpdateOrganizationAction {
     id: String,
     name: String,
-    alternate_ids: Vec<AlternateID>,
+    alternate_ids: Vec<AlternateId>,
     locations: Vec<String>,
     #[serde(default)]
     metadata: Vec<KeyValueEntry>,
@@ -648,7 +648,7 @@ impl UpdateOrganizationAction {
         &self.name
     }
 
-    pub fn alternate_ids(&self) -> &[AlternateID] {
+    pub fn alternate_ids(&self) -> &[AlternateId] {
         &self.alternate_ids
     }
 
@@ -672,8 +672,8 @@ impl FromProto<protos::pike_payload::UpdateOrganizationAction> for UpdateOrganiz
                 .get_alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::from_proto)
-                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::from_proto)
+                .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             locations: update_org.get_locations().to_vec(),
             metadata: update_org
                 .get_metadata()
@@ -696,8 +696,8 @@ impl FromNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
                 .alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::into_proto)
-                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         proto_update_org.set_locations(RepeatedField::from_vec(update_org.locations().to_vec()));
         proto_update_org.set_metadata(RepeatedField::from_vec(
@@ -745,7 +745,7 @@ impl IntoNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
 pub struct UpdateOrganizationActionBuilder {
     id: Option<String>,
     name: Option<String>,
-    alternate_ids: Vec<AlternateID>,
+    alternate_ids: Vec<AlternateId>,
     locations: Vec<String>,
     metadata: Vec<KeyValueEntry>,
 }
@@ -767,7 +767,7 @@ impl UpdateOrganizationActionBuilder {
 
     pub fn alternate_ids(
         mut self,
-        alternate_ids: Vec<AlternateID>,
+        alternate_ids: Vec<AlternateId>,
     ) -> UpdateOrganizationActionBuilder {
         self.alternate_ids = alternate_ids;
         self
@@ -1373,12 +1373,12 @@ impl DeleteRoleActionBuilder {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct AlternateID {
+pub struct AlternateId {
     id_type: String,
     id: String,
 }
 
-impl AlternateID {
+impl AlternateId {
     pub fn id_type(&self) -> &str {
         &self.id_type
     }
@@ -1388,20 +1388,20 @@ impl AlternateID {
     }
 }
 
-impl FromProto<protos::pike_state::AlternateID> for AlternateID {
+impl FromProto<protos::pike_state::AlternateId> for AlternateId {
     fn from_proto(
-        alternate_id: protos::pike_state::AlternateID,
+        alternate_id: protos::pike_state::AlternateId,
     ) -> Result<Self, ProtoConversionError> {
-        Ok(AlternateID {
+        Ok(AlternateId {
             id_type: alternate_id.get_id_type().to_string(),
             id: alternate_id.get_id().to_string(),
         })
     }
 }
 
-impl FromNative<AlternateID> for protos::pike_state::AlternateID {
-    fn from_native(alternate_id: AlternateID) -> Result<Self, ProtoConversionError> {
-        let mut alternate_id_proto = protos::pike_state::AlternateID::new();
+impl FromNative<AlternateId> for protos::pike_state::AlternateId {
+    fn from_native(alternate_id: AlternateId) -> Result<Self, ProtoConversionError> {
+        let mut alternate_id_proto = protos::pike_state::AlternateId::new();
 
         alternate_id_proto.set_id_type(alternate_id.id_type().to_string());
         alternate_id_proto.set_id(alternate_id.id().to_string());
@@ -1410,9 +1410,9 @@ impl FromNative<AlternateID> for protos::pike_state::AlternateID {
     }
 }
 
-impl FromBytes<AlternateID> for AlternateID {
-    fn from_bytes(bytes: &[u8]) -> Result<AlternateID, ProtoConversionError> {
-        let proto: protos::pike_state::AlternateID =
+impl FromBytes<AlternateId> for AlternateId {
+    fn from_bytes(bytes: &[u8]) -> Result<AlternateId, ProtoConversionError> {
+        let proto: protos::pike_state::AlternateId =
             Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
                     "Unable to get Alternate from bytes".to_string(),
@@ -1422,43 +1422,43 @@ impl FromBytes<AlternateID> for AlternateID {
     }
 }
 
-impl IntoBytes for AlternateID {
+impl IntoBytes for AlternateId {
     fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
         let proto = self.into_proto()?;
         let bytes = proto.write_to_bytes().map_err(|_| {
             ProtoConversionError::SerializationError(
-                "Unable to get bytes from AlternateID".to_string(),
+                "Unable to get bytes from AlternateId".to_string(),
             )
         })?;
         Ok(bytes)
     }
 }
 
-impl IntoProto<protos::pike_state::AlternateID> for AlternateID {}
-impl IntoNative<AlternateID> for protos::pike_state::AlternateID {}
+impl IntoProto<protos::pike_state::AlternateId> for AlternateId {}
+impl IntoNative<AlternateId> for protos::pike_state::AlternateId {}
 
 #[derive(Default, Clone)]
-pub struct AlternateIDBuilder {
+pub struct AlternateIdBuilder {
     id_type: Option<String>,
     id: Option<String>,
 }
 
-impl AlternateIDBuilder {
+impl AlternateIdBuilder {
     pub fn new() -> Self {
-        AlternateIDBuilder::default()
+        AlternateIdBuilder::default()
     }
 
-    pub fn with_id_type(mut self, id_type: String) -> AlternateIDBuilder {
+    pub fn with_id_type(mut self, id_type: String) -> AlternateIdBuilder {
         self.id_type = Some(id_type);
         self
     }
 
-    pub fn with_id(mut self, id: String) -> AlternateIDBuilder {
+    pub fn with_id(mut self, id: String) -> AlternateIdBuilder {
         self.id = Some(id);
         self
     }
 
-    pub fn build(self) -> Result<AlternateID, BuilderError> {
+    pub fn build(self) -> Result<AlternateId, BuilderError> {
         let id_type = self
             .id_type
             .ok_or_else(|| BuilderError::MissingField("'id_type' field is required".to_string()))?;
@@ -1467,7 +1467,7 @@ impl AlternateIDBuilder {
             .id
             .ok_or_else(|| BuilderError::MissingField("'id' field is required".to_string()))?;
 
-        Ok(AlternateID { id_type, id })
+        Ok(AlternateId { id_type, id })
     }
 }
 

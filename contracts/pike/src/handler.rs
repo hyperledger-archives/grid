@@ -36,8 +36,8 @@ use grid_sdk::{
         compute_organization_address, compute_role_address, PIKE_NAMESPACE,
     },
     protocol::pike::state::{
-        AlternateIDIndexEntry, AlternateIDIndexEntryBuilder, AlternateIDIndexEntryList,
-        AlternateIDIndexEntryListBuilder, Role, RoleBuilder, RoleList, RoleListBuilder,
+        AlternateIdIndexEntry, AlternateIdIndexEntryBuilder, AlternateIdIndexEntryList,
+        AlternateIdIndexEntryListBuilder, Role, RoleBuilder, RoleList, RoleListBuilder,
     },
     protos::{
         pike_payload::{
@@ -346,12 +346,12 @@ impl<'a> PikeState<'a> {
         &self,
         id_type: &str,
         id: &str,
-    ) -> Result<Option<AlternateIDIndexEntry>, ApplyError> {
+    ) -> Result<Option<AlternateIdIndexEntry>, ApplyError> {
         let address = compute_alternate_id_index_entry_address(id_type, id);
         match self.context.get_state_entry(&address)? {
             Some(packed) => {
-                let entries: AlternateIDIndexEntryList =
-                    match AlternateIDIndexEntryList::from_bytes(packed.as_slice()) {
+                let entries: AlternateIdIndexEntryList =
+                    match AlternateIdIndexEntryList::from_bytes(packed.as_slice()) {
                         Ok(entry) => entry,
                         Err(err) => {
                             return Err(ApplyError::InvalidTransaction(format!(
@@ -373,10 +373,10 @@ impl<'a> PikeState<'a> {
         }
     }
 
-    pub fn set_alternate_id_index(&self, alt_id: AlternateIDIndexEntry) -> Result<(), ApplyError> {
+    pub fn set_alternate_id_index(&self, alt_id: AlternateIdIndexEntry) -> Result<(), ApplyError> {
         let address = compute_alternate_id_index_entry_address(alt_id.id_type(), alt_id.id());
         let mut entries = match self.context.get_state_entry(&address)? {
-            Some(packed) => match AlternateIDIndexEntryList::from_bytes(packed.as_slice()) {
+            Some(packed) => match AlternateIdIndexEntryList::from_bytes(packed.as_slice()) {
                 Ok(entry_list) => entry_list.entries().to_vec(),
                 Err(err) => {
                     return Err(ApplyError::InvalidTransaction(format!(
@@ -402,7 +402,7 @@ impl<'a> PikeState<'a> {
 
         entries.push(alt_id);
         entries.sort_by_key(|alt_id| alt_id.id().to_string());
-        let entry_list = AlternateIDIndexEntryListBuilder::new()
+        let entry_list = AlternateIdIndexEntryListBuilder::new()
             .with_entries(entries)
             .build()
             .map_err(|err| {
@@ -431,7 +431,7 @@ impl<'a> PikeState<'a> {
     pub fn remove_alternate_id_index(&mut self, id_type: &str, id: &str) -> Result<(), ApplyError> {
         let address = compute_alternate_id_index_entry_address(&id_type, &id);
         let entries = match self.context.get_state_entry(&address)? {
-            Some(packed) => match AlternateIDIndexEntryList::from_bytes(packed.as_slice()) {
+            Some(packed) => match AlternateIdIndexEntryList::from_bytes(packed.as_slice()) {
                 Ok(entry_list) => entry_list.entries().to_vec(),
                 Err(err) => {
                     return Err(ApplyError::InvalidTransaction(format!(
@@ -453,7 +453,7 @@ impl<'a> PikeState<'a> {
                 .delete_state_entries(&[address])
                 .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         } else {
-            let entry_list = AlternateIDIndexEntryListBuilder::new()
+            let entry_list = AlternateIdIndexEntryListBuilder::new()
                 .with_entries(filtered_entries)
                 .build()
                 .map_err(|err| {
@@ -1015,7 +1015,7 @@ fn create_org(
             }
         }
 
-        let alt_id_entry_builder = AlternateIDIndexEntryBuilder::new();
+        let alt_id_entry_builder = AlternateIdIndexEntryBuilder::new();
         let alt_id_entry = alt_id_entry_builder
             .with_id_type(entry.get_id_type().to_string())
             .with_id(entry.get_id().to_string())
@@ -1102,7 +1102,7 @@ fn update_org(
             }
         }
 
-        let alt_id_entry_builder = AlternateIDIndexEntryBuilder::new();
+        let alt_id_entry_builder = AlternateIdIndexEntryBuilder::new();
         let alt_id_entry = alt_id_entry_builder
             .with_id_type(entry.get_id_type().to_string())
             .with_id(entry.get_id().to_string())
