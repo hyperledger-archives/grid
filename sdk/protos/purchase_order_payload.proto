@@ -46,20 +46,21 @@ message UpdatePurchaseOrderPayload {
 }
 
 message CreateVersionPayload {
-  bool is_draft = 1;
-  PayloadRevision revision = 2;
+  string version_id = 1;
+  bool is_draft = 2;
+  PayloadRevision revision = 3;
 }
 
 message UpdateVersionPayload {
   string version_id = 1;
   string workflow_status = 2;
   bool is_draft = 3;
-  string current_revision_number = 4;
+  string current_revision_id = 4;
   PayloadRevision revision = 5;
 }
 
 message PayloadRevision {
-  uint64 revision_number = 1;
+  string revision_id = 1;
   string submitter = 2;
   uint64 created_at = 3;
 
