@@ -18,22 +18,26 @@ syntax = "proto3";
 message PurchaseOrder {
   string uuid = 1;
   string workflow_status = 2;
-  PurchaseOrderVersion versions = 3;
+  repeated PurchaseOrderVersion versions = 3;
   string accepted_version_number = 4;
   uint64 created_at = 5;
   bool is_closed = 6;
+}
+
+message PurchaseOrderList {
+  repeated PurchaseOrder purchase_orders = 1;
 }
 
 message PurchaseOrderVersion {
   string version_id = 1;
   string workflow_status = 2;
   bool is_draft = 3;
-  uint64 current_revision_number = 4;
+  string current_revision_id = 4;
   PurchaseOrderRevision revisions = 5;
 }
 
 message PurchaseOrderRevision {
-  uint64 revision_number = 1;
+  string revision_id = 1;
   string submitter = 2;
   uint64 created_at = 3;
 
@@ -44,4 +48,8 @@ message PurchaseOrderAlternateID {
   string id_type = 1;
   string id = 2;
   string org_id = 3;
+}
+
+message PurchaseOrderAlternateIDList {
+  repeated PurchaseOrderAlternateID alternate_ids = 1;
 }
