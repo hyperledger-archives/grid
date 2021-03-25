@@ -499,17 +499,17 @@ pub enum Namespace {
     Gs1,
 }
 
-impl Into<LocationNamespace> for Namespace {
-    fn into(self) -> LocationNamespace {
-        match self {
+impl From<Namespace> for LocationNamespace {
+    fn from(namespace: Namespace) -> Self {
+        match namespace {
             Namespace::Gs1 => LocationNamespace::Gs1,
         }
     }
 }
 
-impl Into<String> for Namespace {
-    fn into(self) -> String {
-        match self {
+impl From<Namespace> for String {
+    fn from(namespace: Namespace) -> Self {
+        match namespace {
             Namespace::Gs1 => "GS1".to_string(),
         }
     }

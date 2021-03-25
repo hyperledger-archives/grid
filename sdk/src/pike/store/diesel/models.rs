@@ -356,17 +356,17 @@ impl
     }
 }
 
-impl Into<NewRoleModel> for Role {
-    fn into(self) -> NewRoleModel {
-        NewRoleModel {
-            state_address: compute_role_address(&self.name, &self.org_id),
-            org_id: self.org_id,
-            name: self.name,
-            description: self.description,
-            active: self.active,
-            start_commit_num: self.start_commit_num,
+impl From<Role> for NewRoleModel {
+    fn from(role: Role) -> Self {
+        Self {
+            state_address: compute_role_address(&role.name, &role.org_id),
+            org_id: role.org_id,
+            name: role.name,
+            description: role.description,
+            active: role.active,
+            start_commit_num: role.start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
-            service_id: self.service_id,
+            service_id: role.service_id,
         }
     }
 }
@@ -478,17 +478,17 @@ impl From<(AgentModel, Vec<RoleAssociationModel>)> for Agent {
     }
 }
 
-impl Into<NewAgentModel> for Agent {
-    fn into(self) -> NewAgentModel {
-        NewAgentModel {
-            state_address: compute_agent_address(&self.public_key),
-            public_key: self.public_key,
-            org_id: self.org_id,
-            active: self.active,
-            metadata: self.metadata,
-            start_commit_num: self.start_commit_num,
+impl From<Agent> for NewAgentModel {
+    fn from(agent: Agent) -> Self {
+        Self {
+            state_address: compute_agent_address(&agent.public_key),
+            public_key: agent.public_key,
+            org_id: agent.org_id,
+            active: agent.active,
+            metadata: agent.metadata,
+            start_commit_num: agent.start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
-            service_id: self.service_id,
+            service_id: agent.service_id,
         }
     }
 }
@@ -596,15 +596,15 @@ impl
     }
 }
 
-impl Into<NewOrganizationModel> for Organization {
-    fn into(self) -> NewOrganizationModel {
-        NewOrganizationModel {
-            state_address: compute_organization_address(&self.org_id),
-            org_id: self.org_id,
-            name: self.name,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+impl From<Organization> for NewOrganizationModel {
+    fn from(org: Organization) -> Self {
+        Self {
+            state_address: compute_organization_address(&org.org_id),
+            org_id: org.org_id,
+            name: org.name,
+            start_commit_num: org.start_commit_num,
+            end_commit_num: org.end_commit_num,
+            service_id: org.service_id,
         }
     }
 }
@@ -622,15 +622,15 @@ impl From<&AlternateIdModel> for AlternateId {
     }
 }
 
-impl Into<NewAlternateIdModel> for &AlternateId {
-    fn into(self) -> NewAlternateIdModel {
-        NewAlternateIdModel {
-            org_id: self.org_id.to_string(),
-            alternate_id_type: self.alternate_id_type.to_string(),
-            alternate_id: self.alternate_id.to_string(),
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id.clone(),
+impl From<&AlternateId> for NewAlternateIdModel {
+    fn from(alt_id: &AlternateId) -> Self {
+        Self {
+            org_id: alt_id.org_id.to_string(),
+            alternate_id_type: alt_id.alternate_id_type.to_string(),
+            alternate_id: alt_id.alternate_id.to_string(),
+            start_commit_num: alt_id.start_commit_num,
+            end_commit_num: alt_id.end_commit_num,
+            service_id: alt_id.service_id.clone(),
         }
     }
 }
