@@ -101,7 +101,7 @@ pub struct PurchaseOrderVersionRevisionModel {
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order_alternate_id"]
-pub struct NewPurchaseOrderAlternateIDModel {
+pub struct NewPurchaseOrderAlternateIdModel {
     pub purchase_order_uuid: String,
     pub org_id: String,
     pub alternate_id_type: String,
@@ -113,7 +113,7 @@ pub struct NewPurchaseOrderAlternateIDModel {
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order_alternate_id"]
-pub struct PurchaseOrderAlternateIDModel {
+pub struct PurchaseOrderAlternateIdModel {
     pub id: i64,
     pub purchase_order_uuid: String,
     pub org_id: String,

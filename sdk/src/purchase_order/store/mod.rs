@@ -16,8 +16,6 @@
 pub mod diesel;
 mod error;
 
-use crate::paging::Paging;
-
 pub use error::PurchaseOrderStoreError;
 
 /// Represents a list of Grid Purchase Orders
@@ -67,13 +65,13 @@ pub struct PurchaseOrderVersionRevision {
 
 /// Represents a list of Grid Purchase Order Alternate IDs
 #[derive(Clone, Debug, Serialize, PartialEq)]
-pub struct PurchaseOrderAlternateIDList {
-    pub alternate_ids: Vec<PurchaseOrderAlternateID>,
+pub struct PurchaseOrderAlternateIdList {
+    pub alternate_ids: Vec<PurchaseOrderAlternateId>,
 }
 
 /// Represents a Grid Purchase Order Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
-pub struct PurchaseOrderAlternateID {
+pub struct PurchaseOrderAlternateId {
     pub id_type: String,
     pub id: String,
     pub start_commit_num: i64,
@@ -124,7 +122,10 @@ pub trait PurchaseOrderStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `alternate_id` - The alternate_id to be added
-    fn add_alternate_id(&self, alternate_id: PurchaseOrderAlternateID) -> Result<(), PurchaseOrderStoreError>;
+    fn add_alternate_id(
+        &self,
+        alternate_id: PurchaseOrderAlternateId,
+    ) -> Result<(), PurchaseOrderStoreError>;
 
     /// Lists alternate IDs for a purchase order from the underlying storage
     ///
@@ -142,7 +143,7 @@ pub trait PurchaseOrderStore: Send + Sync {
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
-    ) -> Result<PurchaseOrderAlternateIDList, PurchaseOrderStoreError>;
+    ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError>;
 }
 
 impl<PS> PurchaseOrderStore for Box<PS>
@@ -172,7 +173,10 @@ where
         (**self).fetch_purchase_order(org_id, uuid, service_id)
     }
 
-    fn add_alternate_id(&self, alternate_id: PurchaseOrderAlternateID) -> Result<(), PurchaseOrderStoreError> {
+    fn add_alternate_id(
+        &self,
+        alternate_id: PurchaseOrderAlternateId,
+    ) -> Result<(), PurchaseOrderStoreError> {
         (**self).add_alternate_id(alternate_id)
     }
 
@@ -183,7 +187,13 @@ where
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
-    ) -> Result<PurchaseOrderAlternateIDList, PurchaseOrderStoreError> {
-        (**self).list_alternate_ids_for_purchase_order(purchase_order_uuid, org_id, service_id, offset, limit)
+    ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError> {
+        (**self).list_alternate_ids_for_purchase_order(
+            purchase_order_uuid,
+            org_id,
+            service_id,
+            offset,
+            limit,
+        )
     }
 }

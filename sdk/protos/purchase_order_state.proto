@@ -44,12 +44,12 @@ message PurchaseOrderRevision {
   string order_xml_v3_4 = 4;
 }
 
-message PurchaseOrderAlternateID {
+message PurchaseOrderAlternateId {
   string id_type = 1;
   string id = 2;
   string org_id = 3;
 }
 
-message PurchaseOrderAlternateIDList {
-  repeated PurchaseOrderAlternateID alternate_ids = 1;
+message PurchaseOrderAlternateIdList {
+  repeated PurchaseOrderAlternateId alternate_ids = 1;
 }
