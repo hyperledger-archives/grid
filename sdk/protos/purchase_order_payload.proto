@@ -19,8 +19,9 @@ message PurchaseOrderPayload {
   enum Action {
     UNSET_ACTION = 0;
     CREATE_PO = 1;
-    CREATE_VERSION = 2;
-    UPDATE_VERSION = 3;
+    UPDATE_PO = 2;
+    CREATE_VERSION = 3;
+    UPDATE_VERSION = 4;
   }
   Action action = 1;
   string org_id = 2;
