@@ -15,6 +15,7 @@
 crates := '\
     sdk \
     daemon \
+    griddle \
     cli \
     contracts/pike \
     contracts/location \

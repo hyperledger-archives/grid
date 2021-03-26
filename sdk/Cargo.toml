@@ -107,7 +107,7 @@ batch-submitter = ["base64", "futures", "reqwest", "uuid", "url"]
 postgres = ["diesel/postgres", "diesel_migrations", "log"]
 rest-api-actix-web-3 = [
     "actix-web", "futures", "futures-util", "rest-api-resources", "sqlite", "postgres", "url"]
-rest-api-resources = ["cylinder", "sabre-sdk", "log", "reqwest", "serde_json", "url"]
+rest-api-resources = ["cylinder", "sabre-sdk", "log", "reqwest", "url"]
 sawtooth-compat = [
     "sabre-sdk",
     "sawtooth-sdk"
