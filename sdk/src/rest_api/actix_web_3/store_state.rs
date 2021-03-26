@@ -46,6 +46,7 @@ pub struct StoreState {
     pub tnt_store: Arc<dyn TrackAndTraceStore>,
 }
 
+#[allow(clippy::redundant_clone)]
 impl StoreState {
     pub fn with_pg_pool(
         connection_pool: Pool<ConnectionManager<diesel::pg::PgConnection>>,
