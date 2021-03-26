@@ -16,12 +16,21 @@
 pub mod diesel;
 mod error;
 
+use crate::paging::Paging;
+
 pub use error::PurchaseOrderStoreError;
 
 /// Represents a list of Grid Purchase Orders
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderList {
-    pub purchase_orders: Vec<PurchaseOrder>,
+    pub data: Vec<PurchaseOrder>,
+    pub paging: Paging,
+}
+
+impl PurchaseOrderList {
+    pub fn new(data: Vec<PurchaseOrder>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
 }
 
 /// Represents a Grid Purchase Order
@@ -72,6 +81,8 @@ pub struct PurchaseOrderAlternateIdList {
 /// Represents a Grid Purchase Order Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderAlternateId {
+    pub purchase_order_uuid: String,
+    pub org_id: String,
     pub id_type: String,
     pub id: String,
     pub start_commit_num: i64,
