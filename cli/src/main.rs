@@ -1040,6 +1040,303 @@ fn run() -> Result<(), CliError> {
         );
     }
 
+    #[cfg(feature = "purchase-order")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("po")
+                .about("Create, update, list, or show Purchase Orders, Versions and Revisions")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create a Purchase Order")
+                        .arg(
+                            Arg::with_name("org")
+                                .value_name("org_id")
+                                .long("org")
+                                .takes_value(true)
+                                .required(true)
+                                .help(
+                                    "ID of the organization which owns the Purchase Order. \
+                                Defaults to the GRID_ORG_ID environment variable value, if set",
+                                ),
+                        )
+                        .arg(Arg::with_name("uuid").long("uuid").takes_value(true).help(
+                            "UUID for Purchase Order. \
+                                Defaults to randomly-generated UUID",
+                        ))
+                        .arg(
+                            Arg::with_name("id")
+                                .value_name("alternate_id")
+                                .long("id")
+                                .takes_value(true)
+                                .multiple(true)
+                                .help(
+                                    "Alternate IDs for the Purchase Order \
+                                (format: <alternate_id_type>:<alternate_id>) \
+                                in a comma-separated list",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("workflow_status")
+                                .value_name("status")
+                                .long("workflow-status")
+                                .takes_value(true)
+                                .help("Workflow status of the Purchase Order"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        )
+                        .arg(
+                            Arg::with_name("service_id")
+                                .long("service-id")
+                                .takes_value(true)
+                                .help(
+                                    "The ID of the service the payload should be \
+                             sent to; required if running on Splinter. Format \
+                             <circuit-id>::<service-id>",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("url")
+                                .long("url")
+                                .takes_value(true)
+                                .help("URL for the REST API"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("List Purchase Orders")
+                        .arg(
+                            Arg::with_name("org")
+                                .value_name("org_id")
+                                .long("org")
+                                .takes_value(true)
+                                .help("Only list Purchase Orders from the specified organization"),
+                        )
+                        .arg(
+                            Arg::with_name("accepted")
+                                .long("accepted")
+                                .conflicts_with("not-accepted")
+                                .help("List Purchase Orders that have an accepted version"),
+                        )
+                        .arg(
+                            Arg::with_name("not_accepted")
+                                .long("not-accepted")
+                                .conflicts_with("accepted")
+                                .help("List Purchase Orders that do not have an accepted version"),
+                        )
+                        .arg(
+                            Arg::with_name("open")
+                                .long("open")
+                                .conflicts_with("closed")
+                                .help("List Purchase Orders that are open"),
+                        )
+                        .arg(
+                            Arg::with_name("closed")
+                                .long("closed")
+                                .conflicts_with("open")
+                                .help("List Purchase Orders that have been closed"),
+                        )
+                        .arg(
+                            Arg::with_name("format")
+                                .short("F")
+                                .long("format")
+                                .help("Output format")
+                                .possible_values(&["human", "csv", "yaml", "json"])
+                                .default_value("human")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("service_id")
+                                .long("service-id")
+                                .takes_value(true)
+                                .help(
+                                    "The ID of the service the payload should be \
+                             sent to; required if running on Splinter. Format \
+                             <circuit-id>::<service-id>",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("url")
+                                .long("url")
+                                .takes_value(true)
+                                .help("URL for the REST API"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Update a Purchase Order")
+                        .arg(
+                            Arg::with_name("id")
+                                .value_name("order")
+                                .takes_value(true)
+                                .required(true)
+                                .help(
+                                    "ID of the Purchase Order. \
+                                    May be the Purchase Order's UUID or an Alternate ID \
+                                    (Alternate ID format: <alternate_id_type>:<alternate_id>)",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("org")
+                                .value_name("org_id")
+                                .long("org")
+                                .required(true)
+                                .takes_value(true)
+                                .help(
+                                    "ID of the organization which owns the Purchase Order. \
+                                Defaults to the GRID_ORG_ID environment variable, if set",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("add_id")
+                                .value_name("alternate_id")
+                                .long("add-id")
+                                .takes_value(true)
+                                .help(
+                                    "Add an Alternate ID to Purchase Order \
+                                (format: <alternate_id_type>:<alternate_id>)",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("rm_id")
+                                .value_name("alternate_id_type")
+                                .long("rm-id")
+                                .takes_value(true)
+                                .help("Remove an Alternate ID from Purchase Order"),
+                        )
+                        .arg(
+                            Arg::with_name("workflow_status")
+                                .value_name("status")
+                                .long("workflow-status")
+                                .takes_value(true)
+                                .help("The updated workflow status of the Purchase Order"),
+                        )
+                        .arg(
+                            Arg::with_name("is_closed")
+                                .long("is-closed")
+                                .help("Specify the Purchase Order has been closed"),
+                        )
+                        .arg(
+                            Arg::with_name("accepted_version")
+                                .value_name("version_id")
+                                .long("accepted-version")
+                                .takes_value(true)
+                                .help("Specify the ID of the accepted Purchase Order version"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        )
+                        .arg(
+                            Arg::with_name("service_id")
+                                .long("service-id")
+                                .takes_value(true)
+                                .help(
+                                    "The ID of the service the payload should be \
+                             sent to; required if running on Splinter. Format \
+                             <circuit-id>::<service-id>",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("url")
+                                .long("url")
+                                .takes_value(true)
+                                .help("URL for the REST API"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("show")
+                        .about("Show a Purchase Order")
+                        .arg(
+                            Arg::with_name("id")
+                                .value_name("order")
+                                .takes_value(true)
+                                .required(true)
+                                .help(
+                                    "ID of the Purchase Order. \
+                                    May be the Purchase Order's UUID or an Alternate ID \
+                                    (Alternate ID format: <alternate_id_type>:<alternate_id>)",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("org")
+                                .value_name("org_id")
+                                .long("org")
+                                .takes_value(true)
+                                .required(true)
+                                .help("ID of the organization that owns the Purchase Order"),
+                        )
+                        .arg(
+                            Arg::with_name("version")
+                                .value_name("version_id")
+                                .long("version")
+                                .takes_value(true)
+                                .help(
+                                    "ID of the version of the Purchase Order to show. \
+                                    Defaults to an accepted version",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("revision")
+                                .value_name("revision_id")
+                                .long("revision")
+                                .takes_value(true)
+                                .help(
+                                    "ID of the revision of the Purchase Order to show. \
+                                    Defaults to the latest revision",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("format")
+                                .short("F")
+                                .long("format")
+                                .help("Output format")
+                                .possible_values(&["human", "csv", "yaml", "json"])
+                                .default_value("human")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("service_id")
+                                .long("service-id")
+                                .takes_value(true)
+                                .help(
+                                    "The ID of the service the payload should be \
+                             sent to; required if running on Splinter. Format \
+                             <circuit-id>::<service-id>",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("url")
+                                .long("url")
+                                .takes_value(true)
+                                .help("URL for the REST API"),
+                        ),
+                ),
+        );
+    }
+
     let matches = app.get_matches();
 
     let log_level = if matches.is_present("quiet") {
