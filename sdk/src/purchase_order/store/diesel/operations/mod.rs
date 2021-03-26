@@ -12,9 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod addressing;
-pub mod store;
+pub(super) mod add_alternate_id;
+pub(super) mod add_purchase_order;
+pub(super) mod fetch_purchase_order;
+pub(super) mod list_alternate_ids_for_purchase_order;
+pub(super) mod list_purchase_orders;
 
-#[cfg(feature = "postgres")]
-pub use store::diesel::DieselPurchaseOrderStore;
-pub use store::PurchaseOrderStore;
+pub(super) struct PurchaseOrderStoreOperations<'a, C> {
+    conn: &'a C,
+}
+
+impl<'a, C> PurchaseOrderStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        PurchaseOrderStoreOperations { conn }
+    }
+}
