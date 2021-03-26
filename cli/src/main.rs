@@ -1212,10 +1212,13 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("rm_id")
-                                .value_name("alternate_id_type")
+                                .value_name("alternate_id")
                                 .long("rm-id")
                                 .takes_value(true)
-                                .help("Remove an Alternate ID from Purchase Order"),
+                                .help(
+                                    "Remove an Alternate ID from Purchase Order \
+                                    (format: <alternate_id_type>:<alternate_id>)",
+                                ),
                         )
                         .arg(
                             Arg::with_name("workflow_status")
