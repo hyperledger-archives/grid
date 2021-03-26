@@ -65,7 +65,7 @@ OPTIONS
 : Optionally, filter the purchase orders for the organization specified by
   `ORG_ID`.  This does *not* use the `GRID_ORG_ID` environment variable.
 
-`-f`, `--format=FORMAT`
+`-F`, `--format=FORMAT`
 : Specifies the output format of the list. Possible values for formatting are
   `human`, `csv`, `yaml`, and `json`. Defaults to `human`.
 
@@ -81,7 +81,7 @@ $ grid po list --org=crgl
 will list all purchase orders for the org `crgl` in human-readable format:
 
 ```
-ORG   UID                 STATUS    ACCEPTED CLOSED
+ORG   UUID                STATUS    ACCEPTED CLOSED
 crgl  82urioz098aui3871uc Confirmed v3       False
 ```
 
@@ -95,7 +95,7 @@ will list all the purchase orders that have an accepted version in
 human-readable format:
 
 ```
-ORG    UID                 STATUS    ACCEPTED CLOSED
+ORG    UUID                STATUS    ACCEPTED CLOSED
 crgl   82urioz098aui3871uc Confirmed v3       False
 tst    2389f7987d9s09df98f Issued    v1       False
 tst    f808u23hjiof09ufs0d Closed    v1       True
@@ -113,7 +113,7 @@ will display all of the purchase orders that have an accepted version and are
 open.  The output is formatted in csv:
 
 ```
-ORG,UID,STATUS,ACCEPTED,CLOSED
+ORG,UUID,STATUS,ACCEPTED,CLOSED
 crgl,82urioz098aui3871uc,Confirmed,v3,False
 tst,2389f7987d9s09df98f,Issued,v1,False
 ```
