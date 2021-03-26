@@ -17,11 +17,10 @@
 #[cfg(feature = "client-reqwest")]
 mod reqwest;
 
+use sawtooth_sdk::messages::batch::BatchList;
+use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
-use serde::{Deserialize, Serialize};
-
-use crate::batches::store::BatchList;
 use crate::error::InternalError;
 
 pub trait Client {
@@ -30,7 +29,12 @@ pub trait Client {
     /// # Arguments
     ///
     /// * `batches` - The `BatchList` to be submitted
-    fn post_batches(&self, batches: BatchList) -> Result<(), InternalError>;
+    fn post_batches(
+        &self,
+        batch_list: &BatchList,
+        service_id: Option<&str>,
+        wait: u64,
+    ) -> Result<(), InternalError>;
 
     /// Retrieves the purchase order with the specified `id`.
     ///
