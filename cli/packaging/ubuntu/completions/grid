@@ -1,0 +1,98 @@
+# Copyright 2021 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__grid()
+{
+  local cur prev subcommand
+
+  __grid_get_subcommand() {
+    local subcommand i
+
+    subcommand=
+    for ((i = 1; i < ${#COMP_WORDS[@]}; ++i)); do
+      if [[ ${COMP_WORDS[i]} != -* ]]; then
+        subcommand=${COMP_WORDS[i]}
+        break
+      fi
+    done
+
+    echo $subcommand
+  }
+
+  cur=${COMP_WORDS[COMP_CWORD]}
+  prev=${COMP_WORDS[COMP_CWORD-1]}
+  subcommand=$(__grid_get_subcommand)
+
+  GLOBAL_OPTS="
+    --help
+    --quiet
+  "
+
+  GRID_OPTS="
+    --version
+    help
+    database
+    keygen
+  "
+
+  GRID_DATABASE_OPTS="
+    $GLOBAL_OPTS
+    help
+    migrate
+  "
+
+  GRID_HELP_OPTS="
+    $GLOBAL_OPTS
+    database
+    help
+    keygen
+  "
+
+  GRID_KEYGEN_OPTS="
+    $GLOBAL_OPTS
+    --system
+    --force
+    --quiet
+    --key_dir
+  "
+
+  case "${subcommand}" in
+    database)
+      case "${prev}" in
+        migrate)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS --connect" -- ${cur}))
+          ;;
+
+        *)
+          COMPREPLY=($(compgen -W "$GRID_DATABASE_OPTS" -- ${cur}))
+          ;;
+
+        esac
+        ;;
+
+    help)
+      COMPREPLY=($(compgen -W "$GRID_HELP_OPTS" -- ${cur}))
+      ;;
+
+    keygen)
+      COMPREPLY=($(compgen -W "$GRID_KEYGEN_OPTS" -- ${cur}))
+      ;;
+
+    *)
+      COMPREPLY=($(compgen -W "$GRID_OPTS" -- ${cur}))
+      ;;
+  esac
+}
+
+complete -F __grid grid

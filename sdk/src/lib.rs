@@ -36,6 +36,8 @@ extern crate log;
 
 #[cfg(feature = "batch-store")]
 pub mod batches;
+#[cfg(feature = "client")]
+pub mod client;
 pub mod commits;
 pub mod error;
 mod hex;
@@ -51,6 +53,8 @@ pub mod pike;
 pub mod products;
 pub mod protocol;
 pub mod protos;
+#[cfg(feature = "purchase-order")]
+pub mod purchase_order;
 pub mod rest_api;
 #[cfg(feature = "schema")]
 pub mod schemas;

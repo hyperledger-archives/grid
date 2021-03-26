@@ -28,12 +28,12 @@ use crate::protocol::schema::state::PropertyValue;
 /// Native implementation of ProductNamespace enum
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProductNamespace {
-    GS1,
+    Gs1,
 }
 
 impl Default for ProductNamespace {
     fn default() -> Self {
-        ProductNamespace::GS1
+        ProductNamespace::Gs1
     }
 }
 
@@ -42,7 +42,7 @@ impl FromProto<protos::product_state::Product_ProductNamespace> for ProductNames
         product_namespace: protos::product_state::Product_ProductNamespace,
     ) -> Result<Self, ProtoConversionError> {
         match product_namespace {
-            protos::product_state::Product_ProductNamespace::GS1 => Ok(ProductNamespace::GS1),
+            protos::product_state::Product_ProductNamespace::GS1 => Ok(ProductNamespace::Gs1),
             protos::product_state::Product_ProductNamespace::UNSET_TYPE => {
                 Err(ProtoConversionError::InvalidTypeError(
                     "Cannot convert Product_ProductNamespace with type UNSET_TYPE".to_string(),
@@ -55,7 +55,7 @@ impl FromProto<protos::product_state::Product_ProductNamespace> for ProductNames
 impl FromNative<ProductNamespace> for protos::product_state::Product_ProductNamespace {
     fn from_native(product_namespace: ProductNamespace) -> Result<Self, ProtoConversionError> {
         match product_namespace {
-            ProductNamespace::GS1 => Ok(protos::product_state::Product_ProductNamespace::GS1),
+            ProductNamespace::Gs1 => Ok(protos::product_state::Product_ProductNamespace::GS1),
         }
     }
 }
@@ -399,7 +399,7 @@ mod tests {
         let product = build_product();
 
         assert_eq!(product.product_id(), "688955434684");
-        assert_eq!(*product.product_namespace(), ProductNamespace::GS1);
+        assert_eq!(*product.product_namespace(), ProductNamespace::Gs1);
         assert_eq!(product.owner(), "Target");
         assert_eq!(product.properties()[0].name(), "description");
         assert_eq!(*product.properties()[0].data_type(), DataType::String);
@@ -420,7 +420,7 @@ mod tests {
         let builder = product.into_builder();
 
         assert_eq!(builder.product_id, Some("688955434684".to_string()));
-        assert_eq!(builder.product_namespace, Some(ProductNamespace::GS1));
+        assert_eq!(builder.product_namespace, Some(ProductNamespace::Gs1));
         assert_eq!(builder.owner, Some("Target".to_string()));
         assert_eq!(builder.properties, Some(make_properties()));
     }
@@ -431,7 +431,7 @@ mod tests {
         let builder = ProductBuilder::new();
         let original = builder
             .with_product_id("688955434684".into())
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -451,7 +451,7 @@ mod tests {
         assert_eq!(product_list.products[0].product_id(), "688955434684");
         assert_eq!(
             *product_list.products[0].product_namespace(),
-            ProductNamespace::GS1
+            ProductNamespace::Gs1
         );
         assert_eq!(product_list.products[0].owner(), "Target");
         assert_eq!(
@@ -477,7 +477,7 @@ mod tests {
         assert_eq!(product_list.products[1].product_id(), "688955434685");
         assert_eq!(
             *product_list.products[1].product_namespace(),
-            ProductNamespace::GS1
+            ProductNamespace::Gs1
         );
         assert_eq!(product_list.products[1].owner(), "Cargill");
         assert_eq!(
@@ -522,7 +522,7 @@ mod tests {
     fn build_product() -> Product {
         ProductBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -560,14 +560,14 @@ mod tests {
         vec![
             ProductBuilder::new()
                 .with_product_id("688955434684".into()) // GTIN-12
-                .with_product_namespace(ProductNamespace::GS1)
+                .with_product_namespace(ProductNamespace::Gs1)
                 .with_owner("Target".into())
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build test product"),
             ProductBuilder::new()
                 .with_product_id("688955434685".into()) // GTIN-12
-                .with_product_namespace(ProductNamespace::GS1)
+                .with_product_namespace(ProductNamespace::Gs1)
                 .with_owner("Cargill".into())
                 .with_properties(make_properties())
                 .build()

@@ -580,7 +580,7 @@ mod tests {
     fn test_product_create_builder() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -588,7 +588,7 @@ mod tests {
 
         assert_eq!(action.product_id(), "688955434684");
         assert_eq!(action.owner(), "Target");
-        assert_eq!(*action.product_namespace(), ProductNamespace::GS1);
+        assert_eq!(*action.product_namespace(), ProductNamespace::Gs1);
         assert_eq!(action.properties()[0].name(), "description");
         assert_eq!(*action.properties()[0].data_type(), DataType::String);
         assert_eq!(
@@ -605,7 +605,7 @@ mod tests {
     fn test_product_create_into_bytes() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -619,13 +619,13 @@ mod tests {
     fn test_product_update_builder() {
         let action = ProductUpdateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_properties(make_properties())
             .build()
             .unwrap();
 
         assert_eq!(action.product_id(), "688955434684");
-        assert_eq!(*action.product_namespace(), ProductNamespace::GS1);
+        assert_eq!(*action.product_namespace(), ProductNamespace::Gs1);
         assert_eq!(action.properties()[0].name(), "description");
         assert_eq!(*action.properties()[0].data_type(), DataType::String);
         assert_eq!(
@@ -642,7 +642,7 @@ mod tests {
     fn test_product_update_into_bytes() {
         let action = ProductUpdateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_properties(make_properties())
             .build()
             .unwrap();
@@ -655,12 +655,12 @@ mod tests {
     fn test_product_delete_builder() {
         let action = ProductDeleteActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .build()
             .unwrap();
 
         assert_eq!(action.product_id(), "688955434684");
-        assert_eq!(*action.product_namespace(), ProductNamespace::GS1);
+        assert_eq!(*action.product_namespace(), ProductNamespace::Gs1);
     }
 
     #[test]
@@ -668,7 +668,7 @@ mod tests {
     fn test_product_delete_into_bytes() {
         let action = ProductDeleteActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .build()
             .unwrap();
 
@@ -680,7 +680,7 @@ mod tests {
     fn test_product_payload_builder() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -701,7 +701,7 @@ mod tests {
     fn test_product_payload_bytes() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_namespace(ProductNamespace::GS1)
+            .with_product_namespace(ProductNamespace::Gs1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()

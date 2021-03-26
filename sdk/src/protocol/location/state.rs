@@ -27,12 +27,12 @@ use crate::protocol::schema::state::PropertyValue;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LocationNamespace {
-    GS1,
+    Gs1,
 }
 
 impl Default for LocationNamespace {
     fn default() -> Self {
-        LocationNamespace::GS1
+        LocationNamespace::Gs1
     }
 }
 
@@ -41,7 +41,7 @@ impl FromProto<protos::location_state::Location_LocationNamespace> for LocationN
         namespace: protos::location_state::Location_LocationNamespace,
     ) -> Result<Self, ProtoConversionError> {
         match namespace {
-            protos::location_state::Location_LocationNamespace::GS1 => Ok(LocationNamespace::GS1),
+            protos::location_state::Location_LocationNamespace::GS1 => Ok(LocationNamespace::Gs1),
             protos::location_state::Location_LocationNamespace::UNSET_TYPE => {
                 Err(ProtoConversionError::InvalidTypeError(
                     "Cannot convert Location_LocationType with type UNSET_TYPE".to_string(),
@@ -54,7 +54,7 @@ impl FromProto<protos::location_state::Location_LocationNamespace> for LocationN
 impl FromNative<LocationNamespace> for protos::location_state::Location_LocationNamespace {
     fn from_native(namespace: LocationNamespace) -> Result<Self, ProtoConversionError> {
         match namespace {
-            LocationNamespace::GS1 => Ok(protos::location_state::Location_LocationNamespace::GS1),
+            LocationNamespace::Gs1 => Ok(protos::location_state::Location_LocationNamespace::GS1),
         }
     }
 }

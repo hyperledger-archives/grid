@@ -65,6 +65,15 @@ services:
         cp /tmp/*.scar /build/scar
       "
 
+  purchase_order:
+    image: purchase-order-contract-builder:${ISOLATION_ID}
+    volumes:
+      - ../../build/scar:/build/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/*.scar /build/scar
+      "
+
   schema:
     image: schema-contract-builder:${ISOLATION_ID}
     volumes:

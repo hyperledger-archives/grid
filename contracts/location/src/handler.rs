@@ -138,7 +138,7 @@ fn create_location(
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     // validate gln (gs1 only)
-    if payload.namespace() == &LocationNamespace::GS1 && !is_gln_13_valid(&payload.location_id()) {
+    if payload.namespace() == &LocationNamespace::Gs1 && !is_gln_13_valid(&payload.location_id()) {
         return Err(ApplyError::InvalidTransaction(format!(
             "Invalid GLN: {}",
             payload.location_id()
@@ -196,7 +196,7 @@ fn create_location(
         ));
     };
 
-    if payload.namespace() == &LocationNamespace::GS1 {
+    if payload.namespace() == &LocationNamespace::Gs1 {
         // Check if properties in location are all a part of the gs1 schema
         for property in payload.properties() {
             if schema
@@ -228,7 +228,7 @@ fn create_location(
     }
 
     let namespace = match payload.namespace() {
-        LocationNamespace::GS1 => StateNamespace::GS1,
+        LocationNamespace::Gs1 => StateNamespace::Gs1,
     };
 
     let location = LocationBuilder::new()
@@ -284,7 +284,7 @@ fn update_location(
         ));
     };
 
-    if payload.namespace() == &LocationNamespace::GS1 {
+    if payload.namespace() == &LocationNamespace::Gs1 {
         // Check if properties in location are all a part of the gs1 schema
         for property in payload.properties() {
             if schema
@@ -316,7 +316,7 @@ fn update_location(
     }
 
     let namespace = match payload.namespace() {
-        LocationNamespace::GS1 => StateNamespace::GS1,
+        LocationNamespace::Gs1 => StateNamespace::Gs1,
     };
 
     let location = LocationBuilder::new()
@@ -429,7 +429,7 @@ mod tests {
                 LocationUpdateActionBuilder,
             },
             pike::state::{
-                AgentBuilder, AgentListBuilder, AlternateIDBuilder, OrganizationBuilder,
+                AgentBuilder, AgentListBuilder, AlternateIdBuilder, OrganizationBuilder,
                 OrganizationListBuilder, RoleBuilder, RoleListBuilder,
             },
             schema::state::{
@@ -453,7 +453,7 @@ mod tests {
             let mut entries = Vec::new();
 
             // create organization with prefix
-            let alternate_id = AlternateIDBuilder::new()
+            let alternate_id = AlternateIdBuilder::new()
                 .with_id_type("gs1_company_prefix".to_string())
                 .with_id("9012".to_string())
                 .build()
@@ -699,7 +699,7 @@ mod tests {
 
         let location = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -729,7 +729,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -773,7 +773,7 @@ mod tests {
 
         let payload = LocationUpdateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_properties(properties)
             .build()
             .unwrap();
@@ -795,7 +795,7 @@ mod tests {
 
         let payload = LocationDeleteActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .build()
             .unwrap();
 
@@ -823,7 +823,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("12345".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -871,7 +871,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -911,7 +911,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("fake_org".into())
             .with_properties(properties)
             .build()
@@ -951,7 +951,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -994,7 +994,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("no_prefix_org".into())
             .with_properties(properties)
             .build()
@@ -1041,7 +1041,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -1087,7 +1087,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -1122,7 +1122,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -1162,7 +1162,7 @@ mod tests {
 
         let payload = LocationCreateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_owner("prefix_org".into())
             .with_properties(properties)
             .build()
@@ -1202,7 +1202,7 @@ mod tests {
 
         let payload = LocationUpdateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_properties(properties)
             .build()
             .unwrap();
@@ -1243,7 +1243,7 @@ mod tests {
 
         let payload = LocationUpdateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_properties(properties)
             .build()
             .unwrap();
@@ -1293,7 +1293,7 @@ mod tests {
 
         let payload = LocationUpdateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_properties(properties)
             .build()
             .unwrap();
@@ -1329,7 +1329,7 @@ mod tests {
 
         let payload = LocationUpdateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_properties(properties)
             .build()
             .unwrap();
@@ -1370,7 +1370,7 @@ mod tests {
 
         let payload = LocationUpdateActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .with_properties(properties)
             .build()
             .unwrap();
@@ -1394,7 +1394,7 @@ mod tests {
 
         let payload = LocationDeleteActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .build()
             .unwrap();
 
@@ -1419,7 +1419,7 @@ mod tests {
 
         let payload = LocationDeleteActionBuilder::new()
             .with_location_id("9012345000004".into())
-            .with_namespace(LocationNamespace::GS1)
+            .with_namespace(LocationNamespace::Gs1)
             .build()
             .unwrap();
 

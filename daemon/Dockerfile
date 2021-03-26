@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v7 as gridd-builder
+FROM hyperledger/grid-dev:v8 as gridd-builder
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -24,6 +24,7 @@ COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
 COPY contracts/pike/Cargo.toml /build/contracts/pike/Cargo.toml
 COPY contracts/product/Cargo.toml /build/contracts/product/Cargo.toml
+COPY contracts/purchase_order/Cargo.toml /build/contracts/purchase_order/Cargo.toml
 COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
 COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo.toml
 
@@ -33,18 +34,18 @@ COPY daemon /build/daemon
 COPY sdk /build/sdk
 
 # Build the gridd package
-WORKDIR /build/daemon
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" daemon/Cargo.toml
+RUN cargo build --manifest-path=daemon/Cargo.toml --release $CARGO_ARGS
+RUN (cd daemon && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
 
 # Build the grid-cli package
-WORKDIR /build/cli
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml
+RUN cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
+RUN (cd cli && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
 
 # Log the commit hash
 COPY .git/ /tmp/.git/
@@ -70,5 +71,7 @@ RUN apt-get update \
     libsqlite3-dev \
  && dpkg --unpack /tmp/grid*.deb \
  && apt-get -f -y install
+
+RUN echo ". /usr/share/bash-completion/bash_completion" >> ~/.bashrc
 
 CMD ["gridd"]

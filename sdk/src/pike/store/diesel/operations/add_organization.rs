@@ -24,7 +24,7 @@ use crate::pike::store::diesel::{
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::pike::store::diesel::models::{
-    AlternateIDModel, LocationAssociationModel, NewAlternateIDModel, NewLocationAssociationModel,
+    AlternateIdModel, LocationAssociationModel, NewAlternateIdModel, NewLocationAssociationModel,
     NewOrganizationMetadataModel, NewOrganizationModel, OrganizationMetadataModel,
     OrganizationModel,
 };
@@ -39,7 +39,7 @@ pub(in crate::pike::store::diesel) trait PikeStoreAddOrganizationOperation {
         &self,
         org: NewOrganizationModel,
         locations: Vec<NewLocationAssociationModel>,
-        alternate_ids: Vec<NewAlternateIDModel>,
+        alternate_ids: Vec<NewAlternateIdModel>,
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError>;
 }
@@ -50,7 +50,7 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
         &self,
         org: NewOrganizationModel,
         locations: Vec<NewLocationAssociationModel>,
-        alternate_ids: Vec<NewAlternateIDModel>,
+        alternate_ids: Vec<NewAlternateIdModel>,
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
@@ -193,7 +193,7 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
                 }
 
                 let duplicate = query
-                    .first::<AlternateIDModel>(self.conn)
+                    .first::<AlternateIdModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
                         if err == dsl_error::NotFound {
@@ -305,7 +305,7 @@ impl<'a> PikeStoreAddOrganizationOperation
         &self,
         org: NewOrganizationModel,
         locations: Vec<NewLocationAssociationModel>,
-        alternate_ids: Vec<NewAlternateIDModel>,
+        alternate_ids: Vec<NewAlternateIdModel>,
         metadata: Vec<NewOrganizationMetadataModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
@@ -448,7 +448,7 @@ impl<'a> PikeStoreAddOrganizationOperation
                 }
 
                 let duplicate = query
-                    .first::<AlternateIDModel>(self.conn)
+                    .first::<AlternateIdModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
                         if err == dsl_error::NotFound {

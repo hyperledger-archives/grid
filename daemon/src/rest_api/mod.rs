@@ -114,6 +114,16 @@ pub fn run(
                         .data(key_state.clone())
                         .service(web::scope("/integration").service(routes::submit));
                 }
+                #[cfg(feature = "purchase-order")]
+                {
+                    app = app
+                        .service(routes::list_purchase_orders)
+                        .service(routes::fetch_purchase_order)
+                        .service(routes::list_purchase_order_versions)
+                        .service(routes::fetch_purchase_order_version)
+                        .service(routes::list_purchase_order_version_revisions)
+                        .service(routes::fetch_purchase_order_version_revision)
+                }
 
                 app
             })

@@ -5,6 +5,7 @@ members = [
     "contracts/location",
     "contracts/pike",
     "contracts/product",
+    "contracts/purchase_order",
     "contracts/schema",
     "contracts/track_and_trace",
     "daemon",

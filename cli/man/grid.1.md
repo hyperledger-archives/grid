@@ -50,6 +50,9 @@ SUBCOMMANDS
 `organization`
 : Update or create an organization
 
+`po`
+: Create or update a purchase order
+
 `product`
 : Create, update or delete products
 
@@ -113,6 +116,8 @@ SEE ALSO
 | `grid-location-delete(1)`
 | `grid-location-show(1)`
 | `grid-location-list(1)`
+|
+| `grid-po-list(1)`
 |
 | `grid-product-create(1)`
 | `grid-product-update(1)`

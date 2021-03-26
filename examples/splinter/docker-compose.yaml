@@ -100,6 +100,21 @@ services:
         cp /tmp/grid-location*.scar /usr/share/scar
       "
 
+  purchase-order-contract-builder:
+    image: purchase-order-contract-builder
+    container_name: purchase-order-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/purchase_order/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-purchase-order*.scar /usr/share/scar
+      "
+
   generate-registry:
     image: splintercommunity/splinter-cli:0.4
     volumes:
@@ -180,7 +195,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
-        - CARGO_ARGS=-- --features experimental
+        - CARGO_ARGS= --features experimental
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-alpha:/etc/grid/keys
@@ -308,7 +323,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
-        - CARGO_ARGS=-- --features experimental
+        - CARGO_ARGS= --features experimental
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-beta:/etc/grid/keys
@@ -435,7 +450,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
-        - CARGO_ARGS=-- --features experimental
+        - CARGO_ARGS= --features experimental
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-gamma:/etc/grid/keys

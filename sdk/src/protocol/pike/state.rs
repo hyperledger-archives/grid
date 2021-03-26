@@ -482,15 +482,15 @@ impl RoleListBuilder {
     }
 }
 
-/// Native implementation of AlternateIDIndexEntry
+/// Native implementation of AlternateIdIndexEntry
 #[derive(Debug, Clone, PartialEq)]
-pub struct AlternateIDIndexEntry {
+pub struct AlternateIdIndexEntry {
     id_type: String,
     id: String,
     grid_identity_id: String,
 }
 
-impl AlternateIDIndexEntry {
+impl AlternateIdIndexEntry {
     pub fn id_type(&self) -> &str {
         &self.id_type
     }
@@ -504,11 +504,11 @@ impl AlternateIDIndexEntry {
     }
 }
 
-impl FromProto<protos::pike_state::AlternateIDIndexEntry> for AlternateIDIndexEntry {
+impl FromProto<protos::pike_state::AlternateIdIndexEntry> for AlternateIdIndexEntry {
     fn from_proto(
-        id: protos::pike_state::AlternateIDIndexEntry,
+        id: protos::pike_state::AlternateIdIndexEntry,
     ) -> Result<Self, ProtoConversionError> {
-        Ok(AlternateIDIndexEntry {
+        Ok(AlternateIdIndexEntry {
             id_type: id.get_id_type().to_string(),
             id: id.get_id().to_string(),
             grid_identity_id: id.get_grid_identity_id().to_string(),
@@ -516,9 +516,9 @@ impl FromProto<protos::pike_state::AlternateIDIndexEntry> for AlternateIDIndexEn
     }
 }
 
-impl FromNative<AlternateIDIndexEntry> for protos::pike_state::AlternateIDIndexEntry {
-    fn from_native(id: AlternateIDIndexEntry) -> Result<Self, ProtoConversionError> {
-        let mut alt_id_proto = protos::pike_state::AlternateIDIndexEntry::new();
+impl FromNative<AlternateIdIndexEntry> for protos::pike_state::AlternateIdIndexEntry {
+    fn from_native(id: AlternateIdIndexEntry) -> Result<Self, ProtoConversionError> {
+        let mut alt_id_proto = protos::pike_state::AlternateIdIndexEntry::new();
 
         alt_id_proto.set_id_type(id.id_type().to_string());
         alt_id_proto.set_id(id.id().to_string());
@@ -528,81 +528,81 @@ impl FromNative<AlternateIDIndexEntry> for protos::pike_state::AlternateIDIndexE
     }
 }
 
-impl FromBytes<AlternateIDIndexEntry> for AlternateIDIndexEntry {
-    fn from_bytes(bytes: &[u8]) -> Result<AlternateIDIndexEntry, ProtoConversionError> {
-        let proto: protos::pike_state::AlternateIDIndexEntry = Message::parse_from_bytes(bytes)
+impl FromBytes<AlternateIdIndexEntry> for AlternateIdIndexEntry {
+    fn from_bytes(bytes: &[u8]) -> Result<AlternateIdIndexEntry, ProtoConversionError> {
+        let proto: protos::pike_state::AlternateIdIndexEntry = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
-                    "Unable to get AlternateIDIndexEntry from bytes".to_string(),
+                    "Unable to get AlternateIdIndexEntry from bytes".to_string(),
                 )
             })?;
         proto.into_native()
     }
 }
 
-impl IntoBytes for AlternateIDIndexEntry {
+impl IntoBytes for AlternateIdIndexEntry {
     fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
         let proto = self.into_proto()?;
         let bytes = proto.write_to_bytes().map_err(|_| {
             ProtoConversionError::SerializationError(
-                "Unable to get bytes from AlternateIDIndexEntry".to_string(),
+                "Unable to get bytes from AlternateIdIndexEntry".to_string(),
             )
         })?;
         Ok(bytes)
     }
 }
 
-impl IntoProto<protos::pike_state::AlternateIDIndexEntry> for AlternateIDIndexEntry {}
-impl IntoNative<AlternateIDIndexEntry> for protos::pike_state::AlternateIDIndexEntry {}
+impl IntoProto<protos::pike_state::AlternateIdIndexEntry> for AlternateIdIndexEntry {}
+impl IntoNative<AlternateIdIndexEntry> for protos::pike_state::AlternateIdIndexEntry {}
 
 #[derive(Debug)]
-pub enum AlternateIDIndexEntryBuildError {
+pub enum AlternateIdIndexEntryBuildError {
     MissingField(String),
 }
 
-impl StdError for AlternateIDIndexEntryBuildError {
+impl StdError for AlternateIdIndexEntryBuildError {
     fn description(&self) -> &str {
         match *self {
-            AlternateIDIndexEntryBuildError::MissingField(ref msg) => msg,
+            AlternateIdIndexEntryBuildError::MissingField(ref msg) => msg,
         }
     }
 
     fn cause(&self) -> Option<&dyn StdError> {
         match *self {
-            AlternateIDIndexEntryBuildError::MissingField(_) => None,
+            AlternateIdIndexEntryBuildError::MissingField(_) => None,
         }
     }
 }
 
-impl std::fmt::Display for AlternateIDIndexEntryBuildError {
+impl std::fmt::Display for AlternateIdIndexEntryBuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            AlternateIDIndexEntryBuildError::MissingField(ref s) => {
+            AlternateIdIndexEntryBuildError::MissingField(ref s) => {
                 write!(f, "MissingField: {}", s)
             }
         }
     }
 }
 
-/// Builder used to create a AlternateIDIndexEntry
+/// Builder used to create a AlternateIdIndexEntry
 #[derive(Default, Clone)]
-pub struct AlternateIDIndexEntryBuilder {
+pub struct AlternateIdIndexEntryBuilder {
     pub id_type: Option<String>,
     pub id: Option<String>,
     pub grid_identity_id: Option<String>,
 }
 
-impl AlternateIDIndexEntryBuilder {
+impl AlternateIdIndexEntryBuilder {
     pub fn new() -> Self {
-        AlternateIDIndexEntryBuilder::default()
+        AlternateIdIndexEntryBuilder::default()
     }
 
-    pub fn with_id_type(mut self, id_type: String) -> AlternateIDIndexEntryBuilder {
+    pub fn with_id_type(mut self, id_type: String) -> AlternateIdIndexEntryBuilder {
         self.id_type = Some(id_type);
         self
     }
 
-    pub fn with_id(mut self, id: String) -> AlternateIDIndexEntryBuilder {
+    pub fn with_id(mut self, id: String) -> AlternateIdIndexEntryBuilder {
         self.id = Some(id);
         self
     }
@@ -610,27 +610,27 @@ impl AlternateIDIndexEntryBuilder {
     pub fn with_grid_identity_id(
         mut self,
         grid_identity_id: String,
-    ) -> AlternateIDIndexEntryBuilder {
+    ) -> AlternateIdIndexEntryBuilder {
         self.grid_identity_id = Some(grid_identity_id);
         self
     }
 
-    pub fn build(self) -> Result<AlternateIDIndexEntry, AlternateIDIndexEntryBuildError> {
+    pub fn build(self) -> Result<AlternateIdIndexEntry, AlternateIdIndexEntryBuildError> {
         let id_type = self.id_type.ok_or_else(|| {
-            AlternateIDIndexEntryBuildError::MissingField("'id_type' field is required".to_string())
+            AlternateIdIndexEntryBuildError::MissingField("'id_type' field is required".to_string())
         })?;
 
         let id = self.id.ok_or_else(|| {
-            AlternateIDIndexEntryBuildError::MissingField("'id' field is required".to_string())
+            AlternateIdIndexEntryBuildError::MissingField("'id' field is required".to_string())
         })?;
 
         let grid_identity_id = self.grid_identity_id.ok_or_else(|| {
-            AlternateIDIndexEntryBuildError::MissingField(
+            AlternateIdIndexEntryBuildError::MissingField(
                 "'grid_identity_id' field is required".to_string(),
             )
         })?;
 
-        Ok(AlternateIDIndexEntry {
+        Ok(AlternateIdIndexEntry {
             id_type,
             id,
             grid_identity_id,
@@ -638,56 +638,56 @@ impl AlternateIDIndexEntryBuilder {
     }
 }
 
-/// Native implementation of AlternateIDIndexEntryList
+/// Native implementation of AlternateIdIndexEntryList
 #[derive(Debug, Clone, PartialEq)]
-pub struct AlternateIDIndexEntryList {
-    entries: Vec<AlternateIDIndexEntry>,
+pub struct AlternateIdIndexEntryList {
+    entries: Vec<AlternateIdIndexEntry>,
 }
 
-impl AlternateIDIndexEntryList {
-    pub fn entries(&self) -> &[AlternateIDIndexEntry] {
+impl AlternateIdIndexEntryList {
+    pub fn entries(&self) -> &[AlternateIdIndexEntry] {
         &self.entries
     }
 }
 
-impl FromProto<protos::pike_state::AlternateIDIndexEntryList> for AlternateIDIndexEntryList {
+impl FromProto<protos::pike_state::AlternateIdIndexEntryList> for AlternateIdIndexEntryList {
     fn from_proto(
-        entry_list: protos::pike_state::AlternateIDIndexEntryList,
+        entry_list: protos::pike_state::AlternateIdIndexEntryList,
     ) -> Result<Self, ProtoConversionError> {
-        Ok(AlternateIDIndexEntryList {
+        Ok(AlternateIdIndexEntryList {
             entries: entry_list
                 .get_entries()
                 .to_vec()
                 .into_iter()
-                .map(AlternateIDIndexEntry::from_proto)
-                .collect::<Result<Vec<AlternateIDIndexEntry>, ProtoConversionError>>()?,
+                .map(AlternateIdIndexEntry::from_proto)
+                .collect::<Result<Vec<AlternateIdIndexEntry>, ProtoConversionError>>()?,
         })
     }
 }
 
-impl FromNative<AlternateIDIndexEntryList> for protos::pike_state::AlternateIDIndexEntryList {
-    fn from_native(entry_list: AlternateIDIndexEntryList) -> Result<Self, ProtoConversionError> {
-        let mut entry_list_proto = protos::pike_state::AlternateIDIndexEntryList::new();
+impl FromNative<AlternateIdIndexEntryList> for protos::pike_state::AlternateIdIndexEntryList {
+    fn from_native(entry_list: AlternateIdIndexEntryList) -> Result<Self, ProtoConversionError> {
+        let mut entry_list_proto = protos::pike_state::AlternateIdIndexEntryList::new();
 
         entry_list_proto.set_entries(RepeatedField::from_vec(
             entry_list
                 .entries()
                 .to_vec()
                 .into_iter()
-                .map(AlternateIDIndexEntry::into_proto)
-                .collect::<Result<Vec<protos::pike_state::AlternateIDIndexEntry>, ProtoConversionError>>()?,
+                .map(AlternateIdIndexEntry::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateIdIndexEntry>, ProtoConversionError>>()?,
         ));
 
         Ok(entry_list_proto)
     }
 }
 
-impl FromBytes<AlternateIDIndexEntryList> for AlternateIDIndexEntryList {
-    fn from_bytes(bytes: &[u8]) -> Result<AlternateIDIndexEntryList, ProtoConversionError> {
-        let proto: protos::pike_state::AlternateIDIndexEntryList = Message::parse_from_bytes(bytes)
+impl FromBytes<AlternateIdIndexEntryList> for AlternateIdIndexEntryList {
+    fn from_bytes(bytes: &[u8]) -> Result<AlternateIdIndexEntryList, ProtoConversionError> {
+        let proto: protos::pike_state::AlternateIdIndexEntryList = Message::parse_from_bytes(bytes)
             .map_err(|_| {
                 ProtoConversionError::SerializationError(
-                    "Unable to get AlternateIDIndexEntryList from bytes".to_string(),
+                    "Unable to get AlternateIdIndexEntryList from bytes".to_string(),
                 )
             })?;
 
@@ -695,73 +695,73 @@ impl FromBytes<AlternateIDIndexEntryList> for AlternateIDIndexEntryList {
     }
 }
 
-impl IntoBytes for AlternateIDIndexEntryList {
+impl IntoBytes for AlternateIdIndexEntryList {
     fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
         let proto = self.into_proto()?;
         let bytes = proto.write_to_bytes().map_err(|_| {
             ProtoConversionError::SerializationError(
-                "Unable to get bytes from AlternateIDIndexEntryList".to_string(),
+                "Unable to get bytes from AlternateIdIndexEntryList".to_string(),
             )
         })?;
         Ok(bytes)
     }
 }
 
-impl IntoProto<protos::pike_state::AlternateIDIndexEntryList> for AlternateIDIndexEntryList {}
-impl IntoNative<AlternateIDIndexEntryList> for protos::pike_state::AlternateIDIndexEntryList {}
+impl IntoProto<protos::pike_state::AlternateIdIndexEntryList> for AlternateIdIndexEntryList {}
+impl IntoNative<AlternateIdIndexEntryList> for protos::pike_state::AlternateIdIndexEntryList {}
 
 #[derive(Debug)]
-pub enum AlternateIDIndexEntryListBuildError {
+pub enum AlternateIdIndexEntryListBuildError {
     MissingField(String),
 }
 
-impl StdError for AlternateIDIndexEntryListBuildError {
+impl StdError for AlternateIdIndexEntryListBuildError {
     fn description(&self) -> &str {
         match *self {
-            AlternateIDIndexEntryListBuildError::MissingField(ref msg) => msg,
+            AlternateIdIndexEntryListBuildError::MissingField(ref msg) => msg,
         }
     }
 
     fn cause(&self) -> Option<&dyn StdError> {
         match *self {
-            AlternateIDIndexEntryListBuildError::MissingField(_) => None,
+            AlternateIdIndexEntryListBuildError::MissingField(_) => None,
         }
     }
 }
 
-impl std::fmt::Display for AlternateIDIndexEntryListBuildError {
+impl std::fmt::Display for AlternateIdIndexEntryListBuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            AlternateIDIndexEntryListBuildError::MissingField(ref s) => {
+            AlternateIdIndexEntryListBuildError::MissingField(ref s) => {
                 write!(f, "MissingField: {}", s)
             }
         }
     }
 }
 
-/// Builder used to create a AlternateIDIndexEntryList
+/// Builder used to create a AlternateIdIndexEntryList
 #[derive(Default, Clone)]
-pub struct AlternateIDIndexEntryListBuilder {
-    pub entries: Vec<AlternateIDIndexEntry>,
+pub struct AlternateIdIndexEntryListBuilder {
+    pub entries: Vec<AlternateIdIndexEntry>,
 }
 
-impl AlternateIDIndexEntryListBuilder {
+impl AlternateIdIndexEntryListBuilder {
     pub fn new() -> Self {
-        AlternateIDIndexEntryListBuilder::default()
+        AlternateIdIndexEntryListBuilder::default()
     }
 
     pub fn with_entries(
         mut self,
-        entries: Vec<AlternateIDIndexEntry>,
-    ) -> AlternateIDIndexEntryListBuilder {
+        entries: Vec<AlternateIdIndexEntry>,
+    ) -> AlternateIdIndexEntryListBuilder {
         self.entries = entries;
         self
     }
 
-    pub fn build(self) -> Result<AlternateIDIndexEntryList, AlternateIDIndexEntryListBuildError> {
+    pub fn build(self) -> Result<AlternateIdIndexEntryList, AlternateIdIndexEntryListBuildError> {
         let entries = {
             if self.entries.is_empty() {
-                return Err(AlternateIDIndexEntryListBuildError::MissingField(
+                return Err(AlternateIdIndexEntryListBuildError::MissingField(
                     "'entries' cannot be empty".to_string(),
                 ));
             } else {
@@ -769,18 +769,18 @@ impl AlternateIDIndexEntryListBuilder {
             }
         };
 
-        Ok(AlternateIDIndexEntryList { entries })
+        Ok(AlternateIdIndexEntryList { entries })
     }
 }
 
-/// Native implementation of AlternateID
+/// Native implementation of AlternateId
 #[derive(Debug, Clone, PartialEq)]
-pub struct AlternateID {
+pub struct AlternateId {
     id_type: String,
     id: String,
 }
 
-impl AlternateID {
+impl AlternateId {
     pub fn id_type(&self) -> &str {
         &self.id_type
     }
@@ -790,18 +790,18 @@ impl AlternateID {
     }
 }
 
-impl FromProto<protos::pike_state::AlternateID> for AlternateID {
-    fn from_proto(id: protos::pike_state::AlternateID) -> Result<Self, ProtoConversionError> {
-        Ok(AlternateID {
+impl FromProto<protos::pike_state::AlternateId> for AlternateId {
+    fn from_proto(id: protos::pike_state::AlternateId) -> Result<Self, ProtoConversionError> {
+        Ok(AlternateId {
             id_type: id.get_id_type().to_string(),
             id: id.get_id().to_string(),
         })
     }
 }
 
-impl FromNative<AlternateID> for protos::pike_state::AlternateID {
-    fn from_native(id: AlternateID) -> Result<Self, ProtoConversionError> {
-        let mut alt_id_proto = protos::pike_state::AlternateID::new();
+impl FromNative<AlternateId> for protos::pike_state::AlternateId {
+    fn from_native(id: AlternateId) -> Result<Self, ProtoConversionError> {
+        let mut alt_id_proto = protos::pike_state::AlternateId::new();
 
         alt_id_proto.set_id_type(id.id_type().to_string());
         alt_id_proto.set_id(id.id().to_string());
@@ -810,92 +810,92 @@ impl FromNative<AlternateID> for protos::pike_state::AlternateID {
     }
 }
 
-impl FromBytes<AlternateID> for AlternateID {
-    fn from_bytes(bytes: &[u8]) -> Result<AlternateID, ProtoConversionError> {
-        let proto: protos::pike_state::AlternateID =
+impl FromBytes<AlternateId> for AlternateId {
+    fn from_bytes(bytes: &[u8]) -> Result<AlternateId, ProtoConversionError> {
+        let proto: protos::pike_state::AlternateId =
             Message::parse_from_bytes(bytes).map_err(|_| {
                 ProtoConversionError::SerializationError(
-                    "Unable to get AlternateID from bytes".to_string(),
+                    "Unable to get AlternateId from bytes".to_string(),
                 )
             })?;
         proto.into_native()
     }
 }
 
-impl IntoBytes for AlternateID {
+impl IntoBytes for AlternateId {
     fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
         let proto = self.into_proto()?;
         let bytes = proto.write_to_bytes().map_err(|_| {
             ProtoConversionError::SerializationError(
-                "Unable to get bytes from AlternateID".to_string(),
+                "Unable to get bytes from AlternateId".to_string(),
             )
         })?;
         Ok(bytes)
     }
 }
 
-impl IntoProto<protos::pike_state::AlternateID> for AlternateID {}
-impl IntoNative<AlternateID> for protos::pike_state::AlternateID {}
+impl IntoProto<protos::pike_state::AlternateId> for AlternateId {}
+impl IntoNative<AlternateId> for protos::pike_state::AlternateId {}
 
 #[derive(Debug)]
-pub enum AlternateIDBuildError {
+pub enum AlternateIdBuildError {
     MissingField(String),
 }
 
-impl StdError for AlternateIDBuildError {
+impl StdError for AlternateIdBuildError {
     fn description(&self) -> &str {
         match *self {
-            AlternateIDBuildError::MissingField(ref msg) => msg,
+            AlternateIdBuildError::MissingField(ref msg) => msg,
         }
     }
 
     fn cause(&self) -> Option<&dyn StdError> {
         match *self {
-            AlternateIDBuildError::MissingField(_) => None,
+            AlternateIdBuildError::MissingField(_) => None,
         }
     }
 }
 
-impl std::fmt::Display for AlternateIDBuildError {
+impl std::fmt::Display for AlternateIdBuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            AlternateIDBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+            AlternateIdBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
         }
     }
 }
 
-/// Builder used to create a AlternateID
+/// Builder used to create a AlternateId
 #[derive(Default, Clone)]
-pub struct AlternateIDBuilder {
+pub struct AlternateIdBuilder {
     pub id_type: Option<String>,
     pub id: Option<String>,
 }
 
-impl AlternateIDBuilder {
+impl AlternateIdBuilder {
     pub fn new() -> Self {
-        AlternateIDBuilder::default()
+        AlternateIdBuilder::default()
     }
 
-    pub fn with_id_type(mut self, id_type: String) -> AlternateIDBuilder {
+    pub fn with_id_type(mut self, id_type: String) -> AlternateIdBuilder {
         self.id_type = Some(id_type);
         self
     }
 
-    pub fn with_id(mut self, id: String) -> AlternateIDBuilder {
+    pub fn with_id(mut self, id: String) -> AlternateIdBuilder {
         self.id = Some(id);
         self
     }
 
-    pub fn build(self) -> Result<AlternateID, AlternateIDBuildError> {
+    pub fn build(self) -> Result<AlternateId, AlternateIdBuildError> {
         let id_type = self.id_type.ok_or_else(|| {
-            AlternateIDBuildError::MissingField("'id_type' field is required".to_string())
+            AlternateIdBuildError::MissingField("'id_type' field is required".to_string())
         })?;
 
         let id = self.id.ok_or_else(|| {
-            AlternateIDBuildError::MissingField("'id' field is required".to_string())
+            AlternateIdBuildError::MissingField("'id' field is required".to_string())
         })?;
 
-        Ok(AlternateID { id_type, id })
+        Ok(AlternateId { id_type, id })
     }
 }
 
@@ -1216,7 +1216,7 @@ pub struct Organization {
     org_id: String,
     name: String,
     locations: Vec<String>,
-    alternate_ids: Vec<AlternateID>,
+    alternate_ids: Vec<AlternateId>,
     metadata: Vec<KeyValueEntry>,
 }
 
@@ -1233,7 +1233,7 @@ impl Organization {
         &self.locations
     }
 
-    pub fn alternate_ids(&self) -> &[AlternateID] {
+    pub fn alternate_ids(&self) -> &[AlternateId] {
         &self.alternate_ids
     }
 
@@ -1252,8 +1252,8 @@ impl FromProto<protos::pike_state::Organization> for Organization {
                 .get_alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::from_proto)
-                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::from_proto)
+                .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             metadata: org
                 .get_metadata()
                 .to_vec()
@@ -1275,8 +1275,8 @@ impl FromNative<Organization> for protos::pike_state::Organization {
             org.alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::into_proto)
-                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         org_proto.set_metadata(RepeatedField::from_vec(
             org.metadata()
@@ -1351,7 +1351,7 @@ pub struct OrganizationBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
     pub locations: Vec<String>,
-    pub alternate_ids: Vec<AlternateID>,
+    pub alternate_ids: Vec<AlternateId>,
     pub metadata: Vec<KeyValueEntry>,
 }
 
@@ -1375,7 +1375,7 @@ impl OrganizationBuilder {
         self
     }
 
-    pub fn with_alternate_ids(mut self, alternate_ids: Vec<AlternateID>) -> OrganizationBuilder {
+    pub fn with_alternate_ids(mut self, alternate_ids: Vec<AlternateId>) -> OrganizationBuilder {
         self.alternate_ids = alternate_ids;
         self
     }

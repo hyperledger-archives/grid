@@ -101,7 +101,7 @@
         dockerfile: daemon/Dockerfile
         args:
           - REPO_VERSION=${REPO_VERSION}
-          - CARGO_ARGS=-- --features experimental
+          - CARGO_ARGS= --features experimental
       volumes:
         - contracts:/usr/share/scar
         - gridd:/etc/grid/keys

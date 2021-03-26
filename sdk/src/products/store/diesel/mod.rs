@@ -173,19 +173,19 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
     }
 }
 
-impl Into<(NewProduct, Vec<NewProductPropertyValue>)> for Product {
-    fn into(self) -> (NewProduct, Vec<NewProductPropertyValue>) {
-        let product = NewProduct {
-            product_id: self.product_id.clone(),
-            product_address: self.product_address.clone(),
-            product_namespace: self.product_namespace.clone(),
-            owner: self.owner.clone(),
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id.clone(),
+impl From<Product> for (NewProduct, Vec<NewProductPropertyValue>) {
+    fn from(product: Product) -> Self {
+        let new_product = NewProduct {
+            product_id: product.product_id.clone(),
+            product_address: product.product_address.clone(),
+            product_namespace: product.product_namespace.clone(),
+            owner: product.owner.clone(),
+            start_commit_num: product.start_commit_num,
+            end_commit_num: product.end_commit_num,
+            service_id: product.service_id.clone(),
         };
 
-        (product, make_property_values(None, &self.properties))
+        (new_product, make_property_values(None, &product.properties))
     }
 }
 

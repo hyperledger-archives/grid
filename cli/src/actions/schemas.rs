@@ -72,9 +72,9 @@ pub enum DataType {
     LatLong,
 }
 
-impl Into<StateDataType> for DataType {
-    fn into(self) -> StateDataType {
-        match self {
+impl From<DataType> for StateDataType {
+    fn from(data_type: DataType) -> Self {
+        match data_type {
             DataType::Bytes => StateDataType::Bytes,
             DataType::Boolean => StateDataType::Boolean,
             DataType::Number => StateDataType::Number,
@@ -446,9 +446,9 @@ mod test {
     use std::panic;
     use std::thread;
 
-    static LIGHTBULB_YAML_EXAMPLE: &[u8; 816] = br##"- name: "Lightbulb"
+    static LIGHTBULB_YAML_EXAMPLE: &[u8; 818] = br##"- name: "Lightbulb"
   description: "Example Lightbulb schema"
-  owner: 013600
+  owner: "013600"
   properties:
     - name: "size"
       data_type: NUMBER
@@ -475,10 +475,10 @@ mod test {
               data_type: STRING
               description: "RGB value" "##;
 
-    static PHONE_YAML_EXAMPLE: &[u8; 641] = br##"
+    static PHONE_YAML_EXAMPLE: &[u8; 643] = br##"
 - name: "Phone"
   description: "Example phone schema"
-  owner: 013600
+  owner: "013600"
   properties:
       - name: "brand"
         data_type: STRING

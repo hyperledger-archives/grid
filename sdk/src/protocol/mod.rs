@@ -16,5 +16,7 @@ pub mod errors;
 pub mod location;
 pub mod pike;
 pub mod product;
+#[cfg(feature = "purchase-order")]
+pub mod purchase_order;
 pub mod schema;
 pub mod track_and_trace;

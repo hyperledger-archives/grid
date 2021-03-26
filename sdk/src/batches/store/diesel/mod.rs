@@ -149,19 +149,19 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
     }
 }
 
-impl Into<BatchModel> for Batch {
-    fn into(self) -> BatchModel {
-        BatchModel {
-            id: self.id,
-            data: self.data,
-            status: self.status.to_string(),
+impl From<Batch> for BatchModel {
+    fn from(batch: Batch) -> Self {
+        Self {
+            id: batch.id,
+            data: batch.data,
+            status: batch.status.to_string(),
         }
     }
 }
 
-impl Into<Batch> for BatchModel {
-    fn into(self) -> Batch {
-        let status = match self.status.as_ref() {
+impl From<BatchModel> for Batch {
+    fn from(model: BatchModel) -> Self {
+        let status = match model.status.as_ref() {
             "Committed" => BatchStatus::Committed,
             "Submitted" => BatchStatus::Submitted,
             "NotSubmitted" => BatchStatus::NotSubmitted,
@@ -170,8 +170,8 @@ impl Into<Batch> for BatchModel {
         };
 
         Batch {
-            id: self.id,
-            data: self.data,
+            id: model.id,
+            data: model.data,
             status,
         }
     }

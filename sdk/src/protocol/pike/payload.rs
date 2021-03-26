@@ -17,7 +17,7 @@ use protobuf::RepeatedField;
 
 use std::error::Error as StdError;
 
-use crate::protocol::pike::state::{AlternateID, KeyValueEntry};
+use crate::protocol::pike::state::{AlternateId, KeyValueEntry};
 use crate::protos;
 use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
@@ -544,7 +544,7 @@ impl IntoNative<DeleteAgentAction> for protos::pike_payload::DeleteAgentAction {
 pub struct CreateOrganizationAction {
     org_id: String,
     name: String,
-    alternate_ids: Vec<AlternateID>,
+    alternate_ids: Vec<AlternateId>,
     metadata: Vec<KeyValueEntry>,
 }
 
@@ -557,7 +557,7 @@ impl CreateOrganizationAction {
         &self.name
     }
 
-    pub fn alternate_ids(&self) -> &[AlternateID] {
+    pub fn alternate_ids(&self) -> &[AlternateId] {
         &self.alternate_ids
     }
 
@@ -577,8 +577,8 @@ impl FromProto<protos::pike_payload::CreateOrganizationAction> for CreateOrganiz
                 .get_alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::from_proto)
-                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::from_proto)
+                .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             metadata: create_org
                 .get_metadata()
                 .to_vec()
@@ -600,8 +600,8 @@ impl FromNative<CreateOrganizationAction> for protos::pike_payload::CreateOrgani
                 .alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::into_proto)
-                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         proto_create_org.set_metadata(RepeatedField::from_vec(
             create_org
@@ -678,7 +678,7 @@ impl std::fmt::Display for CreateOrganizationActionBuildError {
 pub struct CreateOrganizationActionBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
-    pub alternate_ids: Vec<AlternateID>,
+    pub alternate_ids: Vec<AlternateId>,
     pub metadata: Vec<KeyValueEntry>,
 }
 
@@ -699,7 +699,7 @@ impl CreateOrganizationActionBuilder {
 
     pub fn with_alternate_ids(
         mut self,
-        alternate_ids: Vec<AlternateID>,
+        alternate_ids: Vec<AlternateId>,
     ) -> CreateOrganizationActionBuilder {
         self.alternate_ids = alternate_ids;
         self
@@ -743,7 +743,7 @@ pub struct UpdateOrganizationAction {
     org_id: String,
     name: String,
     locations: Vec<String>,
-    alternate_ids: Vec<AlternateID>,
+    alternate_ids: Vec<AlternateId>,
     metadata: Vec<KeyValueEntry>,
 }
 
@@ -760,7 +760,7 @@ impl UpdateOrganizationAction {
         &self.locations
     }
 
-    pub fn alternate_ids(&self) -> &[AlternateID] {
+    pub fn alternate_ids(&self) -> &[AlternateId] {
         &self.alternate_ids
     }
 
@@ -781,8 +781,8 @@ impl FromProto<protos::pike_payload::UpdateOrganizationAction> for UpdateOrganiz
                 .get_alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::from_proto)
-                .collect::<Result<Vec<AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::from_proto)
+                .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             metadata: create_org
                 .get_metadata()
                 .to_vec()
@@ -805,8 +805,8 @@ impl FromNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
                 .alternate_ids()
                 .to_vec()
                 .into_iter()
-                .map(AlternateID::into_proto)
-                .collect::<Result<Vec<protos::pike_state::AlternateID>, ProtoConversionError>>()?,
+                .map(AlternateId::into_proto)
+                .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         proto_update_org.set_metadata(RepeatedField::from_vec(
             update_org
@@ -884,7 +884,7 @@ pub struct UpdateOrganizationActionBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
     pub locations: Vec<String>,
-    pub alternate_ids: Vec<AlternateID>,
+    pub alternate_ids: Vec<AlternateId>,
     pub metadata: Vec<KeyValueEntry>,
 }
 
@@ -910,7 +910,7 @@ impl UpdateOrganizationActionBuilder {
 
     pub fn with_alternate_ids(
         mut self,
-        alternate_ids: Vec<AlternateID>,
+        alternate_ids: Vec<AlternateId>,
     ) -> UpdateOrganizationActionBuilder {
         self.alternate_ids = alternate_ids;
         self
