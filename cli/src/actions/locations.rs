@@ -496,6 +496,7 @@ impl LocationUpdateYaml {
 
 #[derive(Deserialize, Debug)]
 pub enum Namespace {
+    #[serde(rename = "GS1")]
     Gs1,
 }
 

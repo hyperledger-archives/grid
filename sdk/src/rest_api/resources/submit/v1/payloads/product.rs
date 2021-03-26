@@ -25,6 +25,7 @@ use super::{BuilderError, PropertyValue};
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub enum ProductNamespace {
+    #[serde(rename = "GS1")]
     Gs1,
 }
 
