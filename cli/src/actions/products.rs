@@ -523,6 +523,7 @@ fn submit_payloads(
 
 #[derive(Deserialize, Debug)]
 pub enum Namespace {
+    #[serde(rename = "GS1")]
     Gs1,
 }
 
