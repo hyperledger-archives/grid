@@ -12,20 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod batch_submitter_state;
-mod endpoint;
-mod key_state;
-mod paging;
-pub mod routes;
-mod run;
-mod service;
-mod store_state;
+use actix_web::{App, HttpServer};
 
-pub use batch_submitter_state::BatchSubmitterState;
-pub use endpoint::{Backend, Endpoint};
-pub use key_state::KeyState;
-pub use paging::QueryPaging;
-pub use routes::submit;
-pub use run::run;
-pub use service::{AcceptServiceIdParam, QueryServiceId};
-pub use store_state::StoreState;
+use crate::error::InternalError;
+
+use super::{submit, KeyState, StoreState};
+
+pub async fn run(
+    bind: &str,
+    store_state: StoreState,
+    key_state: KeyState,
+) -> Result<(), InternalError> {
+    HttpServer::new(move || {
+        App::new()
+            .data(store_state.clone())
+            .data(key_state.clone())
+            .service(submit)
+    })
+    .bind(bind)
+    .map_err(|err| InternalError::from_source(Box::new(err)))?
+    .run()
+    .await
+    .map_err(|err| InternalError::from_source(Box::new(err)))
+}
