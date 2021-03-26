@@ -32,7 +32,7 @@ use operations::add_alternate_id::PurchaseOrderStoreAddAlternateIdOperation as _
 use operations::add_purchase_order::PurchaseOrderStoreAddPurchaseOrderOperation as _;
 use operations::fetch_purchase_order::PurchaseOrderStoreFetchPurchaseOrderOperation as _;
 use operations::list_alternate_ids_for_purchase_order::PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation as _;
-use operations::list_purchase_orders_for_organization::PurchaseOrderStoreListPurchaseOrdersForOrganizationOperation as _;
+use operations::list_purchase_orders::PurchaseOrderStoreListPurchaseOrdersOperation as _;
 use operations::PurchaseOrderStoreOperations;
 
 /// Manages creating agents in the database
@@ -67,9 +67,9 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
         )
     }
 
-    fn list_purchase_orders_for_organization(
+    fn list_purchase_orders(
         &self,
-        org_id: &str,
+        org_id: Option<&str>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -79,7 +79,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_purchase_orders_for_organization(org_id, service_id, offset, limit)
+        .list_purchase_orders(org_id, service_id, offset, limit)
     }
 
     fn fetch_purchase_order(
@@ -146,9 +146,9 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
         )
     }
 
-    fn list_purchase_orders_for_organization(
+    fn list_purchase_orders(
         &self,
-        org_id: &str,
+        org_id: Option<&str>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -158,7 +158,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_purchase_orders_for_organization(org_id, service_id, offset, limit)
+        .list_purchase_orders(org_id, service_id, offset, limit)
     }
 
     fn fetch_purchase_order(

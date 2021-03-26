@@ -16,7 +16,7 @@ pub(super) mod add_alternate_id;
 pub(super) mod add_purchase_order;
 pub(super) mod fetch_purchase_order;
 pub(super) mod list_alternate_ids_for_purchase_order;
-pub(super) mod list_purchase_orders_for_organization;
+pub(super) mod list_purchase_orders;
 
 pub(super) struct PurchaseOrderStoreOperations<'a, C> {
     conn: &'a C,
