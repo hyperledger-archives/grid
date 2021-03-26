@@ -44,6 +44,7 @@ mod integration {
     ///
     ///     The product information is read in from a yaml file.
     ///
+    #[ignore] // ignored because of dangerous key handling in get_setup()
     #[test]
     fn test_product_create() {
         get_setup();
@@ -64,6 +65,7 @@ mod integration {
     ///     The product information is read in from a yaml file.
     ///     Products are first created before being updated.
     ///
+    #[ignore] // ignored because of dangerous key handling in get_setup()
     #[test]
     fn test_product_update() {
         get_setup();
@@ -94,6 +96,7 @@ mod integration {
     ///     The delete command is supplied the product id and type.
     ///     Products are first created before being deleted.
     ///
+    #[ignore] // ignored because of dangerous key handling in get_setup()
     #[test]
     fn test_product_delete() {
         get_setup();
