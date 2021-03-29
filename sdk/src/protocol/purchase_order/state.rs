@@ -491,9 +491,7 @@ impl StdError for PurchaseOrderBuildError {
 impl std::fmt::Display for PurchaseOrderBuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            PurchaseOrderBuildError::MissingField(ref s) => {
-                write!(f, "missing field \"{}\"", s)
-            }
+            PurchaseOrderBuildError::MissingField(ref s) => write!(f, "missing field \"{}\"", s),
             PurchaseOrderBuildError::EmptyVec(ref s) => write!(f, "\"{}\" must not be empty", s),
         }
     }
