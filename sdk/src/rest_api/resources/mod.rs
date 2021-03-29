@@ -24,6 +24,8 @@ pub mod organizations;
 pub mod paging;
 #[cfg(feature = "product")]
 pub mod products;
+#[cfg(feature = "purchase-order")]
+pub mod purchase_order;
 #[cfg(feature = "pike")]
 pub mod roles;
 #[cfg(feature = "schema")]

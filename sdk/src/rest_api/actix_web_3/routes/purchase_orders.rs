@@ -12,36 +12,80 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{dev, get, web, FromRequest, HttpRequest, HttpResponse};
+use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpResponse};
 use futures::future;
 
-use crate::rest_api::actix_web_3::{AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState};
+use crate::rest_api::{
+    actix_web_3::{AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    resources::purchase_order::v1,
+};
 
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryOrgId {
+    pub org_id: Option<String>,
+}
+
 #[get("/purchase-order")]
 pub async fn list_purchase_orders(
-    _state: web::Data<StoreState>,
-    _query_service_id: web::Query<QueryServiceId>,
-    _query_paging: web::Query<QueryPaging>,
+    state: web::Data<StoreState>,
+    query_org_id: web::Query<QueryOrgId>,
+    query_service_id: web::Query<QueryServiceId>,
+    query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => unimplemented!(),
+        ProtocolVersion::V1 => {
+            let paging = query_paging.into_inner();
+            let org_id = query_org_id.into_inner().org_id;
+            let service_id = query_service_id.into_inner().service_id;
+            match v1::list_purchase_orders(
+                state.purchase_order_store.clone(),
+                org_id.clone(),
+                service_id.as_deref(),
+                paging.offset(),
+                paging.limit(),
+            )
+            .await
+            {
+                Ok(res) => HttpResponse::Ok().json(res),
+                Err(err) => HttpResponse::build(
+                    StatusCode::from_u16(err.status_code())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(err),
+            }
+        }
     }
 }
 
 #[get("/purchase-order/{uuid}")]
 pub async fn fetch_purchase_order(
-    _state: web::Data<StoreState>,
-    _uuid: web::Path<String>,
-    _query: web::Query<QueryServiceId>,
+    state: web::Data<StoreState>,
+    uuid: web::Path<String>,
+    query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => unimplemented!(),
+        ProtocolVersion::V1 => {
+            match v1::fetch_purchase_order(
+                state.purchase_order_store.clone(),
+                uuid.into_inner(),
+                query_service_id.into_inner().service_id.as_deref(),
+            )
+            .await
+            {
+                Ok(res) => HttpResponse::Ok().json(res),
+                Err(err) => HttpResponse::build(
+                    StatusCode::from_u16(err.status_code())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(err),
+            }
+        }
     }
 }
 
