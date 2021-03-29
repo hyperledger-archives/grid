@@ -27,7 +27,6 @@ use diesel::{prelude::*, result::Error::NotFound};
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreFetchPurchaseOrderOperation {
     fn fetch_purchase_order(
         &self,
-        org_id: &str,
         uuid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError>;
@@ -39,7 +38,6 @@ impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
 {
     fn fetch_purchase_order(
         &self,
-        org_id: &str,
         uuid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
@@ -48,9 +46,8 @@ impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
                 .into_boxed()
                 .select(purchase_order::all_columns)
                 .filter(
-                    purchase_order::org_id
-                        .eq(&org_id)
-                        .and(purchase_order::uuid.eq(&uuid))
+                    purchase_order::uuid
+                        .eq(&uuid)
                         .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -76,7 +73,6 @@ impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
                 .filter(
                     purchase_order_version::purchase_order_uuid
                         .eq(&uuid)
-                        .and(purchase_order_version::org_id.eq(&org_id))
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -139,7 +135,6 @@ impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
 {
     fn fetch_purchase_order(
         &self,
-        org_id: &str,
         uuid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
@@ -148,9 +143,8 @@ impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
                 .into_boxed()
                 .select(purchase_order::all_columns)
                 .filter(
-                    purchase_order::org_id
-                        .eq(&org_id)
-                        .and(purchase_order::uuid.eq(&uuid))
+                    purchase_order::uuid
+                        .eq(&uuid)
                         .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -176,7 +170,6 @@ impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
                 .filter(
                     purchase_order_version::purchase_order_uuid
                         .eq(&uuid)
-                        .and(purchase_order_version::org_id.eq(&org_id))
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
