@@ -16,12 +16,21 @@
 pub mod diesel;
 mod error;
 
+use crate::paging::Paging;
+
 pub use error::PurchaseOrderStoreError;
 
 /// Represents a list of Grid Purchase Orders
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderList {
-    pub purchase_orders: Vec<PurchaseOrder>,
+    pub data: Vec<PurchaseOrder>,
+    pub paging: Paging,
+}
+
+impl PurchaseOrderList {
+    pub fn new(data: Vec<PurchaseOrder>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
 }
 
 /// Represents a Grid Purchase Order
@@ -72,6 +81,8 @@ pub struct PurchaseOrderAlternateIdList {
 /// Represents a Grid Purchase Order Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderAlternateId {
+    pub purchase_order_uuid: String,
+    pub org_id: String,
     pub id_type: String,
     pub id: String,
     pub start_commit_num: i64,
@@ -87,7 +98,7 @@ pub trait PurchaseOrderStore: Send + Sync {
     ///  * `order` - The purchase order to be added
     fn add_purchase_order(&self, order: PurchaseOrder) -> Result<(), PurchaseOrderStoreError>;
 
-    /// Lists purchase orders for a given org from the underlying storage
+    /// Lists purchase orders from the underlying storage
     ///
     /// # Arguments
     ///
@@ -95,9 +106,9 @@ pub trait PurchaseOrderStore: Send + Sync {
     ///  * `service_id` - The service id
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
-    fn list_purchase_orders_for_organization(
+    fn list_purchase_orders(
         &self,
-        org_id: &str,
+        org_id: Option<&str>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -154,14 +165,14 @@ where
         (**self).add_purchase_order(order)
     }
 
-    fn list_purchase_orders_for_organization(
+    fn list_purchase_orders(
         &self,
-        org_id: &str,
+        org_id: Option<&str>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
-        (**self).list_purchase_orders_for_organization(org_id, service_id, offset, limit)
+        (**self).list_purchase_orders(org_id, service_id, offset, limit)
     }
 
     fn fetch_purchase_order(

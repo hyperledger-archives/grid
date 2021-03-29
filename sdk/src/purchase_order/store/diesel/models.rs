@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::pike::store::diesel::schema::*;
+use super::{
+    PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderVersion, PurchaseOrderVersionRevision,
+};
+use crate::commits::MAX_COMMIT_NUM;
+use crate::purchase_order::store::diesel::schema::*;
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order"]
@@ -122,4 +126,170 @@ pub struct PurchaseOrderAlternateIdModel {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+}
+
+impl From<PurchaseOrder> for NewPurchaseOrderModel {
+    fn from(order: PurchaseOrder) -> Self {
+        Self {
+            uuid: order.uuid.to_string(),
+            org_id: order.org_id.to_string(),
+            workflow_status: order.workflow_status.to_string(),
+            is_closed: order.is_closed,
+            accepted_version_id: order.accepted_version_id.to_string(),
+            created_at: order.created_at,
+            start_commit_num: order.start_commit_num,
+            end_commit_num: order.end_commit_num,
+            service_id: order.service_id,
+        }
+    }
+}
+
+impl From<(PurchaseOrderModel, Vec<PurchaseOrderVersion>)> for PurchaseOrder {
+    fn from((order, versions): (PurchaseOrderModel, Vec<PurchaseOrderVersion>)) -> Self {
+        Self {
+            uuid: order.uuid.to_string(),
+            org_id: order.org_id.to_string(),
+            workflow_status: order.workflow_status.to_string(),
+            is_closed: order.is_closed,
+            accepted_version_id: order.accepted_version_id.to_string(),
+            versions,
+            created_at: order.created_at,
+            start_commit_num: order.start_commit_num,
+            end_commit_num: order.end_commit_num,
+            service_id: order.service_id,
+        }
+    }
+}
+
+impl
+    From<(
+        PurchaseOrderModel,
+        Vec<PurchaseOrderVersionModel>,
+        Vec<PurchaseOrderVersionRevisionModel>,
+    )> for PurchaseOrder
+{
+    fn from(
+        (order, versions, revisions): (
+            PurchaseOrderModel,
+            Vec<PurchaseOrderVersionModel>,
+            Vec<PurchaseOrderVersionRevisionModel>,
+        ),
+    ) -> Self {
+        Self {
+            uuid: order.uuid.to_string(),
+            org_id: order.org_id.to_string(),
+            workflow_status: order.workflow_status.to_string(),
+            is_closed: order.is_closed,
+            accepted_version_id: order.accepted_version_id.to_string(),
+            versions: versions
+                .iter()
+                .map(|v| PurchaseOrderVersion::from((v, &revisions)))
+                .collect(),
+            created_at: order.created_at,
+            start_commit_num: order.start_commit_num,
+            end_commit_num: order.end_commit_num,
+            service_id: order.service_id,
+        }
+    }
+}
+
+impl
+    From<(
+        &PurchaseOrderVersionModel,
+        &Vec<PurchaseOrderVersionRevisionModel>,
+    )> for PurchaseOrderVersion
+{
+    fn from(
+        (version, revisions): (
+            &PurchaseOrderVersionModel,
+            &Vec<PurchaseOrderVersionRevisionModel>,
+        ),
+    ) -> Self {
+        Self {
+            version_id: version.version_id.to_string(),
+            is_draft: version.is_draft,
+            current_revision_id: version.current_revision_id.to_string(),
+            revisions: revisions
+                .iter()
+                .filter(|r| r.version_id == version.version_id)
+                .map(PurchaseOrderVersionRevision::from)
+                .collect(),
+            start_commit_num: version.start_commit_num,
+            end_commit_num: version.end_commit_num,
+            service_id: version.service_id.clone(),
+        }
+    }
+}
+
+impl From<&PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
+    fn from(revision: &PurchaseOrderVersionRevisionModel) -> Self {
+        Self {
+            revision_id: revision.revision_id.to_string(),
+            order_xml_v3_4: revision.order_xml_v3_4.to_string(),
+            submitter: revision.submitter.to_string(),
+            created_at: revision.created_at,
+            start_commit_num: revision.start_commit_num,
+            end_commit_num: revision.end_commit_num,
+            service_id: revision.service_id.clone(),
+        }
+    }
+}
+
+impl From<PurchaseOrderAlternateId> for NewPurchaseOrderAlternateIdModel {
+    fn from(id: PurchaseOrderAlternateId) -> Self {
+        Self {
+            purchase_order_uuid: id.purchase_order_uuid.to_string(),
+            org_id: id.org_id.to_string(),
+            alternate_id_type: id.id_type.to_string(),
+            alternate_id: id.id.to_string(),
+            start_commit_num: id.start_commit_num,
+            end_commit_num: id.end_commit_num,
+            service_id: id.service_id,
+        }
+    }
+}
+
+pub fn make_purchase_order_versions(order: &PurchaseOrder) -> Vec<NewPurchaseOrderVersionModel> {
+    let mut models = Vec::new();
+    for version in &order.versions {
+        let model = NewPurchaseOrderVersionModel {
+            purchase_order_uuid: order.uuid.to_string(),
+            org_id: order.org_id.to_string(),
+            version_id: version.version_id.to_string(),
+            is_draft: version.is_draft,
+            current_revision_id: version.current_revision_id.to_string(),
+            start_commit_num: version.start_commit_num,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id: version.service_id.clone(),
+        };
+
+        models.push(model);
+    }
+
+    models
+}
+
+pub fn make_purchase_order_version_revisions(
+    order: &PurchaseOrder,
+) -> Vec<NewPurchaseOrderVersionRevisionModel> {
+    let mut models = Vec::new();
+    for version in &order.versions {
+        for revision in &version.revisions {
+            let model = NewPurchaseOrderVersionRevisionModel {
+                version_id: version.version_id.to_string(),
+                org_id: order.org_id.to_string(),
+                revision_id: revision.revision_id.to_string(),
+                order_xml_v3_4: revision.order_xml_v3_4.to_string(),
+                submitter: revision.submitter.to_string(),
+                created_at: revision.created_at,
+                start_commit_num: revision.start_commit_num,
+                end_commit_num: MAX_COMMIT_NUM,
+                service_id: revision.service_id.clone(),
+            };
+
+            models.push(model);
+        }
+    }
+
+    models
 }

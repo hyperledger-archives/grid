@@ -1044,10 +1044,216 @@ fn run() -> Result<(), CliError> {
     {
         use clap::{Arg, SubCommand};
 
+        let po_version = SubCommand::with_name("version")
+            .about("Create, update, or list Purchase Order versions")
+            .subcommand(
+                SubCommand::with_name("create")
+                    .about("Create a Purchase Order version")
+                    .arg(
+                        Arg::with_name("version_id")
+                            .value_name("version_id")
+                            .takes_value(true)
+                            .required(true)
+                            .help("Identifier for this Purchase Order version"),
+                    )
+                    .arg(
+                        Arg::with_name("org")
+                            .value_name("org_id")
+                            .long("org")
+                            .takes_value(true)
+                            .required(true)
+                            .help("ID of the organization that owns the Purchase Order version"),
+                    )
+                    .arg(
+                        Arg::with_name("po")
+                            .value_name("order_id")
+                            .long("po")
+                            .takes_value(true)
+                            .help(
+                                "ID of the Purchase Order this version belongs to. \
+                        May be the Purchase Order's UUID or an Alternate ID \
+                        (Alternate ID format: <alternate_id_type>:<alternate_id>)",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("workflow_status")
+                            .value_name("status")
+                            .long("workflow-status")
+                            .takes_value(true)
+                            .help("Workflow status of this Purchase Order version"),
+                    )
+                    .arg(Arg::with_name("draft").long("draft").help(
+                        "Specify this Purchase Order version is not a draft. \
+                        By default, a newly created version is a draft.",
+                    ))
+                    .arg(
+                        Arg::with_name("order_xml")
+                            .value_name("file")
+                            .long("order-xml")
+                            .takes_value(true)
+                            .help(
+                                "Specify the path to a Purchase Order XML file. \
+                                    (Formatting must abide by GS1 XML standards 3.4)",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("key")
+                            .long("key")
+                            .short("k")
+                            .takes_value(true)
+                            .help("Base name for private signing key file"),
+                    )
+                    .arg(
+                        Arg::with_name("wait")
+                            .long("wait")
+                            .takes_value(true)
+                            .help("How long to wait for transaction to be committed"),
+                    )
+                    .arg(
+                        Arg::with_name("service_id")
+                            .long("service-id")
+                            .takes_value(true)
+                            .help(
+                                "The ID of the service the payload should be \
+                                     sent to; required if running on Splinter. Format \
+                                     <circuit-id>::<service-id>",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("url")
+                            .long("url")
+                            .takes_value(true)
+                            .help("URL for the REST API"),
+                    ),
+            )
+            .subcommand(
+                SubCommand::with_name("update")
+                    .about("Update a Purchase Order version")
+                    .arg(
+                        Arg::with_name("version_id")
+                            .value_name("version_id")
+                            .required(true)
+                            .help("ID of the Purchase Order version to be updated"),
+                    )
+                    .arg(
+                        Arg::with_name("org")
+                            .value_name("org_id")
+                            .long("org")
+                            .takes_value(true)
+                            .required(true)
+                            .help("ID of the organization that owns the Purchase Order version"),
+                    )
+                    .arg(
+                        Arg::with_name("workflow_status")
+                            .value_name("status")
+                            .long("workflow-status")
+                            .takes_value(true)
+                            .help("The updated workflow status of this Purchase Order version"),
+                    )
+                    .arg(
+                        Arg::with_name("draft")
+                            .long("draft")
+                            .conflicts_with("not_draft")
+                            .help("Specify this Purchase Order version is a draft"),
+                    )
+                    .arg(
+                        Arg::with_name("not_draft")
+                            .long("not-draft")
+                            .conflicts_with("draft")
+                            .help("Specify this Purchase Order version is not a draft"),
+                    )
+                    .arg(
+                        Arg::with_name("key")
+                            .long("key")
+                            .short("k")
+                            .takes_value(true)
+                            .help("Base name for private signing key file"),
+                    )
+                    .arg(
+                        Arg::with_name("wait")
+                            .long("wait")
+                            .takes_value(true)
+                            .help("How long to wait for transaction to be committed"),
+                    )
+                    .arg(
+                        Arg::with_name("service_id")
+                            .long("service-id")
+                            .takes_value(true)
+                            .help(
+                                "The ID of the service the payload should be \
+                                     sent to; required if running on Splinter. Format \
+                                     <circuit-id>::<service-id>",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("url")
+                            .long("url")
+                            .takes_value(true)
+                            .help("URL for the REST API"),
+                    ),
+            )
+            .subcommand(
+                SubCommand::with_name("list")
+                    .about("List Purchase Order versions")
+                    .arg(Arg::with_name("org").value_name("org_id").long("org").help(
+                        "List only Purchase Order versions belonging to the specified organization",
+                    ))
+                    .arg(
+                        Arg::with_name("accepted")
+                            .long("accepted")
+                            .conflicts_with("not_accepted")
+                            .help("List only Purchase Order versions that have been accepted"),
+                    )
+                    .arg(
+                        Arg::with_name("not_accepted")
+                            .long("not-accepted")
+                            .conflicts_with("accepted")
+                            .help("List only Purchase Order versions that have not been accepted"),
+                    )
+                    .arg(
+                        Arg::with_name("draft")
+                            .long("draft")
+                            .conflicts_with("not_draft")
+                            .help("List only Purchase Order version drafts"),
+                    )
+                    .arg(
+                        Arg::with_name("not_draft")
+                            .long("not-draft")
+                            .conflicts_with("draft")
+                            .help("List only Purchase Order versions that are not drafts"),
+                    )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("F")
+                            .long("format")
+                            .help("Output format")
+                            .possible_values(&["human", "csv", "yaml", "json"])
+                            .default_value("human")
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("service_id")
+                            .long("service-id")
+                            .takes_value(true)
+                            .help(
+                                "The ID of the service the payload should be \
+                                     sent to; required if running on Splinter. Format \
+                                     <circuit-id>::<service-id>",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("url")
+                            .long("url")
+                            .takes_value(true)
+                            .help("URL for the REST API"),
+                    ),
+            );
+
         app = app.subcommand(
             SubCommand::with_name("po")
                 .about("Create, update, list, or show Purchase Orders, Versions and Revisions")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(po_version)
                 .subcommand(
                     SubCommand::with_name("create")
                         .about("Create a Purchase Order")
@@ -1212,10 +1418,13 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("rm_id")
-                                .value_name("alternate_id_type")
+                                .value_name("alternate_id")
                                 .long("rm-id")
                                 .takes_value(true)
-                                .help("Remove an Alternate ID from Purchase Order"),
+                                .help(
+                                    "Remove an Alternate ID from Purchase Order \
+                                    (format: <alternate_id_type>:<alternate_id>)",
+                                ),
                         )
                         .arg(
                             Arg::with_name("workflow_status")
