@@ -28,9 +28,7 @@ pub async fn list_purchase_orders(
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => {
-            unimplemented!()
-        }
+        ProtocolVersion::V1 => unimplemented!(),
     }
 }
 
@@ -43,9 +41,7 @@ pub async fn fetch_purchase_order(
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => {
-            unimplemented!()
-        }
+        ProtocolVersion::V1 => unimplemented!(),
     }
 }
 
@@ -58,9 +54,7 @@ pub async fn list_purchase_order_versions(
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => {
-            unimplemented!()
-        }
+        ProtocolVersion::V1 => unimplemented!(),
     }
 }
 
@@ -74,9 +68,7 @@ pub async fn fetch_purchase_order_version(
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => {
-            unimplemented!()
-        }
+        ProtocolVersion::V1 => unimplemented!(),
     }
 }
 
@@ -90,9 +82,7 @@ pub async fn list_purchase_order_version_revisions(
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => {
-            unimplemented!()
-        }
+        ProtocolVersion::V1 => unimplemented!(),
     }
 }
 
@@ -107,9 +97,7 @@ pub async fn fetch_purchase_order_version_revision(
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     match version {
-        ProtocolVersion::V1 => {
-            unimplemented!()
-        }
+        ProtocolVersion::V1 => unimplemented!(),
     }
 }
 
