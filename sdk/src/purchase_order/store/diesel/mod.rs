@@ -69,7 +69,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
 
     fn list_purchase_orders(
         &self,
-        org_id: Option<&str>,
+        org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -147,7 +147,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
 
     fn list_purchase_orders(
         &self,
-        org_id: Option<&str>,
+        org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
