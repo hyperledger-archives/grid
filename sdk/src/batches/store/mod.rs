@@ -77,13 +77,4 @@ pub trait BatchStore: Send + Sync {
     fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError>;
 
     fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError>;
-
-    fn list_batches_with_status(
-        &self,
-        status: BatchStatus,
-        offset: i64,
-        limit: i64,
-    ) -> Result<BatchList, BatchStoreError>;
-
-    fn update_status(&self, id: &str, status: BatchStatus) -> Result<(), BatchStoreError>;
 }

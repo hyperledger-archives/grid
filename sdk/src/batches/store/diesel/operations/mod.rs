@@ -15,8 +15,6 @@
 pub(super) mod add_batch;
 pub(super) mod fetch_batch;
 pub(super) mod list_batches;
-pub(super) mod list_batches_with_status;
-pub(super) mod update_status;
 
 pub(super) struct BatchStoreOperations<'a, C> {
     conn: &'a C,

@@ -25,8 +25,6 @@ use crate::error::ResourceTemporarilyUnavailableError;
 use operations::add_batch::AddBatchOperation as _;
 use operations::fetch_batch::FetchBatchOperation as _;
 use operations::list_batches::ListBatchesOperation as _;
-use operations::list_batches_with_status::ListBatchesWithStatusOperation as _;
-use operations::update_status::UpdateStatusOperation as _;
 use operations::BatchStoreOperations;
 
 #[derive(Clone)]
@@ -70,29 +68,6 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
         })?)
         .list_batches(offset, limit)
     }
-
-    fn list_batches_with_status(
-        &self,
-        status: BatchStatus,
-        offset: i64,
-        limit: i64,
-    ) -> Result<BatchList, BatchStoreError> {
-        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            BatchStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .list_batches_with_status(&status.to_string(), offset, limit)
-    }
-
-    fn update_status(&self, id: &str, status: BatchStatus) -> Result<(), BatchStoreError> {
-        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            BatchStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .update_status(id, &status.to_string())
-    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -125,27 +100,9 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
         .list_batches(offset, limit)
     }
 
-    fn list_batches_with_status(
-        &self,
-        status: BatchStatus,
-        offset: i64,
-        limit: i64,
-    ) -> Result<BatchList, BatchStoreError> {
-        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            BatchStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .list_batches_with_status(&status.to_string(), offset, limit)
     }
+}
 
-    fn update_status(&self, id: &str, status: BatchStatus) -> Result<(), BatchStoreError> {
-        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            BatchStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .update_status(id, &status.to_string())
     }
 }
 
