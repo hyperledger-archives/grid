@@ -24,3 +24,11 @@ impl std::fmt::Display for BuilderError {
         }
     }
 }
+
+impl std::error::Error for BuilderError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            BuilderError::MissingField(_) => None,
+        }
+    }
+}
