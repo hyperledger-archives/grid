@@ -83,6 +83,7 @@ experimental = [
     "client-reqwest",
     "postgres",
     "pike-rest-api",
+    "product-gdsn",
     "purchase-order",
     "rest-api-resources",
     "rest-api-actix-web-3",
@@ -97,6 +98,9 @@ client-reqwest = ["client", "reqwest"]
 location = ["pike", "schema"]
 pike = []
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
+product-gdsn = [
+    "reqwest"
+]
 purchase-order = []
 product = ["pike", "schema"]
 schema = ["pike"]

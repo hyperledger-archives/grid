@@ -70,6 +70,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "product-gdsn",
     "purchase-order",
     "splinter",
     "sqlite",
@@ -87,6 +88,9 @@ admin-keygen = []
 location = ["pike", "schema"]
 pike = []
 product = ["pike", "schema"]
+product-gdsn = [
+    "grid-sdk/product-gdsn"
+]
 purchase-order = []
 sawtooth = []
 schema = ["pike"]
