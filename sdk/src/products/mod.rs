@@ -20,3 +20,6 @@ pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 #[cfg(feature = "diesel")]
 pub use store::diesel::DieselProductStore;
 pub use store::ProductStore;
+
+#[cfg(feature = "product-gdsn")]
+pub mod gdsn;
