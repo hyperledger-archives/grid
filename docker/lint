@@ -27,6 +27,7 @@ RUN apt-get update \
         libpq-dev \
         libssl-dev \
         libsqlite3-dev \
+        libxml2-dev \
         libzmq3-dev \
         pkg-config \
         unzip \

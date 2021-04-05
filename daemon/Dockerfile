@@ -14,6 +14,13 @@
 
 FROM hyperledger/grid-dev:v8 as gridd-builder
 
+# Install dependencies
+RUN apt-get update \
+ && apt-get install -y -q \
+    libxml2-dev \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
