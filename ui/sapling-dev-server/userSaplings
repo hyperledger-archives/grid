@@ -9,7 +9,7 @@
       "localhost:3030/sapling-dev-server/product/css/product.css"
     ],
     "workerFiles": [],
-    "icon": "http://localhost:3030/sapling-dev-server/product/product_logo.svg"
+    "logo": "http://localhost:3030/sapling-dev-server/product/product_logo.svg"
   },
   {
     "displayName": "Circuits",
@@ -21,6 +21,6 @@
       "localhost:3030/sapling-dev-server/circuits/static/css/circuits.css"
     ],
     "workerFiles": [],
-    "icon": "http://localhost:3030/sapling-dev-server/circuits/images/circuits_logo.svg"
+    "logo": "http://localhost:3030/sapling-dev-server/circuits/images/circuits_logo.svg"
   }
 ]
