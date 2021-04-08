@@ -25,16 +25,23 @@ import { NavItem } from './NavItem';
 export const SideNav = () => {
   const makeUserSaplingTabs = userSaplings =>
     userSaplings
-      .map(({ displayName, namespace, icon }) => {
+      .map(({ displayName, namespace, icon, logo }) => {
         return {
           path: `/${namespace}`,
           displayName,
-          logo: icon
+          icon,
+          logo
         };
       })
-      .map(({ path, displayName, logo }) => {
+      .map(({ path, displayName, icon, logo }) => {
         return (
-          <NavItem key={path} path={path} label={displayName} logo={logo} />
+          <NavItem
+            key={path}
+            path={path}
+            label={displayName}
+            icon={icon}
+            logo={logo}
+          />
         );
       });
 
@@ -48,7 +55,7 @@ export const SideNav = () => {
         <div className="nav-tab">
           <div className="border">
             <div className="icon">
-              <Icon eco_icon>eco_icon</Icon>
+              <Icon>eco_icon</Icon>
             </div>
           </div>
           <div className="label">Saplings</div>
