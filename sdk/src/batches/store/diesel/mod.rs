@@ -19,12 +19,16 @@ pub(in crate) mod schema;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::diesel::models::{BatchModel, TransactionModel};
-use super::{Batch, BatchList, BatchStore, BatchStoreError, Transaction};
+use super::{Batch, BatchList, BatchStore, BatchStoreError, BatchSubmitInfo, Transaction};
 use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_batch::AddBatchOperation as _;
+use operations::change_batch_to_submitted::ChangeBatchToSubmittedOperation as _;
 use operations::fetch_batch::FetchBatchOperation as _;
+use operations::fetch_unclaimed_batches::FetchUnclaimedBatchesOperation as _;
 use operations::list_batches::ListBatchesOperation as _;
+use operations::relinquish_claim::RelinquishClaimOperation as _;
+use operations::update_submission_error_info::UpdateSubmissionErrorInfoOperation as _;
 use operations::BatchStoreOperations;
 
 #[derive(Clone)]
@@ -67,6 +71,51 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
         })?)
         .list_batches(offset, limit)
     }
+
+    fn fetch_unclaimed_batches(
+        &self,
+        limit: i64,
+        secs_claim_is_valid: i64,
+    ) -> Result<Vec<BatchSubmitInfo>, BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .fetch_unclaimed_batches(limit, secs_claim_is_valid)
+    }
+
+    fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .change_batch_to_submitted(id)
+    }
+
+    fn update_submission_error_info(
+        &self,
+        id: &str,
+        error: &str,
+        error_message: &str,
+    ) -> Result<(), BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .update_submission_error_info(id, error, error_message)
+    }
+
+    fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .relinquish_claim(id)
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -96,6 +145,51 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .list_batches(offset, limit)
+    }
+
+    fn fetch_unclaimed_batches(
+        &self,
+        limit: i64,
+        secs_claim_is_valid: i64,
+    ) -> Result<Vec<BatchSubmitInfo>, BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .fetch_unclaimed_batches(limit, secs_claim_is_valid)
+    }
+
+    fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .change_batch_to_submitted(id)
+    }
+
+    fn update_submission_error_info(
+        &self,
+        id: &str,
+        error: &str,
+        error_message: &str,
+    ) -> Result<(), BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .update_submission_error_info(id, error, error_message)
+    }
+
+    fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError> {
+        BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .relinquish_claim(id)
     }
 }
 
@@ -169,6 +263,16 @@ impl From<Transaction> for TransactionModel {
             family_name: transaction.family_name,
             family_version: transaction.family_version,
             signer_public_key: transaction.signer_public_key,
+        }
+    }
+}
+
+impl From<BatchModel> for BatchSubmitInfo {
+    fn from(model: BatchModel) -> Self {
+        Self {
+            header_signature: model.header_signature,
+            serialized_batch: model.serialized_batch,
+            service_id: model.service_id,
         }
     }
 }

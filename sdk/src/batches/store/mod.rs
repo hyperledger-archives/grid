@@ -80,6 +80,14 @@ impl Batch {
     }
 }
 
+/// Data needed to submit a batch
+#[derive(Clone, Debug, PartialEq)]
+pub struct BatchSubmitInfo {
+    pub header_signature: String,
+    pub serialized_batch: String,
+    pub service_id: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transaction {
     pub header_signature: String,
@@ -118,4 +126,21 @@ pub trait BatchStore: Send + Sync {
     fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError>;
 
     fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError>;
+
+    fn fetch_unclaimed_batches(
+        &self,
+        limit: i64,
+        secs_claim_is_valid: i64,
+    ) -> Result<Vec<BatchSubmitInfo>, BatchStoreError>;
+
+    fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError>;
+
+    fn update_submission_error_info(
+        &self,
+        id: &str,
+        error: &str,
+        error_message: &str,
+    ) -> Result<(), BatchStoreError>;
+
+    fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError>;
 }
