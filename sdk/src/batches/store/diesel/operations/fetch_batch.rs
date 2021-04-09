@@ -13,42 +13,78 @@
 // limitations under the License.
 
 use super::BatchStoreOperations;
-use crate::batches::store::{diesel::schema::batches, BatchStoreError};
-
-use crate::batches::store::diesel::BatchModel;
+use crate::batches::store::{
+    diesel::{
+        schema::{batches, transactions},
+        BatchModel,
+    },
+    Batch, BatchStoreError,
+};
 use crate::error::InternalError;
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in crate::batches::store::diesel) trait FetchBatchOperation {
-    fn fetch_batch(&self, id: &str) -> Result<Option<BatchModel>, BatchStoreError>;
+    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> FetchBatchOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_batch(&self, id: &str) -> Result<Option<BatchModel>, BatchStoreError> {
-        batches::table
-            .select(batches::all_columns)
-            .filter(batches::id.eq(id))
-            .first::<BatchModel>(self.conn)
-            .map(Some)
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
+        self.conn.transaction::<_, BatchStoreError, _>(|| {
+            let batch_model = batches::table
+                .select(batches::all_columns)
+                .filter(batches::header_signature.eq(id))
+                .first::<BatchModel>(self.conn)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            if let Some(batch_model) = batch_model {
+                let transaction_models = transactions::table
+                    .select(transactions::all_columns)
+                    .filter(transactions::batch_id.eq(id))
+                    .load(self.conn)
+                    .map_err(|err| {
+                        BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+                Ok(Some(Batch::from((batch_model, transaction_models))))
+            } else {
+                Ok(None)
+            }
+        })
     }
 }
 
 #[cfg(feature = "sqlite")]
 impl<'a> FetchBatchOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn fetch_batch(&self, id: &str) -> Result<Option<BatchModel>, BatchStoreError> {
-        batches::table
-            .select(batches::all_columns)
-            .filter(batches::id.eq(id))
-            .first::<BatchModel>(self.conn)
-            .map(Some)
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
+        self.conn.transaction::<_, BatchStoreError, _>(|| {
+            let batch_model = batches::table
+                .select(batches::all_columns)
+                .filter(batches::header_signature.eq(id))
+                .first::<BatchModel>(self.conn)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            if let Some(batch_model) = batch_model {
+                let transaction_models = transactions::table
+                    .select(transactions::all_columns)
+                    .filter(transactions::batch_id.eq(id))
+                    .load(self.conn)
+                    .map_err(|err| {
+                        BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?;
+
+                Ok(Some(Batch::from((batch_model, transaction_models))))
+            } else {
+                Ok(None)
+            }
+        })
     }
 }

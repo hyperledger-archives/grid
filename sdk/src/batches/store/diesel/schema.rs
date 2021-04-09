@@ -13,9 +13,40 @@
 // limitations under the License.
 
 table! {
-    batches (id) {
-        id -> Text,
-        data -> Text,
-        status -> Text,
+    batches (header_signature) {
+        header_signature -> Text,
+        data_change_id -> Nullable<Text>,
+        signer_public_key -> Text,
+        trace -> Bool,
+        serialized_batch -> Text,
+        submitted -> Bool,
+        submission_error -> Nullable<Text>,
+        submission_error_message -> Nullable<Text>,
+        dlt_status -> Nullable<Text>,
+        claim_expires -> Nullable<Timestamp>,
+        created -> Nullable<Timestamp>,
+    }
+}
+
+table! {
+    transactions (header_signature) {
+        header_signature -> Text,
+        batch_id -> Text,
+        family_name -> Text,
+        family_version -> Text,
+        signer_public_key -> Text,
+    }
+}
+
+table! {
+    transaction_receipts (id) {
+        id -> Integer,
+        transaction_id -> Text,
+        result_valid -> Bool,
+        error_message -> Nullable<Text>,
+        error_data -> Nullable<Text>,
+        serialized_receipt -> Text,
+        external_status -> Nullable<Text>,
+        external_error_message -> Nullable<Text>,
     }
 }

@@ -32,7 +32,8 @@ actix-web = { version = "3", optional = true }
 base64 = { version = "0.10", optional = true }
 byteorder = "1"
 cfg-if = "0.1"
-diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
+chrono = "0.4"
+diesel = { version = "1.0", features = ["chrono", "r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 log = { version = "0.4", optional = true }
 futures = { version = "0.3", optional = true }

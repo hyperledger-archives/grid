@@ -16,47 +16,85 @@
 pub mod diesel;
 mod error;
 
-use std::fmt;
+use chrono::NaiveDateTime;
 
 use crate::hex;
 use crate::paging::Paging;
-
 pub use error::BatchStoreError;
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
-pub enum BatchStatus {
-    Committed,
-    Submitted,
-    NotSubmitted,
-    Rejected,
-    Unknown,
-}
-
-impl fmt::Display for BatchStatus {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Batch {
-    pub id: String,
-    pub data: String,
-    pub status: BatchStatus,
+    pub header_signature: String,
+    pub data_change_id: Option<String>,
+    pub signer_public_key: String,
+    pub trace: bool,
+    pub serialized_batch: String,
+    pub submitted: bool,
+    pub submission_error: Option<String>,
+    pub submission_error_message: Option<String>,
+    pub dlt_status: Option<String>,
+    pub claim_expires: Option<NaiveDateTime>,
+    pub created: Option<NaiveDateTime>,
+    pub transactions: Vec<Transaction>,
 }
 
 impl Batch {
-    pub fn from_bytes(id: &str, bytes: &[u8]) -> Self {
-        Batch {
-            id: id.to_string(),
-            data: hex::to_hex(bytes),
-            status: BatchStatus::NotSubmitted,
+    pub fn new(
+        header_signature: String,
+        signer_public_key: String,
+        trace: bool,
+        serialized_batch: &[u8],
+    ) -> Self {
+        Self {
+            header_signature,
+            data_change_id: None,
+            signer_public_key,
+            trace,
+            serialized_batch: hex::to_hex(serialized_batch),
+            submitted: false,
+            submission_error: None,
+            submission_error_message: None,
+            dlt_status: None,
+            claim_expires: None,
+            created: None,
+            transactions: vec![],
         }
     }
 
-    pub fn id(&self) -> &str {
-        &self.id
+    pub fn add_transaction(
+        &mut self,
+        header_signature: &str,
+        family_name: &str,
+        family_version: &str,
+    ) {
+        self.transactions.push(Transaction {
+            header_signature: header_signature.to_string(),
+            batch_id: self.header_signature.clone(),
+            family_name: family_name.to_string(),
+            family_version: family_version.to_string(),
+            signer_public_key: self.signer_public_key.clone(),
+        });
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Transaction {
+    pub header_signature: String,
+    pub batch_id: String,
+    pub family_name: String,
+    pub family_version: String,
+    pub signer_public_key: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TransactionReceipt {
+    pub transaction_id: String,
+    pub result_valid: bool,
+    pub error_message: Option<String>,
+    pub error_data: Option<String>,
+    pub serialized_receipt: String,
+    pub external_status: Option<String>,
+    pub external_error_message: Option<String>,
 }
 
 #[derive(Clone, Debug)]

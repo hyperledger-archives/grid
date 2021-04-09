@@ -35,6 +35,8 @@ pub struct SubmitBatchRequest {
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Batch {
+    #[serde(default)]
+    pub trace: bool,
     pub transactions: Vec<Transaction>,
 }
 

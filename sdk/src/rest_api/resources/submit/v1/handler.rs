@@ -59,7 +59,7 @@ pub async fn submit_batches(
     let mut ids = Vec::new();
 
     for db_batch in db_batches {
-        let id = db_batch.id().to_string();
+        let id = db_batch.header_signature.clone();
 
         batch_store.add_batch(db_batch).map_err(|err| match err {
             BatchStoreError::ConstraintViolationError(err) => {
@@ -206,6 +206,8 @@ fn batches_into_bytes(
             transactions.push(txn);
         }
 
+        let trace = batch.trace;
+
         let mut batch = batch::Batch::new();
         let mut batch_header = batch::BatchHeader::new();
 
@@ -215,8 +217,8 @@ fn batches_into_bytes(
                 .map(|txn| txn.header_signature.clone())
                 .collect(),
         ));
-        batch_header.set_signer_public_key(public_key);
-        batch.set_transactions(protobuf::RepeatedField::from_vec(transactions));
+        batch_header.set_signer_public_key(public_key.clone());
+        batch.set_transactions(protobuf::RepeatedField::from_vec(transactions.clone()));
 
         let batch_header_bytes = batch_header.write_to_bytes().map_err(|err| {
             error!("{}", err);
@@ -242,7 +244,16 @@ fn batches_into_bytes(
             ErrorResponse::internal_error(Box::new(err))
         })?;
 
-        batches.push(DbBatch::from_bytes(&header_signature, &bytes));
+        let mut db_batch = DbBatch::new(header_signature, public_key, trace, &bytes);
+        transactions.iter().for_each(|t| {
+            db_batch.add_transaction(
+                t.get_header_signature(),
+                SABRE_FAMILY_NAME,
+                SABRE_FAMILY_VERSION,
+            );
+        });
+
+        batches.push(db_batch);
     }
 
     Ok(batches)

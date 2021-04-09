@@ -18,8 +18,8 @@ pub(in crate) mod schema;
 
 use diesel::r2d2::{ConnectionManager, Pool};
 
-use super::diesel::models::BatchModel;
-use super::{Batch, BatchList, BatchStatus, BatchStore, BatchStoreError};
+use super::diesel::models::{BatchModel, TransactionModel};
+use super::{Batch, BatchList, BatchStore, BatchStoreError, Transaction};
 use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_batch::AddBatchOperation as _;
@@ -47,7 +47,7 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_batch(batch.into())
+        .add_batch(batch)
     }
 
     fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
@@ -57,7 +57,6 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
             )
         })?)
         .fetch_batch(id)
-        .map(|op| op.map(|model| model.into()))
     }
 
     fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
@@ -78,7 +77,7 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .add_batch(batch.into())
+        .add_batch(batch)
     }
 
     fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
@@ -88,7 +87,6 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .fetch_batch(id)
-        .map(|op| op.map(|model| model.into()))
     }
 
     fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
@@ -99,37 +97,76 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
         })?)
         .list_batches(offset, limit)
     }
-
-    }
 }
 
-    }
-}
-
-impl From<Batch> for BatchModel {
-    fn from(batch: Batch) -> Self {
+impl From<(BatchModel, Vec<TransactionModel>)> for Batch {
+    fn from((batch_model, transaction_models): (BatchModel, Vec<TransactionModel>)) -> Self {
         Self {
-            id: batch.id,
-            data: batch.data,
-            status: batch.status.to_string(),
+            header_signature: batch_model.header_signature,
+            data_change_id: batch_model.data_change_id,
+            signer_public_key: batch_model.signer_public_key,
+            trace: batch_model.trace,
+            serialized_batch: batch_model.serialized_batch,
+            submitted: batch_model.submitted,
+            submission_error: batch_model.submission_error,
+            submission_error_message: batch_model.submission_error_message,
+            dlt_status: batch_model.dlt_status,
+            claim_expires: batch_model.claim_expires,
+            created: batch_model.created,
+            transactions: transaction_models
+                .into_iter()
+                .map(Transaction::from)
+                .collect(),
         }
     }
 }
 
-impl From<BatchModel> for Batch {
-    fn from(model: BatchModel) -> Self {
-        let status = match model.status.as_ref() {
-            "Committed" => BatchStatus::Committed,
-            "Submitted" => BatchStatus::Submitted,
-            "NotSubmitted" => BatchStatus::NotSubmitted,
-            "Rejected" => BatchStatus::Rejected,
-            _ => BatchStatus::Unknown,
+impl From<Batch> for (BatchModel, Vec<TransactionModel>) {
+    fn from(batch: Batch) -> Self {
+        let batch_model = BatchModel {
+            header_signature: batch.header_signature,
+            data_change_id: batch.data_change_id,
+            signer_public_key: batch.signer_public_key,
+            trace: batch.trace,
+            serialized_batch: batch.serialized_batch,
+            submitted: batch.submitted,
+            submission_error: batch.submission_error,
+            submission_error_message: batch.submission_error_message,
+            dlt_status: batch.dlt_status,
+            claim_expires: batch.claim_expires,
+            created: batch.created,
         };
 
-        Batch {
-            id: model.id,
-            data: model.data,
-            status,
+        let transaction_models = batch
+            .transactions
+            .into_iter()
+            .map(TransactionModel::from)
+            .collect();
+
+        (batch_model, transaction_models)
+    }
+}
+
+impl From<TransactionModel> for Transaction {
+    fn from(model: TransactionModel) -> Self {
+        Self {
+            header_signature: model.header_signature,
+            batch_id: model.batch_id,
+            family_name: model.family_name,
+            family_version: model.family_version,
+            signer_public_key: model.signer_public_key,
+        }
+    }
+}
+
+impl From<Transaction> for TransactionModel {
+    fn from(transaction: Transaction) -> Self {
+        Self {
+            header_signature: transaction.header_signature,
+            batch_id: transaction.batch_id,
+            family_name: transaction.family_name,
+            family_version: transaction.family_version,
+            signer_public_key: transaction.signer_public_key,
         }
     }
 }
