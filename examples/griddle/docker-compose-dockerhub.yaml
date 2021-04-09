@@ -123,7 +123,7 @@ services:
       POSTGRES_DB: grid
 
   gridd-alpha:
-    image: hyperledger/gridd:0.1.2
+    image: hyperledger/gridd:experimental
     container_name: gridd-alpha
     hostname: gridd-alpha
     volumes:
@@ -145,8 +145,6 @@ services:
             sleep 1
         done
         grid -vv admin keygen --skip && \
-        grid -vv database migrate \
-            -C postgres://grid:grid_example@db-alpha/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
             --database-url postgres://grid:grid_example@db-alpha/grid
       "
@@ -236,7 +234,9 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-0
-        griddle -vv
+        grid -vv database migrate \
+            -C postgres://grid:grid_example@db-alpha/grid &&
+        griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-1:
@@ -261,7 +261,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-1
-        griddle -vv
+        griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-2:
@@ -286,7 +286,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-2
-        griddle -vv
+        griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-3:
@@ -311,7 +311,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-3
-        griddle -vv
+        griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
   # ---== beta node ==---
@@ -329,7 +329,7 @@ services:
       POSTGRES_DB: grid
 
   gridd-beta:
-    image: hyperledger/gridd:0.1.2
+    image: hyperledger/gridd:experimental
     container_name: gridd-beta
     hostname: gridd-beta
     volumes:
@@ -351,8 +351,6 @@ services:
             sleep 1
         done
         grid -vv admin keygen --skip && \
-        grid -vv database migrate \
-            -C postgres://grid:grid_example@db-beta/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
             --database-url postgres://grid:grid_example@db-beta/grid
       "
@@ -441,7 +439,9 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-0
-        griddle -vv
+        grid -vv database migrate \
+            -C postgres://grid:grid_example@db-beta/grid &&
+        griddle -vv --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-1:
@@ -466,7 +466,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-1
-        griddle -vv
+        griddle -vv --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-2:
@@ -491,7 +491,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-2
-        griddle -vv
+        griddle -vv --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-3:
@@ -516,5 +516,5 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-3
-        griddle -vv
+        griddle -vv --connect splinter:http://splinterd-beta:8085
       "

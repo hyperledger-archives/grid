@@ -320,7 +320,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-0
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-1:
@@ -345,7 +345,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-1
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-2:
@@ -370,7 +370,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-2
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-3:
@@ -395,7 +395,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-3
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   # ---== beta node ==---
@@ -532,7 +532,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-0
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-1:
@@ -557,7 +557,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-1
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-2:
@@ -582,7 +582,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-2
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-3:
@@ -607,5 +607,5 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-3
-        griddle -vv
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "
