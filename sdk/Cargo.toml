@@ -79,6 +79,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "batch-processor",
     "batch-store",
     "client",
     "client-reqwest",
@@ -102,6 +103,7 @@ purchase-order = []
 product = ["pike", "schema"]
 schema = ["pike"]
 track-and-trace = ["base64"]
+batch-processor = ["batch-store", "batch-submitter", "log"]
 batch-store = []
 batch-submitter = ["base64", "futures", "reqwest", "uuid", "url"]
 

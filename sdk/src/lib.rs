@@ -31,9 +31,11 @@ extern crate diesel;
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
 #[macro_use]
-#[cfg(feature = "diesel")]
+#[cfg(feature = "log")]
 extern crate log;
 
+#[cfg(feature = "batch-processor")]
+pub mod batch_processor;
 #[cfg(feature = "batch-store")]
 pub mod batches;
 #[cfg(feature = "client")]
