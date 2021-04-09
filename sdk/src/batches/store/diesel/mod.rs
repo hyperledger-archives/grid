@@ -113,6 +113,7 @@ impl From<(BatchModel, Vec<TransactionModel>)> for Batch {
             dlt_status: batch_model.dlt_status,
             claim_expires: batch_model.claim_expires,
             created: batch_model.created,
+            service_id: batch_model.service_id,
             transactions: transaction_models
                 .into_iter()
                 .map(Transaction::from)
@@ -135,6 +136,7 @@ impl From<Batch> for (BatchModel, Vec<TransactionModel>) {
             dlt_status: batch.dlt_status,
             claim_expires: batch.claim_expires,
             created: batch.created,
+            service_id: batch.service_id,
         };
 
         let transaction_models = batch

@@ -207,6 +207,7 @@ fn batches_into_bytes(
         }
 
         let trace = batch.trace;
+        let service_id = batch.service_id;
 
         let mut batch = batch::Batch::new();
         let mut batch_header = batch::BatchHeader::new();
@@ -244,7 +245,7 @@ fn batches_into_bytes(
             ErrorResponse::internal_error(Box::new(err))
         })?;
 
-        let mut db_batch = DbBatch::new(header_signature, public_key, trace, &bytes);
+        let mut db_batch = DbBatch::new(header_signature, public_key, trace, &bytes, service_id);
         transactions.iter().for_each(|t| {
             db_batch.add_transaction(
                 t.get_header_signature(),

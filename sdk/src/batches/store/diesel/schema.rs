@@ -25,6 +25,7 @@ table! {
         dlt_status -> Nullable<Text>,
         claim_expires -> Nullable<Timestamp>,
         created -> Nullable<Timestamp>,
+        service_id -> Nullable<Text>,
     }
 }
 

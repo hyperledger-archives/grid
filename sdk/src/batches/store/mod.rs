@@ -35,6 +35,7 @@ pub struct Batch {
     pub dlt_status: Option<String>,
     pub claim_expires: Option<NaiveDateTime>,
     pub created: Option<NaiveDateTime>,
+    pub service_id: Option<String>,
     pub transactions: Vec<Transaction>,
 }
 
@@ -44,6 +45,7 @@ impl Batch {
         signer_public_key: String,
         trace: bool,
         serialized_batch: &[u8],
+        service_id: Option<String>,
     ) -> Self {
         Self {
             header_signature,
@@ -57,6 +59,7 @@ impl Batch {
             dlt_status: None,
             claim_expires: None,
             created: None,
+            service_id,
             transactions: vec![],
         }
     }

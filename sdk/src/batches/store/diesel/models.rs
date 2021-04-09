@@ -29,6 +29,7 @@ pub struct BatchModel {
     pub dlt_status: Option<String>,
     pub claim_expires: Option<NaiveDateTime>,
     pub created: Option<NaiveDateTime>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Queryable, PartialEq, Debug)]

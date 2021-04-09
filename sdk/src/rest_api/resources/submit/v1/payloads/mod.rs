@@ -26,10 +26,6 @@ pub use schema::*;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct SubmitBatchRequest {
-    #[serde(default)]
-    pub circuit_id: Option<String>,
-    #[serde(default)]
-    pub service_id: Option<String>,
     pub batches: Vec<Batch>,
 }
 
@@ -37,6 +33,8 @@ pub struct SubmitBatchRequest {
 pub struct Batch {
     #[serde(default)]
     pub trace: bool,
+    #[serde(default)]
+    pub service_id: Option<String>,
     pub transactions: Vec<Transaction>,
 }
 
