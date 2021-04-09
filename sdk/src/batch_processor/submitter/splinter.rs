@@ -193,12 +193,12 @@ struct ErrorMessage {
     error_data: Option<Vec<u8>>,
 }
 
-impl Into<BatchStatus> for SplinterBatchStatus {
-    fn into(self) -> BatchStatus {
-        BatchStatus {
-            id: self.id,
-            status: self.status.status_type,
-            invalid_transactions: self
+impl From<SplinterBatchStatus> for BatchStatus {
+    fn from(sbs: SplinterBatchStatus) -> Self {
+        Self {
+            id: sbs.id,
+            status: sbs.status.status_type,
+            invalid_transactions: sbs
                 .status
                 .message
                 .into_iter()
