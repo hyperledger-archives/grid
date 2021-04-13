@@ -104,7 +104,7 @@ fn run() -> Result<(), CliError> {
             (about: "Generates keys with which the user can sign transactions and batches.")
             (@arg key_name: +takes_value "Name of the key to create")
             (@arg force: --force "Overwrite files if they exist")
-            (@arg key_dir: -d --key_dir +takes_value conflicts_with[system] "Specify the directory for the key files")
+            (@arg key_dir: -d --("key-dir") +takes_value conflicts_with[system] "Specify the directory for the key files")
             (@arg system: --system "Generate system keys in /etc/grid/keys")
         )
 
