@@ -173,6 +173,43 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::pg::PgCon
                     .map_err(PikeStoreError::from)?;
             }
 
+            // Check for removed permissions
+            let mut query = pike_permissions::table.into_boxed().filter(
+                pike_permissions::role_name
+                    .eq(&role.name)
+                    .and(pike_permissions::org_id.eq(&role.org_id))
+                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &role.service_id {
+                query = query.filter(pike_permissions::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_permissions::service_id.is_null());
+            }
+
+            let removed = query.load::<PermissionModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            for r in removed {
+                if !permissions.iter().any(|p| p.name == r.name) {
+                    update(pike_permissions::table)
+                        .filter(
+                            pike_permissions::role_name
+                                .eq(&role.name)
+                                .and(pike_permissions::role_name.eq(&r.role_name))
+                                .and(pike_permissions::org_id.eq(&role.org_id))
+                                .and(pike_permissions::org_id.eq(&r.org_id))
+                                .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
+            }
+
+            // Check for updated permissions
             for p in permissions {
                 let mut query = pike_permissions::table.into_boxed().filter(
                     pike_permissions::role_name
@@ -414,6 +451,43 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::sqlite::S
                     .map_err(PikeStoreError::from)?;
             }
 
+            // Check for removed permissions
+            let mut query = pike_permissions::table.into_boxed().filter(
+                pike_permissions::role_name
+                    .eq(&role.name)
+                    .and(pike_permissions::org_id.eq(&role.org_id))
+                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &role.service_id {
+                query = query.filter(pike_permissions::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_permissions::service_id.is_null());
+            }
+
+            let removed = query.load::<PermissionModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            for r in removed {
+                if !permissions.iter().any(|p| p.name == r.name) {
+                    update(pike_permissions::table)
+                        .filter(
+                            pike_permissions::role_name
+                                .eq(&role.name)
+                                .and(pike_permissions::role_name.eq(&r.role_name))
+                                .and(pike_permissions::org_id.eq(&role.org_id))
+                                .and(pike_permissions::org_id.eq(&r.org_id))
+                                .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
+            }
+
+            // Check for updated permissions
             for p in permissions {
                 let mut query = pike_permissions::table.into_boxed().filter(
                     pike_permissions::role_name

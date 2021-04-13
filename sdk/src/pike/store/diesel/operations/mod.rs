@@ -23,7 +23,6 @@ pub(super) mod list_agents;
 pub(super) mod list_organizations;
 pub(super) mod list_roles_for_organization;
 pub(super) mod update_agent;
-pub(super) mod update_role;
 
 pub(super) struct PikeStoreOperations<'a, C> {
     conn: &'a C,

@@ -127,7 +127,7 @@ pub trait PikeStore: Send + Sync {
     ///  * `agent` - The agent to be added
     fn add_agent(&self, agent: Agent) -> Result<(), PikeStoreError>;
 
-    /// Adds a role to the underlying storage
+    /// Adds or updates a role to the underlying storage
     ///
     /// # Arguments
     ///
@@ -195,13 +195,6 @@ pub trait PikeStore: Send + Sync {
     ///
     ///  * `agent` - The updated agent to add
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError>;
-
-    /// Updates a role from the underlying storage
-    ///
-    /// # Arguments
-    ///
-    ///  * `role` - The role to update
-    fn update_role(&self, role: Role) -> Result<(), PikeStoreError>;
 
     /// Deletes a role from the underlying storage
     ///
@@ -295,10 +288,6 @@ where
 
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
         (**self).update_agent(agent)
-    }
-
-    fn update_role(&self, role: Role) -> Result<(), PikeStoreError> {
-        (**self).update_role(role)
     }
 
     fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
