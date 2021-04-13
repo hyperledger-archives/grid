@@ -104,176 +104,28 @@ pub fn setup_grid(
         return Ok(());
     }
 
+    let mut txns = Vec::new();
+
     // Make Pike transactions
     #[cfg(feature = "pike")]
-    let pike_contract =
-        SmartContractArchive::from_scar_file(PIKE_CONTRACT_NAME, &version, &default_scar_path())?;
-    #[cfg(feature = "pike")]
-    let pike_contract_registry_txn =
-        make_contract_registry_txn(&signer, &pike_contract.metadata.name)?;
-    #[cfg(feature = "pike")]
-    let pike_contract_txn = make_upload_contract_txn(&signer, &pike_contract, PIKE_NAMESPACE)?;
-    #[cfg(feature = "pike")]
-    let pike_namespace_registry_txn = make_namespace_registry_txn(&signer, PIKE_NAMESPACE)?;
-    #[cfg(feature = "pike")]
-    let pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &pike_contract, PIKE_NAMESPACE)?;
+    make_pike_txns(&mut txns, &version, &signer)?;
 
     // Make Product transactions
     #[cfg(feature = "product")]
-    let product_contract = SmartContractArchive::from_scar_file(
-        PRODUCT_CONTRACT_NAME,
-        &version,
-        &default_scar_path(),
-    )?;
-    #[cfg(feature = "product")]
-    let product_contract_registry_txn =
-        make_contract_registry_txn(&signer, &product_contract.metadata.name)?;
-    #[cfg(feature = "product")]
-    let product_contract_txn =
-        make_upload_contract_txn(&signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
-    #[cfg(feature = "product")]
-    let product_namespace_registry_txn =
-        make_namespace_registry_txn(&signer, GRID_PRODUCT_NAMESPACE)?;
-    #[cfg(feature = "product")]
-    let product_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
-    #[cfg(feature = "product")]
-    let product_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &product_contract, PIKE_NAMESPACE)?;
-    #[cfg(feature = "product")]
-    let product_schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &product_contract, GRID_SCHEMA_NAMESPACE)?;
+    make_product_txns(&mut txns, &version, &signer)?;
 
     // Make Location transactions
     #[cfg(feature = "location")]
-    let location_contract = SmartContractArchive::from_scar_file(
-        LOCATION_CONTRACT_NAME,
-        &version,
-        &default_scar_path(),
-    )?;
-    #[cfg(feature = "location")]
-    let location_contract_registry_txn =
-        make_contract_registry_txn(&signer, &location_contract.metadata.name)?;
-    #[cfg(feature = "location")]
-    let location_contract_txn =
-        make_upload_contract_txn(&signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
-    #[cfg(feature = "location")]
-    let location_namespace_registry_txn =
-        make_namespace_registry_txn(&signer, GRID_LOCATION_NAMESPACE)?;
-    #[cfg(feature = "location")]
-    let location_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
-    #[cfg(feature = "location")]
-    let location_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &location_contract, PIKE_NAMESPACE)?;
-    #[cfg(feature = "location")]
-    let location_schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &location_contract, GRID_SCHEMA_NAMESPACE)?;
+    make_location_txns(&mut txns, &version, &signer)?;
 
     // Make schema transactions
     #[cfg(feature = "schema")]
-    let schema_contract =
-        SmartContractArchive::from_scar_file(SCHEMA_CONTRACT_NAME, &version, &default_scar_path())?;
-    #[cfg(feature = "schema")]
-    let schema_contract_registry_txn =
-        make_contract_registry_txn(&signer, &schema_contract.metadata.name)?;
-    #[cfg(feature = "schema")]
-    let schema_contract_txn =
-        make_upload_contract_txn(&signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
-    #[cfg(feature = "schema")]
-    let schema_namespace_registry_txn =
-        make_namespace_registry_txn(&signer, GRID_SCHEMA_NAMESPACE)?;
-    #[cfg(feature = "schema")]
-    let schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
-    #[cfg(feature = "schema")]
-    let schema_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &schema_contract, PIKE_NAMESPACE)?;
+    make_schema_txns(&mut txns, &version, &signer)?;
 
     // Make Purchase Order transactions
     #[cfg(feature = "purchase-order")]
-    let purchase_order_contract = SmartContractArchive::from_scar_file(
-        PURCHASE_ORDER_CONTRACT_NAME,
-        &version,
-        &default_scar_path(),
-    )?;
-    #[cfg(feature = "purchase-order")]
-    let purchase_order_contract_registry_txn =
-        make_contract_registry_txn(&signer, &purchase_order_contract.metadata.name)?;
-    #[cfg(feature = "purchase-order")]
-    let purchase_order_contract_txn = make_upload_contract_txn(
-        &signer,
-        &purchase_order_contract,
-        GRID_PURCHASE_ORDER_NAMESPACE,
-    )?;
-    #[cfg(feature = "purchase-order")]
-    let purchase_order_namespace_registry_txn =
-        make_namespace_registry_txn(&signer, GRID_PURCHASE_ORDER_NAMESPACE)?;
-    #[cfg(feature = "purchase-order")]
-    let purchase_order_namespace_permissions_txn = make_namespace_permissions_txn(
-        &signer,
-        &purchase_order_contract,
-        GRID_PURCHASE_ORDER_NAMESPACE,
-    )?;
-    #[cfg(feature = "purchase-order")]
-    let purchase_order_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(&signer, &purchase_order_contract, PIKE_NAMESPACE)?;
+    make_purchase_order_txns(&mut txns, &version, &signer)?;
 
-    let txns = vec![
-        #[cfg(feature = "pike")]
-        pike_contract_registry_txn,
-        #[cfg(feature = "pike")]
-        pike_contract_txn,
-        #[cfg(feature = "pike")]
-        pike_namespace_registry_txn,
-        #[cfg(feature = "pike")]
-        pike_namespace_permissions_txn,
-        #[cfg(feature = "product")]
-        product_contract_registry_txn,
-        #[cfg(feature = "product")]
-        product_contract_txn,
-        #[cfg(feature = "product")]
-        product_namespace_registry_txn,
-        #[cfg(feature = "product")]
-        product_pike_namespace_permissions_txn,
-        #[cfg(feature = "product")]
-        product_namespace_permissions_txn,
-        #[cfg(feature = "schema")]
-        schema_contract_registry_txn,
-        #[cfg(feature = "schema")]
-        schema_contract_txn,
-        #[cfg(feature = "schema")]
-        schema_namespace_registry_txn,
-        #[cfg(feature = "product")]
-        product_schema_namespace_permissions_txn,
-        #[cfg(feature = "schema")]
-        schema_pike_namespace_permissions_txn,
-        #[cfg(feature = "schema")]
-        schema_namespace_permissions_txn,
-        #[cfg(feature = "location")]
-        location_contract_registry_txn,
-        #[cfg(feature = "location")]
-        location_contract_txn,
-        #[cfg(feature = "location")]
-        location_namespace_registry_txn,
-        #[cfg(feature = "location")]
-        location_namespace_permissions_txn,
-        #[cfg(feature = "location")]
-        location_pike_namespace_permissions_txn,
-        #[cfg(feature = "location")]
-        location_schema_namespace_permissions_txn,
-        #[cfg(feature = "purchase-order")]
-        purchase_order_contract_registry_txn,
-        #[cfg(feature = "purchase-order")]
-        purchase_order_contract_txn,
-        #[cfg(feature = "purchase-order")]
-        purchase_order_namespace_registry_txn,
-        #[cfg(feature = "purchase-order")]
-        purchase_order_namespace_permissions_txn,
-        #[cfg(feature = "purchase-order")]
-        purchase_order_pike_namespace_permissions_txn,
-    ];
     let batch = BatchBuilder::new().with_transactions(txns).build(&signer)?;
 
     ScabbardClient::new(&splinterd_url)
@@ -283,6 +135,171 @@ pub fn setup_grid(
             Some(Duration::from_secs(SCABBARD_SUBMISSION_WAIT_SECS)),
         )
         .map_err(|err| AppAuthHandlerError::BatchSubmitError(err.to_string()))?;
+
+    Ok(())
+}
+
+#[cfg(feature = "pike")]
+fn make_pike_txns(
+    txns: &mut Vec<Transaction>,
+    version: &str,
+    signer: &TransactSigner,
+) -> Result<(), AppAuthHandlerError> {
+    let pike_contract =
+        SmartContractArchive::from_scar_file(PIKE_CONTRACT_NAME, &version, &default_scar_path())?;
+    let pike_contract_registry_txn =
+        make_contract_registry_txn(signer, &pike_contract.metadata.name)?;
+    let pike_contract_txn = make_upload_contract_txn(signer, &pike_contract, PIKE_NAMESPACE)?;
+    let pike_namespace_registry_txn = make_namespace_registry_txn(signer, PIKE_NAMESPACE)?;
+    let pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &pike_contract, PIKE_NAMESPACE)?;
+
+    txns.append(&mut vec![
+        pike_contract_registry_txn,
+        pike_contract_txn,
+        pike_namespace_registry_txn,
+        pike_namespace_permissions_txn,
+    ]);
+
+    Ok(())
+}
+
+#[cfg(feature = "product")]
+fn make_product_txns(
+    txns: &mut Vec<Transaction>,
+    version: &str,
+    signer: &TransactSigner,
+) -> Result<(), AppAuthHandlerError> {
+    let product_contract = SmartContractArchive::from_scar_file(
+        PRODUCT_CONTRACT_NAME,
+        &version,
+        &default_scar_path(),
+    )?;
+    let product_contract_registry_txn =
+        make_contract_registry_txn(signer, &product_contract.metadata.name)?;
+    let product_contract_txn =
+        make_upload_contract_txn(signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
+    let product_namespace_registry_txn =
+        make_namespace_registry_txn(signer, GRID_PRODUCT_NAMESPACE)?;
+    let product_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
+    let product_pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &product_contract, PIKE_NAMESPACE)?;
+    let product_schema_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &product_contract, GRID_SCHEMA_NAMESPACE)?;
+
+    txns.append(&mut vec![
+        product_contract_registry_txn,
+        product_contract_txn,
+        product_namespace_registry_txn,
+        product_namespace_permissions_txn,
+        product_pike_namespace_permissions_txn,
+        product_schema_namespace_permissions_txn,
+    ]);
+
+    Ok(())
+}
+
+#[cfg(feature = "location")]
+fn make_location_txns(
+    txns: &mut Vec<Transaction>,
+    version: &str,
+    signer: &TransactSigner,
+) -> Result<(), AppAuthHandlerError> {
+    let location_contract = SmartContractArchive::from_scar_file(
+        LOCATION_CONTRACT_NAME,
+        &version,
+        &default_scar_path(),
+    )?;
+    let location_contract_registry_txn =
+        make_contract_registry_txn(signer, &location_contract.metadata.name)?;
+    let location_contract_txn =
+        make_upload_contract_txn(signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
+    let location_namespace_registry_txn =
+        make_namespace_registry_txn(signer, GRID_LOCATION_NAMESPACE)?;
+    let location_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
+    let location_pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &location_contract, PIKE_NAMESPACE)?;
+    let location_schema_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &location_contract, GRID_SCHEMA_NAMESPACE)?;
+
+    txns.append(&mut vec![
+        location_contract_registry_txn,
+        location_contract_txn,
+        location_namespace_registry_txn,
+        location_namespace_permissions_txn,
+        location_pike_namespace_permissions_txn,
+        location_schema_namespace_permissions_txn,
+    ]);
+
+    Ok(())
+}
+
+#[cfg(feature = "schema")]
+fn make_schema_txns(
+    txns: &mut Vec<Transaction>,
+    version: &str,
+    signer: &TransactSigner,
+) -> Result<(), AppAuthHandlerError> {
+    let schema_contract =
+        SmartContractArchive::from_scar_file(SCHEMA_CONTRACT_NAME, &version, &default_scar_path())?;
+    let schema_contract_registry_txn =
+        make_contract_registry_txn(signer, &schema_contract.metadata.name)?;
+    let schema_contract_txn =
+        make_upload_contract_txn(signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
+    let schema_namespace_registry_txn = make_namespace_registry_txn(signer, GRID_SCHEMA_NAMESPACE)?;
+    let schema_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
+    let schema_pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &schema_contract, PIKE_NAMESPACE)?;
+
+    txns.append(&mut vec![
+        schema_contract_registry_txn,
+        schema_contract_txn,
+        schema_namespace_registry_txn,
+        schema_namespace_permissions_txn,
+        schema_pike_namespace_permissions_txn,
+    ]);
+
+    Ok(())
+}
+
+#[cfg(feature = "purchase-order")]
+fn make_purchase_order_txns(
+    txns: &mut Vec<Transaction>,
+    version: &str,
+    signer: &TransactSigner,
+) -> Result<(), AppAuthHandlerError> {
+    let purchase_order_contract = SmartContractArchive::from_scar_file(
+        PURCHASE_ORDER_CONTRACT_NAME,
+        &version,
+        &default_scar_path(),
+    )?;
+    let purchase_order_contract_registry_txn =
+        make_contract_registry_txn(signer, &purchase_order_contract.metadata.name)?;
+    let purchase_order_contract_txn = make_upload_contract_txn(
+        signer,
+        &purchase_order_contract,
+        GRID_PURCHASE_ORDER_NAMESPACE,
+    )?;
+    let purchase_order_namespace_registry_txn =
+        make_namespace_registry_txn(signer, GRID_PURCHASE_ORDER_NAMESPACE)?;
+    let purchase_order_namespace_permissions_txn = make_namespace_permissions_txn(
+        signer,
+        &purchase_order_contract,
+        GRID_PURCHASE_ORDER_NAMESPACE,
+    )?;
+    let purchase_order_pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(signer, &purchase_order_contract, PIKE_NAMESPACE)?;
+
+    txns.append(&mut vec![
+        purchase_order_contract_registry_txn,
+        purchase_order_contract_txn,
+        purchase_order_namespace_registry_txn,
+        purchase_order_namespace_permissions_txn,
+        purchase_order_pike_namespace_permissions_txn,
+    ]);
 
     Ok(())
 }
