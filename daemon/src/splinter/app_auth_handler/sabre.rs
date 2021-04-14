@@ -56,26 +56,6 @@ use crate::splinter::app_auth_handler::error::AppAuthHandlerError;
 
 const SCABBARD_SUBMISSION_WAIT_SECS: u64 = 10;
 
-// Pike constants
-#[cfg(feature = "pike")]
-const PIKE_CONTRACT_NAME: &str = "grid-pike";
-
-// Product constants
-#[cfg(feature = "product")]
-const PRODUCT_CONTRACT_NAME: &str = "grid-product";
-
-// Schema constants
-#[cfg(feature = "schema")]
-const SCHEMA_CONTRACT_NAME: &str = "grid-schema";
-
-// Location constants
-#[cfg(feature = "location")]
-const LOCATION_CONTRACT_NAME: &str = "grid-location";
-
-// Purchase Order constants
-#[cfg(feature = "purchase-order")]
-const PURCHASE_ORDER_CONTRACT_NAME: &str = "grid-purchase-order";
-
 pub fn setup_grid(
     scabbard_admin_key: &str,
     proposed_admin_pubkeys: Vec<String>,
@@ -146,7 +126,7 @@ fn make_pike_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let pike_contract =
-        SmartContractArchive::from_scar_file(PIKE_CONTRACT_NAME, &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file("grid_pike", &version, &default_scar_path())?;
     let pike_contract_registry_txn =
         make_contract_registry_txn(signer, &pike_contract.metadata.name)?;
     let pike_contract_txn = make_upload_contract_txn(signer, &pike_contract, PIKE_NAMESPACE)?;
@@ -170,11 +150,8 @@ fn make_product_txns(
     version: &str,
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
-    let product_contract = SmartContractArchive::from_scar_file(
-        PRODUCT_CONTRACT_NAME,
-        &version,
-        &default_scar_path(),
-    )?;
+    let product_contract =
+        SmartContractArchive::from_scar_file("grid-product", &version, &default_scar_path())?;
     let product_contract_registry_txn =
         make_contract_registry_txn(signer, &product_contract.metadata.name)?;
     let product_contract_txn =
@@ -206,11 +183,8 @@ fn make_location_txns(
     version: &str,
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
-    let location_contract = SmartContractArchive::from_scar_file(
-        LOCATION_CONTRACT_NAME,
-        &version,
-        &default_scar_path(),
-    )?;
+    let location_contract =
+        SmartContractArchive::from_scar_file("grid-location", &version, &default_scar_path())?;
     let location_contract_registry_txn =
         make_contract_registry_txn(signer, &location_contract.metadata.name)?;
     let location_contract_txn =
@@ -243,7 +217,7 @@ fn make_schema_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let schema_contract =
-        SmartContractArchive::from_scar_file(SCHEMA_CONTRACT_NAME, &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file("grid-schema", &version, &default_scar_path())?;
     let schema_contract_registry_txn =
         make_contract_registry_txn(signer, &schema_contract.metadata.name)?;
     let schema_contract_txn =
@@ -272,7 +246,7 @@ fn make_purchase_order_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let purchase_order_contract = SmartContractArchive::from_scar_file(
-        PURCHASE_ORDER_CONTRACT_NAME,
+        "grid-purchase-order",
         &version,
         &default_scar_path(),
     )?;
