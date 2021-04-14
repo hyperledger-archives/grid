@@ -178,16 +178,16 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
 }
 
 #[cfg(feature = "diesel")]
-impl Into<NewLocationModel> for Location {
-    fn into(self) -> NewLocationModel {
-        NewLocationModel {
-            location_id: self.location_id,
-            location_address: self.location_address,
-            location_namespace: self.location_namespace,
-            owner: self.owner,
-            start_commit_num: self.start_commit_num,
+impl From<Location> for NewLocationModel {
+    fn from(location: Location) -> NewLocationModel {
+        Self {
+            location_id: location.location_id,
+            location_address: location.location_address,
+            location_namespace: location.location_namespace,
+            owner: location.owner,
+            start_commit_num: location.start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
-            service_id: self.service_id,
+            service_id: location.service_id,
         }
     }
 }

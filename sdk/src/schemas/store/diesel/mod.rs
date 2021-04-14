@@ -193,20 +193,20 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
     }
 }
 
-impl Into<(NewGridSchema, Vec<NewGridPropertyDefinition>)> for Schema {
-    fn into(self) -> (NewGridSchema, Vec<NewGridPropertyDefinition>) {
-        let schema = NewGridSchema {
-            name: self.name.clone(),
-            description: self.description.clone(),
-            owner: self.owner.clone(),
-            service_id: self.service_id.clone(),
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
+impl From<Schema> for (NewGridSchema, Vec<NewGridPropertyDefinition>) {
+    fn from(schema: Schema) -> Self {
+        let new_schema = NewGridSchema {
+            name: schema.name.clone(),
+            description: schema.description.clone(),
+            owner: schema.owner.clone(),
+            service_id: schema.service_id.clone(),
+            start_commit_num: schema.start_commit_num,
+            end_commit_num: schema.end_commit_num,
         };
 
-        let properties = make_property_definitions(&self.properties, None);
+        let properties = make_property_definitions(&schema.properties, None);
 
-        (schema, properties)
+        (new_schema, properties)
     }
 }
 

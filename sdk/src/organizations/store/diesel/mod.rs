@@ -150,16 +150,16 @@ impl From<NewOrganizationModel> for Organization {
     }
 }
 
-impl Into<NewOrganizationModel> for Organization {
-    fn into(self) -> NewOrganizationModel {
-        NewOrganizationModel {
-            org_id: self.org_id,
-            name: self.name,
-            address: self.address,
-            metadata: self.metadata,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
+impl From<Organization> for NewOrganizationModel {
+    fn from(organization: Organization) -> NewOrganizationModel {
+        Self {
+            org_id: organization.org_id,
+            name: organization.name,
+            address: organization.address,
+            metadata: organization.metadata,
+            start_commit_num: organization.start_commit_num,
+            end_commit_num: organization.end_commit_num,
+            service_id: organization.service_id,
         }
     }
 }
