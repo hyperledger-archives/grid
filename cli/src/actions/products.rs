@@ -500,6 +500,7 @@ fn submit_payloads(
     submit_batches(url, wait, &batches, service_id)
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Deserialize, Debug)]
 pub enum Namespace {
     GS1,
