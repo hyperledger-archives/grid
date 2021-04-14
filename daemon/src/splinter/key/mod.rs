@@ -15,10 +15,12 @@
  * -----------------------------------------------------------------------------
  */
 
-use std::error::Error;
-use std::fmt;
+mod error;
+
 use std::io::Read;
 use std::{fs::File, path::Path};
+
+pub use error::KeyError;
 
 pub fn load_scabbard_admin_key(key_dir: &str) -> Result<String, KeyError> {
     let private_key_filename = format!("{}/gridd.priv", key_dir);
@@ -48,25 +50,4 @@ fn read_key_from_file(filename: String) -> Result<String, KeyError> {
     };
 
     Ok(key_str.to_string())
-}
-
-#[derive(Debug)]
-pub struct KeyError(pub String);
-
-impl Error for KeyError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-}
-
-impl fmt::Display for KeyError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<std::io::Error> for KeyError {
-    fn from(err: std::io::Error) -> KeyError {
-        KeyError(err.to_string())
-    }
 }

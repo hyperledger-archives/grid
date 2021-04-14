@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Cargill Incorporated
+ * Copyright 2019-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+mod error;
+
 use std::cell::RefCell;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};
 
@@ -25,16 +27,7 @@ use crate::event::{
     CommitEvent, EventConnection, EventConnectionUnsubscriber, EventIoError, StateChange,
 };
 
-#[derive(Debug)]
-pub struct ScabbardEventConnectionError(pub String);
-
-impl std::error::Error for ScabbardEventConnectionError {}
-
-impl std::fmt::Display for ScabbardEventConnectionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unable to create connection to {}", self.0)
-    }
-}
+pub use error::ScabbardEventConnectionError;
 
 /// Constructs ScabbardEventConnections to receive events.
 pub struct ScabbardEventConnectionFactory {
