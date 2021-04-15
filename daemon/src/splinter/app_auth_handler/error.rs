@@ -102,19 +102,17 @@ impl fmt::Display for AppAuthHandlerError {
     }
 }
 
-macro_rules! impl_from_sabre_errors {
-    ($($x:ty),*) => {
-        $(
-            impl From<$x> for AppAuthHandlerError {
-                fn from(e: $x) -> Self {
-                    AppAuthHandlerError::SabreError(e.to_string())
-                }
-            }
-        )*
-    };
+impl From<SabrePayloadBuildError> for AppAuthHandlerError {
+    fn from(err: SabrePayloadBuildError) -> AppAuthHandlerError {
+        AppAuthHandlerError::SabreError(err.to_string())
+    }
 }
 
-impl_from_sabre_errors!(ActionBuildError, SabrePayloadBuildError);
+impl From<ActionBuildError> for AppAuthHandlerError {
+    fn from(err: ActionBuildError) -> AppAuthHandlerError {
+        AppAuthHandlerError::SabreError(err.to_string())
+    }
+}
 
 impl From<std::string::FromUtf8Error> for AppAuthHandlerError {
     fn from(err: std::string::FromUtf8Error) -> AppAuthHandlerError {
