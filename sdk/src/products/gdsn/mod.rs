@@ -14,18 +14,16 @@
 
 pub mod error;
 
+use std::io::{Cursor, Read};
+
 use quick_xml::{
     de::from_str,
     events::{BytesEnd, BytesStart, BytesText, Event},
     Reader, Writer,
 };
 use serde::Deserialize;
-use std::io::Cursor;
-use std::io::Read;
 
 use crate::error::InvalidArgumentError;
-use error::ProductGdsnError;
-
 use crate::protocol::{
     product::{
         payload::{ProductCreateAction, ProductCreateActionBuilder},
@@ -33,6 +31,7 @@ use crate::protocol::{
     },
     schema::state::{DataType, PropertyValueBuilder},
 };
+use error::ProductGdsnError;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct GridTradeItems {
