@@ -16,9 +16,12 @@
  * -----------------------------------------------------------------------------
  */
 
+use std::path::PathBuf;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use cylinder::load_key;
+use grid_sdk::error::InternalError;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
 use grid_sdk::rest_api::actix_web_3::{BatchSubmitterState, StoreState};
@@ -32,15 +35,19 @@ use crate::error::DaemonError;
 use crate::event::{db_handler::DatabaseEventHandler, EventHandler};
 use crate::rest_api;
 
-use super::{
-    app_auth_handler, event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
-};
+use super::{app_auth_handler, event::ScabbardEventConnectionFactory};
 
 pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let reactor = Reactor::new();
 
-    let scabbard_admin_key = load_scabbard_admin_key(&config.admin_key_dir())
-        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+    let scabbard_admin_key = load_key("gridd", &[PathBuf::from(config.admin_key_dir())])
+        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?
+        .ok_or_else(|| {
+            DaemonError::StartUpError(Box::new(InternalError::with_message(
+                "no private key found".into(),
+            )))
+        })?
+        .as_hex();
 
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());

@@ -17,7 +17,6 @@
 
 pub mod app_auth_handler;
 pub mod event;
-pub mod key;
 mod run;
 
 pub use run::run_splinter;
