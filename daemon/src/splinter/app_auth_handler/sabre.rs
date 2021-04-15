@@ -127,12 +127,28 @@ fn make_pike_txns(
 ) -> Result<(), AppAuthHandlerError> {
     let pike_contract =
         SmartContractArchive::from_scar_file("grid_pike", &version, &default_scar_path())?;
-    let pike_contract_registry_txn =
-        make_contract_registry_txn(signer, &pike_contract.metadata.name)?;
+    let pike_contract_registry_txn = CreateContractRegistryActionBuilder::new()
+        .with_name(String::from(&pike_contract.metadata.name))
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let pike_contract_txn = make_upload_contract_txn(signer, &pike_contract, PIKE_NAMESPACE)?;
-    let pike_namespace_registry_txn = make_namespace_registry_txn(signer, PIKE_NAMESPACE)?;
-    let pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &pike_contract, PIKE_NAMESPACE)?;
+    let pike_namespace_registry_txn = CreateNamespaceRegistryActionBuilder::new()
+        .with_namespace(PIKE_NAMESPACE.into())
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
+
+    let pike_namespace_permissions_txn = CreateNamespaceRegistryPermissionActionBuilder::new()
+        .with_namespace(PIKE_NAMESPACE.into())
+        .with_contract_name(pike_contract.metadata.name)
+        .with_read(true)
+        .with_write(true)
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
 
     txns.append(&mut vec![
         pike_contract_registry_txn,
@@ -152,18 +168,46 @@ fn make_product_txns(
 ) -> Result<(), AppAuthHandlerError> {
     let product_contract =
         SmartContractArchive::from_scar_file("grid-product", &version, &default_scar_path())?;
-    let product_contract_registry_txn =
-        make_contract_registry_txn(signer, &product_contract.metadata.name)?;
+    let product_contract_registry_txn = CreateContractRegistryActionBuilder::new()
+        .with_name(String::from(&product_contract.metadata.name))
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let product_contract_txn =
         make_upload_contract_txn(signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
-    let product_namespace_registry_txn =
-        make_namespace_registry_txn(signer, GRID_PRODUCT_NAMESPACE)?;
-    let product_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &product_contract, GRID_PRODUCT_NAMESPACE)?;
+    let product_namespace_registry_txn = CreateNamespaceRegistryActionBuilder::new()
+        .with_namespace(GRID_PRODUCT_NAMESPACE.into())
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
+    let product_namespace_permissions_txn = CreateNamespaceRegistryPermissionActionBuilder::new()
+        .with_namespace(GRID_PRODUCT_NAMESPACE.into())
+        .with_contract_name(product_contract.metadata.name.clone())
+        .with_read(true)
+        .with_write(true)
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let product_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &product_contract, PIKE_NAMESPACE)?;
+        CreateNamespaceRegistryPermissionActionBuilder::new()
+            .with_namespace(PIKE_NAMESPACE.into())
+            .with_contract_name(product_contract.metadata.name.clone())
+            .with_read(true)
+            .with_write(true)
+            .into_payload_builder()?
+            .into_transaction_builder(signer)?
+            .build(signer)?;
     let product_schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &product_contract, GRID_SCHEMA_NAMESPACE)?;
+        CreateNamespaceRegistryPermissionActionBuilder::new()
+            .with_namespace(GRID_SCHEMA_NAMESPACE.into())
+            .with_contract_name(product_contract.metadata.name)
+            .with_read(true)
+            .with_write(true)
+            .into_payload_builder()?
+            .into_transaction_builder(signer)?
+            .build(signer)?;
 
     txns.append(&mut vec![
         product_contract_registry_txn,
@@ -185,18 +229,46 @@ fn make_location_txns(
 ) -> Result<(), AppAuthHandlerError> {
     let location_contract =
         SmartContractArchive::from_scar_file("grid-location", &version, &default_scar_path())?;
-    let location_contract_registry_txn =
-        make_contract_registry_txn(signer, &location_contract.metadata.name)?;
+    let location_contract_registry_txn = CreateContractRegistryActionBuilder::new()
+        .with_name(String::from(&location_contract.metadata.name))
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let location_contract_txn =
         make_upload_contract_txn(signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
-    let location_namespace_registry_txn =
-        make_namespace_registry_txn(signer, GRID_LOCATION_NAMESPACE)?;
-    let location_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &location_contract, GRID_LOCATION_NAMESPACE)?;
+    let location_namespace_registry_txn = CreateNamespaceRegistryActionBuilder::new()
+        .with_namespace(GRID_LOCATION_NAMESPACE.into())
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
+    let location_namespace_permissions_txn = CreateNamespaceRegistryPermissionActionBuilder::new()
+        .with_namespace(GRID_LOCATION_NAMESPACE.into())
+        .with_contract_name(location_contract.metadata.name.clone())
+        .with_read(true)
+        .with_write(true)
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let location_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &location_contract, PIKE_NAMESPACE)?;
+        CreateNamespaceRegistryPermissionActionBuilder::new()
+            .with_namespace(PIKE_NAMESPACE.into())
+            .with_contract_name(location_contract.metadata.name.clone())
+            .with_read(true)
+            .with_write(true)
+            .into_payload_builder()?
+            .into_transaction_builder(signer)?
+            .build(signer)?;
     let location_schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &location_contract, GRID_SCHEMA_NAMESPACE)?;
+        CreateNamespaceRegistryPermissionActionBuilder::new()
+            .with_namespace(GRID_SCHEMA_NAMESPACE.into())
+            .with_contract_name(location_contract.metadata.name)
+            .with_read(true)
+            .with_write(true)
+            .into_payload_builder()?
+            .into_transaction_builder(signer)?
+            .build(signer)?;
 
     txns.append(&mut vec![
         location_contract_registry_txn,
@@ -218,15 +290,37 @@ fn make_schema_txns(
 ) -> Result<(), AppAuthHandlerError> {
     let schema_contract =
         SmartContractArchive::from_scar_file("grid-schema", &version, &default_scar_path())?;
-    let schema_contract_registry_txn =
-        make_contract_registry_txn(signer, &schema_contract.metadata.name)?;
+    let schema_contract_registry_txn = CreateContractRegistryActionBuilder::new()
+        .with_name(String::from(&schema_contract.metadata.name))
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let schema_contract_txn =
         make_upload_contract_txn(signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
-    let schema_namespace_registry_txn = make_namespace_registry_txn(signer, GRID_SCHEMA_NAMESPACE)?;
-    let schema_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &schema_contract, GRID_SCHEMA_NAMESPACE)?;
+    let schema_namespace_registry_txn = CreateNamespaceRegistryActionBuilder::new()
+        .with_namespace(GRID_SCHEMA_NAMESPACE.into())
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
+    let schema_namespace_permissions_txn = CreateNamespaceRegistryPermissionActionBuilder::new()
+        .with_namespace(GRID_SCHEMA_NAMESPACE.into())
+        .with_contract_name(schema_contract.metadata.name.clone())
+        .with_read(true)
+        .with_write(true)
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let schema_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &schema_contract, PIKE_NAMESPACE)?;
+        CreateNamespaceRegistryPermissionActionBuilder::new()
+            .with_namespace(PIKE_NAMESPACE.into())
+            .with_contract_name(schema_contract.metadata.name)
+            .with_read(true)
+            .with_write(true)
+            .into_payload_builder()?
+            .into_transaction_builder(signer)?
+            .build(signer)?;
 
     txns.append(&mut vec![
         schema_contract_registry_txn,
@@ -250,22 +344,41 @@ fn make_purchase_order_txns(
         &version,
         &default_scar_path(),
     )?;
-    let purchase_order_contract_registry_txn =
-        make_contract_registry_txn(signer, &purchase_order_contract.metadata.name)?;
+    let purchase_order_contract_registry_txn = CreateContractRegistryActionBuilder::new()
+        .with_name(String::from(&purchase_order_contract.metadata.name))
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
     let purchase_order_contract_txn = make_upload_contract_txn(
         signer,
         &purchase_order_contract,
         GRID_PURCHASE_ORDER_NAMESPACE,
     )?;
-    let purchase_order_namespace_registry_txn =
-        make_namespace_registry_txn(signer, GRID_PURCHASE_ORDER_NAMESPACE)?;
-    let purchase_order_namespace_permissions_txn = make_namespace_permissions_txn(
-        signer,
-        &purchase_order_contract,
-        GRID_PURCHASE_ORDER_NAMESPACE,
-    )?;
+    let purchase_order_namespace_registry_txn = CreateNamespaceRegistryActionBuilder::new()
+        .with_namespace(GRID_PURCHASE_ORDER_NAMESPACE.into())
+        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
+        .into_payload_builder()?
+        .into_transaction_builder(signer)?
+        .build(signer)?;
+    let purchase_order_namespace_permissions_txn =
+        CreateNamespaceRegistryPermissionActionBuilder::new()
+            .with_namespace(GRID_PURCHASE_ORDER_NAMESPACE.into())
+            .with_contract_name(purchase_order_contract.metadata.name.clone())
+            .with_read(true)
+            .with_write(true)
+            .into_payload_builder()?
+            .into_transaction_builder(signer)?
+            .build(signer)?;
     let purchase_order_pike_namespace_permissions_txn =
-        make_namespace_permissions_txn(signer, &purchase_order_contract, PIKE_NAMESPACE)?;
+        CreateNamespaceRegistryPermissionActionBuilder::new()
+            .with_namespace(PIKE_NAMESPACE.into())
+            .with_contract_name(purchase_order_contract.metadata.name)
+            .with_read(true)
+            .with_write(true)
+            .into_payload_builder()?
+            .into_transaction_builder(signer)?
+            .build(signer)?;
 
     txns.append(&mut vec![
         purchase_order_contract_registry_txn,
@@ -284,25 +397,6 @@ fn new_signer(private_key: &str) -> Result<TransactSigner, AppAuthHandlerError> 
     Ok(SawtoothSigner::new_boxed(context, private_key).try_into()?)
 }
 
-#[cfg(any(
-    feature = "location",
-    feature = "pike",
-    feature = "product",
-    feature = "purchase-order",
-    feature = "schema"
-))]
-fn make_contract_registry_txn(
-    signer: &dyn Signer,
-    name: &str,
-) -> Result<Transaction, AppAuthHandlerError> {
-    Ok(CreateContractRegistryActionBuilder::new()
-        .with_name(String::from(name))
-        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
-        .into_payload_builder()?
-        .into_transaction_builder(signer)?
-        .build(signer)?)
-}
-
 #[cfg(feature = "pike")]
 fn make_upload_contract_txn(
     signer: &dyn Signer,
@@ -316,47 +410,6 @@ fn make_upload_contract_txn(
         .with_inputs(action_addresses.clone())
         .with_outputs(action_addresses)
         .with_contract(contract.contract.clone())
-        .into_payload_builder()?
-        .into_transaction_builder(signer)?
-        .build(signer)?)
-}
-
-#[cfg(any(
-    feature = "location",
-    feature = "pike",
-    feature = "product",
-    feature = "purchase-order",
-    feature = "schema"
-))]
-fn make_namespace_registry_txn(
-    signer: &dyn Signer,
-    contract_prefix: &str,
-) -> Result<Transaction, AppAuthHandlerError> {
-    Ok(CreateNamespaceRegistryActionBuilder::new()
-        .with_namespace(contract_prefix.into())
-        .with_owners(vec![bytes_to_hex_str(signer.public_key())])
-        .into_payload_builder()?
-        .into_transaction_builder(signer)?
-        .build(signer)?)
-}
-
-#[cfg(any(
-    feature = "location",
-    feature = "pike",
-    feature = "product",
-    feature = "purchase-order",
-    feature = "schema"
-))]
-fn make_namespace_permissions_txn(
-    signer: &dyn Signer,
-    contract: &SmartContractArchive,
-    contract_prefix: &str,
-) -> Result<Transaction, AppAuthHandlerError> {
-    Ok(CreateNamespaceRegistryPermissionActionBuilder::new()
-        .with_namespace(contract_prefix.into())
-        .with_contract_name(contract.metadata.name.clone())
-        .with_read(true)
-        .with_write(true)
         .into_payload_builder()?
         .into_transaction_builder(signer)?
         .build(signer)?)
