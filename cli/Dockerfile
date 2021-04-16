@@ -14,6 +14,13 @@
 
 FROM hyperledger/grid-dev:v5 as grid-cli-builder
 
+# Install dependencies
+RUN apt-get update \
+ && apt-get install -y -q \
+    libxml2-dev \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 # Temporary workaround until sabre is updated to focal
 RUN USER=root cargo new --bin griddle
 RUN USER=root cargo new --bin contracts/purchase_order

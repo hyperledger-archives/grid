@@ -18,6 +18,8 @@ use crate::http::submit_batches;
 use crate::transaction::product_batch_builder;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+#[cfg(feature = "product-gdsn")]
+use grid_sdk::products::gdsn::get_trade_items_from_xml;
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
     ProductPayloadBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
@@ -275,6 +277,25 @@ pub fn do_show_products(
     let product = response.json::<GridProduct>()?;
     display_product(&product);
     Ok(())
+}
+
+#[cfg(feature = "product-gdsn")]
+pub fn create_product_payloads_from_xml(
+    path: &str,
+    owner: &str,
+) -> Result<Vec<ProductCreateAction>, CliError> {
+    let trade_items = get_trade_items_from_xml(&path)?;
+
+    let mut payloads = Vec::new();
+
+    for trade_item in trade_items {
+        payloads.push(
+            trade_item
+                .into_create_payload(&owner)
+                .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
+        );
+    }
+    Ok(payloads)
 }
 
 pub fn create_product_payloads_from_file(
