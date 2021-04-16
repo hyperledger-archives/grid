@@ -69,7 +69,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
 
     fn list_purchase_orders(
         &self,
-        org_id: Option<&str>,
+        org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -84,7 +84,6 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
 
     fn fetch_purchase_order(
         &self,
-        org_id: &str,
         uuid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
@@ -93,7 +92,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_purchase_order(org_id, uuid, service_id)
+        .fetch_purchase_order(uuid, service_id)
     }
 
     fn add_alternate_id(
@@ -148,7 +147,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
 
     fn list_purchase_orders(
         &self,
-        org_id: Option<&str>,
+        org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -163,7 +162,6 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
 
     fn fetch_purchase_order(
         &self,
-        org_id: &str,
         uuid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
@@ -172,7 +170,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_purchase_order(org_id, uuid, service_id)
+        .fetch_purchase_order(uuid, service_id)
     }
 
     fn add_alternate_id(

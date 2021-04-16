@@ -24,6 +24,8 @@ use crate::locations::{store::diesel::DieselLocationStore, LocationStore};
 use crate::pike::{store::diesel::DieselPikeStore, PikeStore};
 #[cfg(feature = "product")]
 use crate::products::{store::diesel::DieselProductStore, ProductStore};
+#[cfg(feature = "purchase-order")]
+use crate::purchase_order::{store::diesel::DieselPurchaseOrderStore, PurchaseOrderStore};
 #[cfg(feature = "schema")]
 use crate::schemas::{store::diesel::DieselSchemaStore, SchemaStore};
 #[cfg(feature = "batch-submitter")]
@@ -40,6 +42,8 @@ pub struct StoreState {
     pub pike_store: Arc<dyn PikeStore>,
     #[cfg(feature = "product")]
     pub product_store: Arc<dyn ProductStore>,
+    #[cfg(feature = "purchase-order")]
+    pub purchase_order_store: Arc<dyn PurchaseOrderStore>,
     #[cfg(feature = "schema")]
     pub schema_store: Arc<dyn SchemaStore>,
     #[cfg(feature = "track-and-trace")]
@@ -59,6 +63,8 @@ impl StoreState {
         let pike_store = Arc::new(DieselPikeStore::new(connection_pool.clone()));
         #[cfg(feature = "product")]
         let product_store = Arc::new(DieselProductStore::new(connection_pool.clone()));
+        #[cfg(feature = "purchase-order")]
+        let purchase_order_store = Arc::new(DieselPurchaseOrderStore::new(connection_pool.clone()));
         #[cfg(feature = "schema")]
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.clone()));
         #[cfg(feature = "track-and-trace")]
@@ -73,6 +79,8 @@ impl StoreState {
             pike_store,
             #[cfg(feature = "product")]
             product_store,
+            #[cfg(feature = "purchase-order")]
+            purchase_order_store,
             #[cfg(feature = "schema")]
             schema_store,
             #[cfg(feature = "track-and-trace")]
@@ -91,6 +99,8 @@ impl StoreState {
         let pike_store = Arc::new(DieselPikeStore::new(connection_pool.clone()));
         #[cfg(feature = "product")]
         let product_store = Arc::new(DieselProductStore::new(connection_pool.clone()));
+        #[cfg(feature = "purchase-order")]
+        let purchase_order_store = Arc::new(DieselPurchaseOrderStore::new(connection_pool.clone()));
         #[cfg(feature = "schema")]
         let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.clone()));
         #[cfg(feature = "track-and-trace")]
@@ -105,6 +115,8 @@ impl StoreState {
             pike_store,
             #[cfg(feature = "product")]
             product_store,
+            #[cfg(feature = "purchase-order")]
+            purchase_order_store,
             #[cfg(feature = "schema")]
             schema_store,
             #[cfg(feature = "track-and-trace")]

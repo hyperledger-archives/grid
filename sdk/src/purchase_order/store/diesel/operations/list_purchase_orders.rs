@@ -28,7 +28,7 @@ use diesel::prelude::*;
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchaseOrdersOperation {
     fn list_purchase_orders(
         &self,
-        org_id: Option<&str>,
+        org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -41,7 +41,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
 {
     fn list_purchase_orders(
         &self,
-        org_id: Option<&str>,
+        org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -162,7 +162,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
 {
     fn list_purchase_orders(
         &self,
-        org_id: Option<&str>,
+        org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
