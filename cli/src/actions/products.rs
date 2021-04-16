@@ -19,7 +19,7 @@ use crate::transaction::product_batch_builder;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "product-gdsn")]
-use grid_sdk::products::gdsn::get_trade_items_from_xml;
+use grid_sdk::products::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
     ProductPayloadBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
@@ -510,10 +510,11 @@ fn yaml_to_property_values(
         } else if !def.required {
             continue;
         } else {
-            return Err(CliError::PayloadError(format!(
-                "Field {} not found",
-                def.name
-            )));
+            #[cfg(feature = "product-gdsn")]
+            if def.name == GDSN_3_1_PROPERTY_NAME {
+                continue;
+            }
+            return Err(CliError::UserError(format!("Field {} not found", def.name)));
         };
 
         match def.data_type {
