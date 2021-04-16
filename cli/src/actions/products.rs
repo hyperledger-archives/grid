@@ -298,7 +298,7 @@ pub fn create_product_payloads_from_xml(
     Ok(payloads)
 }
 
-pub fn create_product_payloads_from_file(
+pub fn create_product_payloads_from_yaml(
     path: &str,
     url: &str,
     service_id: Option<&str>,

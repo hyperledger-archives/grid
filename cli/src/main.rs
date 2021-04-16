@@ -2000,7 +2000,7 @@ fn run() -> Result<(), CliError> {
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let actions = products::create_product_payloads_from_file(
+                    let actions = products::create_product_payloads_from_yaml(
                         m.value_of("file").unwrap(),
                         &url,
                         service_id.as_deref(),
