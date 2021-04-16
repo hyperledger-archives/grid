@@ -35,6 +35,9 @@ use crate::protocol::{
 use error::ProductGdsnError;
 use validate::validate_product_definitons;
 
+// Name of the property where GDSN 3.1 XML data will be stored
+pub const GDSN_3_1_PROPERTY_NAME: &str = "GDSN_3_1";
+
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct GridTradeItems {
     #[serde(rename = "tradeItem")]
@@ -51,7 +54,7 @@ pub struct TradeItem {
 impl TradeItem {
     pub fn into_create_payload(self, owner: &str) -> Result<ProductCreateAction, ProductGdsnError> {
         let xml_property = PropertyValueBuilder::new()
-            .with_name("xml_data".to_string())
+            .with_name(GDSN_3_1_PROPERTY_NAME.to_string())
             .with_data_type(DataType::String)
             .with_string_value(self.payload)
             .build()?;

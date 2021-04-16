@@ -17,7 +17,7 @@
   description: GS1 product schema
   owner: crgl
   properties:
-    - name: xml_data
+    - name: GDSN_3_1
       data_type: STRING
-      description: A string containing a GDSN Trade Item product definition in XML format.
+      description: A string containing a GDSN 3.1 Trade Item product definition in XML format.
       required: true
