@@ -53,53 +53,32 @@ pipeline {
             }
         }
 
-        stage("Build Grid UI Test Dependencies") {
-            steps {
-                sh 'docker build ui/grid-ui -f ui/grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
-                sh 'docker build . -f ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID'
-            }
-        }
-
         stage("Run Lint on Grid UI") {
             steps {
-                sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn lint'
-                sh 'docker run --rm --env CI=true product-sapling:$ISOLATION_ID yarn lint'
+                sh 'just ci-lint-ui'
             }
         }
 
         stage("Run Grid UI tests") {
             steps {
-                sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn test'
-                sh 'docker run --rm --env CI=true product-sapling:$ISOLATION_ID yarn test'
+                sh 'just ci-test-ui'
             }
         }
 
         stage("Run Lint on Grid") {
             steps {
-                sh 'docker build . -f docker/lint -t lint-grid:$ISOLATION_ID'
-                sh 'docker run --rm -v $(pwd):/project/grid lint-grid:$ISOLATION_ID'
+                sh 'just ci-lint-grid'
             }
         }
-
-        // Use a docker container to build and protogen, so that the Jenkins
-        // environment doesn't need all the dependencies.
-        stage("Build Grid Test Dependencies") {
-            steps {
-                sh 'REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
-                sh 'docker-compose -f docker/compose/grid_tests.yaml build --force-rm'
-            }
-        }
-
         stage("Run Grid unit tests") {
             steps {
-                sh 'docker-compose -f docker/compose/grid_tests.yaml up --abort-on-container-exit --exit-code-from grid_tests'
-                sh 'docker-compose -f docker/compose/grid_tests.yaml down'
+                sh 'just ci-unit-test-grid'
             }
         }
 
         stage("Run integration tests") {
             steps {
-                sh './bin/run_integration_tests'
+                sh 'just integration-test'
             }
         }
 
