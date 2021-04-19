@@ -26,6 +26,7 @@ use crate::protos::{
 use crate::protocol::schema::state::PropertyValue;
 
 /// Native implementation of ProductNamespace enum
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProductNamespace {
     GS1,

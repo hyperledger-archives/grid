@@ -166,16 +166,16 @@ impl From<(AgentModel, Vec<RoleModel>)> for Agent {
     }
 }
 
-impl Into<NewAgentModel> for Agent {
-    fn into(self) -> NewAgentModel {
-        NewAgentModel {
-            public_key: self.public_key,
-            org_id: self.org_id,
-            active: self.active,
-            metadata: self.metadata,
-            start_commit_num: self.start_commit_num,
+impl From<Agent> for NewAgentModel {
+    fn from(agent: Agent) -> NewAgentModel {
+        Self {
+            public_key: agent.public_key,
+            org_id: agent.org_id,
+            active: agent.active,
+            metadata: agent.metadata,
+            start_commit_num: agent.start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
-            service_id: self.service_id,
+            service_id: agent.service_id,
         }
     }
 }

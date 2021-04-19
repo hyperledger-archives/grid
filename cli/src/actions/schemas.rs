@@ -63,9 +63,9 @@ pub enum DataType {
     LatLong,
 }
 
-impl Into<StateDataType> for DataType {
-    fn into(self) -> StateDataType {
-        match self {
+impl From<DataType> for StateDataType {
+    fn from(data_type: DataType) -> Self {
+        match data_type {
             DataType::Bytes => StateDataType::Bytes,
             DataType::Boolean => StateDataType::Boolean,
             DataType::Number => StateDataType::Number,

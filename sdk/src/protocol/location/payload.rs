@@ -26,6 +26,7 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LocationNamespace {
     GS1,

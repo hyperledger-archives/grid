@@ -471,22 +471,23 @@ impl LocationUpdateYaml {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Deserialize, Debug)]
 pub enum Namespace {
     GS1,
 }
 
-impl Into<LocationNamespace> for Namespace {
-    fn into(self) -> LocationNamespace {
-        match self {
+impl From<Namespace> for LocationNamespace {
+    fn from(namespace: Namespace) -> Self {
+        match namespace {
             Namespace::GS1 => LocationNamespace::GS1,
         }
     }
 }
 
-impl Into<String> for Namespace {
-    fn into(self) -> String {
-        match self {
+impl From<Namespace> for String {
+    fn from(namespace: Namespace) -> Self {
+        match namespace {
             Namespace::GS1 => "GS1".to_string(),
         }
     }
