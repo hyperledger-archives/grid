@@ -1,5 +1,5 @@
 /**
- * Copyright 2018-2020 Cargill Incorporated
+ * Copyright 2018-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@import './styles/index.scss';
 
 #product-sapling {
+  @include grid-full;
+
+  grid-auto-rows: min-content;
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
 
   button {
     &:hover {
