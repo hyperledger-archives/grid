@@ -98,7 +98,9 @@ fn run() -> Result<(), DaemonError> {
     log_spec_builder.module("hyper", log::LevelFilter::Warn);
     log_spec_builder.module("tokio", log::LevelFilter::Warn);
 
-    Logger::with(log_spec_builder.build()).start()?;
+    Logger::with(log_spec_builder.build())
+        .start()
+        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let config = GridConfigBuilder::default()
         .with_cli_args(&matches)
@@ -112,7 +114,7 @@ fn run() -> Result<(), DaemonError> {
                 Ok(())
             }
             #[cfg(not(feature = "sawtooth-support"))]
-            Err(DaemonError::UnsupportedEndpoint(format!(
+            Err(DaemonError::with_message(&format!(
                 "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not enabled for this binary.",
                 config.endpoint().url()
             )))
@@ -124,7 +126,7 @@ fn run() -> Result<(), DaemonError> {
                 Ok(())
             }
             #[cfg(not(feature = "splinter-support"))]
-            Err(DaemonError::UnsupportedEndpoint(format!(
+            Err(DaemonError::with_message(&format!(
                 "A Splinter connection endpoint ({}) was provided but Splinter support is not enabled for this binary.",
                 config.endpoint().url()
             )))

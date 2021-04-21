@@ -114,7 +114,7 @@ pub fn setup_grid(
             vec![batch],
             Some(Duration::from_secs(SCABBARD_SUBMISSION_WAIT_SECS)),
         )
-        .map_err(|err| AppAuthHandlerError::BatchSubmitError(err.to_string()))?;
+        .map_err(|err| AppAuthHandlerError::from_source(Box::new(err)))?;
 
     Ok(())
 }

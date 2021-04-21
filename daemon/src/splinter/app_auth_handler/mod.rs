@@ -137,14 +137,13 @@ fn process_admin_event(
             let proposed_admin_pubkeys = scabbard_args
                 .get("admin_keys")
                 .ok_or_else(|| {
-                    AppAuthHandlerError::InvalidMessageError(
-                        "Scabbard Service is not properly configured with \"admin_keys\" argument."
-                            .into(),
+                    AppAuthHandlerError::with_message(
+                        "Scabbard Service is not properly configured with \"admin_keys\" argument.",
                     )
                 })
                 .and_then(|keys_str| {
                     serde_json::from_str::<Vec<String>>(keys_str).map_err(|err| {
-                        AppAuthHandlerError::InvalidMessageError(format!(
+                        AppAuthHandlerError::with_message(&format!(
                             "unable to parse application metadata: {}",
                             err
                         ))
@@ -155,7 +154,7 @@ fn process_admin_event(
                 .create_connection(&msg_proposal.circuit_id, &service.service_id)?;
 
             EventProcessor::start(event_connection, None, vec![handler])
-                .map_err(|err| AppAuthHandlerError::EventProcessorError(err.0))?;
+                .map_err(|err| AppAuthHandlerError::from_source(Box::new(err)))?;
 
             setup_grid(
                 scabbard_admin_key,

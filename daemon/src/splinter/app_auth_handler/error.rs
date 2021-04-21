@@ -30,146 +30,112 @@ use transact::{
 };
 
 #[derive(Debug)]
-pub enum AppAuthHandlerError {
-    WebSocketError(events::WebSocketError),
-    GetNodeError(GetNodeError),
-    InvalidMessageError(String),
-    ScabbardEventConnectionError(ScabbardEventConnectionError),
-    EventIoError(EventIoError),
-    EventProcessorError(String),
-    SabreError(String),
-    SigningError(String),
-    BatchSubmitError(String),
-    ScabbardError(String),
-    TransactError(String),
+pub struct AppAuthHandlerError {
+    message: Option<String>,
+    source: Option<Box<dyn Error>>,
 }
 
-impl Error for AppAuthHandlerError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            AppAuthHandlerError::WebSocketError(err) => Some(err),
-            AppAuthHandlerError::GetNodeError(err) => Some(err),
-            AppAuthHandlerError::InvalidMessageError(_) => None,
-            AppAuthHandlerError::ScabbardEventConnectionError(err) => Some(err),
-            AppAuthHandlerError::EventIoError(err) => Some(err),
-            AppAuthHandlerError::EventProcessorError(_) => None,
-            AppAuthHandlerError::SabreError(_) => None,
-            AppAuthHandlerError::SigningError(_) => None,
-            AppAuthHandlerError::BatchSubmitError(_) => None,
-            AppAuthHandlerError::ScabbardError(_) => None,
-            AppAuthHandlerError::TransactError(_) => None,
+impl AppAuthHandlerError {
+    pub fn with_message(message: &str) -> Self {
+        Self {
+            message: Some(message.to_string()),
+            source: None,
+        }
+    }
+
+    pub fn from_source(source: Box<dyn Error>) -> Self {
+        Self {
+            message: None,
+            source: Some(source),
         }
     }
 }
 
 impl fmt::Display for AppAuthHandlerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            AppAuthHandlerError::WebSocketError(msg) => write!(f, "WebsocketError {}", msg),
-            AppAuthHandlerError::GetNodeError(msg) => write!(f, "GetNodeError {}", msg),
-            AppAuthHandlerError::InvalidMessageError(msg) => {
-                write!(f, "The client received an invalid message: {}", msg)
-            }
-            AppAuthHandlerError::ScabbardEventConnectionError(msg) => {
-                write!(f, "ScabbardEventConnectionError {}", msg)
-            }
-            AppAuthHandlerError::EventIoError(msg) => write!(f, "EventIoError {}", msg),
-            AppAuthHandlerError::EventProcessorError(msg) => {
-                write!(f, "Event processor error: {}", msg)
-            }
-            AppAuthHandlerError::SabreError(msg) => write!(
-                f,
-                "An error occurred while building a Sabre payload: {}",
-                msg
-            ),
-            AppAuthHandlerError::SigningError(msg) => {
-                write!(f, "A signing error occurred: {}", msg)
-            }
-            AppAuthHandlerError::BatchSubmitError(msg) => write!(
-                f,
-                "An error occurred while submitting a batch to the scabbard service: {}",
-                msg
-            ),
-            AppAuthHandlerError::ScabbardError(msg) => {
-                write!(f, "An error occurred in the Scabbard client: {}", msg)
-            }
-            AppAuthHandlerError::TransactError(msg) => write!(
-                f,
-                "An error occurred while building a transaction or batch: {}",
-                msg
-            ),
+        match (&self.message, &self.source) {
+            (Some(m), Some(s)) => write!(f, "{}: {}", m, s),
+            (Some(m), _) => write!(f, "{}", m),
+            (_, Some(s)) => write!(f, "{:?}", s),
+            (None, None) => write!(f, "An internal error occured"),
         }
     }
 }
 
-impl From<SabrePayloadBuildError> for AppAuthHandlerError {
-    fn from(err: SabrePayloadBuildError) -> AppAuthHandlerError {
-        AppAuthHandlerError::SabreError(err.to_string())
+impl Error for AppAuthHandlerError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.source.as_ref().map(|s| s.as_ref())
     }
 }
 
 impl From<ActionBuildError> for AppAuthHandlerError {
     fn from(err: ActionBuildError) -> AppAuthHandlerError {
-        AppAuthHandlerError::SabreError(err.to_string())
+        AppAuthHandlerError::from_source(Box::new(err))
+    }
+}
+
+impl From<SabrePayloadBuildError> for AppAuthHandlerError {
+    fn from(err: SabrePayloadBuildError) -> AppAuthHandlerError {
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<std::string::FromUtf8Error> for AppAuthHandlerError {
     fn from(err: std::string::FromUtf8Error) -> AppAuthHandlerError {
-        AppAuthHandlerError::InvalidMessageError(format!("{}", err))
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<events::WebSocketError> for AppAuthHandlerError {
     fn from(err: events::WebSocketError) -> Self {
-        AppAuthHandlerError::WebSocketError(err)
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<GetNodeError> for AppAuthHandlerError {
     fn from(err: GetNodeError) -> Self {
-        AppAuthHandlerError::GetNodeError(err)
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<ScabbardEventConnectionError> for AppAuthHandlerError {
     fn from(err: ScabbardEventConnectionError) -> Self {
-        AppAuthHandlerError::ScabbardEventConnectionError(err)
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<EventIoError> for AppAuthHandlerError {
     fn from(err: EventIoError) -> Self {
-        AppAuthHandlerError::EventIoError(err)
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<SigningError> for AppAuthHandlerError {
     fn from(err: SigningError) -> Self {
-        AppAuthHandlerError::SigningError(err.to_string())
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<ScabbardClientError> for AppAuthHandlerError {
     fn from(err: ScabbardClientError) -> Self {
-        AppAuthHandlerError::ScabbardError(err.to_string())
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<ContractArchiveError> for AppAuthHandlerError {
     fn from(err: ContractArchiveError) -> Self {
-        Self::TransactError(err.to_string())
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<BatchBuildError> for AppAuthHandlerError {
     fn from(err: BatchBuildError) -> Self {
-        Self::TransactError(err.to_string())
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }
 
 impl From<TransactionBuildError> for AppAuthHandlerError {
     fn from(err: TransactionBuildError) -> Self {
-        Self::TransactError(err.to_string())
+        AppAuthHandlerError::from_source(Box::new(err))
     }
 }

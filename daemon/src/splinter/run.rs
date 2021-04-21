@@ -21,7 +21,6 @@ use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use cylinder::load_key;
-use grid_sdk::error::InternalError;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
 use grid_sdk::rest_api::actix_web_3::{BatchSubmitterState, StoreState};
@@ -41,12 +40,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let reactor = Reactor::new();
 
     let scabbard_admin_key = load_key("gridd", &[PathBuf::from(config.admin_key_dir())])
-        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?
-        .ok_or_else(|| {
-            DaemonError::StartUpError(Box::new(InternalError::with_message(
-                "no private key found".into(),
-            )))
-        })?
+        .map_err(|err| DaemonError::from_source(Box::new(err)))?
+        .ok_or_else(|| DaemonError::with_message("no private key found"))?
         .as_hex();
 
     let scabbard_event_connection_factory =
@@ -56,11 +51,12 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         let connection_uri = config
             .database_url()
             .parse()
-            .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+            .map_err(|err| DaemonError::from_source(Box::new(err)))?;
         match connection_uri {
             ConnectionUri::Postgres(_) => {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
-                    ConnectionPool::new(config.database_url())?;
+                    ConnectionPool::new(config.database_url())
+                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
                 (
                     StoreState::with_pg_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
@@ -68,7 +64,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
             }
             ConnectionUri::Sqlite(_) => {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
-                    ConnectionPool::new(config.database_url())?;
+                    ConnectionPool::new(config.database_url())
+                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
                 (
                     StoreState::with_sqlite_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
@@ -83,7 +80,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         db_handler,
         reactor.igniter(),
         scabbard_admin_key,
-    )?;
+    )
+    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let batch_submitter = SplinterBatchSubmitter::new(config.endpoint().url());
     let batch_submitter_state = BatchSubmitterState::with_splinter(batch_submitter);
@@ -98,7 +96,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         #[cfg(feature = "integration")]
         key_state,
         config.endpoint().clone(),
-    )?;
+    )
+    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let reactor_shutdown_signaler = reactor.shutdown_signaler();
 
@@ -120,14 +119,12 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
 
         rest_api_shutdown_handle.shutdown();
     })
-    .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     rest_api_join_handle
         .join()
-        .map_err(|_| {
-            DaemonError::ShutdownError("Unable to cleanly join the REST API thread".into())
-        })
-        .and_then(|res| res.map_err(DaemonError::from))?;
+        .map_err(|_| DaemonError::with_message("Unable to cleanly join the REST API thread"))
+        .and_then(|res| res.map_err(|err| DaemonError::from_source(Box::new(err))))?;
 
     if let Err(err) = reactor.wait_for_shutdown() {
         error!("Unable to shutdown splinter event reactor: {}", err);
