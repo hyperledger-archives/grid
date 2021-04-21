@@ -1,0 +1,107 @@
+/**
+ * Copyright 2018-2021 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+$padding-s: 1rem;
+$padding-m: 1.5rem;
+$padding-l: 2rem;
+$margin-s: 1rem;
+$margin-m: 1.5rem;
+$margin-l: 2rem;
+
+$bp-sm-start: 0;
+$bp-sm-end: 599px;
+$bp-md-start: 600px;
+$bp-md-end: 719px;
+$bp-lg-start: 720px;
+$bp-lg-end: 839px;
+$bp-xl-start: 840px;
+
+:root {
+  --bp-sm-start: $bp-sm-start;
+  --bp-sm-end: $bp-sm-end;
+  --bp-sm-cols: 4;
+  --bp-sm-gutter: 1rem;
+  --bp-md-start: $bp-md-start;
+  --bp-md-end: $bp-md-end;
+  --bp-md-cols: 8;
+  --bp-md-gutter: 1rem;
+  --bp-lg-start: $bp-lg-start;
+  --bp-lg-end: $bp-lg-end;
+  --bp-lg-cols: 8;
+  --bp-lg-gutter: 1rem;
+  --bp-xl-start: $bp-xl-start;
+  --bp-xl-cols: 12;
+  --bp-xl-gutter: 1.5rem;
+}
+
+@mixin grid-full {
+  display: grid;
+
+  @media screen and (min-width: $bp-sm-start) and (max-width: $bp-sm-end) {
+    grid-template-columns:
+      [full-start] 0
+      [main-start] repeat(var(--bp-sm-cols), 1fr) [main-end]
+      0 [full-end];
+    column-gap: var(--bp-sm-gutter);
+  }
+
+  @media screen and (min-width: $bp-md-start) and (max-width: $bp-md-end) {
+    grid-template-columns:
+      [full-start] 0
+      [main-start] repeat(var(--bp-md-cols), 1fr) [main-end]
+      0 [full-end];
+    column-gap: var(--bp-md-gutter);
+  }
+
+  @media screen and (min-width: $bp-lg-start) and (max-width: $bp-lg-end) {
+    grid-template-columns:
+      [full-start] 0
+      [main-start] repeat(var(--bp-lg-cols), 1fr) [main-end]
+      0 [full-end];
+    column-gap: var(--bp-lg-gutter);
+  }
+
+  @media screen and (min-width: $bp-xl-start) {
+    grid-template-columns:
+      [full-start] 0
+      [main-start] repeat(var(--bp-xl-cols), 1fr) [main-end]
+      0 [full-end];
+    column-gap: var(--bp-xl-gutter);
+  }
+}
+
+@mixin grid-main {
+  display: grid;
+
+  @media screen and (min-width: $bp-sm-start) and (max-width: $bp-sm-end) {
+    grid-template-columns: [main-start] repeat(var(--bp-sm-cols), 1fr) [main-end];
+    column-gap: var(--bp-sm-gutter);
+  }
+
+  @media screen and (min-width: $bp-md-start) and (max-width: $bp-md-end) {
+    grid-template-columns: [main-start] repeat(var(--bp-md-cols), 1fr) [main-end];
+    column-gap: var(--bp-md-gutter);
+  }
+
+  @media screen and (min-width: $bp-lg-start) and (max-width: $bp-lg-end) {
+    grid-template-columns: [main-start] repeat(var(--bp-lg-cols), 1fr) [main-end];
+    column-gap: var(--bp-lg-gutter);
+  }
+
+  @media screen and (min-width: $bp-xl-start) {
+    grid-template-columns: [main-start] repeat(var(--bp-xl-cols), 1fr) [main-end];
+    column-gap: var(--bp-xl-gutter);
+  }
+}
