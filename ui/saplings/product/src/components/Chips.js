@@ -16,7 +16,7 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Icon from '@material-ui/core/Icon';
 
 import './Chips.scss';
 
@@ -30,7 +30,7 @@ export function Chip({ label, removeFn, data, deleteable }) {
       <div className="chip">
         <span className="label">{label}</span>
         {deleteable && (
-          <FontAwesomeIcon icon="times" className="delete" onClick={removeFn} />
+          <Icon className="delete" onClick={removeFn}>cancel</Icon>
         )}
       </div>
       <div className="chip-data">{data}</div>
