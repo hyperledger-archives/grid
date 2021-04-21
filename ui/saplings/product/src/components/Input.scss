@@ -17,53 +17,36 @@
 #product-sapling {
   .grid-input {
     position: relative;
-    padding: 1rem 0 0;
-    margin-top: 0.5rem;
-    width: 100%;
+    display: flex;
+    align-items: center;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.1);
+    height: 2rem;
 
-    label {
+    &.icon {
+      input, select {
+        padding-left: 2.5rem;
+      }
+    }
+
+    .icon {
       position: absolute;
-      top: 0;
-      display: block;
-      transition: 0.2s;
-      font-size: 0.7rem;
+      left: 0.5rem;
+      margin: 0 0.5rem 0 0;
+      color: var(--color-grey);
     }
 
     input {
       height: calc(2rem + 2px);
       width: 100%;
-      border: 1px solid #333333;
+      border: none;
+      border-radius: 2px;
       padding: 0.5rem;
-      background: transparent;
-      outline: none;
-      transition: border-color 0.2s;
       font-size: 1rem;
+      background: transparent;
 
       &::placeholder {
-        color: transparent;
-      }
-
-      &:placeholder-shown {
-        border-color: #555555;
-
-        & ~ label {
-          cursor: text;
-          top: 1.5rem;
-          padding-left: 0.5rem;
-          font-size: 1rem;
-          pointer-events: none;
-        }
-      }
-
-      &:focus {
-        border-color: var(--color-primary);
-
-        ~ label {
-          font-size: 0.7rem;
-          font-weight: bold;
-          top: 0;
-          padding-left: 0;
-        }
+        color: var(--color-grey);
       }
 
       &[type='file'] {
@@ -82,49 +65,23 @@
           width: 100%;
           height: 100%;
         }
-
-        + label {
-          width: 100%;
-          padding: 2rem;
-          border: 1px dashed #333333;
-          color: #333333;
-          font-size: 2rem;
-          font-weight: 300;
-          display: inline-block;
-          position: relative;
-          text-align: center;
-
-          &:hover {
-            cursor: pointer;
-            background: rgba(0, 0, 0, 0.1);
-          }
-        }
       }
     }
 
     select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background: transparent;
+      background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+      background-repeat: no-repeat;
+      background-position-x: 100%;
+      background-position-y: 6px;
       height: calc(2rem + 2px);
       width: 100%;
       border: 0;
-      outline: 1px solid #333333;
-      padding: 0.5rem;
-      background: transparent;
-      transition: border-color 0.2s;
+      padding: 0 0.7rem 0 0.5rem;
       font-size: 1rem;
-
-      & ~ label {
-        cursor: text;
-        top: 0;
-        font-size: 0.7rem;
-      }
-
-      &:focus {
-        outline-color: var(--color-primary);
-
-        ~ label {
-          font-weight: bold;
-        }
-      }
     }
   }
 }

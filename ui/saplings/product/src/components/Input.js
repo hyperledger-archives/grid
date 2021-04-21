@@ -15,11 +15,14 @@
  */
 import React from 'react';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
+import Icon from '@material-ui/core/Icon'
 import './Input.scss';
 
 export function Input({
   type,
   accept,
+  className,
   id,
   label,
   name,
@@ -28,12 +31,16 @@ export function Input({
   onChange,
   required,
   multiple,
+  icon,
   children
 }) {
   return (
-    <div className="grid-input">
+    <div className={classNames('grid-input', (type === 'select' && 'select'), (icon && 'icon'), className)}>
       {type === 'select' && (
         <>
+          {icon &&
+            <Icon className="icon">{icon}</Icon>
+          }
           <select
             id={id}
             aria-label={`${label} select`}
@@ -45,7 +52,6 @@ export function Input({
           >
             {children}
           </select>
-          <label htmlFor={id}>{label}</label>
         </>
       )}
       {type === 'boolean' && (
@@ -65,11 +71,13 @@ export function Input({
             <option value>True</option>
             <option value={false}>False</option>
           </select>
-          <label htmlFor={id}>{label}</label>
         </>
       )}
       {type !== 'select' && type !== 'boolean' && (
         <>
+          {icon &&
+            <Icon className="icon">{icon}</Icon>
+          }
           <input
             type={type}
             id={id}
@@ -82,7 +90,6 @@ export function Input({
             onChange={onChange}
             required={required}
           />
-          <label htmlFor={id}>{label}</label>
         </>
       )}
     </div>
@@ -92,6 +99,7 @@ export function Input({
 Input.propTypes = {
   type: PropTypes.oneOf(['text', 'password', 'file', 'select', 'number']),
   accept: PropTypes.string,
+  className: PropTypes.string,
   id: PropTypes.string,
   label: PropTypes.string,
   name: PropTypes.string,
@@ -100,12 +108,14 @@ Input.propTypes = {
   onChange: PropTypes.func.isRequired,
   required: PropTypes.bool,
   multiple: PropTypes.bool,
+  icon: PropTypes.string,
   children: PropTypes.node
 };
 
 Input.defaultProps = {
   type: 'text',
   accept: undefined,
+  className: undefined,
   id: undefined,
   label: undefined,
   name: undefined,
@@ -113,5 +123,6 @@ Input.defaultProps = {
   pattern: undefined,
   required: false,
   multiple: undefined,
+  icon: undefined,
   children: undefined
 };
