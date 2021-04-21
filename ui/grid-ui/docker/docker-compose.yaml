@@ -24,7 +24,7 @@
       image: pike-contract-builder
       container_name: pike-contract-builder
       build:
-        context: ../..
+        context: ../../..
         dockerfile: contracts/pike/Dockerfile
         args:
           - REPO_VERSION=${REPO_VERSION}
@@ -39,7 +39,7 @@
       image: product-contract-builder
       container_name: product-contract-builder
       build:
-        context: ../..
+        context: ../../..
         dockerfile: contracts/product/Dockerfile
         args:
           - REPO_VERSION=${REPO_VERSION}
@@ -54,7 +54,7 @@
       image: schema-contract-builder
       container_name: schema-contract-builder
       build:
-        context: ../..
+        context: ../../..
         dockerfile: contracts/schema/Dockerfile
         args:
           - REPO_VERSION=${REPO_VERSION}
@@ -63,21 +63,6 @@
       entrypoint: |
         bash -c "
           cp /tmp/grid-schema*.scar /usr/share/scar
-        "
-
-    tnt-contract-builder:
-      image: tnt-contract-builder
-      container_name: tnt-contract-builder
-      build:
-        context: ../..
-        dockerfile: contracts/track_and_trace/Dockerfile
-        args:
-          - REPO_VERSION=${REPO_VERSION}
-      volumes:
-        - contracts:/usr/share/scar
-      entrypoint: |
-        bash -c "
-          cp /tmp/grid-track-and-trace*.scar /usr/share/scar
         "
 
     grid-db:
@@ -97,7 +82,7 @@
       container_name: gridd
       hostname: gridd
       build:
-        context: ../..
+        context: ../../..
         dockerfile: daemon/Dockerfile
         args:
           - REPO_VERSION=${REPO_VERSION}
@@ -185,7 +170,8 @@
 
     grid-ui:
       build:
-        context: ..
+        context: ../../..
+        dockerfile: ui/Dockerfile
         args:
           REPO_VERSION: ${REPO_VERSION}
           REACT_APP_SPLINTER_URL: '/splinterd'
@@ -201,8 +187,8 @@
 
     sapling-dev-server:
       build:
-        context: ../..
-        dockerfile: grid-ui/sapling-dev-server/Dockerfile
+        context: ../../..
+        dockerfile: ui/sapling-dev-server/Dockerfile
       container_name: sapling-dev-server
       expose:
         - 80
