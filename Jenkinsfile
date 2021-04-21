@@ -86,14 +86,14 @@ pipeline {
         stage("Build Grid Test Dependencies") {
             steps {
                 sh 'REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
-                sh 'docker-compose -f docker/compose/grid_tests.yaml build --force-rm'
+                sh 'docker-compose -f docker/compose/grid-tests.yaml build --force-rm'
             }
         }
 
         stage("Run Grid unit tests") {
             steps {
-                sh 'docker-compose -f docker/compose/grid_tests.yaml up --abort-on-container-exit --exit-code-from grid_tests'
-                sh 'docker-compose -f docker/compose/grid_tests.yaml down'
+                sh 'docker-compose -f docker/compose/grid-tests.yaml up --abort-on-container-exit --exit-code-from grid-tests'
+                sh 'docker-compose -f docker/compose/grid-tests.yaml down'
             }
         }
 
@@ -130,7 +130,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker-compose -f docker/compose/grid_tests.yaml down'
+            sh 'docker-compose -f docker/compose/grid-tests.yaml down'
             sh 'docker-compose -f docker/compose/copy-artifacts.yaml down'
         }
         success {
