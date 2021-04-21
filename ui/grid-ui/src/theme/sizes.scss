@@ -20,4 +20,89 @@ $margin-s: 1rem;
 $margin-m: 1.5rem;
 $margin-l: 2rem;
 
-$mobile: 768px;
+$bp-sm-start: 0;
+$bp-sm-end: 599px;
+$bp-md-start: 600px;
+$bp-md-end: 719px;
+$bp-lg-start: 720px;
+$bp-lg-end: 839px;
+$bp-xl-start: 840px;
+
+:root {
+  --bp-sm-start: $bp-sm-start;
+  --bp-sm-end: $bp-sm-end;
+  --bp-sm-cols: 4;
+  --bp-sm-gutter: 1rem;
+  --bp-md-start: $bp-md-start;
+  --bp-md-end: $bp-md-end;
+  --bp-md-cols: 8;
+  --bp-md-gutter: 1rem;
+  --bp-lg-start: $bp-lg-start;
+  --bp-lg-end: $bp-lg-end;
+  --bp-lg-cols: 8;
+  --bp-lg-gutter: 1rem;
+  --bp-xl-start: $bp-xl-start;
+  --bp-xl-cols: 12;
+  --bp-xl-gutter: 1.5rem;
+}
+
+@mixin grid-full {
+  display: grid;
+
+  @media screen and (min-width: $bp-sm-start) and (max-width: $bp-sm-end) {
+    grid-template-columns:
+      [full-start] 1rem
+      [main-start] repeat(var(--bp-sm-cols), 1fr) [main-end]
+      1rem [full-end];
+    column-gap: var(--bp-sm-gutter);
+  }
+
+  @media screen and (min-width: $bp-md-start) and (max-width: $bp-md-end) {
+    grid-template-columns:
+      [full-start] 1rem
+      [main-start] repeat(var(--bp-md-cols), 1fr) [main-end]
+      1rem [full-end];
+    column-gap: var(--bp-md-gutter);
+  }
+
+  @media screen and (min-width: $bp-lg-start) and (max-width: $bp-lg-end) {
+    grid-template-columns:
+      [full-start] 1rem
+      [main-start] repeat(var(--bp-lg-cols), 1fr) [main-end]
+      1rem [full-end];
+    column-gap: var(--bp-lg-gutter);
+  }
+
+  @media screen and (min-width: $bp-xl-start) {
+    grid-template-columns:
+      [full-start] 1rem
+      [main-start] repeat(var(--bp-xl-cols), 1fr) [main-end]
+      1rem [full-end];
+    column-gap: var(--bp-xl-gutter);
+  }
+}
+
+@mixin grid-main {
+  display: grid;
+  grid-column: main-start / main-end;
+
+  @media screen and (min-width: $bp-sm-start) and (max-width: $bp-sm-end) {
+    grid-template-columns: [main-start] repeat(var(--bp-sm-cols), 1fr) [main-end];
+    column-gap: var(--bp-sm-gutter);
+  }
+
+  @media screen and (min-width: $bp-md-start) and (max-width: $bp-md-end) {
+    grid-template-columns: [main-start] repeat(var(--bp-md-cols), 1fr) [main-end];
+    column-gap: var(--bp-md-gutter);
+  }
+
+  @media screen and (min-width: $bp-lg-start) and (max-width: $bp-lg-end) {
+    grid-template-columns: [main-start] repeat(var(--bp-lg-cols), 1fr) [main-end];
+    column-gap: var(--bp-lg-gutter);
+  }
+
+  @media screen and (min-width: $bp-xl-start) {
+    grid-template-columns: [main-start] repeat(var(--bp-xl-cols), 1fr) [main-end];
+    column-gap: var(--bp-xl-gutter);
+  }
+}
