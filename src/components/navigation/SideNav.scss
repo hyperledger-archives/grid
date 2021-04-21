@@ -87,6 +87,15 @@
         border-radius: 10px;
         outline: none;
         transition: $transitionDuration-s;
+
+        .brand-logo {
+          width: 1em;
+          height: 1em;
+          overflow: hidden;
+          font-size: 1.5rem;
+          flex-shrink: 0;
+          user-select: none;
+        }
       }
     }
 

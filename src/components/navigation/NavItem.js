@@ -20,7 +20,7 @@ import classnames from 'classnames';
 import Icon from '@material-ui/core/Icon';
 
 export const NavItem = props => {
-  const { path, logo, label } = props;
+  const { path, icon, label, logo } = props;
 
   const classes = classnames('nav-tab', {
     'page-active': path === `/${window.location.pathname.split('/')[1]}`
@@ -30,7 +30,11 @@ export const NavItem = props => {
     <a href={path} className={classes}>
       <div className="border">
         <div className="icon">
-          <Icon>{logo}</Icon>
+          {logo ? (
+            <img src={logo} className="brand-logo" alt={label} />
+          ) : (
+            <Icon>{icon}</Icon>
+          )}
         </div>
       </div>
       <div className="label">{label}</div>
@@ -38,8 +42,33 @@ export const NavItem = props => {
   );
 };
 
+const iconImagePropsCheck = (props, propName, componentName) => {
+  if (!props.icon && !props.logo) {
+    return new Error(
+      `One of 'logo' or 'icon' is required by '${componentName}' component`
+    );
+  }
+
+  if (
+    typeof props[propName] !== 'string' &&
+    typeof props[propName] !== 'undefined'
+  ) {
+    return new Error(
+      `Invalid prop '${propName}' passed to '${componentName}': must be a string`
+    );
+  }
+
+  return true;
+};
+
 NavItem.propTypes = {
+  icon: iconImagePropsCheck,
   label: PropTypes.string.isRequired,
-  logo: PropTypes.string.isRequired,
+  logo: iconImagePropsCheck,
   path: PropTypes.string.isRequired
+};
+
+NavItem.defaultProps = {
+  icon: undefined,
+  logo: undefined
 };
