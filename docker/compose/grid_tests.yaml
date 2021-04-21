@@ -25,6 +25,4 @@ services:
         - https_proxy
         - no_proxy
     image: grid:tests
-    volumes:
-      - ../..:/project/grid
-    command: run_unit_tests
+    command: bash -c "just test"
