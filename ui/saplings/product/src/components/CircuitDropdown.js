@@ -14,73 +14,18 @@
  * limitations under the License.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-import { useServiceState, useServiceDispatch } from '../state/service-context';
-import useOnClickOutside from '../hooks/on-click-outside';
+import React, {useEffect} from 'react';
+import PropTypes from 'prop-types';
+import { Input } from './Input';
+import { useServiceState, useServiceDispatch, parseServiceID } from '../state/service-context';
 import { listScabbardServices } from '../api/splinter';
 import './CircuitDropdown.scss';
 
-const CircuitDropdown = () => {
+const CircuitDropdown = ({
+  className
+}) => {
   const { services, selectedService } = useServiceState();
   const serviceDispatch = useServiceDispatch();
-  const [listOpen, setListOpen] = useState(false);
-  const [headerText, setHeaderText] = useState();
-
-  const caretUp = <FontAwesomeIcon icon="caret-up" />;
-  const caretDown = <FontAwesomeIcon icon="caret-down" />;
-
-  const toggleDropdown = () => {
-    if (listOpen || services.length > 0) {
-      setListOpen(!listOpen);
-    }
-  };
-
-  const handleSelect = serviceID => {
-    setListOpen(false);
-    serviceDispatch({
-      type: 'select',
-      payload: {
-        serviceID
-      }
-    });
-  };
-
-  const handleSelectNone = () => {
-    setListOpen(false);
-    serviceDispatch({
-      type: 'selectNone'
-    });
-  };
-
-  const listItems = services.map(serviceID => (
-    <div
-      className="dd-list-item"
-      role="button"
-      tabIndex="0"
-      onClick={() => handleSelect(serviceID)}
-      onKeyPress={() => handleSelect(serviceID)}
-    >
-      {serviceID}
-      {serviceID === selectedService && <FontAwesomeIcon icon="check" />}
-    </div>
-  ));
-
-  const ref = useRef();
-  useOnClickOutside(ref, () => setListOpen(false));
-
-  useEffect(() => {
-    if (services.length > 0) {
-      if (selectedService === 'none') {
-        setHeaderText('Select a service');
-      } else {
-        setHeaderText(selectedService);
-      }
-    } else {
-      setHeaderText('No services available');
-    }
-  }, [selectedService, services]);
 
   useEffect(() => {
     const getServices = async () => {
@@ -100,35 +45,34 @@ const CircuitDropdown = () => {
     getServices();
   }, [serviceDispatch]);
 
+  const circuitOptions = services.map(s => (
+    <option key={s} value={s}>{parseServiceID(s).circuit}</option>
+  ));
+
+  const handleChange = e => {
+    const {value} = e.target;
+    serviceDispatch({
+      type: 'select',
+      payload: {
+        serviceID: value
+      }
+    });
+  }
+
   return (
-    <div className="dd-wrapper" ref={ref}>
-      <div
-        className={`dd-header ${services.length === 0 && 'disabled'}`}
-        role="button"
-        tabIndex="0"
-        onClick={() => toggleDropdown(!listOpen)}
-        onKeyPress={() => toggleDropdown(!listOpen)}
-      >
-        <div className="dd-header-text">{headerText}</div>
-        {listOpen ? caretUp : caretDown}
-      </div>
-      {listOpen && (
-        <ul className="dd-list">
-          <div
-            className="dd-list-item"
-            role="button"
-            tabIndex="0"
-            onClick={handleSelectNone}
-            onKeyPress={handleSelectNone}
-          >
-            None
-            {selectedService === 'none' && <FontAwesomeIcon icon="check" />}
-          </div>
-          {listItems}
-        </ul>
-      )}
-    </div>
+    <Input type="select" className={`${className} circuit-select`} onChange={handleChange} value={selectedService}>
+      <option value="none">None</option>
+      {circuitOptions}
+    </Input>
   );
 };
+
+CircuitDropdown.propTypes = {
+  className: PropTypes.string
+}
+
+CircuitDropdown.defaultProps = {
+  className: undefined
+}
 
 export default CircuitDropdown;

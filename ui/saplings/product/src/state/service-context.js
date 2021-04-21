@@ -20,12 +20,21 @@ import PropTypes from 'prop-types';
 const ServiceStateContext = React.createContext();
 const ServiceDispatchContext = React.createContext();
 
+const parseServiceID = id => {
+  const t = id.split("::");
+  return {
+    circuit: t[0],
+    service: t[1]
+  }
+}
+
 const serviceReducer = (state, action) => {
   switch (action.type) {
     case 'select': {
       const updatedState = {
         ...state,
-        selectedService: action.payload.serviceID
+        selectedService: action.payload.serviceID,
+        selectedCircuit: parseServiceID(action.payload.serviceID).circuit
       };
       window.sessionStorage.setItem(
         'SERVICE_STATE',
@@ -34,7 +43,10 @@ const serviceReducer = (state, action) => {
       return updatedState;
     }
     case 'selectNone': {
-      const updatedState = { ...state, selectedService: 'none' };
+      const updatedState = { ...state,
+        selectedService: 'none',
+        selectedCircuit: 'none'
+      };
       window.sessionStorage.setItem(
         'SERVICE_STATE',
         JSON.stringify(updatedState)
@@ -58,6 +70,7 @@ function ServiceProvider({ children }) {
   const sessionState = window.sessionStorage.getItem('SERVICE_STATE');
   const defaultState = {
     selectedService: 'none',
+    selectedCircuit: 'none',
     services: []
   };
   const [state, dispatch] = React.useReducer(
@@ -94,4 +107,4 @@ function useServiceDispatch() {
   return context;
 }
 
-export { ServiceProvider, useServiceState, useServiceDispatch };
+export { ServiceProvider, useServiceState, useServiceDispatch, parseServiceID };
