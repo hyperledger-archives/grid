@@ -12,39 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# docker build . -f docker/lint -t lint-grid
-# docker run --rm -v $(pwd):/project/grid lint-grid
 
-FROM ubuntu:focal as GRID-LINTER
+FROM hyperledger/grid-dev:v9 as GRID-LINTER
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install base dependencies
-RUN apt-get update \
-    && apt-get install -y -q \
-        curl \
-        gcc \
-        libpq-dev \
-        libssl-dev \
-        libsqlite3-dev \
-        libxml2-dev \
-        libzmq3-dev \
-        pkg-config \
-        unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Rust
-RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
- && chmod +x /usr/bin/rustup-init \
- && rustup-init -y
-
-# Install protoc
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
-    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.7.1-linux-x86_64.zip
-
-ENV PATH=$PATH:/root/.cargo/bin:/project/grid/bin
+ENV PATH=$PATH:/root/.cargo/bin
 
 # Install rustfmt and clippy
 RUN rustup component add rustfmt \
