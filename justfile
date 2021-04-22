@@ -88,6 +88,24 @@ lint-experimental:
     done
     echo "\n\033[92mLint Success\033[0m\n"
 
+lint-grid-ui:
+    #!/usr/bin/env sh
+    set -e
+    cd ui/grid-ui
+    yarn lint
+    echo "\n\033[92mLint Grid UI Success\033[0m\n"
+
+lint-product-sapling:
+    #!/usr/bin/env sh
+    set -e
+    cd ui/saplings/product
+    yarn lint
+    echo "\n\033[92mLint Product Sapling Success\033[0m\n"
+
+lint-ui:
+    just lint-grid-ui
+    just lint-product-sapling
+
 test: build
     #!/usr/bin/env sh
     set -e
@@ -123,3 +141,21 @@ test-experimental-hack: build-experimental
         $cmd
     done
     echo "\n\033[92mTest Success\033[0m\n"
+
+test-grid-ui:
+    #!/usr/bin/env sh
+    set -e
+    cd ui/grid-ui
+    yarn test
+    echo "\n\033[92mTest Grid UI Success\033[0m\n"
+
+test-product-sapling:
+    #!/usr/bin/env sh
+    set -e
+    cd ui/saplings/product
+    yarn test
+    echo "\n\033[92mTest Product Sapling Success\033[0m\n"
+
+test-ui:
+    just test-grid-ui
+    just test-product-sapling
