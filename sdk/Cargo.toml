@@ -91,6 +91,8 @@ experimental = [
     "pike-rest-api",
     "postgres",
     "product-gdsn",
+    "product-store-postgres",
+    "product-store-sqlite",
     "purchase-order",
     "rest-api-resources",
     "rest-api-actix-web-3",
@@ -112,6 +114,8 @@ product-gdsn = [
 ]
 purchase-order = []
 product = ["pike", "schema"]
+product-store-postgres = ["postgres"]
+product-store-sqlite = ["sqlite"]
 schema = ["pike"]
 track-and-trace = ["base64"]
 batch-processor = ["batch-store", "batch-submitter", "log"]

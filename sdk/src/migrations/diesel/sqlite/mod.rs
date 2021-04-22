@@ -23,7 +23,7 @@ use crate::pike::store::diesel::schema::{
     pike_inherit_from::dsl::*, pike_organization::dsl::*, pike_organization_alternate_id::dsl::*,
     pike_organization_metadata::dsl::*, pike_permissions::dsl::*, pike_role::dsl::*,
 };
-#[cfg(feature = "product")]
+#[cfg(feature = "product-store-sqlite")]
 use crate::products::store::diesel::schema::{product::dsl::*, product_property_value::dsl::*};
 #[cfg(feature = "schema")]
 use crate::schemas::store::diesel::schema::{
@@ -87,7 +87,7 @@ pub fn clear_database(conn: &SqliteConnection) -> Result<(), MigrationsError> {
         {
             diesel::delete(pike_organization_location_assoc).execute(conn)?;
         }
-        #[cfg(feature = "product")]
+        #[cfg(feature = "product-store-sqlite")]
         {
             diesel::delete(product).execute(conn)?;
             diesel::delete(product_property_value).execute(conn)?;

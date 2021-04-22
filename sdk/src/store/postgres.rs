@@ -47,7 +47,7 @@ impl StoreFactory for PgStoreFactory {
         ))
     }
 
-    #[cfg(feature = "product")]
+    #[cfg(all(feature = "diesel", feature = "product-store-postgres"))]
     fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore> {
         Box::new(crate::products::DieselProductStore::new(self.pool.clone()))
     }
