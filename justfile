@@ -20,6 +20,7 @@ crates := '\
     contracts/pike \
     contracts/location \
     contracts/product \
+    contracts/purchase_order \
     contracts/schema \
     contracts/track_and_trace \
     '
