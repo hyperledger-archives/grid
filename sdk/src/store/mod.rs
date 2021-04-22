@@ -38,7 +38,7 @@ pub trait StoreFactory {
     #[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
     fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore>;
     /// Get a new `SchemaStore`
-    #[cfg(feature = "schema")]
+    #[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
     fn get_grid_schema_store(&self) -> Box<dyn crate::schemas::SchemaStore>;
     /// Get a new `TrackAndTraceStore`
     #[cfg(feature = "track-and-trace")]

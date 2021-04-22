@@ -13,10 +13,12 @@
 // limitations under the License.
 
 pub mod addressing;
+#[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
 pub mod store;
 
 pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 
-#[cfg(feature = "diesel")]
+#[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
 pub use store::diesel::DieselSchemaStore;
+#[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
 pub use store::SchemaStore;

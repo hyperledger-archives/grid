@@ -97,6 +97,8 @@ experimental = [
     "rest-api-resources",
     "rest-api-actix-web-3",
     "sawtooth-compat",
+    "schema-store-postgres",
+    "schema-store-sqlite",
     "sqlite",
     "track-and-trace",
     "workflow"
@@ -117,6 +119,8 @@ product = ["pike", "schema"]
 product-store-postgres = ["postgres"]
 product-store-sqlite = ["sqlite"]
 schema = ["pike"]
+schema-store-postgres = ["postgres"]
+schema-store-sqlite = ["sqlite"]
 track-and-trace = ["base64"]
 batch-processor = ["batch-store", "batch-submitter", "log"]
 batch-store = []
