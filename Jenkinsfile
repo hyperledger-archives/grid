@@ -106,8 +106,10 @@ pipeline {
 
     post {
         always {
-            sh 'docker-compose -f docker/compose/grid-tests.yaml down'
+            sh 'docker-compose -f daemon/test/docker-compose.yaml down'
             sh 'docker-compose -f docker/compose/copy-artifacts.yaml down'
+            sh 'docker-compose -f docker/compose/grid-tests.yaml down'
+            sh 'docker-compose -f integration/docker-compose.yaml down'
         }
         success {
             archiveArtifacts '*.tgz, *.zip, build/debs/*.deb, build/scar/*.scar'
