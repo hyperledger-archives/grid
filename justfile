@@ -56,6 +56,43 @@ build-experimental:
     done
     echo "\n\033[92mBuild Success\033[0m\n"
 
+ci:
+    just ci-lint-ui
+    just ci-test-ui
+    just ci-lint
+    just ci-test
+
+ci-build-ui-test-deps:
+    #!/usr/bin/env sh
+    set -e
+    docker build . -f ui/grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID
+    docker build . -f ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID
+
+ci-lint:
+    #!/usr/bin/env sh
+    set -e
+    docker-compose -f docker/compose/run-lint.yaml build lint-grid
+    docker-compose -f docker/compose/run-lint.yaml up \
+      --abort-on-container-exit lint-grid
+
+ci-lint-ui: ci-build-ui-test-deps
+    #!/usr/bin/env sh
+    set -e
+    docker run --rm --env CI=true grid-ui:$ISOLATION_ID just lint-grid-ui
+    docker run --rm --env CI=true product-sapling:$ISOLATION_ID just lint-product-sapling
+
+ci-test:
+    #!/usr/bin/env sh
+    set -e
+    docker-compose -f docker/compose/grid-tests.yaml build --force-rm
+    docker-compose -f docker/compose/grid-tests.yaml up --abort-on-container-exit --exit-code-from grid_tests
+
+ci-test-ui: ci-build-ui-test-deps
+    #!/usr/bin/env sh
+    set -e
+    docker run --rm --env CI=true grid-ui:$ISOLATION_ID just test-grid-ui
+    docker run --rm --env CI=true product-sapling:$ISOLATION_ID just test-product-sapling
+
 clean:
     cargo clean
 
