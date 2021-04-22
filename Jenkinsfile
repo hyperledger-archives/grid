@@ -53,59 +53,34 @@ pipeline {
             }
         }
 
-        stage("Build Grid UI Test Dependencies") {
-            steps {
-                sh 'docker build ui/grid-ui -f ui/grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
-                sh 'docker build . -f ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID'
-            }
-        }
-
         stage("Run Lint on Grid UI") {
             steps {
-                sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn lint'
-                sh 'docker run --rm --env CI=true product-sapling:$ISOLATION_ID yarn lint'
+                sh 'just ci-lint-ui'
             }
         }
 
         stage("Run Grid UI tests") {
             steps {
-                sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn test'
-                sh 'docker run --rm --env CI=true product-sapling:$ISOLATION_ID yarn test'
+                sh 'just ci-test-ui'
             }
         }
 
         stage("Run Lint on Grid") {
             steps {
-                sh 'docker build . -f docker/lint -t lint-grid:$ISOLATION_ID'
-                sh 'docker run --rm -v $(pwd):/project/grid lint-grid:$ISOLATION_ID'
-            }
-        }
 
-        // Use a docker container to build and protogen, so that the Jenkins
-        // environment doesn't need all the dependencies.
-        stage("Build Grid Test Dependencies") {
-            steps {
-                sh 'REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
-                sh 'docker-compose -f docker/compose/grid-tests.yaml build --force-rm'
+                sh 'just ci-lint'
             }
         }
 
         stage("Run Grid unit tests") {
             steps {
-                sh 'docker-compose -f docker/compose/grid-tests.yaml up --abort-on-container-exit --exit-code-from grid-tests'
-                sh 'docker-compose -f docker/compose/grid-tests.yaml down'
+                sh 'just ci-test'
             }
         }
 
         stage("Run integration tests") {
             steps {
-                sh './bin/run_integration_tests'
-            }
-        }
-
-        stage("Build gridd with experimental features") {
-            steps {
-                sh 'ISOLATION_ID=$ISOLATION_ID"experimental" CARGO_ARGS=" --features experimental" docker-compose -f docker-compose.yaml build gridd'
+                sh 'just ci-test-integration'
             }
         }
 
@@ -122,6 +97,7 @@ pipeline {
 
         stage("Build artifacts") {
             steps {
+                sh 'REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
                 sh 'mkdir -p build/debs'
                 sh 'docker-compose -f docker/compose/copy-artifacts.yaml up'
             }
