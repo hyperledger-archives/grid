@@ -34,8 +34,6 @@ services:
         - https_proxy
         - no_proxy
     image: grid:tests
-    volumes:
-      - ../..:/project/grid
     command: |
       bash -c "
         # we need to wait for the db to have started.
