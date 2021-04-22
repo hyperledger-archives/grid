@@ -86,8 +86,10 @@ experimental = [
     "batch-store",
     "client",
     "client-reqwest",
-    "postgres",
+    "location-store-postgres",
+    "location-store-sqlite",
     "pike-rest-api",
+    "postgres",
     "product-gdsn",
     "purchase-order",
     "rest-api-resources",
@@ -101,6 +103,8 @@ experimental = [
 client = []
 client-reqwest = ["client", "reqwest"]
 location = ["pike", "schema"]
+location-store-postgres = ["postgres"]
+location-store-sqlite = ["sqlite"]
 pike = []
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
 product-gdsn = [

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 pub mod addressing;
+#[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
 pub mod store;
 
-#[cfg(feature = "diesel")]
+#[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
 pub use store::diesel::DieselLocationStore;
+#[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
 pub use store::LocationStore;

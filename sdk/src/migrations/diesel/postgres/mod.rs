@@ -15,9 +15,9 @@
 //! Defines methods and utilities to interact with user tables in the database.
 
 use crate::commits::store::diesel::schema::{chain_record::dsl::*, commits::dsl::*};
-#[cfg(feature = "location")]
+#[cfg(feature = "location-store-postgres")]
 use crate::locations::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
-#[cfg(all(feature = "pike", feature = "location"))]
+#[cfg(all(feature = "pike", feature = "location-store-postgres"))]
 use crate::pike::store::diesel::schema::pike_organization_location_assoc::dsl::*;
 #[cfg(feature = "pike")]
 use crate::pike::store::diesel::schema::{
@@ -80,12 +80,12 @@ pub fn clear_database(conn: &PgConnection) -> Result<(), MigrationsError> {
             diesel::delete(pike_organization).execute(conn)?;
             diesel::delete(pike_role).execute(conn)?;
         }
-        #[cfg(feature = "location")]
+        #[cfg(feature = "location-store-postgres")]
         {
             diesel::delete(location_attribute).execute(conn)?;
             diesel::delete(location).execute(conn)?;
         }
-        #[cfg(all(feature = "pike", feature = "location"))]
+        #[cfg(all(feature = "pike", feature = "location-store-postgres"))]
         {
             diesel::delete(pike_organization_location_assoc).execute(conn)?;
         }

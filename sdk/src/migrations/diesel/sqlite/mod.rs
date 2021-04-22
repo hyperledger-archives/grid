@@ -13,9 +13,9 @@
 // limitations under the License.
 
 use crate::commits::store::diesel::schema::{chain_record::dsl::*, commits::dsl::*};
-#[cfg(feature = "location")]
+#[cfg(feature = "location-store-sqlite")]
 use crate::locations::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
-#[cfg(all(feature = "pike", feature = "location"))]
+#[cfg(all(feature = "pike", feature = "location-store-sqlite"))]
 use crate::pike::store::diesel::schema::pike_organization_location_assoc::dsl::*;
 #[cfg(feature = "pike")]
 use crate::pike::store::diesel::schema::{
@@ -78,12 +78,12 @@ pub fn clear_database(conn: &SqliteConnection) -> Result<(), MigrationsError> {
             diesel::delete(pike_organization).execute(conn)?;
             diesel::delete(pike_role).execute(conn)?;
         }
-        #[cfg(feature = "location")]
+        #[cfg(feature = "location-store-sqlite")]
         {
             diesel::delete(location_attribute).execute(conn)?;
             diesel::delete(location).execute(conn)?;
         }
-        #[cfg(all(feature = "pike", feature = "location"))]
+        #[cfg(all(feature = "pike", feature = "location-store-sqlite"))]
         {
             diesel::delete(pike_organization_location_assoc).execute(conn)?;
         }

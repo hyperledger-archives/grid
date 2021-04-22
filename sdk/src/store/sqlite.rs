@@ -40,7 +40,7 @@ impl StoreFactory for SqliteStoreFactory {
         Box::new(crate::pike::DieselPikeStore::new(self.pool.clone()))
     }
 
-    #[cfg(feature = "location")]
+    #[cfg(all(feature = "diesel", feature = "location-store-sqlite"))]
     fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore> {
         Box::new(crate::locations::DieselLocationStore::new(
             self.pool.clone(),
