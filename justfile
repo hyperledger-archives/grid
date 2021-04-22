@@ -61,6 +61,7 @@ ci:
     just ci-test-ui
     just ci-lint
     just ci-test
+    ci-test-integration
 
 ci-build-ui-test-deps:
     #!/usr/bin/env sh
@@ -86,6 +87,22 @@ ci-test:
     set -e
     docker-compose -f docker/compose/grid-tests.yaml build --force-rm
     docker-compose -f docker/compose/grid-tests.yaml up --abort-on-container-exit --exit-code-from grid_tests
+
+ci-test-integration:
+    #!/usr/bin/env sh
+    set -e
+    echo "\033[1mRunning daemon integration test\033[0m"
+    cd daemon/test && \
+      CARGO_ARGS=" --features experimental" \
+      docker-compose up \
+        --abort-on-container-exit \
+        --exit-code-from daemon --build
+    echo "\033[1mRunning integration test\033[0m"
+    cd ../../integration && \
+      CARGO_ARGS=" --features experimental" \
+      docker-compose up \
+        --abort-on-container-exit \
+        --exit-code-from gridd --build
 
 ci-test-ui: ci-build-ui-test-deps
     #!/usr/bin/env sh
