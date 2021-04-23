@@ -25,4 +25,6 @@ services:
         - https_proxy
         - no_proxy
     image: grid:tests
+    environment:
+        - TEST_ARGS=-- --test-threads=1
     command: bash -c "just test"

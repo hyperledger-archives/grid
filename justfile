@@ -167,7 +167,7 @@ test: build
     do
         for crate in $(echo {{crates}})
         do
-            cmd="cargo test --manifest-path=$crate/Cargo.toml $feature"
+            cmd="cargo test --manifest-path=$crate/Cargo.toml $feature $TEST_ARGS"
             echo "\033[1m$cmd\033[0m"
             $cmd
         done
