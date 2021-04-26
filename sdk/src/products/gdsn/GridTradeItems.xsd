@@ -35,7 +35,7 @@
 
     <xsd:complexType name="gridTradeItems">
         <xsd:sequence>
-            <xsd:element name="tradeItem" type="ti:TradeItemType" minOccurs="1"/>
+            <xsd:element name="tradeItem" type="ti:TradeItemType" minOccurs="1" maxOccurs="unbounded"/>
         </xsd:sequence>
     </xsd:complexType>
 
