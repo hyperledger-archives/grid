@@ -36,6 +36,7 @@ cfg_if! {
 
 pub mod handler;
 mod state;
+mod workflow;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
