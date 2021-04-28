@@ -23,7 +23,7 @@ use crate::rest_api::{
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
 #[get("/product/{id}")]
-pub async fn fetch_product(
+pub async fn get_product(
     state: web::Data<StoreState>,
     product_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
@@ -32,7 +32,7 @@ pub async fn fetch_product(
 ) -> HttpResponse {
     match version {
         ProtocolVersion::V1 => {
-            match v1::fetch_product(
+            match v1::get_product(
                 state.product_store.clone(),
                 product_id.into_inner(),
                 query.into_inner().service_id.as_deref(),

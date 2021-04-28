@@ -27,7 +27,7 @@ pub enum ProtocolVersion {
 }
 
 #[get("/organization/{id}")]
-pub async fn fetch_organization(
+pub async fn get_organization(
     state: web::Data<StoreState>,
     id: web::Path<String>,
     query: web::Query<QueryServiceId>,
@@ -36,7 +36,7 @@ pub async fn fetch_organization(
 ) -> HttpResponse {
     match version {
         ProtocolVersion::V1 => {
-            match v1::fetch_organization(
+            match v1::get_organization(
                 state.pike_store.clone(),
                 id.into_inner(),
                 query.into_inner().service_id.as_deref(),

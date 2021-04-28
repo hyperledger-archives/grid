@@ -15,5 +15,5 @@
 pub mod handler;
 pub mod payloads;
 
-pub use handler::{fetch_location, list_locations};
+pub use handler::{get_location, list_locations};
 pub use payloads::{LatLongSlice, LocationListSlice, LocationPropertyValueSlice, LocationSlice};

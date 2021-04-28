@@ -23,13 +23,13 @@ use crate::batches::store::{
 use crate::error::InternalError;
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::batches::store::diesel) trait FetchBatchOperation {
-    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError>;
+pub(in crate::batches::store::diesel) trait GetBatchOperation {
+    fn get_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> FetchBatchOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
+impl<'a> GetBatchOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
         self.conn.transaction::<_, BatchStoreError, _>(|| {
             let batch_model = batches::table
                 .select(batches::all_columns)
@@ -59,8 +59,8 @@ impl<'a> FetchBatchOperation for BatchStoreOperations<'a, diesel::pg::PgConnecti
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> FetchBatchOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
+impl<'a> GetBatchOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn get_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
         self.conn.transaction::<_, BatchStoreError, _>(|| {
             let batch_model = batches::table
                 .select(batches::all_columns)

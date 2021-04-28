@@ -56,13 +56,13 @@ pub async fn list_schemas(
     Ok(SchemaListSlice { data, paging })
 }
 
-pub async fn fetch_schema(
+pub async fn get_schema(
     store: Arc<dyn SchemaStore>,
     name: String,
     service_id: Option<&str>,
 ) -> Result<SchemaSlice, ErrorResponse> {
     let schema = store
-        .fetch_schema(&name, service_id)
+        .get_schema(&name, service_id)
         .map_err(|err| match err {
             SchemaStoreError::InternalError(err) => ErrorResponse::internal_error(Box::new(err)),
             SchemaStoreError::ConstraintViolationError(err) => {

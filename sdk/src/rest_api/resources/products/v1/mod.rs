@@ -15,5 +15,5 @@
 mod handler;
 mod payloads;
 
-pub use handler::{fetch_product, list_products};
+pub use handler::{get_product, list_products};
 pub use payloads::{LatLongSlice, ProductListSlice, ProductPropertyValueSlice, ProductSlice};

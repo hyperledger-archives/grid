@@ -62,7 +62,7 @@ pub async fn list_purchase_orders(
 }
 
 #[get("/purchase-order/{uuid}")]
-pub async fn fetch_purchase_order(
+pub async fn get_purchase_order(
     state: web::Data<StoreState>,
     uuid: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
@@ -71,7 +71,7 @@ pub async fn fetch_purchase_order(
 ) -> HttpResponse {
     match version {
         ProtocolVersion::V1 => {
-            match v1::fetch_purchase_order(
+            match v1::get_purchase_order(
                 state.purchase_order_store.clone(),
                 uuid.into_inner(),
                 query_service_id.into_inner().service_id.as_deref(),
@@ -103,7 +103,7 @@ pub async fn list_purchase_order_versions(
 }
 
 #[get("/purchase-order/{uuid}/versions/{version_id}")]
-pub async fn fetch_purchase_order_version(
+pub async fn get_purchase_order_version(
     _state: web::Data<StoreState>,
     _uuid: web::Path<String>,
     _version_id: web::Path<String>,
@@ -131,7 +131,7 @@ pub async fn list_purchase_order_version_revisions(
 }
 
 #[get("/purchase-order/{uuid}/versions/{version_id}/revisions/{revision_number}")]
-pub async fn fetch_purchase_order_version_revision(
+pub async fn get_purchase_order_version_revision(
     _state: web::Data<StoreState>,
     _uuid: web::Path<String>,
     _version_id: web::Path<String>,

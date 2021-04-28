@@ -15,5 +15,5 @@
 mod handler;
 mod payloads;
 
-pub use handler::{fetch_role, list_roles_for_organization};
+pub use handler::{get_role, list_roles_for_organization};
 pub use payloads::{RoleListSlice, RoleSlice};

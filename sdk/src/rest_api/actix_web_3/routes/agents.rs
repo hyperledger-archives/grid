@@ -23,7 +23,7 @@ use crate::rest_api::{
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
 #[get("/agent/{public_key}")]
-pub async fn fetch_agent(
+pub async fn get_agent(
     state: web::Data<StoreState>,
     public_key: web::Path<String>,
     query: web::Query<QueryServiceId>,
@@ -32,7 +32,7 @@ pub async fn fetch_agent(
 ) -> HttpResponse {
     match version {
         ProtocolVersion::V1 => {
-            match v1::fetch_agent(
+            match v1::get_agent(
                 state.pike_store.clone(),
                 public_key.into_inner(),
                 query.into_inner().service_id.as_deref(),

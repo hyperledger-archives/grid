@@ -29,7 +29,7 @@ use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_location::LocationStoreAddLocationOperation as _;
 use operations::delete_location::LocationStoreDeleteLocationOperation as _;
-use operations::fetch_location::LocationStoreFetchLocationOperation as _;
+use operations::get_location::LocationStoreGetLocationOperation as _;
 use operations::list_locations::LocationStoreListLocationsOperation as _;
 use operations::update_location::LocationStoreUpdateLocationOperation as _;
 use operations::LocationStoreOperations;
@@ -64,7 +64,7 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         .add_location(location.into(), attributes, current_commit_num)
     }
 
-    fn fetch_location(
+    fn get_location(
         &self,
         location_id: &str,
         service_id: Option<&str>,
@@ -74,7 +74,7 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_location(location_id, service_id)
+        .get_location(location_id, service_id)
     }
 
     fn list_locations(
@@ -129,7 +129,7 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
         .add_location(location.into(), attributes, current_commit_num)
     }
 
-    fn fetch_location(
+    fn get_location(
         &self,
         location_id: &str,
         service_id: Option<&str>,
@@ -139,7 +139,7 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_location(location_id, service_id)
+        .get_location(location_id, service_id)
     }
 
     fn list_locations(

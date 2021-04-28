@@ -23,7 +23,7 @@ use crate::rest_api::{
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
 #[get("/schema/{name}")]
-pub async fn fetch_schema(
+pub async fn get_schema(
     state: web::Data<StoreState>,
     name: web::Path<String>,
     query: web::Query<QueryServiceId>,
@@ -32,7 +32,7 @@ pub async fn fetch_schema(
 ) -> HttpResponse {
     match version {
         ProtocolVersion::V1 => {
-            match v1::fetch_schema(
+            match v1::get_schema(
                 state.schema_store.clone(),
                 name.into_inner(),
                 query.into_inner().service_id.as_deref(),

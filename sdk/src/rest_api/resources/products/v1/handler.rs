@@ -56,13 +56,13 @@ pub async fn list_products(
     Ok(ProductListSlice { data, paging })
 }
 
-pub async fn fetch_product(
+pub async fn get_product(
     store: Arc<dyn ProductStore>,
     product_id: String,
     service_id: Option<&str>,
 ) -> Result<ProductSlice, ErrorResponse> {
     let product = store
-        .fetch_product(&product_id, service_id)
+        .get_product(&product_id, service_id)
         .map_err(|err| match err {
             ProductStoreError::InternalError(err) => ErrorResponse::internal_error(Box::new(err)),
             ProductStoreError::ConstraintViolationError(err) => {

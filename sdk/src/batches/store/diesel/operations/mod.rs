@@ -14,8 +14,8 @@
 
 pub(super) mod add_batch;
 pub(super) mod change_batch_to_submitted;
-pub(super) mod fetch_batch;
-pub(super) mod fetch_unclaimed_batches;
+pub(super) mod get_batch;
+pub(super) mod get_unclaimed_batches;
 pub(super) mod list_batches;
 pub(super) mod relinquish_claim;
 pub(super) mod update_submission_error_info;

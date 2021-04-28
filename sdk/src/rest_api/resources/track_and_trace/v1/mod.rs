@@ -15,7 +15,7 @@
 pub mod handler;
 pub mod payloads;
 
-pub use handler::{fetch_record, fetch_record_property, list_records};
+pub use handler::{get_record, get_record_property, list_records};
 pub use payloads::{
     AssociatedAgentSlice, LatLong, PropertySlice, PropertyValueSlice, ProposalSlice,
     RecordListSlice, RecordSlice, ReporterSlice, StructPropertyValue, Value,

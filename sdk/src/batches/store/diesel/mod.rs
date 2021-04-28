@@ -24,8 +24,8 @@ use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_batch::AddBatchOperation as _;
 use operations::change_batch_to_submitted::ChangeBatchToSubmittedOperation as _;
-use operations::fetch_batch::FetchBatchOperation as _;
-use operations::fetch_unclaimed_batches::FetchUnclaimedBatchesOperation as _;
+use operations::get_batch::GetBatchOperation as _;
+use operations::get_unclaimed_batches::GetUnclaimedBatchesOperation as _;
 use operations::list_batches::ListBatchesOperation as _;
 use operations::relinquish_claim::RelinquishClaimOperation as _;
 use operations::update_submission_error_info::UpdateSubmissionErrorInfoOperation as _;
@@ -54,13 +54,13 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
         .add_batch(batch)
     }
 
-    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
+    fn get_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
         BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_batch(id)
+        .get_batch(id)
     }
 
     fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
@@ -72,7 +72,7 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
         .list_batches(offset, limit)
     }
 
-    fn fetch_unclaimed_batches(
+    fn get_unclaimed_batches(
         &self,
         limit: i64,
         secs_claim_is_valid: i64,
@@ -82,7 +82,7 @@ impl BatchStore for DieselBatchStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_unclaimed_batches(limit, secs_claim_is_valid)
+        .get_unclaimed_batches(limit, secs_claim_is_valid)
     }
 
     fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError> {
@@ -129,13 +129,13 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
         .add_batch(batch)
     }
 
-    fn fetch_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
+    fn get_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
         BatchStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_batch(id)
+        .get_batch(id)
     }
 
     fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
@@ -147,7 +147,7 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
         .list_batches(offset, limit)
     }
 
-    fn fetch_unclaimed_batches(
+    fn get_unclaimed_batches(
         &self,
         limit: i64,
         secs_claim_is_valid: i64,
@@ -157,7 +157,7 @@ impl BatchStore for DieselBatchStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_unclaimed_batches(limit, secs_claim_is_valid)
+        .get_unclaimed_batches(limit, secs_claim_is_valid)
     }
 
     fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError> {

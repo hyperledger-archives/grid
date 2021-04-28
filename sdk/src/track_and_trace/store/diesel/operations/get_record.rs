@@ -22,8 +22,8 @@ use crate::track_and_trace::store::Record;
 
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreFetchRecordOperation {
-    fn fetch_record(
+pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreGetRecordOperation {
+    fn get_record(
         &self,
         record_id: &str,
         service_id: Option<&str>,
@@ -31,10 +31,10 @@ pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreFetchRecor
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> TrackAndTraceStoreFetchRecordOperation
+impl<'a> TrackAndTraceStoreGetRecordOperation
     for TrackAndTraceStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn fetch_record(
+    fn get_record(
         &self,
         record_id: &str,
         service_id: Option<&str>,
@@ -67,10 +67,10 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> TrackAndTraceStoreFetchRecordOperation
+impl<'a> TrackAndTraceStoreGetRecordOperation
     for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn fetch_record(
+    fn get_record(
         &self,
         record_id: &str,
         service_id: Option<&str>,

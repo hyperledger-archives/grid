@@ -60,7 +60,7 @@ pub async fn submit_batches(
         .map(BatchStatusLink::from)
 }
 
-pub async fn fetch_batch_statuses(
+pub async fn get_batch_statuses(
     response_url: String,
     submitter: Arc<dyn BatchSubmitter>,
     ids: String,

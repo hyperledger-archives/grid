@@ -22,7 +22,7 @@ use crate::products::MAX_COMMIT_NUM;
 use models::{NewProduct, NewProductPropertyValue, Product as ModelProduct, ProductPropertyValue};
 use operations::{
     add_product::AddProductOperation, delete_product::DeleteProductOperation,
-    fetch_product::FetchProductOperation, list_products::ListProductsOperation,
+    get_product::GetProductOperation, list_products::ListProductsOperation,
     update_product::UpdateProductOperation, ProductStoreOperations,
 };
 
@@ -52,7 +52,7 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
         .add_product(product)
     }
 
-    fn fetch_product(
+    fn get_product(
         &self,
         product_id: &str,
         service_id: Option<&str>,
@@ -62,7 +62,7 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_product(product_id, service_id)
+        .get_product(product_id, service_id)
     }
 
     fn list_products(
@@ -118,7 +118,7 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
         .add_product(product)
     }
 
-    fn fetch_product(
+    fn get_product(
         &self,
         product_id: &str,
         service_id: Option<&str>,
@@ -128,7 +128,7 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_product(product_id, service_id)
+        .get_product(product_id, service_id)
     }
 
     fn list_products(

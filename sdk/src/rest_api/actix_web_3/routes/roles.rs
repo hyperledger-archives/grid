@@ -23,7 +23,7 @@ use crate::rest_api::{
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
 #[get("/role/{org_id}/{name}")]
-pub async fn fetch_role(
+pub async fn get_role(
     state: web::Data<StoreState>,
     path_variables: web::Path<(String, String)>,
     query: web::Query<QueryServiceId>,
@@ -33,7 +33,7 @@ pub async fn fetch_role(
     match version {
         ProtocolVersion::V1 => {
             let (org_id, name) = path_variables.into_inner();
-            match v1::fetch_role(
+            match v1::get_role(
                 state.pike_store.clone(),
                 org_id,
                 name,

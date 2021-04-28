@@ -23,7 +23,7 @@ use crate::rest_api::{
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
 #[get("/record/{record_id}")]
-pub async fn fetch_record(
+pub async fn get_record(
     state: web::Data<StoreState>,
     record_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
@@ -32,7 +32,7 @@ pub async fn fetch_record(
 ) -> HttpResponse {
     match version {
         ProtocolVersion::V1 => {
-            match v1::fetch_record(
+            match v1::get_record(
                 state.tnt_store.clone(),
                 record_id.into_inner(),
                 query.into_inner().service_id.as_deref(),
@@ -82,7 +82,7 @@ pub async fn list_records(
 }
 
 #[get("/record/{record_id}/property/{property_name}")]
-pub async fn fetch_record_property_name(
+pub async fn get_record_property_name(
     state: web::Data<StoreState>,
     path_variables: web::Path<(String, String)>,
     query: web::Query<QueryServiceId>,
@@ -92,7 +92,7 @@ pub async fn fetch_record_property_name(
     match version {
         ProtocolVersion::V1 => {
             let (record_id, property_name) = path_variables.into_inner();
-            match v1::fetch_record_property(
+            match v1::get_record_property(
                 state.tnt_store.clone(),
                 record_id,
                 property_name,

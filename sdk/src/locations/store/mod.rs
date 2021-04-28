@@ -86,7 +86,7 @@ pub trait LocationStore: Send + Sync {
     ///
     ///  * `location_id` - The ID of the location to be fetched
     ///  * `service_id` - optional - The service ID to fetch the location from
-    fn fetch_location(
+    fn get_location(
         &self,
         location_id: &str,
         service_id: Option<&str>,
@@ -134,12 +134,12 @@ where
         (**self).add_location(location)
     }
 
-    fn fetch_location(
+    fn get_location(
         &self,
         location_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
-        (**self).fetch_location(location_id, service_id)
+        (**self).get_location(location_id, service_id)
     }
 
     fn list_locations(

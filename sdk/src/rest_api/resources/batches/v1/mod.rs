@@ -15,5 +15,5 @@
 pub mod handler;
 pub mod payloads;
 
-pub use handler::{fetch_batch_statuses, submit_batches};
+pub use handler::{get_batch_statuses, submit_batches};
 pub use payloads::{BatchStatus, BatchStatusLink, BatchStatusResponse, InvalidTransaction};

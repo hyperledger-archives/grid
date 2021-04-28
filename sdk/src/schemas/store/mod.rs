@@ -76,7 +76,7 @@ pub trait SchemaStore: Send + Sync {
     ///
     ///  * `name` - Name of schema being fetched
     ///  * `service_id` - Service ID needed for when the source of the schema is a splinter circuit
-    fn fetch_schema(
+    fn get_schema(
         &self,
         name: &str,
         service_id: Option<&str>,

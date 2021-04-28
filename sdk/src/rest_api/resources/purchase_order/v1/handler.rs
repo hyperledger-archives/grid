@@ -61,28 +61,27 @@ pub async fn list_purchase_orders(
     Ok(PurchaseOrderListSlice { data, paging })
 }
 
-pub async fn fetch_purchase_order(
+pub async fn get_purchase_order(
     store: Arc<dyn PurchaseOrderStore>,
     uuid: String,
     service_id: Option<&str>,
 ) -> Result<PurchaseOrderSlice, ErrorResponse> {
-    let purchase_order =
-        store
-            .fetch_purchase_order(&uuid, service_id)
-            .map_err(|err| match err {
-                PurchaseOrderStoreError::InternalError(err) => {
-                    ErrorResponse::internal_error(Box::new(err))
-                }
-                PurchaseOrderStoreError::ConstraintViolationError(err) => {
-                    ErrorResponse::new(400, &format!("{}", err))
-                }
-                PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(_) => {
-                    ErrorResponse::new(503, "Service Unavailable")
-                }
-                PurchaseOrderStoreError::NotFoundError(_) => {
-                    ErrorResponse::new(404, &format!("Purchase order {} not found", uuid))
-                }
-            })?;
+    let purchase_order = store
+        .get_purchase_order(&uuid, service_id)
+        .map_err(|err| match err {
+            PurchaseOrderStoreError::InternalError(err) => {
+                ErrorResponse::internal_error(Box::new(err))
+            }
+            PurchaseOrderStoreError::ConstraintViolationError(err) => {
+                ErrorResponse::new(400, &format!("{}", err))
+            }
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(_) => {
+                ErrorResponse::new(503, "Service Unavailable")
+            }
+            PurchaseOrderStoreError::NotFoundError(_) => {
+                ErrorResponse::new(404, &format!("Purchase order {} not found", uuid))
+            }
+        })?;
 
     Ok(PurchaseOrderSlice::from(purchase_order.ok_or_else(
         || ErrorResponse::new(404, &format!("PurchaseOrder {} not found", uuid)),

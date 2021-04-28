@@ -204,7 +204,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     ///  * `record_id` - The record ID to fetch for
     ///  * `property_name` - The property name to fetch
     ///  * `service_id` - The service ID to fetch for
-    fn fetch_property_with_data_type(
+    fn get_property_with_data_type(
         &self,
         record_id: &str,
         property_name: &str,
@@ -217,7 +217,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     ///
     ///  * `record_id` - The record ID to fetch for
     ///  * `service_id` - The service ID to fetch for
-    fn fetch_record(
+    fn get_record(
         &self,
         record_id: &str,
         service_id: Option<&str>,
@@ -231,7 +231,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     ///  * `property_name` - The property name to fetch
     ///  * `commit_height` - The commit height of the reported value to fetch
     ///  * `service_id` - The service ID to fetch for
-    fn fetch_reported_value_reporter_to_agent_metadata(
+    fn get_reported_value_reporter_to_agent_metadata(
         &self,
         record_id: &str,
         property_name: &str,
@@ -353,31 +353,31 @@ where
         (**self).add_reporters(reporters)
     }
 
-    fn fetch_property_with_data_type(
+    fn get_property_with_data_type(
         &self,
         record_id: &str,
         property_name: &str,
         service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
-        (**self).fetch_property_with_data_type(record_id, property_name, service_id)
+        (**self).get_property_with_data_type(record_id, property_name, service_id)
     }
 
-    fn fetch_record(
+    fn get_record(
         &self,
         record_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
-        (**self).fetch_record(record_id, service_id)
+        (**self).get_record(record_id, service_id)
     }
 
-    fn fetch_reported_value_reporter_to_agent_metadata(
+    fn get_reported_value_reporter_to_agent_metadata(
         &self,
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
-        (**self).fetch_reported_value_reporter_to_agent_metadata(
+        (**self).get_reported_value_reporter_to_agent_metadata(
             record_id,
             property_name,
             commit_height,

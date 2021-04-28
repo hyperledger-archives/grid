@@ -133,7 +133,7 @@ impl BatchProcessorBuilder {
                     Ok(BatchProcessorMessage::Shutdown) => break,
                     Ok(BatchProcessorMessage::WakeUp) => {
                         let batches =
-                            match store.fetch_unclaimed_batches(claim_limit, secs_claim_is_valid) {
+                            match store.get_unclaimed_batches(claim_limit, secs_claim_is_valid) {
                                 Ok(ub) => ub,
                                 Err(err) => {
                                     error!("Failed to retrieve unclaimed batches: {}", err);

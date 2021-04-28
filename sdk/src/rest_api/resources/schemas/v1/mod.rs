@@ -15,5 +15,5 @@
 mod handler;
 mod payloads;
 
-pub use handler::{fetch_schema, list_schemas};
+pub use handler::{get_schema, list_schemas};
 pub use payloads::{PropertyDefinitionSlice, SchemaListSlice, SchemaSlice};

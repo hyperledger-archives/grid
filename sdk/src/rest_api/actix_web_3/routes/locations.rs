@@ -23,7 +23,7 @@ use crate::rest_api::{
 const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 
 #[get("/location/{id}")]
-pub async fn fetch_location(
+pub async fn get_location(
     state: web::Data<StoreState>,
     location_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
@@ -32,7 +32,7 @@ pub async fn fetch_location(
 ) -> HttpResponse {
     match version {
         ProtocolVersion::V1 => {
-            match v1::fetch_location(
+            match v1::get_location(
                 state.location_store.clone(),
                 location_id.into_inner(),
                 query.into_inner().service_id.as_deref(),
