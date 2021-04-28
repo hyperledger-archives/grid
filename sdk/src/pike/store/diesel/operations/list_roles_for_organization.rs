@@ -49,110 +49,106 @@ impl<'a> PikeStoreListRolesForOrganizationOperation
         offset: i64,
         limit: i64,
     ) -> Result<RoleList, PikeStoreError> {
-        self.conn
-            .build_transaction()
-            .read_write()
-            .run::<_, PikeStoreError, _>(|| {
-                let mut query = pike_role::table
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
+            let mut query = pike_role::table
+                .into_boxed()
+                .select(pike_role::all_columns)
+                .filter(
+                    pike_role::end_commit_num
+                        .eq(MAX_COMMIT_NUM)
+                        .and(pike_role::org_id.eq(org_id)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(pike_role::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_role::service_id.is_null());
+            }
+
+            let role_models = query.load::<RoleModel>(self.conn).map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
+            let mut count_query = pike_organization::table
+                .into_boxed()
+                .select(pike_organization::all_columns);
+
+            if let Some(service_id) = service_id {
+                count_query = count_query.filter(pike_organization::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(pike_organization::service_id.is_null());
+            }
+
+            let total = count_query.count().get_result(self.conn)?;
+
+            let mut roles = Vec::new();
+
+            for role in role_models {
+                let mut query = pike_inherit_from::table
                     .into_boxed()
-                    .select(pike_role::all_columns)
+                    .select(pike_inherit_from::all_columns)
                     .filter(
-                        pike_role::end_commit_num
-                            .eq(MAX_COMMIT_NUM)
-                            .and(pike_role::org_id.eq(org_id)),
+                        pike_inherit_from::role_name
+                            .eq(&role.name)
+                            .and(pike_inherit_from::org_id.eq(&org_id))
+                            .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM)),
                     );
 
                 if let Some(service_id) = service_id {
-                    query = query.filter(pike_role::service_id.eq(service_id));
+                    query = query.filter(pike_inherit_from::service_id.eq(service_id));
                 } else {
-                    query = query.filter(pike_role::service_id.is_null());
+                    query = query.filter(pike_inherit_from::service_id.is_null());
                 }
 
-                let role_models = query.load::<RoleModel>(self.conn).map_err(|err| {
+                let inherit_from = query.load::<InheritFromModel>(self.conn).map_err(|err| {
                     PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-                let mut count_query = pike_organization::table
+                let mut query = pike_permissions::table
                     .into_boxed()
-                    .select(pike_organization::all_columns);
+                    .select(pike_permissions::all_columns)
+                    .filter(
+                        pike_permissions::role_name
+                            .eq(&role.name)
+                            .and(pike_permissions::org_id.eq(&org_id))
+                            .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
 
                 if let Some(service_id) = service_id {
-                    count_query = count_query.filter(pike_organization::service_id.eq(service_id));
+                    query = query.filter(pike_permissions::service_id.eq(service_id));
                 } else {
-                    count_query = count_query.filter(pike_organization::service_id.is_null());
+                    query = query.filter(pike_permissions::service_id.is_null());
                 }
 
-                let total = count_query.count().get_result(self.conn)?;
+                let permissions = query.load::<PermissionModel>(self.conn).map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
 
-                let mut roles = Vec::new();
+                let mut query = pike_allowed_orgs::table
+                    .into_boxed()
+                    .select(pike_allowed_orgs::all_columns)
+                    .filter(
+                        pike_allowed_orgs::role_name
+                            .eq(&role.name)
+                            .and(pike_allowed_orgs::org_id.eq(&org_id))
+                            .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
 
-                for role in role_models {
-                    let mut query = pike_inherit_from::table
-                        .into_boxed()
-                        .select(pike_inherit_from::all_columns)
-                        .filter(
-                            pike_inherit_from::role_name
-                                .eq(&role.name)
-                                .and(pike_inherit_from::org_id.eq(&org_id))
-                                .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        );
-
-                    if let Some(service_id) = service_id {
-                        query = query.filter(pike_inherit_from::service_id.eq(service_id));
-                    } else {
-                        query = query.filter(pike_inherit_from::service_id.is_null());
-                    }
-
-                    let inherit_from =
-                        query.load::<InheritFromModel>(self.conn).map_err(|err| {
-                            PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                        })?;
-
-                    let mut query = pike_permissions::table
-                        .into_boxed()
-                        .select(pike_permissions::all_columns)
-                        .filter(
-                            pike_permissions::role_name
-                                .eq(&role.name)
-                                .and(pike_permissions::org_id.eq(&org_id))
-                                .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        );
-
-                    if let Some(service_id) = service_id {
-                        query = query.filter(pike_permissions::service_id.eq(service_id));
-                    } else {
-                        query = query.filter(pike_permissions::service_id.is_null());
-                    }
-
-                    let permissions = query.load::<PermissionModel>(self.conn).map_err(|err| {
-                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                    let mut query = pike_allowed_orgs::table
-                        .into_boxed()
-                        .select(pike_allowed_orgs::all_columns)
-                        .filter(
-                            pike_allowed_orgs::role_name
-                                .eq(&role.name)
-                                .and(pike_allowed_orgs::org_id.eq(&org_id))
-                                .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        );
-
-                    if let Some(service_id) = service_id {
-                        query = query.filter(pike_allowed_orgs::service_id.eq(service_id));
-                    } else {
-                        query = query.filter(pike_allowed_orgs::service_id.is_null());
-                    }
-
-                    let allowed_orgs = query.load::<AllowedOrgModel>(self.conn).map_err(|err| {
-                        PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
-
-                    roles.push(Role::from((role, inherit_from, permissions, allowed_orgs)));
+                if let Some(service_id) = service_id {
+                    query = query.filter(pike_allowed_orgs::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_allowed_orgs::service_id.is_null());
                 }
 
-                Ok(RoleList::new(roles, Paging::new(offset, limit, total)))
-            })
+                let allowed_orgs = query.load::<AllowedOrgModel>(self.conn).map_err(|err| {
+                    PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+                roles.push(Role::from((role, inherit_from, permissions, allowed_orgs)));
+            }
+
+            Ok(RoleList::new(roles, Paging::new(offset, limit, total)))
+        })
     }
 }
 
@@ -167,7 +163,7 @@ impl<'a> PikeStoreListRolesForOrganizationOperation
         offset: i64,
         limit: i64,
     ) -> Result<RoleList, PikeStoreError> {
-        self.conn.immediate_transaction::<_, PikeStoreError, _>(|| {
+        self.conn.transaction::<_, PikeStoreError, _>(|| {
             let mut query = pike_role::table
                 .into_boxed()
                 .select(pike_role::all_columns)

@@ -42,17 +42,19 @@ impl<'a> GetSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnecti
         name: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Schema>, SchemaStoreError> {
-        let schema = if let Some(schema) = pg::get_grid_schema(&*self.conn, name, service_id)? {
-            schema
-        } else {
-            return Ok(None);
-        };
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let schema = if let Some(schema) = pg::get_grid_schema(&*self.conn, name, service_id)? {
+                schema
+            } else {
+                return Ok(None);
+            };
 
-        let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
+            let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
 
-        let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
+            let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
 
-        Ok(Some(Schema::from((schema, properties))))
+            Ok(Some(Schema::from((schema, properties))))
+        })
     }
 }
 

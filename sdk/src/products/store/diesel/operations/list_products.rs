@@ -47,32 +47,34 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::pg::PgConn
         offset: i64,
         limit: i64,
     ) -> Result<ProductList, ProductStoreError> {
-        let db_products = pg::list_products(&*self.conn, service_id, offset, limit)?;
+        self.conn.transaction::<_, ProductStoreError, _>(|| {
+            let db_products = pg::list_products(&*self.conn, service_id, offset, limit)?;
 
-        let mut products = Vec::new();
+            let mut products = Vec::new();
 
-        for product in db_products {
-            let root_values = pg::get_root_values(&*self.conn, &product.product_id)?;
+            for product in db_products {
+                let root_values = pg::get_root_values(&*self.conn, &product.product_id)?;
 
-            let values = pg::get_property_values(&*self.conn, root_values)?;
+                let values = pg::get_property_values(&*self.conn, root_values)?;
 
-            products.push(Product::from((product, values)));
-        }
+                products.push(Product::from((product, values)));
+            }
 
-        let mut count_query = product::table.into_boxed().select(product::all_columns);
+            let mut count_query = product::table.into_boxed().select(product::all_columns);
 
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(product::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(product::service_id.is_null());
-        }
+            if let Some(service_id) = service_id {
+                count_query = count_query.filter(product::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(product::service_id.is_null());
+            }
 
-        let total = count_query.count().get_result(self.conn)?;
+            let total = count_query.count().get_result(self.conn)?;
 
-        Ok(ProductList::new(
-            products,
-            Paging::new(offset, limit, total),
-        ))
+            Ok(ProductList::new(
+                products,
+                Paging::new(offset, limit, total),
+            ))
+        })
     }
 }
 
@@ -84,32 +86,34 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::sqlite::Sq
         offset: i64,
         limit: i64,
     ) -> Result<ProductList, ProductStoreError> {
-        let db_products = sqlite::list_products(&*self.conn, service_id, offset, limit)?;
+        self.conn.transaction::<_, ProductStoreError, _>(|| {
+            let db_products = sqlite::list_products(&*self.conn, service_id, offset, limit)?;
 
-        let mut products = Vec::new();
+            let mut products = Vec::new();
 
-        for product in db_products {
-            let root_values = sqlite::get_root_values(&*self.conn, &product.product_id)?;
+            for product in db_products {
+                let root_values = sqlite::get_root_values(&*self.conn, &product.product_id)?;
 
-            let values = sqlite::get_property_values(&*self.conn, root_values)?;
+                let values = sqlite::get_property_values(&*self.conn, root_values)?;
 
-            products.push(Product::from((product, values)));
-        }
+                products.push(Product::from((product, values)));
+            }
 
-        let mut count_query = product::table.into_boxed().select(product::all_columns);
+            let mut count_query = product::table.into_boxed().select(product::all_columns);
 
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(product::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(product::service_id.is_null());
-        }
+            if let Some(service_id) = service_id {
+                count_query = count_query.filter(product::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(product::service_id.is_null());
+            }
 
-        let total = count_query.count().get_result(self.conn)?;
+            let total = count_query.count().get_result(self.conn)?;
 
-        Ok(ProductList::new(
-            products,
-            Paging::new(offset, limit, total),
-        ))
+            Ok(ProductList::new(
+                products,
+                Paging::new(offset, limit, total),
+            ))
+        })
     }
 }
 

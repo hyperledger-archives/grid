@@ -33,15 +33,17 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
         &self,
         commit_num: i64,
     ) -> Result<Option<Commit>, CommitStoreError> {
-        commits::table
-            .select(commits::all_columns)
-            .filter(commits::commit_num.eq(&commit_num))
-            .first::<CommitModel>(self.conn)
-            .map(|commit| Some(Commit::from(commit)))
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            commits::table
+                .select(commits::all_columns)
+                .filter(commits::commit_num.eq(&commit_num))
+                .first::<CommitModel>(self.conn)
+                .map(|commit| Some(Commit::from(commit)))
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })
+        })
     }
 }
 
@@ -53,14 +55,16 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
         &self,
         commit_num: i64,
     ) -> Result<Option<Commit>, CommitStoreError> {
-        commits::table
-            .select(commits::all_columns)
-            .filter(commits::commit_num.eq(&commit_num))
-            .first::<CommitModel>(self.conn)
-            .map(|commit| Some(Commit::from(commit)))
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            commits::table
+                .select(commits::all_columns)
+                .filter(commits::commit_num.eq(&commit_num))
+                .first::<CommitModel>(self.conn)
+                .map(|commit| Some(Commit::from(commit)))
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })
+        })
     }
 }

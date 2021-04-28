@@ -37,14 +37,16 @@ impl<'a> UpdateProductOperation for ProductStoreOperations<'a, diesel::pg::PgCon
         service_id: Option<&str>,
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
-        pg::update_product_property_values(
-            &*self.conn,
-            product_id,
-            service_id,
-            current_commit_num,
-        )?;
+        self.conn.transaction::<_, ProductStoreError, _>(|| {
+            pg::update_product_property_values(
+                &*self.conn,
+                product_id,
+                service_id,
+                current_commit_num,
+            )?;
 
-        Ok(())
+            Ok(())
+        })
     }
 }
 
@@ -56,14 +58,16 @@ impl<'a> UpdateProductOperation for ProductStoreOperations<'a, diesel::sqlite::S
         service_id: Option<&str>,
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
-        sqlite::update_product_property_values(
-            &*self.conn,
-            product_id,
-            service_id,
-            current_commit_num,
-        )?;
+        self.conn.transaction::<_, ProductStoreError, _>(|| {
+            sqlite::update_product_property_values(
+                &*self.conn,
+                product_id,
+                service_id,
+                current_commit_num,
+            )?;
 
-        Ok(())
+            Ok(())
+        })
     }
 }
 

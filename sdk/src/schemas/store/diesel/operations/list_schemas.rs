@@ -47,19 +47,22 @@ impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::pg::PgConnec
         offset: i64,
         limit: i64,
     ) -> Result<SchemaList, SchemaStoreError> {
-        let (db_schemas, total) = pg::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let (db_schemas, total) =
+                pg::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
 
-        let mut schemas = Vec::new();
+            let mut schemas = Vec::new();
 
-        for schema in db_schemas {
-            let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
+            for schema in db_schemas {
+                let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
 
-            let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
+                let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
 
-            schemas.push(Schema::from((schema, properties)));
-        }
+                schemas.push(Schema::from((schema, properties)));
+            }
 
-        Ok(SchemaList::new(schemas, Paging::new(offset, limit, total)))
+            Ok(SchemaList::new(schemas, Paging::new(offset, limit, total)))
+        })
     }
 }
 
@@ -71,20 +74,22 @@ impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqli
         offset: i64,
         limit: i64,
     ) -> Result<SchemaList, SchemaStoreError> {
-        let (db_schemas, total) =
-            sqlite::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let (db_schemas, total) =
+                sqlite::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
 
-        let mut schemas = Vec::new();
+            let mut schemas = Vec::new();
 
-        for schema in db_schemas {
-            let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
+            for schema in db_schemas {
+                let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
 
-            let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
+                let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
 
-            schemas.push(Schema::from((schema, properties)));
-        }
+                schemas.push(Schema::from((schema, properties)));
+            }
 
-        Ok(SchemaList::new(schemas, Paging::new(offset, limit, total)))
+            Ok(SchemaList::new(schemas, Paging::new(offset, limit, total)))
+        })
     }
 }
 
