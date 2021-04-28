@@ -18,5 +18,4 @@ pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 
 #[cfg(feature = "diesel")]
 pub use store::diesel::DieselCommitStore;
-pub use store::memory::MemoryCommitStore;
 pub use store::CommitStore;
