@@ -22,6 +22,7 @@ table! {
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,
+        last_updated -> Nullable<Timestamp>,
     }
 }
 

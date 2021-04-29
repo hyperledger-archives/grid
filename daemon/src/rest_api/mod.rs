@@ -2983,6 +2983,7 @@ mod test {
             metadata: vec![],
             start_commit_num: 0,
             end_commit_num: i64::MAX,
+            last_updated: None,
             service_id,
         }]
     }
@@ -2999,6 +3000,7 @@ mod test {
                 start_commit_num: 0,
                 end_commit_num: i64::MAX,
                 service_id: service_id.clone(),
+                last_updated: None,
             },
             Agent {
                 public_key: KEY2.to_string(),
@@ -3009,6 +3011,7 @@ mod test {
                 start_commit_num: 0,
                 end_commit_num: i64::MAX,
                 service_id,
+                last_updated: None,
             },
         ]
     }
@@ -3031,6 +3034,7 @@ mod test {
             start_commit_num: 1,
             end_commit_num: i64::MAX,
             service_id: service_id.clone(),
+            last_updated: None,
         }]
     }
 
@@ -3045,6 +3049,7 @@ mod test {
                 start_commit_num: 2,
                 end_commit_num: 4,
                 service_id: None,
+                last_updated: None,
             },
             Organization {
                 org_id: KEY3.to_string(),
@@ -3055,6 +3060,7 @@ mod test {
                 start_commit_num: 4,
                 end_commit_num: i64::MAX,
                 service_id: None,
+                last_updated: None,
             },
         ]
     }
@@ -3076,6 +3082,7 @@ mod test {
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
             service_id,
+            last_updated: None,
         }]
     }
 
@@ -3089,6 +3096,7 @@ mod test {
             end_commit_num: i64::MAX,
             properties: get_product_property_value(service_id.clone()),
             service_id,
+            last_updated: None,
         }]
     }
 
@@ -3110,6 +3118,7 @@ mod test {
             start_commit_num: 0,
             end_commit_num: i64::MAX,
             service_id,
+            last_updated: None,
         }]
     }
 
@@ -3566,6 +3575,7 @@ mod test {
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
             service_id,
+            last_updated: None,
         }]
     }
 
@@ -3598,6 +3608,7 @@ mod test {
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
             service_id,
+            last_updated: None,
         }]
     }
 

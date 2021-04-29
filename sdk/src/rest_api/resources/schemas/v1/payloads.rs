@@ -26,6 +26,8 @@ pub struct SchemaSlice {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_updated: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,6 +48,7 @@ impl From<Schema> for SchemaSlice {
                 .map(PropertyDefinitionSlice::from)
                 .collect(),
             service_id: schema.service_id,
+            last_updated: schema.last_updated,
         }
     }
 }

@@ -33,6 +33,8 @@ pub struct Agent {
     pub end_commit_num: i64,
 
     pub service_id: Option<String>,
+
+    pub last_updated: Option<i64>,
 }
 
 /// Represents a Grid Role
@@ -48,6 +50,7 @@ pub struct Role {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+    pub last_updated: Option<i64>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -73,6 +76,7 @@ pub struct Organization {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+    pub last_updated: Option<i64>,
 }
 
 /// Represents a Grid Alternate ID

@@ -24,6 +24,7 @@ table! {
         description -> Text,
         owner -> Text,
         service_id -> Nullable<Text>,
+        last_updated -> Nullable<Timestamp>,
     }
 }
 

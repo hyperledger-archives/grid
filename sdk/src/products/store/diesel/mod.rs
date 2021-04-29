@@ -199,6 +199,7 @@ impl From<(ModelProduct, Vec<PropertyValue>)> for Product {
             start_commit_num: model.start_commit_num,
             end_commit_num: model.end_commit_num,
             service_id: model.service_id,
+            last_updated: model.last_updated.map(|d| d.timestamp()),
             properties,
         }
     }

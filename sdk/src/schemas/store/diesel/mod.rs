@@ -229,6 +229,7 @@ impl From<(GridSchema, Vec<PropertyDefinition>)> for Schema {
             service_id: model.service_id,
             start_commit_num: model.start_commit_num,
             end_commit_num: model.end_commit_num,
+            last_updated: model.last_updated.map(|d| d.timestamp()),
         }
     }
 }

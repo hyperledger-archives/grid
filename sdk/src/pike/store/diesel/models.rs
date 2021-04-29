@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use chrono::NaiveDateTime;
+
 use super::{Agent, AlternateId, Organization, OrganizationMetadata, Role};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::pike::addressing::{
@@ -44,6 +46,7 @@ pub struct AgentModel {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+    pub last_updated: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
@@ -71,6 +74,7 @@ pub struct RoleModel {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+    pub last_updated: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
@@ -212,6 +216,7 @@ pub struct OrganizationModel {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+    pub last_updated: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
@@ -352,6 +357,7 @@ impl
             start_commit_num: role.start_commit_num,
             end_commit_num: role.end_commit_num,
             service_id: role.service_id,
+            last_updated: role.last_updated.map(|d| d.timestamp()),
         }
     }
 }
@@ -474,6 +480,7 @@ impl From<(AgentModel, Vec<RoleAssociationModel>)> for Agent {
             start_commit_num: agent_model.start_commit_num,
             end_commit_num: agent_model.end_commit_num,
             service_id: agent_model.service_id,
+            last_updated: agent_model.last_updated.map(|d| d.timestamp()),
         }
     }
 }
@@ -533,6 +540,7 @@ impl
             start_commit_num: org.start_commit_num,
             end_commit_num: org.end_commit_num,
             service_id: org.service_id,
+            last_updated: org.last_updated.map(|d| d.timestamp()),
         }
     }
 }
@@ -560,6 +568,7 @@ impl
             start_commit_num: org.start_commit_num,
             end_commit_num: org.end_commit_num,
             service_id: org.service_id,
+            last_updated: None,
         }
     }
 }
@@ -592,6 +601,7 @@ impl
             start_commit_num: org.start_commit_num,
             end_commit_num: org.end_commit_num,
             service_id: org.service_id,
+            last_updated: org.last_updated.map(|d| d.timestamp()),
         }
     }
 }

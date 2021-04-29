@@ -525,6 +525,7 @@ fn state_change_to_db_operation(
                             start_commit_num: commit_num,
                             end_commit_num: MAX_COMMIT_NUM,
                             service_id: service_id.cloned(),
+                            last_updated: None,
                         })
                         .collect::<Vec<Agent>>();
 
@@ -567,6 +568,7 @@ fn state_change_to_db_operation(
                             start_commit_num: commit_num,
                             end_commit_num: MAX_COMMIT_NUM,
                             service_id: service_id.cloned(),
+                            last_updated: None,
                         })
                         .collect::<Vec<Organization>>();
 
@@ -588,6 +590,7 @@ fn state_change_to_db_operation(
                             start_commit_num: commit_num,
                             end_commit_num: MAX_COMMIT_NUM,
                             service_id: service_id.cloned(),
+                            last_updated: None,
                         })
                         .collect::<Vec<Role>>();
 
@@ -611,6 +614,7 @@ fn state_change_to_db_operation(
                         start_commit_num: commit_num,
                         end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),
+                        last_updated: None,
                         properties: make_property_definitions(
                             commit_num,
                             service_id,
@@ -815,6 +819,7 @@ fn state_change_to_db_operation(
                         start_commit_num: commit_num,
                         end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),
+                        last_updated: None,
                     })
                     .collect();
 
@@ -834,6 +839,7 @@ fn state_change_to_db_operation(
                         start_commit_num: commit_num,
                         end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),
+                        last_updated: None,
                         properties: make_product_property_values(
                             commit_num,
                             service_id,

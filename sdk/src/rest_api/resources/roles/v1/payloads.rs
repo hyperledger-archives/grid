@@ -26,6 +26,8 @@ pub struct RoleSlice {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_updated: Option<i64>,
 }
 
 impl From<Role> for RoleSlice {
@@ -49,6 +51,7 @@ impl From<Role> for RoleSlice {
             allowed_organizations,
             inherit_from,
             service_id: role.service_id,
+            last_updated: role.last_updated,
         }
     }
 }
