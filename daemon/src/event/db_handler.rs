@@ -156,26 +156,26 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
             .get()
             .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
 
-        let commit = if let Some(commit) = self
-            .commit_store
-            .create_db_commit_from_commit_event(&DbCommitEvent::from(event))
-            .map_err(|err| EventError(format!("{}", err)))?
-        {
-            commit
-        } else {
-            return Err(EventError(
-                "Commit could not be constructed from event data".to_string(),
-            ));
-        };
-        let db_ops = create_db_operations_from_state_changes(
-            &event.state_changes,
-            commit.commit_num,
-            commit.service_id.as_ref(),
-        )?;
-
-        trace!("The following operations will be performed: {:#?}", db_ops);
-
         conn.build_transaction().run::<_, EventError, _>(|| {
+            let commit = if let Some(commit) = self
+                .commit_store
+                .create_db_commit_from_commit_event(&DbCommitEvent::from(event))
+                .map_err(|err| EventError(format!("{}", err)))?
+            {
+                commit
+            } else {
+                return Err(EventError(
+                    "Commit could not be constructed from event data".to_string(),
+                ));
+            };
+            let db_ops = create_db_operations_from_state_changes(
+                &event.state_changes,
+                commit.commit_num,
+                commit.service_id.as_ref(),
+            )?;
+
+            trace!("The following operations will be performed: {:#?}", db_ops);
+
             match self
                 .commit_store
                 .get_commit_by_commit_num(commit.commit_num)
@@ -338,26 +338,26 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
             .get()
             .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
 
-        let commit = if let Some(commit) = self
-            .commit_store
-            .create_db_commit_from_commit_event(&DbCommitEvent::from(event))
-            .map_err(|err| EventError(format!("{}", err)))?
-        {
-            commit
-        } else {
-            return Err(EventError(
-                "Commit could not be constructed from event data".to_string(),
-            ));
-        };
-        let db_ops = create_db_operations_from_state_changes(
-            &event.state_changes,
-            commit.commit_num,
-            commit.service_id.as_ref(),
-        )?;
-
-        trace!("The following operations will be performed: {:#?}", db_ops);
-
         conn.transaction::<_, EventError, _>(|| {
+            let commit = if let Some(commit) = self
+                .commit_store
+                .create_db_commit_from_commit_event(&DbCommitEvent::from(event))
+                .map_err(|err| EventError(format!("{}", err)))?
+            {
+                commit
+            } else {
+                return Err(EventError(
+                    "Commit could not be constructed from event data".to_string(),
+                ));
+            };
+            let db_ops = create_db_operations_from_state_changes(
+                &event.state_changes,
+                commit.commit_num,
+                commit.service_id.as_ref(),
+            )?;
+
+            trace!("The following operations will be performed: {:#?}", db_ops);
+
             match self
                 .commit_store
                 .get_commit_by_commit_num(commit.commit_num)
