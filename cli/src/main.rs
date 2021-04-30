@@ -740,7 +740,6 @@ fn run() -> Result<(), CliError> {
                 Arg::with_name("owner")
                     .long("owner")
                     .takes_value(true)
-                    .conflicts_with("file")
                     .help("Pike organization ID"),
             )
             .arg(
@@ -753,11 +752,20 @@ fn run() -> Result<(), CliError> {
                     .help("Key value pair specifying a product property formatted as key=value"),
             )
             .arg(
+                #[cfg(not(feature = "product-gdsn"))]
                 Arg::with_name("file")
                     .long("file")
                     .short("f")
                     .takes_value(true)
                     .conflicts_with("xml")
+                    .help("Path to yaml file containing a list of products"),
+                #[cfg(feature = "product-gdsn")]
+                Arg::with_name("file")
+                    .long("file")
+                    .short("f")
+                    .takes_value(true)
+                    .multiple(true)
+                    .number_of_values(1)
                     .help("Path to yaml file containing a list of products"),
             )
             .arg(
@@ -1976,22 +1984,6 @@ fn run() -> Result<(), CliError> {
 
             match m.subcommand() {
                 #[cfg(feature = "product-gdsn")]
-                ("create", Some(m)) if m.is_present("xml") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let actions = products::create_product_payloads_from_xml(
-                        m.value_of("xml").unwrap(),
-                        m.value_of("owner").unwrap(),
-                    )?;
-
-                    info!("Submitting request to create product from XML...");
-                    products::do_create_products(&url, key, wait, actions, service_id)?;
-                }
                 ("create", Some(m)) if m.is_present("file") => {
                     let key = m
                         .value_of("key")
@@ -2001,6 +1993,25 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let actions = products::create_product_payloads_from_file(
+                        m.values_of("file").unwrap().collect(),
+                        &url,
+                        service_id.as_deref(),
+                        m.value_of("owner"),
+                    )?;
+
+                    info!("Submitting request to create product...");
+                    products::do_create_products(&url, key, wait, actions, service_id)?;
+                }
+                #[cfg(not(feature = "product-gdsn"))]
+                ("create", Some(m)) if m.is_present("file") => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let actions = products::create_product_payloads_from_yaml(
                         m.value_of("file").unwrap(),
                         &url,
                         service_id.as_deref(),

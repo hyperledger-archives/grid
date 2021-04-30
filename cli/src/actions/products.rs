@@ -19,7 +19,7 @@ use crate::transaction::product_batch_builder;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "product-gdsn")]
-use grid_sdk::products::gdsn::get_trade_items_from_xml;
+use grid_sdk::products::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
     ProductPayloadBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
@@ -280,6 +280,98 @@ pub fn do_show_products(
 }
 
 #[cfg(feature = "product-gdsn")]
+enum ProductFileType {
+    Gdsn3_1,
+    SchemaBasedDefinition,
+}
+
+#[cfg(feature = "product-gdsn")]
+fn determine_file_type(path: &str) -> Result<ProductFileType, CliError> {
+    let extension = std::path::Path::new(&path).extension();
+
+    match extension {
+        None => Err(CliError::UserError(format!(
+            "Unable to determine file extension: {}",
+            path
+        ))),
+        Some(os_str) => match os_str.to_str() {
+            None => {
+                return Err(CliError::UserError(format!(
+                    "Unable to determine file extension: {}",
+                    path
+                )))
+            }
+            Some("yaml") | Some("yml") => Ok(ProductFileType::SchemaBasedDefinition),
+            Some("xml") => Ok(ProductFileType::Gdsn3_1),
+            Some(_) => Err(CliError::UserError(format!(
+                "File has an unsupported format: {}\n Accepted formats: GDSN 3.1 XML, Grid Product YAML definition",
+                path
+            ))),
+        },
+    }
+}
+
+#[cfg(feature = "product-gdsn")]
+pub fn create_product_payloads_from_file(
+    paths: Vec<&str>,
+    url: &str,
+    service_id: Option<&str>,
+    owner: Option<&str>,
+) -> Result<Vec<ProductCreateAction>, CliError> {
+    let mut total_payloads: Vec<ProductCreateAction> = Vec::new();
+
+    for path in paths {
+        let file_type = determine_file_type(path)?;
+
+        let file_payloads = match file_type {
+            ProductFileType::Gdsn3_1 => {
+                let owner = owner.ok_or_else(|| {
+                    CliError::ActionError(
+                        "'--owner' argument is required for product creation with GDSN XML files"
+                            .to_string(),
+                    )
+                })?;
+                create_product_payloads_from_xml(path, owner)?
+            }
+            ProductFileType::SchemaBasedDefinition => {
+                create_product_payloads_from_yaml(path, url, service_id)?
+            }
+        };
+
+        for file_payload in file_payloads {
+            let mut product_id_exists = false;
+
+            for payload in total_payloads.iter_mut() {
+                if payload.product_id() == file_payload.product_id() {
+                    check_duplicate_properties(
+                        payload.product_id().to_string(),
+                        file_payload.properties().to_vec(),
+                        payload.properties().to_vec(),
+                    )?;
+
+                    product_id_exists = true;
+                    let mut combined_properties: Vec<PropertyValue> = payload.properties().to_vec();
+                    combined_properties.append(&mut file_payload.properties().to_vec());
+                    let payload_with_combined_properties = ProductCreateActionBuilder::new()
+                        .with_product_id(payload.product_id().to_string())
+                        .with_owner(payload.owner().to_string())
+                        .with_product_namespace(payload.product_namespace().clone())
+                        .with_properties(combined_properties)
+                        .build()
+                        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                    *payload = payload_with_combined_properties;
+                }
+            }
+            if !product_id_exists {
+                total_payloads.push(file_payload);
+            }
+        }
+    }
+
+    Ok(total_payloads)
+}
+
+#[cfg(feature = "product-gdsn")]
 pub fn create_product_payloads_from_xml(
     path: &str,
     owner: &str,
@@ -298,7 +390,7 @@ pub fn create_product_payloads_from_xml(
     Ok(payloads)
 }
 
-pub fn create_product_payloads_from_file(
+pub fn create_product_payloads_from_yaml(
     path: &str,
     url: &str,
     service_id: Option<&str>,
@@ -364,6 +456,26 @@ impl ProductCreateYaml {
     }
 }
 
+#[cfg(feature = "product-gdsn")]
+fn check_duplicate_properties(
+    product_id: String,
+    props1: Vec<PropertyValue>,
+    props2: Vec<PropertyValue>,
+) -> Result<(), CliError> {
+    props1.iter().try_for_each(|prop1| {
+        props2.iter().try_for_each(|prop2| {
+            if prop1.name() == prop2.name() {
+                return Err(CliError::UserError(format!(
+                    "Duplicate property for {}: {}",
+                    product_id,
+                    prop1.name()
+                )));
+            }
+            Ok(())
+        })
+    })
+}
+
 #[derive(Deserialize, Debug)]
 pub struct ProductUpdateYaml {
     product_id: String,
@@ -398,10 +510,11 @@ fn yaml_to_property_values(
         } else if !def.required {
             continue;
         } else {
-            return Err(CliError::PayloadError(format!(
-                "Field {} not found",
-                def.name
-            )));
+            #[cfg(feature = "product-gdsn")]
+            if def.name == GDSN_3_1_PROPERTY_NAME {
+                continue;
+            }
+            return Err(CliError::UserError(format!("Field {} not found", def.name)));
         };
 
         match def.data_type {
