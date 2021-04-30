@@ -159,8 +159,6 @@ services:
       INTEGRATION_TEST_URL: http://gridd:8080
     expose:
       - 8080
-    volumes:
-      - ..:/project/grid
     entrypoint: |
       bash -c "
         cd daemon && \
@@ -176,8 +174,8 @@ services:
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec023b83af696f65e0579200b7f066089db00fe628034c405c1a9acda1dc16a5e961 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec027e3e56bcd14d28d036fcfcde2cd2e3c83e83256dc986b5f27d65cc3ef1693cf3 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec02bb0b4ad88592b206787ba6a3adef17774763b03ce516281dcafe538254553219 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        cp /project/grid/target/debug/gridd /usr/sbin/gridd && \
-        cp /project/grid/target/debug/grid /usr/bin/grid && \
+        cp /build/target/debug/gridd /usr/sbin/gridd && \
+        cp /build/target/debug/grid /usr/bin/grid && \
         grid database migrate \
             -C postgres://grid:grid_example@db/grid && \
         gridd -b gridd:8080 -C tcp://validator:4004 \

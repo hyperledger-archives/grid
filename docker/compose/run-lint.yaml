@@ -1,4 +1,4 @@
-# Copyright 2019 Cargill Incorporated
+# Copyright 2018-2021 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ------------------------------------------------------------------------------
 
-version: "3.6"
+version: "3.7"
 
 services:
-  grid_tests:
+
+  lint-grid:
     build:
-      context: ../..
-      dockerfile: docker/tests
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: grid:tests
+      context: ../
+      dockerfile: ./lint
+    image: lint-grid:${ISOLATION_ID}
     volumes:
-      - ../..:/project/grid
-    command: run_unit_tests
+      - ../../:/project/grid
+    command: just lint

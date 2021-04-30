@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v8 as grid-po-builder
+FROM hyperledger/grid-dev:v9 as grid-po-builder
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml

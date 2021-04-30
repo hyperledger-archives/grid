@@ -20,10 +20,14 @@ WORKDIR /ui/saplings/product
 COPY ./ui/saplings/product/package*.json /ui/saplings/product
 
 RUN apk add \
+    curl \
     g++ \
     git \
     make \
     python
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
+    | sh -s -- --to /usr/local/bin
 
 # Gives npm permission to run the prepare script in splinter-canopyjs as root
 RUN npm config set unsafe-perm true && npm install
@@ -34,3 +38,6 @@ COPY ./ui/protos /ui/protos
 RUN cd /ui/saplings/product && \
   npm install && \
   npm run generate-proto-files ../../protos
+
+WORKDIR /
+COPY justfile .

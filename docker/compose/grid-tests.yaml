@@ -1,6 +1,3 @@
-#!/bin/bash
-#
-# Copyright 2018 Intel Corporation
 # Copyright 2019 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,37 +13,18 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-top_dir=$(cd $(dirname $(dirname $0)) && pwd)
-exitcode=0
+version: "3.6"
 
-cd $top_dir/daemon/test
-
-CARGO_ARGS=" --features experimental" docker-compose up --abort-on-container-exit --exit-code-from daemon
-test_exit=$?
-
-if [[ $test_exit != 0 ]]; then
-    exitcode=1
-fi
-
-function clean_up {
-    docker-compose  down
-}
-
-clean_up
-
-cd $top_dir/integration
-
-CARGO_ARGS=" --features experimental" docker-compose up --abort-on-container-exit --exit-code-from gridd
-test_exit=$?
-
-if [[ $test_exit != 0 ]]; then
-    exitcode=1
-fi
-
-function clean_up {
-    docker-compose  down
-}
-
-trap clean_up EXIT
-
-exit $exitcode
+services:
+  grid_tests:
+    build:
+      context: ../..
+      dockerfile: docker/tests
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: grid:tests
+    environment:
+        - TEST_ARGS=-- --test-threads=1
+    command: bash -c "just test"

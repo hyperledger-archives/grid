@@ -28,6 +28,7 @@ RUN apt-get update \
     libsasl2-dev \
     libsqlite3-dev \
     libssl-dev \
+    libxml2-dev \
     libzmq3-dev \
     openssl \
     pkg-config \
@@ -52,6 +53,9 @@ RUN cargo install cargo-deb
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
     && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.7.1-linux-x86_64.zip
+
+# Install just
+RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
 
 # Create empty cargo projects for top-level projects
 WORKDIR /build
