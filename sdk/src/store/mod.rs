@@ -17,6 +17,8 @@ pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 
+use crate::error::InternalError;
+
 use std::str::FromStr;
 
 #[cfg(feature = "diesel")]
@@ -54,7 +56,7 @@ pub trait StoreFactory {
 ///   created by the resulting factory
 pub fn create_store_factory(
     connection_uri: &ConnectionUri,
-) -> Result<Box<dyn StoreFactory>, StoreFactoryCreationError> {
+) -> Result<Box<dyn StoreFactory>, InternalError> {
     // disable clippy warning caused for some combinations of features
     // this warning is intended to reduce "needless complexity" but
     // adding blocks for every combination has the opposite effect
@@ -64,7 +66,10 @@ pub fn create_store_factory(
         ConnectionUri::Postgres(url) => {
             let connection_manager = ConnectionManager::<diesel::pg::PgConnection>::new(url);
             let pool = Pool::builder().build(connection_manager).map_err(|err| {
-                StoreFactoryCreationError(format!("Failed to build connection pool: {}", err))
+                InternalError::from_source_with_prefix(
+                    Box::new(err),
+                    "Failed to build connection pool".to_string(),
+                )
             })?;
             Ok(Box::new(postgres::PgStoreFactory::new(pool)))
         }
@@ -80,26 +85,17 @@ pub fn create_store_factory(
                 pool_builder = pool_builder.max_size(1);
             }
             let pool = pool_builder.build(connection_manager).map_err(|err| {
-                StoreFactoryCreationError(format!("Failed to build connection pool: {}", err))
+                InternalError::from_source_with_prefix(
+                    Box::new(err),
+                    "Failed to build connection pool".to_string(),
+                )
             })?;
             Ok(Box::new(sqlite::SqliteStoreFactory::new(pool)))
         }
         #[cfg(all(not(feature = "sqlite"), not(feature = "postgres")))]
-        _ => Err(StoreFactoryCreationError(
+        _ => Err(InternalError::with_message(
             "No valid database connection URI".to_string(),
         )),
-    }
-}
-
-/// Errors raised by trying to create a `StoreFactory`
-#[derive(Debug)]
-pub struct StoreFactoryCreationError(pub String);
-
-impl std::error::Error for StoreFactoryCreationError {}
-
-impl std::fmt::Display for StoreFactoryCreationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Unable to create store factory: {}", self.0)
     }
 }
 
@@ -113,7 +109,7 @@ pub enum ConnectionUri {
 }
 
 impl FromStr for ConnectionUri {
-    type Err = ParseConnectionUriError;
+    type Err = InternalError;
 
     // disable clippy warning caused for some combinations of features
     // this warning is intended to reduce "needless complexity" but
@@ -126,22 +122,10 @@ impl FromStr for ConnectionUri {
             #[cfg(feature = "sqlite")]
             _ => Ok(ConnectionUri::Sqlite(s.into())),
             #[cfg(not(feature = "sqlite"))]
-            _ => Err(ParseConnectionUriError(format!(
+            _ => Err(InternalError::with_message(format!(
                 "No compatible connection type: {}",
                 s
             ))),
         }
-    }
-}
-
-/// Errors raised by trying to parse a `ConnectionUri`
-#[derive(Debug)]
-pub struct ParseConnectionUriError(pub String);
-
-impl std::error::Error for ParseConnectionUriError {}
-
-impl std::fmt::Display for ParseConnectionUriError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Unable to parse connection URI from string: {}", self.0)
     }
 }
