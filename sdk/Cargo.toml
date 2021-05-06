@@ -56,7 +56,7 @@ cylinder = { version = "0.2.2", features = ["key-load"], optional = true}
 rust-crypto = "0.2"
 sawtooth-sdk = "0.4"
 quick-xml = { version = "0.22", features = [ "serialize" ] }
-libxml = "0.2.16"
+libc = "0.2.94"
 tempfile = "3"
 
 [build-dependencies]
