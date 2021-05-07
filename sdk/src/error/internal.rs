@@ -130,10 +130,7 @@ impl InternalError {
 
 impl error::Error for InternalError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.source {
-            Some(s) => Some(s.source.as_ref()),
-            None => None,
-        }
+        self.source.as_ref().map(|s| s.source.as_ref())
     }
 }
 

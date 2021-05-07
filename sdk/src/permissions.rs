@@ -132,7 +132,7 @@ impl<'a> PermissionChecker<'a> {
                             self.get_role(r, Some(agent.org_id())).ok()
                         }
                     })
-                    .filter_map(|r| r)
+                    .flatten()
                     .collect();
 
                 Ok(self.check_roles_for_permission(
@@ -176,7 +176,7 @@ impl<'a> PermissionChecker<'a> {
                             self.get_role(r, Some(agent_org_id)).ok()
                         }
                     })
-                    .filter_map(|r| r)
+                    .flatten()
                     .collect();
 
                 self.check_roles_for_permission(

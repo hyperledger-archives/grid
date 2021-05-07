@@ -49,10 +49,7 @@ impl ErrorResponse {
 
 impl error::Error for ErrorResponse {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.source {
-            Some(s) => Some(s.as_ref()),
-            None => None,
-        }
+        self.source.as_ref().map(|s| s.as_ref())
     }
 }
 

@@ -731,11 +731,7 @@ pub fn make_property_with_data_type(
 
 pub fn create_lat_long_value(lat: Option<i64>, long: Option<i64>) -> Option<LatLongValue> {
     if let Some(latitude) = lat {
-        if let Some(longitude) = long {
-            Some(LatLongValue::from((latitude, longitude)))
-        } else {
-            None
-        }
+        long.map(|longitude| LatLongValue::from((latitude, longitude)))
     } else {
         None
     }
