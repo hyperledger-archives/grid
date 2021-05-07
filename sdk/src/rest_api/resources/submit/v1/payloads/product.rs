@@ -77,7 +77,7 @@ pub struct ProductPayload {
 
 impl ProductPayload {
     pub fn new(timestamp: u64, action: ProductAction) -> Self {
-        Self { timestamp, action }
+        Self { action, timestamp }
     }
 
     pub fn action(&self) -> &ProductAction {
