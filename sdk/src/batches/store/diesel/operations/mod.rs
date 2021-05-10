@@ -13,10 +13,12 @@
 // limitations under the License.
 
 pub(super) mod add_batch;
+pub(super) mod change_batch_to_submitted;
 pub(super) mod fetch_batch;
+pub(super) mod fetch_unclaimed_batches;
 pub(super) mod list_batches;
-pub(super) mod list_batches_with_status;
-pub(super) mod update_status;
+pub(super) mod relinquish_claim;
+pub(super) mod update_submission_error_info;
 
 pub(super) struct BatchStoreOperations<'a, C> {
     conn: &'a C,

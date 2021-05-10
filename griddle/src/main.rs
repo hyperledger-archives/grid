@@ -19,12 +19,19 @@ mod error;
 
 use std::env;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use clap::{App, Arg};
 use diesel::r2d2::{ConnectionManager, Pool};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use grid_sdk::{
-    rest_api::actix_web_3::{self, KeyState, StoreState},
+    batch_processor::{
+        submitter::{
+            BatchSubmitter, SawtoothBatchSubmitter, SawtoothConnection, SplinterBatchSubmitter,
+        },
+        BatchProcessorBuilder,
+    },
+    rest_api::actix_web_3::{self, Endpoint, KeyState, StoreState},
     store::ConnectionUri,
 };
 use log::Record;
@@ -66,6 +73,15 @@ fn griddle_store_state(db_url: &str) -> Result<StoreState, Error> {
     })
 }
 
+fn batch_submitter(endpoint: Endpoint) -> Arc<dyn BatchSubmitter> {
+    if endpoint.is_sawtooth() {
+        let connection = SawtoothConnection::new(&endpoint.url());
+        Arc::new(SawtoothBatchSubmitter::new(connection.get_sender()))
+    } else {
+        Arc::new(SplinterBatchSubmitter::new(&endpoint.url()))
+    }
+}
+
 async fn run() -> Result<(), Error> {
     let matches = App::new("griddle")
         .version(env!("CARGO_PKG_VERSION"))
@@ -98,6 +114,13 @@ async fn run() -> Result<(), Error> {
                 .long("database-url")
                 .takes_value(true)
                 .help("URL for datatbase to be used by griddle"),
+        )
+        .arg(
+            Arg::with_name("connect")
+                .long("connect")
+                .short("C")
+                .takes_value(true)
+                .help("URL for splinter or sawtooth node to be used by griddle"),
         )
         .arg(
             Arg::with_name("key")
@@ -140,6 +163,12 @@ async fn run() -> Result<(), Error> {
         .or_else(|| env::var("GRIDDLE_BIND").ok())
         .unwrap_or_else(|| "localhost:8000".into());
 
+    let connect = matches
+        .value_of("connect")
+        .map(String::from)
+        .or_else(|| env::var("CONNECT_URL").ok())
+        .unwrap_or_else(|| "http://localhost:8085".into());
+
     let database_url = matches
         .value_of("database_url")
         .map(String::from)
@@ -148,6 +177,14 @@ async fn run() -> Result<(), Error> {
 
     let store_state = griddle_store_state(&database_url)?;
     let key_state = KeyState::new(&key);
+
+    let batch_submitter = batch_submitter(Endpoint::from(connect.as_ref()));
+    let batch_processor =
+        BatchProcessorBuilder::new(store_state.batch_store.clone(), batch_submitter);
+
+    batch_processor
+        .start()
+        .map_err(|err| Error::from_message(&format!("Failed to start batch processor: {}", err)))?;
 
     actix_web_3::run(&bind, store_state, key_state)
         .await

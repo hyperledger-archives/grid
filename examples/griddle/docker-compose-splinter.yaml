@@ -19,6 +19,7 @@ volumes:
   registry:
   gridd-alpha:
   gridd-beta:
+  gridd-gamma:
   templates-shared:
 
 services:
@@ -47,18 +48,94 @@ services:
 
   # ---== shared services ==---
 
-  grid-contract-downloader:
-    image: hyperledger/sawtooth-sabre-cli:0.5
-    container_name: grid-contract-downloader
+  pike-contract-builder:
+    image: pike-contract-builder
+    container_name: pike-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/pike/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - contracts-shared:/usr/share/scar
     entrypoint: |
       bash -c "
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-track-and-trace_0.1.2.scar -o /usr/share/scar/grid-track-and-trace_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-schema_0.1.2.scar -o /usr/share/scar/grid-schema_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-pike_0.1.2.scar -o /usr/share/scar/grid-pike_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-product_0.1.2.scar -o /usr/share/scar/grid-product_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-location_0.1.2.scar -o /usr/share/scar/grid-location_0.1.2.scar
+        cp /tmp/grid-pike*.scar /usr/share/scar
+      "
+
+  product-contract-builder:
+    image: product-contract-builder
+    container_name: product-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/product/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-product*.scar /usr/share/scar
+      "
+
+  schema-contract-builder:
+    image: schema-contract-builder
+    container_name: schema-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/schema/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-schema*.scar /usr/share/scar
+      "
+
+  tnt-contract-builder:
+    image: tnt-contract-builder
+    container_name: tnt-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/track_and_trace/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-track-and-trace*.scar /usr/share/scar
+      "
+
+  location-contract-builder:
+    image: location-contract-builder
+    container_name: location-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/location/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-location*.scar /usr/share/scar
+      "
+
+  purchase-order-contract-builder:
+    image: purchase-order-contract-builder
+    container_name: purchase-order-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/purchase_order/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-purchase-order*.scar /usr/share/scar
       "
 
   generate-registry:
@@ -72,17 +149,17 @@ services:
           # generate keys
           splinter admin keygen alpha -d /registry
           splinter admin keygen beta -d /registry
+          splinter admin keygen gamma -d /registry
           # check if splinterd-alpha is available
           while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 200 ]] ; do
-             >&2 echo \"splinterd is unavailable - sleeping\"
+             >&2 echo \"splinterd alpha is unavailable - sleeping\"
              sleep 1
           done
           # check if splinterd-beta is available
           while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 200 ]] ; do
-             >&2 echo \"splinterd is unavailable - sleeping\"
+             >&2 echo \"splinterd beta is unavailable - sleeping\"
              sleep 1
           done
-
           # build the registry
           splinter registry build \
             http://splinterd-alpha:8085 \
@@ -123,9 +200,15 @@ services:
       POSTGRES_DB: grid
 
   gridd-alpha:
-    image: hyperledger/gridd:experimental
+    image: gridd
     container_name: gridd-alpha
     hostname: gridd-alpha
+    build:
+      context: ../..
+      dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS= --features experimental
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-alpha:/etc/grid/keys
@@ -145,7 +228,10 @@ services:
             sleep 1
         done
         grid -vv admin keygen --skip && \
-        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
+        grid -vv keygen --system && \
+        grid -vv database migrate \
+            -C postgres://grid:grid_example@db-alpha/grid &&
+        gridd -vv -b 0.0.0.0:8080 -k root -C splinter:http://splinterd-alpha:8085 \
             --database-url postgres://grid:grid_example@db-alpha/grid
       "
 
@@ -210,7 +296,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: splinter
 
-# ---== griddle alpha ==---
+  # ---== griddle alpha ==---
 
   griddle-alpha-0:
     container_name: griddle-alpha-0
@@ -234,9 +320,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-0
-        grid -vv database migrate \
-            -C postgres://grid:grid_example@db-alpha/grid &&
-        griddle -vv --connect splinter:http://splinterd-alpha:8085
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-1:
@@ -261,7 +345,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-1
-        griddle -vv --connect splinter:http://splinterd-alpha:8085
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-2:
@@ -286,7 +370,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-2
-        griddle -vv --connect splinter:http://splinterd-alpha:8085
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-3:
@@ -311,7 +395,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-alpha-3
-        griddle -vv --connect splinter:http://splinterd-alpha:8085
+        griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
   # ---== beta node ==---
@@ -329,9 +413,15 @@ services:
       POSTGRES_DB: grid
 
   gridd-beta:
-    image: hyperledger/gridd:experimental
+    image: gridd
     container_name: gridd-beta
     hostname: gridd-beta
+    build:
+      context: ../..
+      dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS= --features experimental
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-beta:/etc/grid/keys
@@ -351,7 +441,10 @@ services:
             sleep 1
         done
         grid -vv admin keygen --skip && \
-        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
+        grid -vv keygen --system && \
+        grid -vv database migrate \
+            -C postgres://grid:grid_example@db-beta/grid &&
+        gridd -vv -k root -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
             --database-url postgres://grid:grid_example@db-beta/grid
       "
 
@@ -439,9 +532,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-0
-        grid -vv database migrate \
-            -C postgres://grid:grid_example@db-beta/grid &&
-        griddle -vv --connect splinter:http://splinterd-beta:8085
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-1:
@@ -466,7 +557,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-1
-        griddle -vv --connect splinter:http://splinterd-beta:8085
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-2:
@@ -491,7 +582,7 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-2
-        griddle -vv --connect splinter:http://splinterd-beta:8085
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
   griddle-beta-3:
@@ -516,5 +607,5 @@ services:
             sleep 1
         done
         grid -vv keygen --system griddle-beta-3
-        griddle -vv --connect splinter:http://splinterd-beta:8085
+        griddle -v --connect splinter:http://splinterd-beta:8085
       "

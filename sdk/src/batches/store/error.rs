@@ -12,9 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "diesel")]
+use diesel::r2d2::PoolError;
+#[cfg(feature = "diesel")]
+use diesel::result::{DatabaseErrorKind, Error as diesel_error};
 use std::error::Error;
 use std::fmt;
 
+#[cfg(feature = "diesel")]
+use crate::error::ConstraintViolationType;
 use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
 
 /// Represents BatchStore errors
@@ -45,5 +51,39 @@ impl fmt::Display for BatchStoreError {
             BatchStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
             BatchStoreError::NotFoundError(ref s) => write!(f, "Batch not found: {}", s),
         }
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel_error> for BatchStoreError {
+    fn from(err: diesel_error) -> BatchStoreError {
+        match err {
+            diesel_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                BatchStoreError::ConstraintViolationError(
+                    ConstraintViolationError::from_source_with_violation_type(
+                        ConstraintViolationType::Unique,
+                        Box::new(err),
+                    ),
+                )
+            }
+            diesel_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                BatchStoreError::ConstraintViolationError(
+                    ConstraintViolationError::from_source_with_violation_type(
+                        ConstraintViolationType::ForeignKey,
+                        Box::new(err),
+                    ),
+                )
+            }
+            _ => BatchStoreError::InternalError(InternalError::from_source(Box::new(err))),
+        }
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<PoolError> for BatchStoreError {
+    fn from(err: PoolError) -> BatchStoreError {
+        BatchStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }

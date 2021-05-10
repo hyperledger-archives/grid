@@ -13,38 +13,69 @@
 // limitations under the License.
 
 use super::BatchStoreOperations;
-use crate::batches::store::diesel::models::BatchModel;
-use crate::batches::store::{diesel::schema::batches, BatchStoreError};
+use crate::batches::store::{
+    diesel::{
+        schema::{batches, transactions},
+        BatchModel, TransactionModel,
+    },
+    Batch, BatchStoreError,
+};
 use crate::error::InternalError;
 
 use diesel::{dsl::insert_into, prelude::*};
 
 pub(in crate::batches::store::diesel) trait AddBatchOperation {
-    fn add_batch(&self, batch: BatchModel) -> Result<(), BatchStoreError>;
+    fn add_batch(&self, batch: Batch) -> Result<(), BatchStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> AddBatchOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
-    fn add_batch(&self, batch: BatchModel) -> Result<(), BatchStoreError> {
-        insert_into(batches::table)
-            .values(batch)
-            .execute(&*self.conn)
-            .map(|_| ())
-            .map_err(|err| {
-                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+    fn add_batch(&self, batch: Batch) -> Result<(), BatchStoreError> {
+        let (batch_model, transaction_models): (BatchModel, Vec<TransactionModel>) = batch.into();
+        self.conn.transaction::<_, BatchStoreError, _>(|| {
+            insert_into(batches::table)
+                .values(batch_model)
+                .execute(&*self.conn)
+                .map(|_| ())
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            insert_into(transactions::table)
+                .values(transaction_models)
+                .execute(&*self.conn)
+                .map(|_| ())
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            Ok(())
+        })
     }
 }
 
 #[cfg(feature = "sqlite")]
 impl<'a> AddBatchOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn add_batch(&self, batch: BatchModel) -> Result<(), BatchStoreError> {
-        insert_into(batches::table)
-            .values(batch)
-            .execute(&*self.conn)
-            .map(|_| ())
-            .map_err(|err| {
-                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+    fn add_batch(&self, batch: Batch) -> Result<(), BatchStoreError> {
+        let (batch_model, transaction_models): (BatchModel, Vec<TransactionModel>) = batch.into();
+        self.conn.transaction::<_, BatchStoreError, _>(|| {
+            insert_into(batches::table)
+                .values(batch_model)
+                .execute(&*self.conn)
+                .map(|_| ())
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            insert_into(transactions::table)
+                .values(transaction_models)
+                .execute(&*self.conn)
+                .map(|_| ())
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+
+            Ok(())
+        })
     }
 }

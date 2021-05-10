@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,22 @@
 
 use super::BatchStoreOperations;
 use crate::batches::store::{diesel::schema::batches, BatchStoreError};
-
 use crate::error::InternalError;
+
+use chrono::NaiveDateTime;
 use diesel::{dsl::update, prelude::*};
 
-pub(in crate::batches::store::diesel) trait UpdateStatusOperation {
-    fn update_status(&self, id: &str, status: &str) -> Result<(), BatchStoreError>;
+pub(in crate::batches::store::diesel) trait RelinquishClaimOperation {
+    fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> UpdateStatusOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
-    fn update_status(&self, id: &str, status: &str) -> Result<(), BatchStoreError> {
+impl<'a> RelinquishClaimOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
+    fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError> {
+        let claim_expires: Option<NaiveDateTime> = None;
         update(batches::table)
-            .filter(batches::id.eq(id))
-            .set(batches::status.eq(status))
+            .filter(batches::header_signature.eq(id))
+            .set(batches::claim_expires.eq(claim_expires))
             .execute(self.conn)
             .map(|_| ())
             .map_err(|err| {
@@ -37,11 +39,12 @@ impl<'a> UpdateStatusOperation for BatchStoreOperations<'a, diesel::pg::PgConnec
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> UpdateStatusOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn update_status(&self, id: &str, status: &str) -> Result<(), BatchStoreError> {
+impl<'a> RelinquishClaimOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError> {
+        let claim_expires: Option<NaiveDateTime> = None;
         update(batches::table)
-            .filter(batches::id.eq(id))
-            .set(batches::status.eq(status))
+            .filter(batches::header_signature.eq(id))
+            .set(batches::claim_expires.eq(claim_expires))
             .execute(self.conn)
             .map(|_| ())
             .map_err(|err| {
