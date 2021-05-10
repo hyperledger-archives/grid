@@ -234,8 +234,8 @@ impl BatchProcessorBuilder {
 
         Ok(BatchProcessor {
             join_handle,
-            pacemaker,
             sender,
+            pacemaker,
         })
     }
 }
