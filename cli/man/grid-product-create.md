@@ -63,7 +63,7 @@ OPTIONS
 : A product property (format: key=value)
 
 `--file, -f`
-: Path or URL to a YAML file containing a list of products
+: Path to file containing a list of products
 
 ARGS
 ====
