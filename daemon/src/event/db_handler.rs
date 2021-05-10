@@ -132,9 +132,9 @@ impl DatabaseEventHandler<diesel::pg::PgConnection> {
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
 
         Self {
+            connection_pool,
             #[cfg(feature = "pike")]
             agent_store,
-            connection_pool,
             commit_store,
             #[cfg(feature = "pike")]
             organization_store,
@@ -306,9 +306,9 @@ impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
 
         Self {
+            connection_pool,
             #[cfg(feature = "pike")]
             agent_store,
-            connection_pool,
             commit_store,
             #[cfg(feature = "pike")]
             organization_store,
