@@ -114,6 +114,11 @@ ci-test-ui: ci-build-ui-test-deps
 clean:
     cargo clean
 
+copy-env:
+    #!/usr/bin/env sh
+    set -e
+    find . -name .env | xargs -I '{}' sh -c "echo 'Copying to {}'; rsync .env {}"
+
 lint:
     #!/usr/bin/env sh
     set -e
