@@ -116,11 +116,9 @@ pub struct HexError {
 
 impl Error for HexError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        if let Some(ref err) = self.source {
-            Some(&**err)
-        } else {
-            None
-        }
+        self.source
+            .as_ref()
+            .map(|err| &**err as &(dyn std::error::Error + 'static))
     }
 }
 

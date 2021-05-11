@@ -108,10 +108,7 @@ impl ConstraintViolationError {
 
 impl error::Error for ConstraintViolationError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.source {
-            Some(s) => Some(s.as_ref()),
-            None => None,
-        }
+        self.source.as_ref().map(|s| s.as_ref())
     }
 }
 
