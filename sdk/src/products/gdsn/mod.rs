@@ -68,7 +68,6 @@ impl TradeItem {
 }
 
 pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGdsnError> {
-    validate_product_definitons(path)?;
     let mut xml_file = std::fs::File::open(path).map_err(|error| {
         ProductGdsnError::InvalidArgument(InvalidArgumentError::new(
             path.to_string(),
@@ -90,6 +89,8 @@ pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGds
             error.to_string(),
         ))
     })?;
+
+    validate_product_definitons(path)?;
 
     let mut reader = Reader::from_str(&xml_str);
     reader.trim_text(true);

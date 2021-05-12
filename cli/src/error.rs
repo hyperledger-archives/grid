@@ -127,6 +127,6 @@ impl From<sabre_sdk::protos::ProtoConversionError> for CliError {
 #[cfg(feature = "product-gdsn")]
 impl From<grid_sdk::products::gdsn::error::ProductGdsnError> for CliError {
     fn from(err: grid_sdk::products::gdsn::error::ProductGdsnError) -> Self {
-        CliError::PayloadError(err.to_string())
+        CliError::UserError(err.to_string())
     }
 }
