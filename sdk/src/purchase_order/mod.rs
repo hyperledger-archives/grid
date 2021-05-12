@@ -15,6 +15,6 @@
 pub mod addressing;
 pub mod store;
 
-#[cfg(feature = "postgres")]
+#[cfg(feature = "diesel")]
 pub use store::diesel::DieselPurchaseOrderStore;
 pub use store::PurchaseOrderStore;
