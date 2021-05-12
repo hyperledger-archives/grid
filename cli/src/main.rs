@@ -718,82 +718,6 @@ fn run() -> Result<(), CliError> {
     {
         use clap::{Arg, SubCommand};
 
-        #[allow(unused_mut)]
-        let mut create_product_subcmd = SubCommand::with_name("create")
-            .about("Create a product")
-            .arg(
-                Arg::with_name("product_id")
-                    .conflicts_with("file")
-                    .takes_value(true)
-                    .required_unless_one(&["file", "xml"])
-                    .help("Unique ID for product"),
-            )
-            .arg(
-                Arg::with_name("product_namespace")
-                    .long("namespace")
-                    .takes_value(true)
-                    .conflicts_with("file")
-                    .conflicts_with("xml")
-                    .help("Product namespace (example: GS1)"),
-            )
-            .arg(
-                Arg::with_name("owner")
-                    .long("owner")
-                    .takes_value(true)
-                    .help("Pike organization ID"),
-            )
-            .arg(
-                Arg::with_name("property")
-                    .long("property")
-                    .use_delimiter(true)
-                    .takes_value(true)
-                    .multiple(true)
-                    .conflicts_with("file")
-                    .help("Key value pair specifying a product property formatted as key=value"),
-            )
-            .arg(
-                #[cfg(not(feature = "product-gdsn"))]
-                Arg::with_name("file")
-                    .long("file")
-                    .short("f")
-                    .takes_value(true)
-                    .conflicts_with("xml")
-                    .help("Path to yaml file containing a list of products"),
-                #[cfg(feature = "product-gdsn")]
-                Arg::with_name("file")
-                    .long("file")
-                    .short("f")
-                    .takes_value(true)
-                    .multiple(true)
-                    .number_of_values(1)
-                    .help("Path to yaml file containing a list of products"),
-            )
-            .arg(
-                Arg::with_name("key")
-                    .long("key")
-                    .short("k")
-                    .takes_value(true)
-                    .help("Base name for private signing key file"),
-            )
-            .arg(
-                Arg::with_name("wait")
-                    .long("wait")
-                    .takes_value(true)
-                    .help("How long to wait for transaction to be committed"),
-            );
-
-        #[cfg(feature = "product-gdsn")]
-        {
-            create_product_subcmd = create_product_subcmd.arg(
-                Arg::with_name("xml")
-                    .long("xml")
-                    .short("x")
-                    .takes_value(true)
-                    .conflicts_with("file")
-                    .help("Path to xml file containing a product definition"),
-            )
-        }
-
         app = app.subcommand(
             SubCommand::with_name("product")
                 .about("Create, update, delete, list, or show products")
@@ -814,7 +738,68 @@ fn run() -> Result<(), CliError> {
                         .takes_value(true)
                         .help("URL for the REST API"),
                 )
-                .subcommand(create_product_subcmd)
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create a product")
+                        .arg(
+                            Arg::with_name("product_id")
+                                .conflicts_with("file")
+                                .takes_value(true)
+                                .required_unless("file")
+                                .help("Unique ID for product"),
+                        )
+                        .arg(
+                            Arg::with_name("product_namespace")
+                                .long("namespace")
+                                .takes_value(true)
+                                .conflicts_with("file")
+                                .help("Product namespace (example: GS1)"),
+                        )
+                        .arg(
+                            Arg::with_name("owner")
+                                .long("owner")
+                                .takes_value(true)
+                                .help("Pike organization ID"),
+                        )
+                        .arg(
+                            Arg::with_name("property")
+                                .long("property")
+                                .use_delimiter(true)
+                                .takes_value(true)
+                                .multiple(true)
+                                .conflicts_with("file")
+                                .help("Key value pair specifying a product property formatted as key=value"),
+                        )
+                        .arg(
+                            #[cfg(not(feature = "product-gdsn"))]
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .help("Path to yaml file containing a list of products"),
+                            #[cfg(feature = "product-gdsn")]
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .multiple(true)
+                                .number_of_values(1)
+                                .help("Path to file containing a list of products"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Base name for private signing key file"),
+                        )
+                        .arg(
+                            Arg::with_name("wait")
+                                .long("wait")
+                                .takes_value(true)
+                                .help("How long to wait for transaction to be committed"),
+                        )
+                )
                 .subcommand(
                     SubCommand::with_name("update")
                         .about("Update products from a yaml file")
