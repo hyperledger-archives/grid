@@ -44,7 +44,7 @@
     "react-dropdown": "^1.7.0",
     "react-router-dom": "^5.1.2",
     "react-toast-notifications": "^2.4.0",
-    "splinter-saplingjs": "github:cargill/splinter-saplingjs#master",
+    "splinter-saplingjs": "github:cargill/splinter-saplingjs#main",
     "transact-sdk-javascript": "github:hyperledger/transact-sdk-javascript#master"
   },
   "devDependencies": {
@@ -60,7 +60,7 @@
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-jsx-a11y": "^6.2.3",
     "eslint-plugin-prettier": "^3.1.1",
-    "eslint-plugin-react": "^7.14.3",
+    "eslint-plugin-react": "7.22.0",
     "eslint-plugin-react-hooks": "^1.7.0",
     "http-server": "^0.12.1",
     "mini-css-extract-plugin": "^0.9.0",
