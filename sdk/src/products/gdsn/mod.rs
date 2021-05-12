@@ -27,7 +27,10 @@ use serde::Deserialize;
 use crate::error::InvalidArgumentError;
 use crate::protocol::{
     product::{
-        payload::{ProductCreateAction, ProductCreateActionBuilder},
+        payload::{
+            ProductCreateAction, ProductCreateActionBuilder, ProductUpdateAction,
+            ProductUpdateActionBuilder,
+        },
         state::ProductNamespace,
     },
     schema::state::{DataType, PropertyValueBuilder},
@@ -63,6 +66,19 @@ impl TradeItem {
             .with_product_namespace(ProductNamespace::Gs1)
             .with_owner(owner.to_string())
             .with_properties(vec![xml_property])
+            .build()?)
+    }
+
+    pub fn into_update_payload(self) -> Result<ProductUpdateAction, ProductGdsnError> {
+        let gdsn_property = PropertyValueBuilder::new()
+            .with_name(GDSN_3_1_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::String)
+            .with_string_value(self.payload)
+            .build()?;
+        Ok(ProductUpdateActionBuilder::new()
+            .with_product_id(self.gtin)
+            .with_product_namespace(ProductNamespace::Gs1)
+            .with_properties(vec![gdsn_property])
             .build()?)
     }
 }
