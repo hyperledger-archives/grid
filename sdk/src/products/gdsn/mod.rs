@@ -55,6 +55,11 @@ pub struct TradeItem {
 }
 
 impl TradeItem {
+    /// Returns a ProductCreateAction transaction payload
+    ///
+    /// # Arguments
+    ///
+    /// * `owner` - The Pike organization ID of the owner of this record in Grid
     pub fn into_create_payload(self, owner: &str) -> Result<ProductCreateAction, ProductGdsnError> {
         let xml_property = PropertyValueBuilder::new()
             .with_name(GDSN_3_1_PROPERTY_NAME.to_string())
@@ -69,6 +74,7 @@ impl TradeItem {
             .build()?)
     }
 
+    /// Returns a ProductUpdateAction transaction payload
     pub fn into_update_payload(self) -> Result<ProductUpdateAction, ProductGdsnError> {
         let gdsn_property = PropertyValueBuilder::new()
             .with_name(GDSN_3_1_PROPERTY_NAME.to_string())
@@ -83,6 +89,18 @@ impl TradeItem {
     }
 }
 
+/// Returns a vector of TradeItem objects from a path to an XML file containing
+/// a gridTradeItems XML element. An error will be returned if the XML file
+/// fails to validate against the GridTradeItems.xsd schema, or if the file
+/// does not contain well-formed XML.
+///
+/// View the GridTradeItems XML schema definition here:
+///     https://github.com/hyperledger/grid/blob/main/sdk/src/products/gdsn/GridTradeItems.xsd
+///
+/// # Arguments
+///
+/// * `path` - The path to an XML file containing GDSN trade item definitions
+///
 pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGdsnError> {
     let mut xml_file = std::fs::File::open(path).map_err(|error| {
         ProductGdsnError::InvalidArgument(InvalidArgumentError::new(

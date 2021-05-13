@@ -44,6 +44,21 @@ extern "C" {
     ) -> c_int;
 }
 
+/// Checks whether an XML file at the provided path validates against the
+/// GridTradeItems.xsd XML schema definition. This function uses calls to the
+/// libxml2 C library. An error will be returned if the file fails to validate
+/// for any reason.
+///
+/// View the GridTradeItems XML schema definition here:
+///     https://github.com/hyperledger/grid/blob/main/sdk/src/products/gdsn/GridTradeItems.xsd
+///
+/// For more information about libxml2, see the documentation here:
+///     http://www.xmlsoft.org/
+///
+/// # Arguments
+///
+/// * `xml_path` - The path to an XML file containing GDSN trade item definitions
+///
 pub fn validate_product_definitons(xml_path: &str) -> Result<(), ProductGdsnError> {
     let schema = load_schema();
     let path = CString::new(xml_path)
