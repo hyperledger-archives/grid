@@ -38,7 +38,7 @@
     "splinter-canopyjs": "github:cargill/splinter-canopyjs#main"
   },
   "devDependencies": {
-    "eslint": "^7.24.0",
+    "eslint": "7.22.0",
     "eslint-config-airbnb": "18.0.1",
     "eslint-config-prettier": "^6.4.0",
     "eslint-plugin-import": "^2.22.1",
