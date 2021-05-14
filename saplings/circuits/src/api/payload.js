@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { Secp256k1Signer, Secp256k1PrivateKey } from 'transact-sdk-javascript';
+import { Secp256k1Signer, Secp256k1PrivateKey } from 'transact-sdk';
 
 import crypto from 'crypto';
 import protos from '../protobuf';
