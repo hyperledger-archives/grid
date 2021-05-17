@@ -1,5 +1,5 @@
 /**
- * Copyright 2018-2020 Cargill Incorporated
+ * Copyright 2018-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,40 +51,39 @@ $bp-xl-start: 840px;
 
   @media screen and (min-width: $bp-sm-start) and (max-width: $bp-sm-end) {
     grid-template-columns:
-      [full-start] 1rem
+      [full-start] 0
       [main-start] repeat(var(--bp-sm-cols), 1fr) [main-end]
-      1rem [full-end];
+      0 [full-end];
     column-gap: var(--bp-sm-gutter);
   }
 
   @media screen and (min-width: $bp-md-start) and (max-width: $bp-md-end) {
     grid-template-columns:
-      [full-start] 1rem
+      [full-start] 0
       [main-start] repeat(var(--bp-md-cols), 1fr) [main-end]
-      1rem [full-end];
+      0 [full-end];
     column-gap: var(--bp-md-gutter);
   }
 
   @media screen and (min-width: $bp-lg-start) and (max-width: $bp-lg-end) {
     grid-template-columns:
-      [full-start] 1rem
+      [full-start] 0
       [main-start] repeat(var(--bp-lg-cols), 1fr) [main-end]
-      1rem [full-end];
+      0 [full-end];
     column-gap: var(--bp-lg-gutter);
   }
 
   @media screen and (min-width: $bp-xl-start) {
     grid-template-columns:
-      [full-start] 1rem
+      [full-start] 0
       [main-start] repeat(var(--bp-xl-cols), 1fr) [main-end]
-      1rem [full-end];
+      0 [full-end];
     column-gap: var(--bp-xl-gutter);
   }
 }
 
 @mixin grid-main {
   display: grid;
-  grid-column: main-start / main-end;
 
   @media screen and (min-width: $bp-sm-start) and (max-width: $bp-sm-end) {
     grid-template-columns: [main-start] repeat(var(--bp-sm-cols), 1fr) [main-end];

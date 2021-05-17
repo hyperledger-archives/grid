@@ -31,7 +31,7 @@ import {
 import { ToastProvider } from 'react-toast-notifications';
 
 import { ServiceProvider } from './state/service-context';
-import FilterBar from './components/FilterBar';
+import TopBar from './components/TopBar';
 import ProductsTable from './components/ProductsTable';
 import ProductInfo from './components/ProductInfo';
 import { AddProductForm } from './components/AddProductForm';
@@ -119,7 +119,7 @@ function App() {
     <ServiceProvider>
       <ToastProvider>
         <div id="product-sapling" className="product-app">
-          <FilterBar />
+          <TopBar saplingName="Product Management" />
           <Router>
             <Switch>
               <Route exact path="/product">

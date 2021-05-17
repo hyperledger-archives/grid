@@ -1,5 +1,5 @@
 /**
- * Copyright 2018-2020 Cargill Incorporated
+ * Copyright 2018-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,29 +13,80 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@import '../styles/index.scss';
 
 .products-table-container {
+  @include grid-full;
+
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 2rem 3rem;
+  grid-column: full;
 
-  .products-table-header {
-    .title {
-      margin: 0;
-    }
+  .selected-service {
+    grid-column: main;
+    font-size: 2.5rem;
+    font-weight: 400;
+    color: var(--color-dark-grey);
+    margin: 1rem 0;
+  }
 
-    hr {
-      border-top: 2px solid var(--color-dark-grey);
-      margin-left: 0;
-      margin-bottom: 1rem;
-      width: 12rem;
+  .table-utils {
+    @include grid-full;
+
+    grid-column: full;
+    background: rgb(255, 255, 255);
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+
+    .util-wrapper {
+      grid-column: main;
+      display: flex;
+      justify-content: space-between;
+      margin: 1rem 0;
+
+      .filters {
+        display: flex;
+        flex-direction: column;
+        min-width: 40rem;
+        max-width: 60%;
+
+        .inputs {
+          display: flex;
+          flex-direction: row;
+
+          .grid-input {
+            min-width: 12rem;
+            margin-right: 1rem;
+          }
+        }
+      }
+
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+
+        button {
+          .material-icons {
+            height: 1rem;
+            width: 1rem;
+            font-size: 1rem;
+          }
+        }
+      }
     }
   }
 
-  .products-table {
-    display: grid;
-    grid-gap: 1rem;
-    grid-template-columns: repeat(auto-fit, 22rem);
+  .table {
+    margin-top: 1rem;
+    grid-column: main;
+
+    .img-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      .product-image {
+        max-width: 4rem;
+        max-height: 2rem;
+      }
+    }
   }
 }
