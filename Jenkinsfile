@@ -25,7 +25,7 @@ pipeline {
     }
 
     triggers {
-        cron(env.BRANCH_NAME == 'main' ? 'H 2 * * *' : '')
+        cron(env.BRANCH_NAME == 'main' ? 'H 1 * * *' : '')
     }
 
     options {
