@@ -34,11 +34,11 @@
     "@testing-library/user-event": "^7.1.2",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
-    "react-scripts": "^3.4.0",
+    "react-scripts": "^4.0.3",
     "splinter-canopyjs": "github:cargill/splinter-canopyjs#main"
   },
   "devDependencies": {
-    "eslint": "^6.6.0",
+    "eslint": "7.22.0",
     "eslint-config-airbnb": "18.0.1",
     "eslint-config-prettier": "^6.4.0",
     "eslint-plugin-import": "^2.22.1",
@@ -46,8 +46,8 @@
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-react": "^7.14.3",
     "eslint-plugin-react-hooks": "^1.7.0",
-    "http-server": "^0.12.1",
-    "node-sass": "^4.13.1",
+    "http-server": "^0.12.3",
+    "node-sass": "^5.0.0",
     "nodemon": "^2.0.2",
     "npm-run-all": "^4.1.5",
     "prettier": "^1.18.2"

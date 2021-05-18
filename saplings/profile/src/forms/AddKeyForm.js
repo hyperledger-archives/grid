@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import proptypes from 'prop-types';
 import { encryptKey, getSharedConfig } from 'splinter-saplingjs';
-import { Secp256k1Context, Secp256k1PrivateKey } from 'transact-sdk-javascript';
+import { Secp256k1Context, Secp256k1PrivateKey } from 'transact-sdk';
 import crypto from 'crypto';
 import { MultiStepForm, Step, StepInput } from './MultiStepForm';
 import { Loader } from '../Loader';
