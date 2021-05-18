@@ -34,8 +34,7 @@ pub fn do_create_organization(
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::CreateOrganization)
-        .with_create_organization(create_org)
+        .with_action(Action::CreateOrganization(create_org))
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -58,8 +57,7 @@ pub fn do_update_organization(
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::UpdateOrganization)
-        .with_update_organization(update_org)
+        .with_action(Action::UpdateOrganization(update_org))
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 

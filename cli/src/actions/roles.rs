@@ -130,8 +130,7 @@ pub fn do_create_role(
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::CreateRole)
-        .with_create_role(create_role)
+        .with_action(Action::CreateRole(create_role))
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -154,8 +153,7 @@ pub fn do_update_role(
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::UpdateRole)
-        .with_update_role(update_role)
+        .with_action(Action::UpdateRole(update_role))
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -178,8 +176,7 @@ pub fn do_delete_role(
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::DeleteRole)
-        .with_delete_role(delete_role)
+        .with_action(Action::DeleteRole(delete_role))
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 

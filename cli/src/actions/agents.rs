@@ -48,8 +48,7 @@ pub fn do_create_agent(
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::CreateAgent)
-        .with_create_agent(create_agent)
+        .with_action(Action::CreateAgent(create_agent))
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -72,8 +71,7 @@ pub fn do_update_agent(
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::UpdateAgent)
-        .with_update_agent(update_agent)
+        .with_action(Action::UpdateAgent(update_agent))
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 

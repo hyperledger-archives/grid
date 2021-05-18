@@ -26,70 +26,16 @@ use crate::protos::{
 /// Native implementation for PikePayload_Action
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
-    CreateAgent,
-    UpdateAgent,
-    DeleteAgent,
-    CreateOrganization,
-    UpdateOrganization,
-    DeleteOrganization,
-    CreateRole,
-    UpdateRole,
-    DeleteRole,
+    CreateAgent(CreateAgentAction),
+    UpdateAgent(UpdateAgentAction),
+    DeleteAgent(DeleteAgentAction),
+    CreateOrganization(CreateOrganizationAction),
+    UpdateOrganization(UpdateOrganizationAction),
+    DeleteOrganization(DeleteOrganizationAction),
+    CreateRole(CreateRoleAction),
+    UpdateRole(UpdateRoleAction),
+    DeleteRole(DeleteRoleAction),
 }
-
-impl FromProto<protos::pike_payload::PikePayload_Action> for Action {
-    fn from_proto(
-        actions: protos::pike_payload::PikePayload_Action,
-    ) -> Result<Self, ProtoConversionError> {
-        match actions {
-            protos::pike_payload::PikePayload_Action::CREATE_AGENT => Ok(Action::CreateAgent),
-            protos::pike_payload::PikePayload_Action::UPDATE_AGENT => Ok(Action::UpdateAgent),
-            protos::pike_payload::PikePayload_Action::DELETE_AGENT => Ok(Action::DeleteAgent),
-            protos::pike_payload::PikePayload_Action::CREATE_ORGANIZATION => {
-                Ok(Action::CreateOrganization)
-            }
-            protos::pike_payload::PikePayload_Action::UPDATE_ORGANIZATION => {
-                Ok(Action::UpdateOrganization)
-            }
-            protos::pike_payload::PikePayload_Action::DELETE_ORGANIZATION => {
-                Ok(Action::DeleteOrganization)
-            }
-            protos::pike_payload::PikePayload_Action::CREATE_ROLE => Ok(Action::CreateRole),
-            protos::pike_payload::PikePayload_Action::UPDATE_ROLE => Ok(Action::UpdateRole),
-            protos::pike_payload::PikePayload_Action::DELETE_ROLE => Ok(Action::DeleteRole),
-            protos::pike_payload::PikePayload_Action::ACTION_UNSET => {
-                Err(ProtoConversionError::InvalidTypeError(
-                    "Cannot convert PikePayload_Action with type unset.".to_string(),
-                ))
-            }
-        }
-    }
-}
-
-impl FromNative<Action> for protos::pike_payload::PikePayload_Action {
-    fn from_native(action: Action) -> Result<Self, ProtoConversionError> {
-        match action {
-            Action::CreateAgent => Ok(protos::pike_payload::PikePayload_Action::CREATE_AGENT),
-            Action::UpdateAgent => Ok(protos::pike_payload::PikePayload_Action::UPDATE_AGENT),
-            Action::DeleteAgent => Ok(protos::pike_payload::PikePayload_Action::DELETE_AGENT),
-            Action::CreateOrganization => {
-                Ok(protos::pike_payload::PikePayload_Action::CREATE_ORGANIZATION)
-            }
-            Action::UpdateOrganization => {
-                Ok(protos::pike_payload::PikePayload_Action::UPDATE_ORGANIZATION)
-            }
-            Action::DeleteOrganization => {
-                Ok(protos::pike_payload::PikePayload_Action::DELETE_ORGANIZATION)
-            }
-            Action::CreateRole => Ok(protos::pike_payload::PikePayload_Action::CREATE_ROLE),
-            Action::UpdateRole => Ok(protos::pike_payload::PikePayload_Action::UPDATE_ROLE),
-            Action::DeleteRole => Ok(protos::pike_payload::PikePayload_Action::DELETE_ROLE),
-        }
-    }
-}
-
-impl IntoProto<protos::pike_payload::PikePayload_Action> for Action {}
-impl IntoNative<Action> for protos::pike_payload::PikePayload_Action {}
 
 /// Native implementation for CreateAgentAction
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -1640,56 +1586,11 @@ impl DeleteRoleActionBuilder {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PikePayload {
     action: Action,
-    create_agent: CreateAgentAction,
-    update_agent: UpdateAgentAction,
-    delete_agent: DeleteAgentAction,
-    create_organization: CreateOrganizationAction,
-    update_organization: UpdateOrganizationAction,
-    delete_organization: DeleteOrganizationAction,
-    create_role: CreateRoleAction,
-    update_role: UpdateRoleAction,
-    delete_role: DeleteRoleAction,
 }
 
 impl PikePayload {
     pub fn action(&self) -> &Action {
         &self.action
-    }
-
-    pub fn create_agent(&self) -> &CreateAgentAction {
-        &self.create_agent
-    }
-
-    pub fn update_agent(&self) -> &UpdateAgentAction {
-        &self.update_agent
-    }
-
-    pub fn delete_agent(&self) -> &DeleteAgentAction {
-        &self.delete_agent
-    }
-
-    pub fn create_organization(&self) -> &CreateOrganizationAction {
-        &self.create_organization
-    }
-
-    pub fn update_organization(&self) -> &UpdateOrganizationAction {
-        &self.update_organization
-    }
-
-    pub fn delete_organization(&self) -> &DeleteOrganizationAction {
-        &self.delete_organization
-    }
-
-    pub fn create_role(&self) -> &CreateRoleAction {
-        &self.create_role
-    }
-
-    pub fn update_role(&self) -> &UpdateRoleAction {
-        &self.update_role
-    }
-
-    pub fn delete_role(&self) -> &DeleteRoleAction {
-        &self.delete_role
     }
 }
 
@@ -1697,43 +1598,95 @@ impl FromProto<protos::pike_payload::PikePayload> for PikePayload {
     fn from_proto(
         payload: protos::pike_payload::PikePayload,
     ) -> Result<Self, ProtoConversionError> {
-        Ok(PikePayload {
-            action: Action::from_proto(payload.get_action())?,
-            create_agent: CreateAgentAction::from_proto(payload.get_create_agent().clone())?,
-            update_agent: UpdateAgentAction::from_proto(payload.get_update_agent().clone())?,
-            delete_agent: DeleteAgentAction::from_proto(payload.get_delete_agent().clone())?,
-            create_organization: CreateOrganizationAction::from_proto(
-                payload.get_create_organization().clone(),
-            )?,
-            update_organization: UpdateOrganizationAction::from_proto(
-                payload.get_update_organization().clone(),
-            )?,
-            delete_organization: DeleteOrganizationAction::from_proto(
-                payload.get_delete_organization().clone(),
-            )?,
-            create_role: CreateRoleAction::from_proto(payload.get_create_role().clone())?,
-            update_role: UpdateRoleAction::from_proto(payload.get_update_role().clone())?,
-            delete_role: DeleteRoleAction::from_proto(payload.get_delete_role().clone())?,
-        })
+        let action = match payload.get_action() {
+            protos::pike_payload::PikePayload_Action::CREATE_AGENT => Action::CreateAgent(
+                CreateAgentAction::from_proto(payload.get_create_agent().clone())?,
+            ),
+            protos::pike_payload::PikePayload_Action::UPDATE_AGENT => Action::UpdateAgent(
+                UpdateAgentAction::from_proto(payload.get_update_agent().clone())?,
+            ),
+            protos::pike_payload::PikePayload_Action::DELETE_AGENT => Action::DeleteAgent(
+                DeleteAgentAction::from_proto(payload.get_delete_agent().clone())?,
+            ),
+            protos::pike_payload::PikePayload_Action::CREATE_ORGANIZATION => {
+                Action::CreateOrganization(CreateOrganizationAction::from_proto(
+                    payload.get_create_organization().clone(),
+                )?)
+            }
+            protos::pike_payload::PikePayload_Action::UPDATE_ORGANIZATION => {
+                Action::UpdateOrganization(UpdateOrganizationAction::from_proto(
+                    payload.get_update_organization().clone(),
+                )?)
+            }
+            protos::pike_payload::PikePayload_Action::DELETE_ORGANIZATION => {
+                Action::DeleteOrganization(DeleteOrganizationAction::from_proto(
+                    payload.get_delete_organization().clone(),
+                )?)
+            }
+            protos::pike_payload::PikePayload_Action::CREATE_ROLE => Action::CreateRole(
+                CreateRoleAction::from_proto(payload.get_create_role().clone())?,
+            ),
+            protos::pike_payload::PikePayload_Action::UPDATE_ROLE => Action::UpdateRole(
+                UpdateRoleAction::from_proto(payload.get_update_role().clone())?,
+            ),
+            protos::pike_payload::PikePayload_Action::DELETE_ROLE => Action::DeleteRole(
+                DeleteRoleAction::from_proto(payload.get_delete_role().clone())?,
+            ),
+            protos::pike_payload::PikePayload_Action::ACTION_UNSET => {
+                return Err(ProtoConversionError::InvalidTypeError(
+                    "Cannot convert PikePayload_Action with type unset.".to_string(),
+                ));
+            }
+        };
+
+        Ok(Self { action })
     }
 }
 
 impl FromNative<PikePayload> for protos::pike_payload::PikePayload {
-    fn from_native(payload: PikePayload) -> Result<Self, ProtoConversionError> {
-        let mut proto_payload = protos::pike_payload::PikePayload::new();
+    fn from_native(native: PikePayload) -> Result<Self, ProtoConversionError> {
+        let mut proto = protos::pike_payload::PikePayload::new();
 
-        proto_payload.set_action(payload.action().clone().into_proto()?);
-        proto_payload.set_create_agent(payload.create_agent().clone().into_proto()?);
-        proto_payload.set_update_agent(payload.update_agent().clone().into_proto()?);
-        proto_payload.set_delete_agent(payload.delete_agent().clone().into_proto()?);
-        proto_payload.set_create_organization(payload.create_organization().clone().into_proto()?);
-        proto_payload.set_update_organization(payload.update_organization().clone().into_proto()?);
-        proto_payload.set_delete_organization(payload.delete_organization().clone().into_proto()?);
-        proto_payload.set_create_role(payload.create_role().clone().into_proto()?);
-        proto_payload.set_update_role(payload.update_role().clone().into_proto()?);
-        proto_payload.set_delete_role(payload.delete_role().clone().into_proto()?);
+        match native.action() {
+            Action::CreateAgent(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::CREATE_AGENT);
+                proto.set_create_agent(payload.clone().into_proto()?);
+            }
+            Action::UpdateAgent(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::UPDATE_AGENT);
+                proto.set_update_agent(payload.clone().into_proto()?);
+            }
+            Action::DeleteAgent(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::DELETE_AGENT);
+                proto.set_delete_agent(payload.clone().into_proto()?);
+            }
+            Action::CreateOrganization(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::CREATE_ORGANIZATION);
+                proto.set_create_organization(payload.clone().into_proto()?);
+            }
+            Action::UpdateOrganization(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::UPDATE_ORGANIZATION);
+                proto.set_update_organization(payload.clone().into_proto()?);
+            }
+            Action::DeleteOrganization(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::DELETE_ORGANIZATION);
+                proto.set_delete_organization(payload.clone().into_proto()?);
+            }
+            Action::CreateRole(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::CREATE_ROLE);
+                proto.set_create_role(payload.clone().into_proto()?);
+            }
+            Action::UpdateRole(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::UPDATE_ROLE);
+                proto.set_update_role(payload.clone().into_proto()?);
+            }
+            Action::DeleteRole(payload) => {
+                proto.set_action(protos::pike_payload::PikePayload_Action::DELETE_ROLE);
+                proto.set_delete_role(payload.clone().into_proto()?);
+            }
+        };
 
-        Ok(proto_payload)
+        Ok(proto)
     }
 }
 
@@ -1795,15 +1748,6 @@ impl std::fmt::Display for PikePayloadBuildError {
 #[derive(Default, Clone)]
 pub struct PikePayloadBuilder {
     pub action: Option<Action>,
-    pub create_agent: Option<CreateAgentAction>,
-    pub update_agent: Option<UpdateAgentAction>,
-    pub delete_agent: Option<DeleteAgentAction>,
-    pub create_organization: Option<CreateOrganizationAction>,
-    pub update_organization: Option<UpdateOrganizationAction>,
-    pub delete_organization: Option<DeleteOrganizationAction>,
-    pub create_role: Option<CreateRoleAction>,
-    pub update_role: Option<UpdateRoleAction>,
-    pub delete_role: Option<DeleteRoleAction>,
 }
 
 impl PikePayloadBuilder {
@@ -1816,185 +1760,12 @@ impl PikePayloadBuilder {
         self
     }
 
-    pub fn with_create_agent(mut self, create_agent: CreateAgentAction) -> PikePayloadBuilder {
-        self.create_agent = Some(create_agent);
-        self
-    }
-
-    pub fn with_update_agent(mut self, update_agent: UpdateAgentAction) -> PikePayloadBuilder {
-        self.update_agent = Some(update_agent);
-        self
-    }
-
-    pub fn with_delete_agent(mut self, delete_agent: DeleteAgentAction) -> PikePayloadBuilder {
-        self.delete_agent = Some(delete_agent);
-        self
-    }
-
-    pub fn with_create_organization(
-        mut self,
-        create_organization: CreateOrganizationAction,
-    ) -> PikePayloadBuilder {
-        self.create_organization = Some(create_organization);
-        self
-    }
-
-    pub fn with_update_organization(
-        mut self,
-        update_organization: UpdateOrganizationAction,
-    ) -> PikePayloadBuilder {
-        self.update_organization = Some(update_organization);
-        self
-    }
-
-    pub fn with_delete_organization(
-        mut self,
-        delete_organization: DeleteOrganizationAction,
-    ) -> PikePayloadBuilder {
-        self.delete_organization = Some(delete_organization);
-        self
-    }
-
-    pub fn with_create_role(mut self, create_role: CreateRoleAction) -> PikePayloadBuilder {
-        self.create_role = Some(create_role);
-        self
-    }
-
-    pub fn with_update_role(mut self, update_role: UpdateRoleAction) -> PikePayloadBuilder {
-        self.update_role = Some(update_role);
-        self
-    }
-
-    pub fn with_delete_role(mut self, delete_role: DeleteRoleAction) -> PikePayloadBuilder {
-        self.delete_role = Some(delete_role);
-        self
-    }
-
     pub fn build(self) -> Result<PikePayload, PikePayloadBuildError> {
         let action = self.action.ok_or_else(|| {
             PikePayloadBuildError::MissingField("'action' field is required".to_string())
         })?;
 
-        let create_agent = {
-            if action == Action::CreateAgent {
-                self.create_agent.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'create_agent' field is required".to_string(),
-                    )
-                })?
-            } else {
-                CreateAgentAction::default()
-            }
-        };
-
-        let update_agent = {
-            if action == Action::UpdateAgent {
-                self.update_agent.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'update_agent' field is required".to_string(),
-                    )
-                })?
-            } else {
-                UpdateAgentAction::default()
-            }
-        };
-
-        let delete_agent = {
-            if action == Action::DeleteAgent {
-                self.delete_agent.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'delete_agent' field is required".to_string(),
-                    )
-                })?
-            } else {
-                DeleteAgentAction::default()
-            }
-        };
-
-        let create_organization = {
-            if action == Action::CreateOrganization {
-                self.create_organization.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'create_organization' field is required".to_string(),
-                    )
-                })?
-            } else {
-                CreateOrganizationAction::default()
-            }
-        };
-
-        let update_organization = {
-            if action == Action::UpdateOrganization {
-                self.update_organization.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'update_organization' field is required".to_string(),
-                    )
-                })?
-            } else {
-                UpdateOrganizationAction::default()
-            }
-        };
-
-        let delete_organization = {
-            if action == Action::DeleteOrganization {
-                self.delete_organization.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'delete_organization' field is required".to_string(),
-                    )
-                })?
-            } else {
-                DeleteOrganizationAction::default()
-            }
-        };
-
-        let create_role = {
-            if action == Action::CreateRole {
-                self.create_role.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'create_role' field is required".to_string(),
-                    )
-                })?
-            } else {
-                CreateRoleAction::default()
-            }
-        };
-
-        let update_role = {
-            if action == Action::UpdateRole {
-                self.update_role.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'update_role' field is required".to_string(),
-                    )
-                })?
-            } else {
-                UpdateRoleAction::default()
-            }
-        };
-
-        let delete_role = {
-            if action == Action::DeleteRole {
-                self.delete_role.ok_or_else(|| {
-                    PikePayloadBuildError::MissingField(
-                        "'delete_role' field is required".to_string(),
-                    )
-                })?
-            } else {
-                DeleteRoleAction::default()
-            }
-        };
-
-        Ok(PikePayload {
-            action,
-            create_agent,
-            update_agent,
-            delete_agent,
-            create_organization,
-            update_organization,
-            delete_organization,
-            create_role,
-            update_role,
-            delete_role,
-        })
+        Ok(PikePayload { action })
     }
 }
 
@@ -2208,22 +1979,16 @@ mod tests {
 
         let builder = PikePayloadBuilder::new();
         let payload = builder
-            .with_action(Action::CreateAgent)
-            .with_create_agent(action.clone())
+            .with_action(Action::CreateAgent(action.clone()))
             .build()
             .unwrap();
 
-        assert_eq!(payload.action, Action::CreateAgent);
-        assert_eq!(payload.create_agent, action);
-        assert_eq!(payload.update_agent, UpdateAgentAction::default());
-        assert_eq!(
-            payload.create_organization,
-            CreateOrganizationAction::default()
-        );
-        assert_eq!(
-            payload.update_organization,
-            UpdateOrganizationAction::default()
-        );
+        let payload = match payload.action {
+            Action::CreateAgent(payload) => payload,
+            action => panic!("Invalid action {:?}", action),
+        };
+
+        assert_eq!(payload, action);
     }
 
     #[test]
@@ -2247,23 +2012,18 @@ mod tests {
             .unwrap();
 
         let builder = PikePayloadBuilder::new();
+
         let payload = builder
-            .with_action(Action::UpdateAgent)
-            .with_update_agent(action.clone())
+            .with_action(Action::UpdateAgent(action.clone()))
             .build()
             .unwrap();
 
-        assert_eq!(payload.action, Action::UpdateAgent);
-        assert_eq!(payload.create_agent, CreateAgentAction::default());
-        assert_eq!(payload.update_agent, action);
-        assert_eq!(
-            payload.create_organization,
-            CreateOrganizationAction::default()
-        );
-        assert_eq!(
-            payload.update_organization,
-            UpdateOrganizationAction::default()
-        );
+        let payload = match payload.action {
+            Action::UpdateAgent(payload) => payload,
+            action => panic!("Invalid action {:?}", action),
+        };
+
+        assert_eq!(payload, action);
     }
 
     #[test]
@@ -2278,19 +2038,16 @@ mod tests {
 
         let builder = PikePayloadBuilder::new();
         let payload = builder
-            .with_action(Action::CreateOrganization)
-            .with_create_organization(action.clone())
+            .with_action(Action::CreateOrganization(action.clone()))
             .build()
             .unwrap();
 
-        assert_eq!(payload.action, Action::CreateOrganization);
-        assert_eq!(payload.create_agent, CreateAgentAction::default());
-        assert_eq!(payload.update_agent, UpdateAgentAction::default());
-        assert_eq!(payload.create_organization, action);
-        assert_eq!(
-            payload.update_organization,
-            UpdateOrganizationAction::default()
-        );
+        let payload = match payload.action {
+            Action::CreateOrganization(payload) => payload,
+            action => panic!("Invalid action {:?}", action),
+        };
+
+        assert_eq!(payload, action);
     }
 
     #[test]
@@ -2306,19 +2063,16 @@ mod tests {
 
         let builder = PikePayloadBuilder::new();
         let payload = builder
-            .with_action(Action::UpdateOrganization)
-            .with_update_organization(action.clone())
+            .with_action(Action::UpdateOrganization(action.clone()))
             .build()
             .unwrap();
 
-        assert_eq!(payload.action, Action::UpdateOrganization);
-        assert_eq!(payload.create_agent, CreateAgentAction::default());
-        assert_eq!(payload.update_agent, UpdateAgentAction::default());
-        assert_eq!(
-            payload.create_organization,
-            CreateOrganizationAction::default()
-        );
-        assert_eq!(payload.update_organization, action);
+        let payload = match payload.action {
+            Action::UpdateOrganization(payload) => payload,
+            action => panic!("Invalid action {:?}", action),
+        };
+
+        assert_eq!(payload, action);
     }
 
     #[test]
@@ -2334,8 +2088,7 @@ mod tests {
 
         let builder = PikePayloadBuilder::new();
         let original = builder
-            .with_action(Action::UpdateOrganization)
-            .with_update_organization(action.clone())
+            .with_action(Action::UpdateOrganization(action))
             .build()
             .unwrap();
 
