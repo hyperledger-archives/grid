@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use chrono::NaiveDateTime;
+
 use super::schema::{grid_property_definition, grid_schema};
 
 #[derive(Clone, Insertable, Debug)]
@@ -37,6 +39,7 @@ pub struct GridSchema {
     pub description: String,
     pub owner: String,
     pub service_id: Option<String>,
+    pub last_updated: Option<NaiveDateTime>,
 }
 
 #[derive(Clone, Insertable, Debug)]

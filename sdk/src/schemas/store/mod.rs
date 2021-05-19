@@ -31,6 +31,7 @@ pub struct Schema {
     pub service_id: Option<String>,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
+    pub last_updated: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

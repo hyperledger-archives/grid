@@ -24,9 +24,10 @@ pub struct ProductSlice {
     pub product_namespace: String,
     pub owner: String,
     pub properties: Vec<ProductPropertyValueSlice>,
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_updated: Option<i64>,
 }
 
 impl From<Product> for ProductSlice {
@@ -42,6 +43,7 @@ impl From<Product> for ProductSlice {
                 .map(ProductPropertyValueSlice::from)
                 .collect(),
             service_id: product.service_id,
+            last_updated: product.last_updated,
         }
     }
 }

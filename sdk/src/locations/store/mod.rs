@@ -32,6 +32,7 @@ pub struct Location {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+    pub last_updated: Option<i64>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]

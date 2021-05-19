@@ -31,6 +31,8 @@ pub struct AgentSlice {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_updated: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,6 +62,7 @@ impl TryFrom<Agent> for AgentSlice {
             roles: agent.roles.clone(),
             metadata,
             service_id: agent.service_id,
+            last_updated: agent.last_updated,
         })
     }
 }

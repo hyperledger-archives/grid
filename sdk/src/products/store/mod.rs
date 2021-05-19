@@ -29,6 +29,7 @@ pub struct Product {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+    pub last_updated: Option<i64>,
     pub properties: Vec<PropertyValue>,
 }
 

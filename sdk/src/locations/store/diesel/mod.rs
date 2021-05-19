@@ -294,6 +294,7 @@ impl From<(LocationModel, Vec<LocationAttribute>)> for Location {
             start_commit_num: location.start_commit_num,
             end_commit_num: location.end_commit_num,
             service_id: location.service_id,
+            last_updated: location.last_updated.map(|d| d.timestamp()),
         }
     }
 }
@@ -309,6 +310,7 @@ impl From<LocationModel> for Location {
             start_commit_num: location.start_commit_num,
             end_commit_num: location.end_commit_num,
             service_id: location.service_id,
+            last_updated: location.last_updated.map(|d| d.timestamp()),
         }
     }
 }
@@ -324,6 +326,7 @@ impl From<NewLocationModel> for Location {
             start_commit_num: location.start_commit_num,
             end_commit_num: location.end_commit_num,
             service_id: location.service_id,
+            last_updated: None,
         }
     }
 }

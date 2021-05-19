@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use chrono::NaiveDateTime;
+
 use crate::locations::store::diesel::schema::{location, location_attribute};
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
@@ -43,6 +45,7 @@ pub struct LocationModel {
     pub end_commit_num: i64,
 
     pub service_id: Option<String>,
+    pub last_updated: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]

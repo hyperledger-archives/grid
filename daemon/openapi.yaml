@@ -656,6 +656,8 @@ components:
             $ref: "#/components/schemas/PropertyValue"
         service_id:
           $ref: "#/components/schemas/ServiceID"
+        last_updated:
+          $ref: "#/components/schemas/Timestamp"
 
     # Pike models
     AgentList:
@@ -687,6 +689,8 @@ components:
             $ref: "#/components/schemas/Metadata"
         service_id:
           $ref: "#/components/schemas/ServiceID"
+        last_updated:
+          $ref: "#/components/schemas/Timestamp"
     OrganizationList:
       properties:
         data:
@@ -720,6 +724,8 @@ components:
             $ref: "#/components/schemas/Metadata"
         service_id:
           $ref: "#/components/schemas/ServiceID"
+        last_updated:
+          $ref: "#/components/schemas/Timestamp"
     RoleList:
       properties:
         data:
@@ -757,6 +763,8 @@ components:
           items:
             type: string
             example: beta.Tank
+        last_updated:
+          $ref: "#/components/schemas/Timestamp"
 
     # Product models
     ProductList:
@@ -787,6 +795,8 @@ components:
             $ref: "#/components/schemas/PropertyValue"
         service_id:
           $ref: "#/components/schemas/ServiceID"
+        last_updated:
+          $ref: "#/components/schemas/Timestamp"
 
     # Schema models
     SchemaList:
@@ -814,6 +824,8 @@ components:
             $ref: "#/components/schemas/PropertyDefinition"
         service_id:
           $ref: "#/components/schemas/ServiceID"
+        last_updated:
+          $ref: "#/components/schemas/Timestamp"
     PropertyDefinition:
       properties:
         name:
