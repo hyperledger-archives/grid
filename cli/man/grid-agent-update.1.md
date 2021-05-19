@@ -80,6 +80,8 @@ SEE ALSO
 | `grid organization(1)`
 | `grid agent(1)`
 | `grid agent create(1)`
+| `grid agent list(1)`
+| `grid agent show(1)`
 | `grid role(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.2/

@@ -153,7 +153,7 @@ fn run() -> Result<(), CliError> {
 
         app = app.subcommand(
             SubCommand::with_name("agent")
-                .about("Update or create agent")
+                .about("Create, update, list or show agent")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
                 .arg(
                     Arg::with_name("service_id")
@@ -288,7 +288,45 @@ fn run() -> Result<(), CliError> {
                                 .help("How long to wait for transaction to be committed")
                         ),
                     )
-
+                    .subcommand(
+                        SubCommand::with_name("show")
+                            .about("Show agents specified by Public Key")
+                            .arg(
+                                Arg::with_name("public_key")
+                                    .takes_value(true)
+                                    .required(true)
+                                    .help("Public Key and unique identifier for agents"),
+                            )
+                    )
+                    .subcommand(
+                        SubCommand::with_name("list")
+                            .about("List all agents for a given service")
+                            .arg(
+                                Arg::with_name("service_id")
+                                    .long("service-id")
+                                    .takes_value(true)
+                                    .help(
+                                        "The ID of the service the payload should be \
+                                    sent to; required if running on Splinter. Format \
+                                    <circuit-id>::<service-id>",
+                                    ),
+                            )
+                            .arg(
+                                Arg::with_name("format")
+                                    .short("F")
+                                    .long("format")
+                                    .help("Output format")
+                                    .possible_values(&["human", "csv"])
+                                    .default_value("human")
+                                    .takes_value(true),
+                            )
+                            .arg(
+                                Arg::with_name("line-per-role")
+                                    .long("line-per-role")
+                                    .help("Displays agent information for each role on it's own line. \
+                                          Useful when filtering by role.")
+                            )
+                    ),
         )
         .subcommand(
             SubCommand::with_name("organization")
@@ -1696,6 +1734,15 @@ fn run() -> Result<(), CliError> {
 
                     info!("Submitting request to update agent...");
                     agents::do_update_agent(&url, key, wait, update_agent, service_id)?;
+                }
+                ("list", Some(m)) => agents::do_list_agents(
+                    &url,
+                    service_id,
+                    m.value_of("format").unwrap(),
+                    m.is_present("line-per-role"),
+                )?,
+                ("show", Some(m)) => {
+                    agents::do_show_agents(&url, m.value_of("public_key").unwrap(), service_id)?
                 }
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
