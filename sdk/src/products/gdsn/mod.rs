@@ -27,7 +27,10 @@ use serde::Deserialize;
 use crate::error::InvalidArgumentError;
 use crate::protocol::{
     product::{
-        payload::{ProductCreateAction, ProductCreateActionBuilder},
+        payload::{
+            ProductCreateAction, ProductCreateActionBuilder, ProductUpdateAction,
+            ProductUpdateActionBuilder,
+        },
         state::ProductNamespace,
     },
     schema::state::{DataType, PropertyValueBuilder},
@@ -52,6 +55,11 @@ pub struct TradeItem {
 }
 
 impl TradeItem {
+    /// Returns a ProductCreateAction transaction payload
+    ///
+    /// # Arguments
+    ///
+    /// * `owner` - The Pike organization ID of the owner of this record in Grid
     pub fn into_create_payload(self, owner: &str) -> Result<ProductCreateAction, ProductGdsnError> {
         let xml_property = PropertyValueBuilder::new()
             .with_name(GDSN_3_1_PROPERTY_NAME.to_string())
@@ -65,8 +73,34 @@ impl TradeItem {
             .with_properties(vec![xml_property])
             .build()?)
     }
+
+    /// Returns a ProductUpdateAction transaction payload
+    pub fn into_update_payload(self) -> Result<ProductUpdateAction, ProductGdsnError> {
+        let gdsn_property = PropertyValueBuilder::new()
+            .with_name(GDSN_3_1_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::String)
+            .with_string_value(self.payload)
+            .build()?;
+        Ok(ProductUpdateActionBuilder::new()
+            .with_product_id(self.gtin)
+            .with_product_namespace(ProductNamespace::Gs1)
+            .with_properties(vec![gdsn_property])
+            .build()?)
+    }
 }
 
+/// Returns a vector of TradeItem objects from a path to an XML file containing
+/// a gridTradeItems XML element. An error will be returned if the XML file
+/// fails to validate against the GridTradeItems.xsd schema, or if the file
+/// does not contain well-formed XML.
+///
+/// View the GridTradeItems XML schema definition here:
+///     https://github.com/hyperledger/grid/blob/main/sdk/src/products/gdsn/GridTradeItems.xsd
+///
+/// # Arguments
+///
+/// * `path` - The path to an XML file containing GDSN trade item definitions
+///
 pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGdsnError> {
     let mut xml_file = std::fs::File::open(path).map_err(|error| {
         ProductGdsnError::InvalidArgument(InvalidArgumentError::new(
@@ -173,4 +207,115 @@ pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGds
         buf.clear();
     }
     Ok(grid_trade_items.trade_items)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::{fs::read_to_string, path::PathBuf};
+
+    use crate::error::InvalidArgumentError;
+
+    const TEST_GTIN_1: &str = "00734730437958";
+    const TEST_GTIN_2: &str = "10036016500279";
+
+    fn get_expected_trade_item_payload_from_file(path: &str) -> String {
+        let mut payload_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        payload_path.push(path);
+
+        let payload = read_to_string(payload_path)
+            .unwrap()
+            .replace("    ", "")
+            .replace("\n", "");
+
+        payload
+    }
+
+    /// Test that a well-formed and valid XML file with a gridTradeItems element
+    /// containing one product definition element will return a vector with one
+    /// TradeItem
+    #[test]
+    fn test_get_trade_item_from_xml_success() {
+        let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product.xml");
+
+        let path_str = test_gdsn_product_path.to_str().unwrap();
+        let result = get_trade_items_from_xml(path_str);
+
+        assert!(result.is_ok());
+
+        let expected = TradeItem {
+            gtin: TEST_GTIN_1.to_string(),
+            payload: get_expected_trade_item_payload_from_file(
+                "src/products/gdsn/test_files/test_trade_item_payload_1.xml",
+            ),
+        };
+
+        assert_eq!(result.unwrap(), vec![expected]);
+    }
+
+    /// Test that a well-formed and valid XML file with a gridTradeItems element
+    /// containing multiple product definitions will return a vector with all of
+    /// the TradeItems.
+    #[test]
+    fn test_get_multiple_trade_items_from_xml_success() {
+        let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product_multiple.xml");
+
+        let path_str = test_gdsn_product_path.to_str().unwrap();
+        let result = get_trade_items_from_xml(path_str);
+
+        assert!(result.is_ok());
+
+        let expected_1 = TradeItem {
+            gtin: TEST_GTIN_1.to_string(),
+            payload: get_expected_trade_item_payload_from_file(
+                "src/products/gdsn/test_files/test_trade_item_payload_1.xml",
+            ),
+        };
+
+        let expected_2 = TradeItem {
+            gtin: TEST_GTIN_2.to_string(),
+            payload: get_expected_trade_item_payload_from_file(
+                "src/products/gdsn/test_files/test_trade_item_payload_2.xml",
+            ),
+        };
+
+        assert_eq!(result.unwrap(), vec![expected_1, expected_2]);
+    }
+
+    /// Test that an invalid product definition will result in an error
+    #[test]
+    fn test_get_trade_items_from_xml_invalid() {
+        let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product_invalid.xml");
+
+        let path_str = test_gdsn_product_path.to_str().unwrap();
+        let result = get_trade_items_from_xml(path_str);
+
+        assert!(result.is_err());
+
+        let expected_error =
+            InvalidArgumentError::new(path_str.to_string(), "file fails to validate".to_string());
+        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
+    }
+
+    /// Test that a poorly formed product definition will result in an error
+    #[test]
+    fn test_get_trade_items_from_xml_poorly_formed() {
+        let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product_poorly_formed.xml");
+
+        let path_str = test_gdsn_product_path.to_str().unwrap();
+        let result = get_trade_items_from_xml(path_str);
+
+        assert!(result.is_err());
+
+        let expected_error = InvalidArgumentError::new(
+            path_str.to_string(),
+            "Expecting </tradeItem> found </gridTradeItems>".to_string(),
+        );
+        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
+    }
 }

@@ -1,0 +1,124 @@
+<tradeItem>
+    <gtin>10036016500279</gtin>
+    <isTradeItemABaseUnit>true</isTradeItemABaseUnit>
+    <brandOwner>
+        <gln>0000000000000</gln>
+        <partyName>MyOrganization</partyName>
+    </brandOwner>
+    <informationProviderOfTradeItem>
+        <gln>0000000000005</gln>
+        <partyName>OtherOrganization</partyName>
+    </informationProviderOfTradeItem>
+    <gdsnTradeItemClassification>
+        <gpcCategoryCode>10000000</gpcCategoryCode>
+    </gdsnTradeItemClassification>
+    <targetMarket>
+        <targetMarketCountryCode>
+                NA
+        </targetMarketCountryCode>
+        <targetMarketSubdivisionCode>
+                NA
+        </targetMarketSubdivisionCode>
+    </targetMarket>
+    <tradeItemInformation>
+        <extension>
+            <foodAndBeverageIngredientModule>
+                <ingredientStatement languageCode="en">test ingredients</ingredientStatement>
+            </foodAndBeverageIngredientModule>
+            <consumerInstructionsModule>
+                <consumerInstructions>
+                    <consumerStorageInstructions languageCode="en">test storage instructions</consumerStorageInstructions>
+                </consumerInstructions>
+            </consumerInstructionsModule>
+            <foodAndBeveragePreparationServingModule>
+                <preparationServing>
+                    <preparationInstructions languageCode="en">test preparation instructions</preparationInstructions>
+                    <preparationTypeCode>GRILL</preparationTypeCode>
+                </preparationServing>
+            </foodAndBeveragePreparationServingModule>
+            <marketingInformationModule>
+                <marketingInformation>
+                    <tradeItemMarketingMessage languageCode="en">test trade item marketing message</tradeItemMarketingMessage>
+                </marketingInformation>
+            </marketingInformationModule>
+            <nutritionalInformationModule>
+                <nutritionalClaimDetail>
+                    <nutritionalClaimTypeCode>CA</nutritionalClaimTypeCode>
+                </nutritionalClaimDetail>
+                <nutrientHeader>
+                    <preparationStateCode>UNPREPARED</preparationStateCode>
+                    <servingSize measurementUnitCode="GRM ">0</servingSize>
+                    <servingSizeDescription languageCode="en">test serving size description</servingSizeDescription>
+                </nutrientHeader>
+            </nutritionalInformationModule>
+            <packagingMarkingModule>
+                <packagingMarking>
+                    <packagingDate>
+                        <tradeItemDateOnPackagingTypeCode>0</tradeItemDateOnPackagingTypeCode>
+                    </packagingDate>
+                </packagingMarking>
+            </packagingMarkingModule>
+            <placeOfItemActivityModule>
+                <placeOfProductActivity>
+                    <countryOfOrigin>
+                        <countryCode>US</countryCode>
+                    </countryOfOrigin>
+                </placeOfProductActivity>
+            </placeOfItemActivityModule>
+            <referencedFileDetailInformationModule>
+                <referencedFileHeader>
+                    <referencedFileTypeCode>PRODUCT_IMAGE</referencedFileTypeCode>
+                    <uniformResourceIdentifier>https://grid.hyperledger.org/assets/grid_wordmark.svg</uniformResourceIdentifier>
+                </referencedFileHeader>
+            </referencedFileDetailInformationModule>
+            <tradeItemDescriptionModule>
+                <tradeItemDescriptionInformation>
+                    <additionalTradeItemDescription languageCode="en">test additional trade item description</additionalTradeItemDescription>
+                    <descriptionShort languageCode="en">test description short</descriptionShort>
+                    <functionalName languageCode="en">test functional name</functionalName>
+                    <regulatedProductName languageCode="en">test regulated product name</regulatedProductName>
+                    <tradeItemDescription languageCode="en">test trade item description</tradeItemDescription>
+                    <brandNameInformation>
+                        <brandName>Org Brand</brandName>
+                    </brandNameInformation>
+                </tradeItemDescriptionInformation>
+            </tradeItemDescriptionModule>
+            <tradeItemHierarchyModule>
+                <tradeItemHierarchy>
+                    <quantityOfInnerPack>0</quantityOfInnerPack>
+                    <quantityOfTradeItemsPerPallet>0</quantityOfTradeItemsPerPallet>
+                </tradeItemHierarchy>
+            </tradeItemHierarchyModule>
+            <tradeItemLifespanModule>
+                <tradeItemLifespan>
+                    <minimumTradeItemLifespanFromTimeOfArrival>0</minimumTradeItemLifespanFromTimeOfArrival>
+                </tradeItemLifespan>
+            </tradeItemLifespanModule>
+            <tradeItemMeasurementsModule>
+                <tradeItemMeasurements>
+                    <depth measurementUnitCode="3">0</depth>
+                    <height measurementUnitCode="3">0</height>
+                    <netContent measurementUnitCode="3">0</netContent>
+                    <width measurementUnitCode="3">0</width>
+                    <tradeItemWeight>
+                        <grossWeight measurementUnitCode="3">0</grossWeight>
+                        <netWeight measurementUnitCode="3">0</netWeight>
+                    </tradeItemWeight>
+                </tradeItemMeasurements>
+            </tradeItemMeasurementsModule>
+            <tradeItemTemperatureInformationModule>
+                <tradeItemTemperatureInformation>
+                    <maximumTemperature temperatureMeasurementUnitCode="2">0</maximumTemperature>
+                    <minimumTemperature temperatureMeasurementUnitCode="2">0</minimumTemperature>
+                </tradeItemTemperatureInformation>
+            </tradeItemTemperatureInformationModule>
+            <avpList>
+                <stringAVP attributeName="isNutrientRelevantDataProvided">true</stringAVP>
+            </avpList>
+        </extension>
+    </tradeItemInformation>
+    <tradeItemSynchronisationDates>
+        <lastChangeDateTime>1970-01-01T00:00:00</lastChangeDateTime>
+        <effectiveDateTime>1970-01-01T00:00:00</effectiveDateTime>
+    </tradeItemSynchronisationDates>
+</tradeItem>

@@ -372,6 +372,56 @@ pub fn create_product_payloads_from_file(
 }
 
 #[cfg(feature = "product-gdsn")]
+pub fn update_product_payloads_from_file(
+    paths: Vec<&str>,
+    url: &str,
+    service_id: Option<&str>,
+) -> Result<Vec<ProductUpdateAction>, CliError> {
+    let mut total_payloads: Vec<ProductUpdateAction> = Vec::new();
+
+    for path in paths {
+        let file_type = determine_file_type(path)?;
+
+        let file_payloads = match file_type {
+            ProductFileType::Gdsn3_1 => update_product_payloads_from_xml(path)?,
+            ProductFileType::SchemaBasedDefinition => {
+                update_product_payloads_from_yaml(path, url, service_id)?
+            }
+        };
+
+        for file_payload in file_payloads {
+            let mut product_id_exists = false;
+
+            for payload in total_payloads.iter_mut() {
+                if payload.product_id() == file_payload.product_id() {
+                    check_duplicate_properties(
+                        payload.product_id().to_string(),
+                        file_payload.properties().to_vec(),
+                        payload.properties().to_vec(),
+                    )?;
+
+                    product_id_exists = true;
+                    let mut combined_properties: Vec<PropertyValue> = payload.properties().to_vec();
+                    combined_properties.append(&mut file_payload.properties().to_vec());
+                    let payload_with_combined_properties = ProductUpdateActionBuilder::new()
+                        .with_product_id(payload.product_id().to_string())
+                        .with_product_namespace(payload.product_namespace().clone())
+                        .with_properties(combined_properties)
+                        .build()
+                        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                    *payload = payload_with_combined_properties;
+                }
+            }
+            if !product_id_exists {
+                total_payloads.push(file_payload);
+            }
+        }
+    }
+
+    Ok(total_payloads)
+}
+
+#[cfg(feature = "product-gdsn")]
 pub fn create_product_payloads_from_xml(
     path: &str,
     owner: &str,
@@ -411,7 +461,23 @@ pub fn create_product_payloads_from_yaml(
     Ok(payloads)
 }
 
-pub fn update_product_payloads_from_file(
+#[cfg(feature = "product-gdsn")]
+pub fn update_product_payloads_from_xml(path: &str) -> Result<Vec<ProductUpdateAction>, CliError> {
+    let trade_items = get_trade_items_from_xml(&path)?;
+
+    let mut payloads = Vec::new();
+
+    for trade_item in trade_items {
+        payloads.push(
+            trade_item
+                .into_update_payload()
+                .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
+        )
+    }
+    Ok(payloads)
+}
+
+pub fn update_product_payloads_from_yaml(
     path: &str,
     url: &str,
     service_id: Option<&str>,
