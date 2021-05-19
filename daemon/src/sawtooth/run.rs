@@ -26,7 +26,7 @@ use grid_sdk::store::{create_store_factory, ConnectionUri};
 use grid_sdk::submitter::SawtoothBatchSubmitter;
 
 use crate::config::GridConfig;
-use crate::database::{ConnectionPool, DatabaseError};
+use crate::database::ConnectionPool;
 use crate::error::DaemonError;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 use crate::rest_api;
@@ -37,34 +37,31 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     let connection_uri = config
         .database_url()
         .parse()
-        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let store_factory = create_store_factory(&connection_uri)
-        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
     let batch_submitter = SawtoothBatchSubmitter::new(sawtooth_connection.get_sender());
     let batch_submitter_state = BatchSubmitterState::with_sawtooth(batch_submitter);
     let (store_state, evt_processor) = {
         let commit_store = store_factory.get_grid_commit_store();
-        let current_commit =
-            commit_store
-                .get_current_commit_id()
-                .map_err(|err| DatabaseError::ConnectionError {
-                    context: "Could not get current commit ID".to_string(),
-                    source: Box::new(err),
-                })?;
+        let current_commit = commit_store
+            .get_current_commit_id()
+            .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
         match connection_uri {
             ConnectionUri::Postgres(_) => {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
-                    ConnectionPool::new(config.database_url())?;
+                    ConnectionPool::new(config.database_url())
+                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
                 let evt_processor = EventProcessor::start(
                     sawtooth_connection,
                     current_commit.as_deref(),
                     event_handlers![DatabaseEventHandler::from_pg_pool(connection_pool.clone())],
                 )
-                .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
+                .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
                 (
                     StoreState::with_pg_pool(connection_pool.pool),
@@ -73,7 +70,8 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
             }
             ConnectionUri::Sqlite(_) => {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
-                    ConnectionPool::new(config.database_url())?;
+                    ConnectionPool::new(config.database_url())
+                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
                 let evt_processor = EventProcessor::start(
                     sawtooth_connection,
                     current_commit.as_deref(),
@@ -81,7 +79,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                         connection_pool.clone()
                     )],
                 )
-                .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
+                .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
                 (
                     StoreState::with_sqlite_pool(connection_pool.pool),
@@ -101,7 +99,8 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
         #[cfg(feature = "integration")]
         key_state,
         config.endpoint().clone(),
-    )?;
+    )
+    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let (event_processor_shutdown_handle, event_processor_join_handle) =
         evt_processor.take_shutdown_controls();
@@ -121,21 +120,17 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
             error!("Unable to gracefully shutdown Event Processor: {}", err);
         }
     })
-    .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     rest_api_join_handle
         .join()
-        .map_err(|_| {
-            DaemonError::ShutdownError("Unable to cleanly join the REST API thread".into())
-        })
-        .and_then(|res| res.map_err(DaemonError::from))?;
+        .map_err(|_| DaemonError::with_message("Unable to cleanly join the REST API thread"))
+        .and_then(|res| res.map_err(|err| DaemonError::from_source(Box::new(err))))?;
 
     event_processor_join_handle
         .join()
-        .map_err(|_| {
-            DaemonError::ShutdownError("Unable to cleanly join the event processor".into())
-        })
-        .and_then(|res| res.map_err(DaemonError::from))?;
+        .map_err(|_| DaemonError::with_message("Unable to cleanly join the event processor"))
+        .and_then(|res| res.map_err(|err| DaemonError::from_source(Box::new(err))))?;
 
     Ok(())
 }

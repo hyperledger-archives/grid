@@ -62,6 +62,7 @@ fn wait_for_status(uri: &str) -> Result<Value, GetNodeError> {
             }
             Err(err) => {
                 warn!("Unable to get splinter status: {}", err);
+                // Limit max wait time to 5 minutes
                 wait_time = if wait_time >= 256 { 300 } else { wait_time * 2 };
 
                 warn!("Retrying in: {} seconds", wait_time);

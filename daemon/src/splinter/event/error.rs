@@ -15,8 +15,13 @@
  * -----------------------------------------------------------------------------
  */
 
-pub mod app_auth_handler;
-pub mod event;
-mod run;
+#[derive(Debug)]
+pub struct ScabbardEventConnectionError(pub String);
 
-pub use run::run_splinter;
+impl std::error::Error for ScabbardEventConnectionError {}
+
+impl std::fmt::Display for ScabbardEventConnectionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "unable to create connection to {}", self.0)
+    }
+}
