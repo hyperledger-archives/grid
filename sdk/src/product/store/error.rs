@@ -85,3 +85,34 @@ impl From<diesel::r2d2::PoolError> for ProductStoreError {
         )
     }
 }
+
+/// Represents ProductBuilder errors
+#[derive(Debug)]
+pub enum ProductBuilderError {
+    /// Returned when a required field was not set
+    MissingRequiredField(String),
+    /// Returned when an error occurs building the product
+    BuildError(Box<dyn Error>),
+}
+
+impl Error for ProductBuilderError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ProductBuilderError::MissingRequiredField(_) => None,
+            ProductBuilderError::BuildError(err) => Some(&**err),
+        }
+    }
+}
+
+impl fmt::Display for ProductBuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ProductBuilderError::MissingRequiredField(ref s) => {
+                write!(f, "failed to build product: {}", s)
+            }
+            ProductBuilderError::BuildError(ref s) => {
+                write!(f, "failed to build product: {}", s)
+            }
+        }
+    }
+}

@@ -56,8 +56,9 @@ use grid_sdk::{
     product::{
         addressing::GRID_PRODUCT_NAMESPACE,
         store::{
-            DieselProductStore, LatLongValue as ProductLatLongValue, Product, ProductStore,
-            PropertyValue as ProductPropertyValue,
+            DieselProductStore, LatLongValue as ProductLatLongValue, Product, ProductBuilder,
+            ProductStore, PropertyValue as ProductPropertyValue,
+            PropertyValueBuilder as ProductPropertyValueBuilder,
         },
     },
     protocol::product::state::ProductList,
@@ -841,24 +842,30 @@ fn state_change_to_db_operation(
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
                     .products()
                     .iter()
-                    .map(|product| Product {
-                        product_id: product.product_id().to_string(),
-                        product_address: key.to_string(),
-                        product_namespace: format!("{:?}", product.product_namespace()),
-                        owner: product.owner().to_string(),
-                        start_commit_num: commit_num,
-                        end_commit_num: MAX_COMMIT_NUM,
-                        service_id: service_id.cloned(),
-                        last_updated: None,
-                        properties: make_product_property_values(
-                            commit_num,
-                            service_id,
-                            product.product_id(),
-                            &key,
-                            product.properties(),
-                        ),
+                    .map(|product| {
+                        ProductBuilder::default()
+                            .with_product_id(product.product_id().to_string())
+                            .with_product_address(key.to_string())
+                            .with_product_namespace(format!("{:?}", product.product_namespace()))
+                            .with_owner(product.owner().to_string())
+                            .with_start_commit_number(commit_num)
+                            .with_end_commit_number(MAX_COMMIT_NUM)
+                            .with_service_id(service_id.cloned())
+                            .with_last_updated(None)
+                            .with_properties(
+                                make_product_property_values(
+                                    commit_num,
+                                    service_id,
+                                    product.product_id(),
+                                    &key,
+                                    product.properties(),
+                                )
+                                .map_err(|err| EventError(format!("{}", err)))?,
+                            )
+                            .build()
+                            .map_err(|err| EventError(format!("{}", err)))
                     })
-                    .collect();
+                    .collect::<Result<Vec<Product>, EventError>>()?;
 
                 Ok(Some(DbInsertOperation::Products(products)))
             }
@@ -1039,38 +1046,41 @@ fn make_product_property_values(
     product_id: &str,
     product_address: &str,
     values: &[PropertyValue],
-) -> Vec<ProductPropertyValue> {
+) -> Result<Vec<ProductPropertyValue>, EventError> {
     let mut properties = Vec::new();
 
     for val in values {
-        properties.push(ProductPropertyValue {
-            property_name: val.name().to_string(),
-            product_id: product_id.to_string(),
-            product_address: product_address.to_string(),
-            data_type: format!("{:?}", val.data_type()),
-            bytes_value: Some(val.bytes_value().to_vec()),
-            boolean_value: Some(*val.boolean_value()),
-            number_value: Some(*val.number_value()),
-            string_value: Some(val.string_value().to_string()),
-            enum_value: Some(*val.enum_value() as i32),
-            struct_values: make_product_property_values(
-                start_commit_num,
-                service_id,
-                product_id,
-                product_address,
-                val.struct_values(),
-            ),
-            lat_long_value: Some(ProductLatLongValue {
-                latitude: *val.lat_long_value().latitude(),
-                longitude: *val.lat_long_value().longitude(),
-            }),
-            start_commit_num,
-            end_commit_num: MAX_COMMIT_NUM,
-            service_id: service_id.cloned(),
-        });
+        properties.push(
+            ProductPropertyValueBuilder::default()
+                .with_property_name(val.name().to_string())
+                .with_product_id(product_id.to_string())
+                .with_product_address(product_address.to_string())
+                .with_data_type(format!("{:?}", val.data_type()))
+                .with_bytes_value(Some(val.bytes_value().to_vec()))
+                .with_boolean_value(Some(*val.boolean_value()))
+                .with_number_value(Some(*val.number_value()))
+                .with_string_value(Some(val.string_value().to_string()))
+                .with_enum_value(Some(*val.enum_value() as i32))
+                .with_struct_values(make_product_property_values(
+                    start_commit_num,
+                    service_id,
+                    product_id,
+                    product_address,
+                    val.struct_values(),
+                )?)
+                .with_lat_long_value(Some(ProductLatLongValue {
+                    latitude: *val.lat_long_value().latitude(),
+                    longitude: *val.lat_long_value().longitude(),
+                }))
+                .with_start_commit_number(start_commit_num)
+                .with_end_commit_number(MAX_COMMIT_NUM)
+                .with_service_id(service_id.cloned())
+                .build()
+                .map_err(|err| EventError(format!("{}", err)))?,
+        )
     }
 
-    properties
+    Ok(properties)
 }
 
 #[cfg(feature = "location")]

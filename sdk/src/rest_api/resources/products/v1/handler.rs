@@ -46,12 +46,12 @@ pub async fn list_products(
         })?;
 
     let data = product_list
-        .data
+        .data()
         .into_iter()
         .map(ProductSlice::from)
         .collect();
 
-    let paging = Paging::new("/product", product_list.paging, service_id);
+    let paging = Paging::new("/product", product_list.paging().clone(), service_id);
 
     Ok(ProductListSlice { data, paging })
 }
