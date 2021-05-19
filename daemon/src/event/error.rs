@@ -24,7 +24,7 @@ use grid_sdk::location::store::LocationStoreError;
 #[cfg(feature = "pike")]
 use grid_sdk::pike::store::PikeStoreError;
 #[cfg(feature = "product")]
-use grid_sdk::product::store::ProductStoreError;
+use grid_sdk::product::store::{ProductBuilderError, ProductStoreError};
 #[cfg(feature = "schema")]
 use grid_sdk::schema::store::SchemaStoreError;
 #[cfg(feature = "track-and-trace")]
@@ -75,6 +75,13 @@ impl From<PikeStoreError> for EventError {
 #[cfg(feature = "product")]
 impl From<ProductStoreError> for EventError {
     fn from(err: ProductStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+#[cfg(feature = "product")]
+impl From<ProductBuilderError> for EventError {
+    fn from(err: ProductBuilderError) -> Self {
         EventError(format!("{}", err))
     }
 }
