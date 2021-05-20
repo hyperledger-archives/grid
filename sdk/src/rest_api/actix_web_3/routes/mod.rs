@@ -51,3 +51,5 @@ pub use roles::*;
 #[cfg(feature = "schema")]
 pub use schemas::*;
 pub use submit::*;
+
+pub(in crate::rest_api) const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";

@@ -20,7 +20,7 @@ use crate::rest_api::{
     resources::roles::v1,
 };
 
-const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
+use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[get("/role/{org_id}/{name}")]
 pub async fn get_role(

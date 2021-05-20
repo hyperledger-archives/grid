@@ -20,7 +20,7 @@ use crate::rest_api::{
     resources::locations::v1,
 };
 
-const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
+use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[get("/location/{id}")]
 pub async fn get_location(
