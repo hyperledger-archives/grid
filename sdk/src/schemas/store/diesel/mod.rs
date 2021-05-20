@@ -23,9 +23,9 @@ use crate::error::{
 
 use models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema};
 use operations::{
-    add_schema::AddSchemaOperation, fetch_schema::FetchSchemaOperation,
+    add_schema::AddSchemaOperation,
     get_property_definition_by_name::GetPropertyDefinitionByNameOperation,
-    list_property_definitions::ListPropertyDefinitionsOperation,
+    get_schema::GetSchemaOperation, list_property_definitions::ListPropertyDefinitionsOperation,
     list_property_definitions_with_schema_name::ListPropertyDefinitionsWithSchemaNameOperation,
     list_schemas::ListSchemasOperation, SchemaStoreOperations,
 };
@@ -57,7 +57,7 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
         .add_schema(schema)
     }
 
-    fn fetch_schema(
+    fn get_schema(
         &self,
         name: &str,
         service_id: Option<&str>,
@@ -67,7 +67,7 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_schema(name, service_id)
+        .get_schema(name, service_id)
     }
 
     fn list_schemas(
@@ -135,7 +135,7 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
         .add_schema(schema)
     }
 
-    fn fetch_schema(
+    fn get_schema(
         &self,
         name: &str,
         service_id: Option<&str>,
@@ -145,7 +145,7 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_schema(name, service_id)
+        .get_schema(name, service_id)
     }
 
     fn list_schemas(

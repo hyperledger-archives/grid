@@ -208,7 +208,7 @@ paths:
       tags:
         - Location
       summary: Fetches a single location with the given ID
-      operationId: fetch_location
+      operationId: get_location
       parameters:
         - name: location_id
           in: path
@@ -266,7 +266,7 @@ paths:
       tags:
         - Pike
       summary: Fetches an agent with the given public key
-      operationId: fetch_agent
+      operationId: get_agent
       parameters:
         - name: public_key
           in: path
@@ -322,7 +322,7 @@ paths:
       tags:
         - Pike
       summary: Fetches a single organization with the given ID
-      operationId: fetch_organization
+      operationId: get_organization
       parameters:
         - name: id
           in: path
@@ -384,7 +384,7 @@ paths:
       tags:
         - Pike
       summary: Fetches a role for a single organization
-      operationId: fetch_role
+      operationId: get_role
       parameters:
         - name: org_id
           in: path
@@ -445,7 +445,7 @@ paths:
       tags:
         - Product
       summary: Fetches a single product with the given ID
-      operationId: fetch_product
+      operationId: get_product
       parameters:
         - name: product_id
           in: path
@@ -564,7 +564,7 @@ paths:
         - Track and Trace
       summary: Fetches a single record with the given ID
       description: Fetches a single record with the given record ID
-      operationId: fetch_record
+      operationId: get_record
       parameters:
         - name: record_id
           in: path

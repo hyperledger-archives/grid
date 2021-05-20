@@ -24,8 +24,8 @@ use crate::purchase_order::store::diesel::{
 use crate::purchase_order::store::PurchaseOrderStoreError;
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreFetchPurchaseOrderOperation {
-    fn fetch_purchase_order(
+pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreGetPurchaseOrderOperation {
+    fn get_purchase_order(
         &self,
         uuid: &str,
         service_id: Option<&str>,
@@ -33,10 +33,10 @@ pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreFetchPurcha
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
+impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
     for PurchaseOrderStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn fetch_purchase_order(
+    fn get_purchase_order(
         &self,
         uuid: &str,
         service_id: Option<&str>,
@@ -130,10 +130,10 @@ impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> PurchaseOrderStoreFetchPurchaseOrderOperation
+impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
     for PurchaseOrderStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn fetch_purchase_order(
+    fn get_purchase_order(
         &self,
         uuid: &str,
         service_id: Option<&str>,

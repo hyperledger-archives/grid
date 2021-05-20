@@ -24,11 +24,11 @@ use crate::track_and_trace::store::ReportedValueReporterToAgentMetadata;
 
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreFetchReportedValueReporterToAgentMetadataOperation<
+pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreGetReportedValueReporterToAgentMetadataOperation<
     C: Connection,
 >
 {
-    fn fetch_reported_value_reporter_to_agent_metadata(
+    fn get_reported_value_reporter_to_agent_metadata(
         &self,
         record_id: &str,
         property_name: &str,
@@ -50,10 +50,10 @@ pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreFetchRepor
 
 #[cfg(feature = "postgres")]
 impl<'a>
-    TrackAndTraceStoreFetchReportedValueReporterToAgentMetadataOperation<diesel::pg::PgConnection>
+    TrackAndTraceStoreGetReportedValueReporterToAgentMetadataOperation<diesel::pg::PgConnection>
     for TrackAndTraceStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn fetch_reported_value_reporter_to_agent_metadata(
+    fn get_reported_value_reporter_to_agent_metadata(
         &self,
         record_id: &str,
         property_name: &str,
@@ -189,11 +189,11 @@ impl<'a>
 
 #[cfg(feature = "sqlite")]
 impl<'a>
-    TrackAndTraceStoreFetchReportedValueReporterToAgentMetadataOperation<
+    TrackAndTraceStoreGetReportedValueReporterToAgentMetadataOperation<
         diesel::sqlite::SqliteConnection,
     > for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn fetch_reported_value_reporter_to_agent_metadata(
+    fn get_reported_value_reporter_to_agent_metadata(
         &self,
         record_id: &str,
         property_name: &str,

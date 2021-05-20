@@ -32,9 +32,9 @@ use operations::add_agent::PikeStoreAddAgentOperation as _;
 use operations::add_organization::PikeStoreAddOrganizationOperation as _;
 use operations::add_role::PikeStoreAddRoleOperation as _;
 use operations::delete_role::PikeStoreDeleteRoleOperation as _;
-use operations::fetch_agent::PikeStoreFetchAgentOperation as _;
-use operations::fetch_organization::PikeStoreFetchOrganizationOperation as _;
-use operations::fetch_role::PikeStoreFetchRoleOperation as _;
+use operations::get_agent::PikeStoreGetAgentOperation as _;
+use operations::get_organization::PikeStoreGetOrganizationOperation as _;
+use operations::get_role::PikeStoreGetRoleOperation as _;
 use operations::list_agents::PikeStoreListAgentsOperation as _;
 use operations::list_organizations::PikeStoreListOrganizationsOperation as _;
 use operations::list_roles_for_organization::PikeStoreListRolesForOrganizationOperation as _;
@@ -112,7 +112,7 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
         .list_roles_for_organization(org_id, service_id, offset, limit)
     }
 
-    fn fetch_agent(
+    fn get_agent(
         &self,
         pub_key: &str,
         service_id: Option<&str>,
@@ -122,10 +122,10 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_agent(pub_key, service_id)
+        .get_agent(pub_key, service_id)
     }
 
-    fn fetch_role(
+    fn get_role(
         &self,
         name: &str,
         org_id: &str,
@@ -136,7 +136,7 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_role(name, org_id, service_id)
+        .get_role(name, org_id, service_id)
     }
 
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
@@ -176,7 +176,7 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
         .list_organizations(service_id, offset, limit)
     }
 
-    fn fetch_organization(
+    fn get_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
@@ -186,7 +186,7 @@ impl PikeStore for DieselPikeStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_organization(org_id, service_id)
+        .get_organization(org_id, service_id)
     }
 
     fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
@@ -253,7 +253,7 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
         .list_roles_for_organization(org_id, service_id, offset, limit)
     }
 
-    fn fetch_agent(
+    fn get_agent(
         &self,
         pub_key: &str,
         service_id: Option<&str>,
@@ -263,10 +263,10 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_agent(pub_key, service_id)
+        .get_agent(pub_key, service_id)
     }
 
-    fn fetch_role(
+    fn get_role(
         &self,
         name: &str,
         org_id: &str,
@@ -277,7 +277,7 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_role(name, org_id, service_id)
+        .get_role(name, org_id, service_id)
     }
 
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
@@ -317,7 +317,7 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
         .list_organizations(service_id, offset, limit)
     }
 
-    fn fetch_organization(
+    fn get_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
@@ -327,7 +327,7 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_organization(org_id, service_id)
+        .get_organization(org_id, service_id)
     }
 
     fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {

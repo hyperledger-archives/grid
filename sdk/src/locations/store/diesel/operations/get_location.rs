@@ -24,8 +24,8 @@ use crate::locations::store::diesel::models::{LocationAttributeModel, LocationMo
 use crate::locations::store::{Location, LocationAttribute};
 use diesel::{prelude::*, result::Error::NotFound, QueryResult};
 
-pub(in crate::locations::store::diesel) trait LocationStoreFetchLocationOperation<C: Connection> {
-    fn fetch_location(
+pub(in crate::locations::store::diesel) trait LocationStoreGetLocationOperation<C: Connection> {
+    fn get_location(
         &self,
         location_id: &str,
         service_id: Option<&str>,
@@ -42,10 +42,10 @@ pub(in crate::locations::store::diesel) trait LocationStoreFetchLocationOperatio
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
+impl<'a> LocationStoreGetLocationOperation<diesel::pg::PgConnection>
     for LocationStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn fetch_location(
+    fn get_location(
         &self,
         location_id: &str,
         service_id: Option<&str>,
@@ -148,10 +148,10 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> LocationStoreFetchLocationOperation<diesel::sqlite::SqliteConnection>
+impl<'a> LocationStoreGetLocationOperation<diesel::sqlite::SqliteConnection>
     for LocationStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn fetch_location(
+    fn get_location(
         &self,
         location_id: &str,
         service_id: Option<&str>,

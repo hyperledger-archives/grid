@@ -25,8 +25,8 @@ use crate::pike::store::diesel::{
 use crate::pike::store::Role;
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::pike::store::diesel) trait PikeStoreFetchRoleOperation {
-    fn fetch_role(
+pub(in crate::pike::store::diesel) trait PikeStoreGetRoleOperation {
+    fn get_role(
         &self,
         name: &str,
         org_id: &str,
@@ -35,8 +35,8 @@ pub(in crate::pike::store::diesel) trait PikeStoreFetchRoleOperation {
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> PikeStoreFetchRoleOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_role(
+impl<'a> PikeStoreGetRoleOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_role(
         &self,
         name: &str,
         org_id: &str,
@@ -136,8 +136,8 @@ impl<'a> PikeStoreFetchRoleOperation for PikeStoreOperations<'a, diesel::pg::PgC
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> PikeStoreFetchRoleOperation for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn fetch_role(
+impl<'a> PikeStoreGetRoleOperation for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn get_role(
         &self,
         name: &str,
         org_id: &str,

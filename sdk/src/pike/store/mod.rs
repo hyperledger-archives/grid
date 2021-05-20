@@ -174,7 +174,7 @@ pub trait PikeStore: Send + Sync {
     ///
     ///  * `pub_key` - This public key of the agent to fetch
     ///  * `service_id` - The service id of the agent to fetch
-    fn fetch_agent(
+    fn get_agent(
         &self,
         pub_key: &str,
         service_id: Option<&str>,
@@ -186,7 +186,7 @@ pub trait PikeStore: Send + Sync {
     ///
     ///  * `name` - The role to fetch
     ///  * `service_id` - The service id of the role to fetch
-    fn fetch_role(
+    fn get_role(
         &self,
         name: &str,
         org_id: &str,
@@ -235,7 +235,7 @@ pub trait PikeStore: Send + Sync {
     ///
     ///  * `org_id` - This organization ID to fetch
     ///  * `service_id` - The service ID of the organization to fetch
-    fn fetch_organization(
+    fn get_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
@@ -273,21 +273,21 @@ where
         (**self).list_roles_for_organization(org_id, service_id, offset, limit)
     }
 
-    fn fetch_agent(
+    fn get_agent(
         &self,
         pub_key: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Agent>, PikeStoreError> {
-        (**self).fetch_agent(pub_key, service_id)
+        (**self).get_agent(pub_key, service_id)
     }
 
-    fn fetch_role(
+    fn get_role(
         &self,
         name: &str,
         org_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Role>, PikeStoreError> {
-        (**self).fetch_role(name, org_id, service_id)
+        (**self).get_role(name, org_id, service_id)
     }
 
     fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
@@ -311,11 +311,11 @@ where
         (**self).list_organizations(service_id, offset, limit)
     }
 
-    fn fetch_organization(
+    fn get_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, PikeStoreError> {
-        (**self).fetch_organization(org_id, service_id)
+        (**self).get_organization(org_id, service_id)
     }
 }

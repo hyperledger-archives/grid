@@ -15,7 +15,7 @@
 mod handler;
 mod payloads;
 
-pub use handler::{fetch_organization, list_organizations};
+pub use handler::{get_organization, list_organizations};
 pub use payloads::{
     AlternateIdSlice, OrganizationListSlice, OrganizationMetadataSlice, OrganizationSlice,
 };

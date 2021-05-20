@@ -53,7 +53,7 @@ impl SchemaStore for MemorySchemaStore {
         Ok(())
     }
 
-    fn fetch_schema(
+    fn get_schema(
         &self,
         name: &str,
         service_id: Option<&str>,

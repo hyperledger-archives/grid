@@ -23,8 +23,8 @@ use crate::error::InternalError;
 use crate::pike::store::diesel::models::{AgentModel, RoleAssociationModel};
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::pike::store::diesel) trait PikeStoreFetchAgentOperation {
-    fn fetch_agent(
+pub(in crate::pike::store::diesel) trait PikeStoreGetAgentOperation {
+    fn get_agent(
         &self,
         pub_key: &str,
         service_id: Option<&str>,
@@ -32,8 +32,8 @@ pub(in crate::pike::store::diesel) trait PikeStoreFetchAgentOperation {
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> PikeStoreFetchAgentOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_agent(
+impl<'a> PikeStoreGetAgentOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_agent(
         &self,
         pub_key: &str,
         service_id: Option<&str>,
@@ -95,10 +95,8 @@ impl<'a> PikeStoreFetchAgentOperation for PikeStoreOperations<'a, diesel::pg::Pg
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> PikeStoreFetchAgentOperation
-    for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection>
-{
-    fn fetch_agent(
+impl<'a> PikeStoreGetAgentOperation for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn get_agent(
         &self,
         pub_key: &str,
         service_id: Option<&str>,

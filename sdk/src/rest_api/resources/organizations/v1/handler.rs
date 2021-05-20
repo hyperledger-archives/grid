@@ -56,13 +56,13 @@ pub async fn list_organizations(
     Ok(OrganizationListSlice { data, paging })
 }
 
-pub async fn fetch_organization(
+pub async fn get_organization(
     store: Arc<dyn PikeStore>,
     org_id: String,
     service_id: Option<&str>,
 ) -> Result<OrganizationSlice, ErrorResponse> {
     let organization = store
-        .fetch_organization(&org_id, service_id)
+        .get_organization(&org_id, service_id)
         .map_err(|err| match err {
             PikeStoreError::InternalError(err) => ErrorResponse::internal_error(Box::new(err)),
             PikeStoreError::ConstraintViolationError(err) => {

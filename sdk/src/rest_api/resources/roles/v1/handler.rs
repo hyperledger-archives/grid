@@ -53,14 +53,14 @@ pub async fn list_roles_for_organization(
     Ok(RoleListSlice { data, paging })
 }
 
-pub async fn fetch_role(
+pub async fn get_role(
     store: Arc<dyn PikeStore>,
     org_id: String,
     name: String,
     service_id: Option<&str>,
 ) -> Result<RoleSlice, ErrorResponse> {
     let role = store
-        .fetch_role(&name, &org_id, service_id)
+        .get_role(&name, &org_id, service_id)
         .map_err(|err| match err {
             PikeStoreError::InternalError(err) => ErrorResponse::internal_error(Box::new(err)),
             PikeStoreError::ConstraintViolationError(err) => {

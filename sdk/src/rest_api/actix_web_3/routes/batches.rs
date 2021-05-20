@@ -36,7 +36,7 @@ pub async fn submit_batches(
         ProtocolVersion::V1 => {
             let service_id = query_service_id.into_inner().service_id;
 
-            let response_url = match req.url_for_static("fetch_batch_statuses") {
+            let response_url = match req.url_for_static("get_batch_statuses") {
                 Ok(response_url) => response_url,
                 Err(err) => {
                     let json = ErrorResponse::internal_error(Box::new(err));
@@ -83,7 +83,7 @@ pub struct QueryParams {
 }
 
 #[get("/batch_statuses")]
-pub async fn fetch_batch_statuses(
+pub async fn get_batch_statuses(
     req: HttpRequest,
     state: web::Data<BatchSubmitterState>,
     query: web::Query<QueryParams>,
@@ -97,7 +97,7 @@ pub async fn fetch_batch_statuses(
             let wait = query.wait;
             let id = query.id.unwrap_or_else(|| "".to_string());
 
-            let response_url = match req.url_for_static("fetch_batch_statuses") {
+            let response_url = match req.url_for_static("get_batch_statuses") {
                 Ok(url) => format!("{}?{}", url, req.query_string()),
                 Err(err) => {
                     error!("{}", err);
@@ -106,7 +106,7 @@ pub async fn fetch_batch_statuses(
                 }
             };
 
-            match v1::fetch_batch_statuses(
+            match v1::get_batch_statuses(
                 response_url,
                 state.batch_submitter.clone(),
                 id,

@@ -26,9 +26,9 @@ use crate::track_and_trace::store::Property;
 
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreFetchPropertyWithDataTypeOperation
+pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreGetPropertyWithDataTypeOperation
 {
-    fn fetch_property_with_data_type(
+    fn get_property_with_data_type(
         &self,
         record_id: &str,
         property_name: &str,
@@ -37,10 +37,10 @@ pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreFetchPrope
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
+impl<'a> TrackAndTraceStoreGetPropertyWithDataTypeOperation
     for TrackAndTraceStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn fetch_property_with_data_type(
+    fn get_property_with_data_type(
         &self,
         record_id: &str,
         property_name: &str,
@@ -89,10 +89,10 @@ impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
+impl<'a> TrackAndTraceStoreGetPropertyWithDataTypeOperation
     for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn fetch_property_with_data_type(
+    fn get_property_with_data_type(
         &self,
         record_id: &str,
         property_name: &str,

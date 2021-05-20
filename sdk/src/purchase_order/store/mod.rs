@@ -120,7 +120,7 @@ pub trait PurchaseOrderStore: Send + Sync {
     ///
     ///  * `uuid`   - The uuid of the purchase order
     ///  * `service_id` - The service id
-    fn fetch_purchase_order(
+    fn get_purchase_order(
         &self,
         uuid: &str,
         service_id: Option<&str>,
@@ -173,12 +173,12 @@ where
         (**self).list_purchase_orders(org_id, service_id, offset, limit)
     }
 
-    fn fetch_purchase_order(
+    fn get_purchase_order(
         &self,
         uuid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
-        (**self).fetch_purchase_order(uuid, service_id)
+        (**self).get_purchase_order(uuid, service_id)
     }
 
     fn add_alternate_id(

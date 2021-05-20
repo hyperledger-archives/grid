@@ -15,5 +15,5 @@
 mod handler;
 mod payloads;
 
-pub use handler::{fetch_agent, list_agents};
+pub use handler::{get_agent, list_agents};
 pub use payloads::{AgentListSlice, AgentSlice};

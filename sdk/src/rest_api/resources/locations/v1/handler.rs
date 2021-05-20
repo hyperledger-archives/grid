@@ -61,13 +61,13 @@ pub async fn list_locations(
     Ok(LocationListSlice { data, paging })
 }
 
-pub async fn fetch_location(
+pub async fn get_location(
     store: Arc<dyn LocationStore>,
     location_id: String,
     service_id: Option<&str>,
 ) -> Result<LocationSlice, ErrorResponse> {
     let location = store
-        .fetch_location(&location_id, service_id)
+        .get_location(&location_id, service_id)
         .map_err(|err| match err {
             LocationStoreError::InternalError(err) => ErrorResponse::internal_error(Box::new(err)),
             LocationStoreError::ConstraintViolationError(err) => {

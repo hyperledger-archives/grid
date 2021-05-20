@@ -56,13 +56,13 @@ pub async fn list_agents(
     Ok(AgentListSlice { data, paging })
 }
 
-pub async fn fetch_agent(
+pub async fn get_agent(
     store: Arc<dyn PikeStore>,
     public_key: String,
     service_id: Option<&str>,
 ) -> Result<AgentSlice, ErrorResponse> {
     let agent = store
-        .fetch_agent(&public_key, service_id)
+        .get_agent(&public_key, service_id)
         .map_err(|err| match err {
             PikeStoreError::InternalError(err) => ErrorResponse::internal_error(Box::new(err)),
             PikeStoreError::ConstraintViolationError(err) => {

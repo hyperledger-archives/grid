@@ -30,7 +30,7 @@ use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_alternate_id::PurchaseOrderStoreAddAlternateIdOperation as _;
 use operations::add_purchase_order::PurchaseOrderStoreAddPurchaseOrderOperation as _;
-use operations::fetch_purchase_order::PurchaseOrderStoreFetchPurchaseOrderOperation as _;
+use operations::get_purchase_order::PurchaseOrderStoreGetPurchaseOrderOperation as _;
 use operations::list_alternate_ids_for_purchase_order::PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation as _;
 use operations::list_purchase_orders::PurchaseOrderStoreListPurchaseOrdersOperation as _;
 use operations::PurchaseOrderStoreOperations;
@@ -82,7 +82,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
         .list_purchase_orders(org_id, service_id, offset, limit)
     }
 
-    fn fetch_purchase_order(
+    fn get_purchase_order(
         &self,
         uuid: &str,
         service_id: Option<&str>,
@@ -92,7 +92,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_purchase_order(uuid, service_id)
+        .get_purchase_order(uuid, service_id)
     }
 
     fn add_alternate_id(
@@ -160,7 +160,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
         .list_purchase_orders(org_id, service_id, offset, limit)
     }
 
-    fn fetch_purchase_order(
+    fn get_purchase_order(
         &self,
         uuid: &str,
         service_id: Option<&str>,
@@ -170,7 +170,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_purchase_order(uuid, service_id)
+        .get_purchase_order(uuid, service_id)
     }
 
     fn add_alternate_id(

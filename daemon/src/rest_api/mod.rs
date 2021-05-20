@@ -66,46 +66,46 @@ pub fn run(
                     .data(batch_submitter_state.clone())
                     .app_data(endpoint.clone())
                     .service(routes::submit_batches)
-                    .service(routes::fetch_batch_statuses);
+                    .service(routes::get_batch_statuses);
 
                 #[cfg(feature = "pike")]
                 {
                     app = app
                         .service(routes::list_agents)
-                        .service(routes::fetch_agent)
-                        .service(routes::fetch_organization)
+                        .service(routes::get_agent)
+                        .service(routes::get_organization)
                         .service(routes::list_organizations)
                         .service(routes::list_roles_for_organization)
-                        .service(routes::fetch_role);
+                        .service(routes::get_role);
                 }
 
                 #[cfg(feature = "location")]
                 {
                     app = app
                         .service(routes::list_locations)
-                        .service(routes::fetch_location);
+                        .service(routes::get_location);
                 }
 
                 #[cfg(feature = "product")]
                 {
                     app = app
                         .service(routes::list_products)
-                        .service(routes::fetch_product);
+                        .service(routes::get_product);
                 }
 
                 #[cfg(feature = "schema")]
                 {
                     app = app
                         .service(routes::list_schemas)
-                        .service(routes::fetch_schema);
+                        .service(routes::get_schema);
                 }
 
                 #[cfg(feature = "track-and-trace")]
                 {
                     app = app
                         .service(routes::list_records)
-                        .service(routes::fetch_record)
-                        .service(routes::fetch_record_property_name);
+                        .service(routes::get_record)
+                        .service(routes::get_record_property_name);
                 }
 
                 #[cfg(feature = "integration")]
@@ -118,11 +118,11 @@ pub fn run(
                 {
                     app = app
                         .service(routes::list_purchase_orders)
-                        .service(routes::fetch_purchase_order)
+                        .service(routes::get_purchase_order)
                         .service(routes::list_purchase_order_versions)
-                        .service(routes::fetch_purchase_order_version)
+                        .service(routes::get_purchase_order_version)
                         .service(routes::list_purchase_order_version_revisions)
-                        .service(routes::fetch_purchase_order_version_revision)
+                        .service(routes::get_purchase_order_version_revision)
                 }
 
                 app
@@ -437,24 +437,24 @@ mod test {
                     format!("{}tcp://localhost:9090", endpoint_backend).as_str(),
                 ))
                 .service(routes::submit_batches)
-                .service(routes::fetch_batch_statuses)
+                .service(routes::get_batch_statuses)
                 .service(routes::list_agents)
-                .service(routes::fetch_agent)
-                .service(routes::fetch_organization)
+                .service(routes::get_agent)
+                .service(routes::get_organization)
                 .service(routes::list_organizations)
                 .service(routes::list_locations)
-                .service(routes::fetch_location)
+                .service(routes::get_location)
                 .service(routes::list_products)
-                .service(routes::fetch_product)
+                .service(routes::get_product)
                 .service(routes::list_schemas)
-                .service(routes::fetch_schema);
+                .service(routes::get_schema);
 
             #[cfg(feature = "track-and-trace")]
             {
                 app = app
                     .service(routes::list_records)
-                    .service(routes::fetch_record)
-                    .service(routes::fetch_record_property_name);
+                    .service(routes::get_record)
+                    .service(routes::get_record_property_name);
             }
 
             app

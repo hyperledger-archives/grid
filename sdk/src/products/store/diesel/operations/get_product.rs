@@ -27,8 +27,8 @@ use crate::products::{
 };
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::products) trait FetchProductOperation {
-    fn fetch_product(
+pub(in crate::products) trait GetProductOperation {
+    fn get_product(
         &self,
         product_id: &str,
         service_id: Option<&str>,
@@ -36,14 +36,13 @@ pub(in crate::products) trait FetchProductOperation {
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> FetchProductOperation for ProductStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_product(
+impl<'a> GetProductOperation for ProductStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_product(
         &self,
         product_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Product>, ProductStoreError> {
-        let product = if let Some(product) = pg::fetch_product(&*self.conn, product_id, service_id)?
-        {
+        let product = if let Some(product) = pg::get_product(&*self.conn, product_id, service_id)? {
             product
         } else {
             return Ok(None);
@@ -58,14 +57,14 @@ impl<'a> FetchProductOperation for ProductStoreOperations<'a, diesel::pg::PgConn
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> FetchProductOperation for ProductStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn fetch_product(
+impl<'a> GetProductOperation for ProductStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn get_product(
         &self,
         product_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Product>, ProductStoreError> {
         let product =
-            if let Some(product) = sqlite::fetch_product(&*self.conn, product_id, service_id)? {
+            if let Some(product) = sqlite::get_product(&*self.conn, product_id, service_id)? {
                 product
             } else {
                 return Ok(None);
@@ -83,7 +82,7 @@ impl<'a> FetchProductOperation for ProductStoreOperations<'a, diesel::sqlite::Sq
 mod pg {
     use super::*;
 
-    pub fn fetch_product(
+    pub fn get_product(
         conn: &PgConnection,
         product_id: &str,
         service_id: Option<&str>,
@@ -154,7 +153,7 @@ mod pg {
 mod sqlite {
     use super::*;
 
-    pub fn fetch_product(
+    pub fn get_product(
         conn: &SqliteConnection,
         product_id: &str,
         service_id: Option<&str>,

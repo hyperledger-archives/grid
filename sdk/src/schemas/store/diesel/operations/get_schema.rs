@@ -27,8 +27,8 @@ use crate::schemas::{
 };
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::schemas) trait FetchSchemaOperation {
-    fn fetch_schema(
+pub(in crate::schemas) trait GetSchemaOperation {
+    fn get_schema(
         &self,
         name: &str,
         service_id: Option<&str>,
@@ -36,13 +36,13 @@ pub(in crate::schemas) trait FetchSchemaOperation {
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> FetchSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_schema(
+impl<'a> GetSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_schema(
         &self,
         name: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Schema>, SchemaStoreError> {
-        let schema = if let Some(schema) = pg::fetch_grid_schema(&*self.conn, name, service_id)? {
+        let schema = if let Some(schema) = pg::get_grid_schema(&*self.conn, name, service_id)? {
             schema
         } else {
             return Ok(None);
@@ -57,24 +57,26 @@ impl<'a> FetchSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnec
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> FetchSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn fetch_schema(
+impl<'a> GetSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn get_schema(
         &self,
         name: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Schema>, SchemaStoreError> {
-        let schema = if let Some(schema) = sqlite::fetch_grid_schema(&*self.conn, name, service_id)?
-        {
-            schema
-        } else {
-            return Ok(None);
-        };
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let schema =
+                if let Some(schema) = sqlite::get_grid_schema(&*self.conn, name, service_id)? {
+                    schema
+                } else {
+                    return Ok(None);
+                };
 
-        let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
+            let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
 
-        let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
+            let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
 
-        Ok(Some(Schema::from((schema, properties))))
+            Ok(Some(Schema::from((schema, properties))))
+        })
     }
 }
 
@@ -82,7 +84,7 @@ impl<'a> FetchSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqli
 mod pg {
     use super::*;
 
-    pub fn fetch_grid_schema(
+    pub fn get_grid_schema(
         conn: &PgConnection,
         name: &str,
         service_id: Option<&str>,
@@ -153,7 +155,7 @@ mod pg {
 mod sqlite {
     use super::*;
 
-    pub fn fetch_grid_schema(
+    pub fn get_grid_schema(
         conn: &SqliteConnection,
         name: &str,
         service_id: Option<&str>,

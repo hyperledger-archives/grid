@@ -14,7 +14,7 @@
 
 pub(super) mod add_product;
 pub(super) mod delete_product;
-pub(super) mod fetch_product;
+pub(super) mod get_product;
 pub(super) mod list_products;
 pub(super) mod update_product;
 

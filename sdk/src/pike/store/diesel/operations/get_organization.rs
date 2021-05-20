@@ -28,8 +28,8 @@ use crate::pike::store::diesel::{
 use crate::pike::store::Organization;
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::pike::store::diesel) trait PikeStoreFetchOrganizationOperation {
-    fn fetch_organization(
+pub(in crate::pike::store::diesel) trait PikeStoreGetOrganizationOperation {
+    fn get_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
@@ -37,8 +37,8 @@ pub(in crate::pike::store::diesel) trait PikeStoreFetchOrganizationOperation {
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> PikeStoreFetchOrganizationOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_organization(
+impl<'a> PikeStoreGetOrganizationOperation for PikeStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,
@@ -139,10 +139,10 @@ impl<'a> PikeStoreFetchOrganizationOperation for PikeStoreOperations<'a, diesel:
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> PikeStoreFetchOrganizationOperation
+impl<'a> PikeStoreGetOrganizationOperation
     for PikeStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn fetch_organization(
+    fn get_organization(
         &self,
         org_id: &str,
         service_id: Option<&str>,

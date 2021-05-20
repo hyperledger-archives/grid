@@ -22,8 +22,8 @@ use crate::error::InternalError;
 use chrono::NaiveDateTime;
 use diesel::{dsl::update, prelude::*, select};
 
-pub(in crate::batches::store::diesel) trait FetchUnclaimedBatchesOperation {
-    fn fetch_unclaimed_batches(
+pub(in crate::batches::store::diesel) trait GetUnclaimedBatchesOperation {
+    fn get_unclaimed_batches(
         &self,
         limit: i64,
         secs_claim_is_valid: i64,
@@ -31,8 +31,8 @@ pub(in crate::batches::store::diesel) trait FetchUnclaimedBatchesOperation {
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> FetchUnclaimedBatchesOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
-    fn fetch_unclaimed_batches(
+impl<'a> GetUnclaimedBatchesOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_unclaimed_batches(
         &self,
         limit: i64,
         secs_claim_is_valid: i64,
@@ -83,10 +83,10 @@ impl<'a> FetchUnclaimedBatchesOperation for BatchStoreOperations<'a, diesel::pg:
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> FetchUnclaimedBatchesOperation
+impl<'a> GetUnclaimedBatchesOperation
     for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn fetch_unclaimed_batches(
+    fn get_unclaimed_batches(
         &self,
         limit: i64,
         secs_claim_is_valid: i64,

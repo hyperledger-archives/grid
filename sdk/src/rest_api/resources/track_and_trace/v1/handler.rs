@@ -144,13 +144,13 @@ pub async fn list_records(
     Ok(RecordListSlice { data, paging })
 }
 
-pub async fn fetch_record(
+pub async fn get_record(
     store: Arc<dyn TrackAndTraceStore>,
     record_id: String,
     service_id: Option<&str>,
 ) -> Result<RecordSlice, ErrorResponse> {
     let record = store
-        .fetch_record(&record_id, service_id)
+        .get_record(&record_id, service_id)
         .map_err(|err| match err {
             TrackAndTraceStoreError::InternalError(err) => {
                 println!("WTF: {}", err);
@@ -230,14 +230,14 @@ pub async fn fetch_record(
     ))
 }
 
-pub async fn fetch_record_property(
+pub async fn get_record_property(
     store: Arc<dyn TrackAndTraceStore>,
     record_id: String,
     property_name: String,
     service_id: Option<&str>,
 ) -> Result<PropertySlice, ErrorResponse> {
     let (property, data_type) = store
-        .fetch_property_with_data_type(&record_id, &property_name, service_id)
+        .get_property_with_data_type(&record_id, &property_name, service_id)
         .map_err(|err| match err {
             TrackAndTraceStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))
@@ -281,7 +281,7 @@ fn parse_property_slice(
         })?;
 
     let reported_value = store
-        .fetch_reported_value_reporter_to_agent_metadata(
+        .get_reported_value_reporter_to_agent_metadata(
             &property.record_id,
             &property.name,
             None,

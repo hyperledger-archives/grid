@@ -37,9 +37,9 @@ use operations::add_proposals::TrackAndTraceStoreAddProposalsOperation as _;
 use operations::add_records::TrackAndTraceStoreAddRecordsOperation as _;
 use operations::add_reported_values::TrackAndTraceStoreAddReportedValuesOperation as _;
 use operations::add_reporters::TrackAndTraceStoreAddReportersOperation as _;
-use operations::fetch_property_with_data_type::TrackAndTraceStoreFetchPropertyWithDataTypeOperation as _;
-use operations::fetch_record::TrackAndTraceStoreFetchRecordOperation as _;
-use operations::fetch_reported_value_reporter_to_agent_metadata::TrackAndTraceStoreFetchReportedValueReporterToAgentMetadataOperation as _;
+use operations::get_property_with_data_type::TrackAndTraceStoreGetPropertyWithDataTypeOperation as _;
+use operations::get_record::TrackAndTraceStoreGetRecordOperation as _;
+use operations::get_reported_value_reporter_to_agent_metadata::TrackAndTraceStoreGetReportedValueReporterToAgentMetadataOperation as _;
 use operations::list_associated_agents::TrackAndTraceStoreListAssociatedAgentsOperation as _;
 use operations::list_properties_with_data_type::TrackAndTraceStoreListPropertiesWithDataTypeOperation as _;
 use operations::list_proposals::TrackAndTraceStoreListProposalsOperation as _;
@@ -128,7 +128,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         .add_reporters(reporters.into_iter().map(|r| r.into()).collect())
     }
 
-    fn fetch_property_with_data_type(
+    fn get_property_with_data_type(
         &self,
         record_id: &str,
         property_name: &str,
@@ -139,10 +139,10 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_property_with_data_type(record_id, property_name, service_id)
+        .get_property_with_data_type(record_id, property_name, service_id)
     }
 
-    fn fetch_record(
+    fn get_record(
         &self,
         record_id: &str,
         service_id: Option<&str>,
@@ -152,10 +152,10 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_record(record_id, service_id)
+        .get_record(record_id, service_id)
     }
 
-    fn fetch_reported_value_reporter_to_agent_metadata(
+    fn get_reported_value_reporter_to_agent_metadata(
         &self,
         record_id: &str,
         property_name: &str,
@@ -167,7 +167,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_reported_value_reporter_to_agent_metadata(
+        .get_reported_value_reporter_to_agent_metadata(
             record_id,
             property_name,
             commit_height,
@@ -323,7 +323,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         .add_reporters(reporters.into_iter().map(|r| r.into()).collect())
     }
 
-    fn fetch_property_with_data_type(
+    fn get_property_with_data_type(
         &self,
         record_id: &str,
         property_name: &str,
@@ -334,10 +334,10 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_property_with_data_type(record_id, property_name, service_id)
+        .get_property_with_data_type(record_id, property_name, service_id)
     }
 
-    fn fetch_record(
+    fn get_record(
         &self,
         record_id: &str,
         service_id: Option<&str>,
@@ -347,10 +347,10 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_record(record_id, service_id)
+        .get_record(record_id, service_id)
     }
 
-    fn fetch_reported_value_reporter_to_agent_metadata(
+    fn get_reported_value_reporter_to_agent_metadata(
         &self,
         record_id: &str,
         property_name: &str,
@@ -362,7 +362,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .fetch_reported_value_reporter_to_agent_metadata(
+        .get_reported_value_reporter_to_agent_metadata(
             record_id,
             property_name,
             commit_height,
