@@ -1,4 +1,5 @@
 % GRID-AGENT-CREATE(1) Cargill, Incorporated | Grid
+
 <!--
   Copyright 2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
@@ -79,6 +80,9 @@ SEE ALSO
 ========
 | `grid organization(1)`
 | `grid agent(1)`
+| `grid agent create(1)`
+| `grid agent list(1)`
+| `grid agent show(1)`
 | `grid agent update(1)`
 | `grid role(1)`
 |

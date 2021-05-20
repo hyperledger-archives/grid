@@ -48,6 +48,12 @@ pub struct Paging {
     last: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ListSlice<T> {
+    pub data: Vec<T>,
+    pub paging: Paging,
+}
+
 #[cfg(feature = "admin-keygen")]
 pub mod admin;
 pub mod agents;
