@@ -592,7 +592,8 @@ fn create_role(
 
     if name.contains('.') {
         return Err(ApplyError::InvalidTransaction(
-            "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
+            "Role name is not properly formatted. Roles may not contain the '.' character. This \
+            is used to reference roles from outside organizations"
                 .to_string(),
         ));
     }
@@ -674,7 +675,8 @@ fn update_role(
 
     if name.contains('.') {
         return Err(ApplyError::InvalidTransaction(
-            "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
+            "Role name is not properly formatted. Roles may not contain the '.' character. This \
+            is used to reference roles from outside organizations"
                 .to_string(),
         ));
     }
@@ -744,7 +746,8 @@ fn delete_role(
 
     if name.contains('.') {
         return Err(ApplyError::InvalidTransaction(
-            "Role name is not properly formatted. Roles may not contain the '.' character. This is used to reference roles from outside organizations"
+            "Role name is not properly formatted. Roles may not contain the '.' character. This \
+            is used to reference roles from outside organizations"
                 .to_string(),
         ));
     }
