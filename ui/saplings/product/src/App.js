@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -34,9 +34,6 @@ import { ServiceProvider } from './state/service-context';
 import TopBar from './components/TopBar';
 import ProductsTable from './components/ProductsTable';
 import ProductInfo from './components/ProductInfo';
-import { AddProductForm } from './components/AddProductForm';
-import { EditProductForm } from './components/EditProductForm';
-import { DeleteProductForm } from './components/DeleteProductForm';
 import './App.scss';
 
 library.add(
@@ -52,69 +49,6 @@ library.add(
 );
 
 function App() {
-  const initialFormState = {
-    formName: '',
-    params: {}
-  };
-  const [activeForm, setActiveForm] = useState(initialFormState);
-
-  function addProduct() {
-    setActiveForm({
-      formName: 'add-product',
-      params: {}
-    });
-  }
-
-  function editProduct(productID, owner, service, properties) {
-    setActiveForm({
-      formName: 'edit-product',
-      params: {
-        properties,
-        owner,
-        productID,
-        service
-      }
-    });
-  }
-
-  function deleteProduct(gtin) {
-    setActiveForm({
-      formName: 'delete-product',
-      params: {
-        gtin
-      }
-    });
-  }
-
-  function openForm(form) {
-    const adata = { ...form.params } || {};
-    switch (form.formName) {
-      case 'add-product':
-        return (
-          <AddProductForm closeFn={() => setActiveForm(initialFormState)} />
-        );
-      case 'edit-product':
-        return (
-          <EditProductForm
-            closeFn={() => setActiveForm(initialFormState)}
-            properties={adata.properties}
-            owner={adata.owner}
-            productID={adata.productID}
-            service={adata.service}
-          />
-        );
-      case 'delete-product':
-        return (
-          <DeleteProductForm
-            closeFn={() => setActiveForm(initialFormState)}
-            gtin={adata.gtin}
-          />
-        );
-      default:
-    }
-    return null;
-  }
-
   return (
     <ServiceProvider>
       <ToastProvider>
@@ -123,16 +57,13 @@ function App() {
           <Router>
             <Switch>
               <Route exact path="/product">
-                <ProductsTable
-                  actions={{ addProduct, editProduct, deleteProduct }}
-                />
+                <ProductsTable />
               </Route>
               <Route path="/product/products/:id">
                 <ProductInfo />
               </Route>
             </Switch>
           </Router>
-          {activeForm && openForm(activeForm)}
         </div>
       </ToastProvider>
     </ServiceProvider>

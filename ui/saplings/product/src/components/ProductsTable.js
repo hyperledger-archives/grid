@@ -15,7 +15,6 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import Icon from '@material-ui/core/Icon';
 import parser, {j2xParser as Parser} from 'fast-xml-parser';
 import { matchSorter } from 'match-sorter';
 import _ from 'lodash';
@@ -264,12 +263,7 @@ function ProductsTable() {
               }
             </div>
           </div>
-          <div className="actions">
-            <button className="btn-primary" type="button">
-              <Icon>add</Icon>
-              <span>Add</span>
-            </button>
-          </div>
+          <div className="actions" />
         </div>
       </div>
       <div className="table">
