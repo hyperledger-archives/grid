@@ -86,13 +86,19 @@ experimental = [
     "batch-store",
     "client",
     "client-reqwest",
-    "postgres",
+    "location-store-postgres",
+    "location-store-sqlite",
     "pike-rest-api",
+    "postgres",
     "product-gdsn",
+    "product-store-postgres",
+    "product-store-sqlite",
     "purchase-order",
     "rest-api-resources",
     "rest-api-actix-web-3",
     "sawtooth-compat",
+    "schema-store-postgres",
+    "schema-store-sqlite",
     "sqlite",
     "track-and-trace",
     "workflow"
@@ -101,6 +107,8 @@ experimental = [
 client = []
 client-reqwest = ["client", "reqwest"]
 location = ["pike", "schema"]
+location-store-postgres = ["postgres"]
+location-store-sqlite = ["sqlite"]
 pike = []
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
 product-gdsn = [
@@ -108,7 +116,11 @@ product-gdsn = [
 ]
 purchase-order = []
 product = ["pike", "schema"]
+product-store-postgres = ["postgres"]
+product-store-sqlite = ["sqlite"]
 schema = ["pike"]
+schema-store-postgres = ["postgres"]
+schema-store-sqlite = ["sqlite"]
 track-and-trace = ["base64"]
 batch-processor = ["batch-store", "batch-submitter", "log"]
 batch-store = []

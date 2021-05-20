@@ -15,9 +15,9 @@
 //! Defines methods and utilities to interact with user tables in the database.
 
 use crate::commits::store::diesel::schema::{chain_record::dsl::*, commits::dsl::*};
-#[cfg(feature = "location")]
+#[cfg(feature = "location-store-postgres")]
 use crate::locations::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
-#[cfg(all(feature = "pike", feature = "location"))]
+#[cfg(all(feature = "pike", feature = "location-store-postgres"))]
 use crate::pike::store::diesel::schema::pike_organization_location_assoc::dsl::*;
 #[cfg(feature = "pike")]
 use crate::pike::store::diesel::schema::{
@@ -25,9 +25,9 @@ use crate::pike::store::diesel::schema::{
     pike_inherit_from::dsl::*, pike_organization::dsl::*, pike_organization_alternate_id::dsl::*,
     pike_organization_metadata::dsl::*, pike_permissions::dsl::*, pike_role::dsl::*,
 };
-#[cfg(feature = "product")]
+#[cfg(feature = "product-store-postgres")]
 use crate::products::store::diesel::schema::{product::dsl::*, product_property_value::dsl::*};
-#[cfg(feature = "schema")]
+#[cfg(feature = "schema-store-postgres")]
 use crate::schemas::store::diesel::schema::{
     grid_property_definition::dsl::grid_property_definition, grid_schema::dsl::*,
 };
@@ -80,21 +80,21 @@ pub fn clear_database(conn: &PgConnection) -> Result<(), MigrationsError> {
             diesel::delete(pike_organization).execute(conn)?;
             diesel::delete(pike_role).execute(conn)?;
         }
-        #[cfg(feature = "location")]
+        #[cfg(feature = "location-store-postgres")]
         {
             diesel::delete(location_attribute).execute(conn)?;
             diesel::delete(location).execute(conn)?;
         }
-        #[cfg(all(feature = "pike", feature = "location"))]
+        #[cfg(all(feature = "pike", feature = "location-store-postgres"))]
         {
             diesel::delete(pike_organization_location_assoc).execute(conn)?;
         }
-        #[cfg(feature = "product")]
+        #[cfg(feature = "product-store-postgres")]
         {
             diesel::delete(product).execute(conn)?;
             diesel::delete(product_property_value).execute(conn)?;
         }
-        #[cfg(feature = "schema")]
+        #[cfg(feature = "schema-store-postgres")]
         {
             diesel::delete(grid_property_definition).execute(conn)?;
             diesel::delete(grid_schema).execute(conn)?;
