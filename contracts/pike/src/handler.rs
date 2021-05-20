@@ -202,7 +202,7 @@ impl<'a> PikeState<'a> {
                     Ok(agents) => agents,
                     Err(err) => {
                         return Err(ApplyError::InternalError(format!(
-                            "Cannot deserialize record container: {:?}",
+                            "Cannot deserialize agent list: {:?}",
                             err,
                         )))
                     }
@@ -955,7 +955,7 @@ fn create_org(
         }
         Err(err) => {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Failed to retrievestate: {}",
+                "Failed to retrieve state: {}",
                 err,
             )))
         }
