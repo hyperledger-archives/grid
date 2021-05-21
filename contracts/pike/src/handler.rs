@@ -863,7 +863,7 @@ fn update_agent(
     let mut agent = match state.get_agent(payload.get_public_key()) {
         Ok(None) => {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Agent does not exists: {}",
+                "Agent does not exist: {}",
                 payload.get_public_key(),
             )))
         }
@@ -1130,7 +1130,7 @@ fn update_org(
     let mut organization = match state.get_organization(payload.get_id()) {
         Ok(None) => {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Organization does not exist exists: {}",
+                "Organization does not exist: {}",
                 payload.get_id(),
             )))
         }
