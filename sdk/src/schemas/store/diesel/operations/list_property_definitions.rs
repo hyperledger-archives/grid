@@ -38,33 +38,35 @@ impl<'a> ListPropertyDefinitionsOperation for SchemaStoreOperations<'a, diesel::
         &self,
         service_id: Option<&str>,
     ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
-        let mut query = grid_property_definition::table
-            .into_boxed()
-            .select(grid_property_definition::all_columns)
-            .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM));
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let mut query = grid_property_definition::table
+                .into_boxed()
+                .select(grid_property_definition::all_columns)
+                .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM));
 
-        if let Some(service_id) = service_id {
-            query = query.filter(grid_property_definition::service_id.eq(service_id));
-        } else {
-            query = query.filter(grid_property_definition::service_id.is_null());
-        }
+            if let Some(service_id) = service_id {
+                query = query.filter(grid_property_definition::service_id.eq(service_id));
+            } else {
+                query = query.filter(grid_property_definition::service_id.is_null());
+            }
 
-        let defns = query
-            .load::<GridPropertyDefinition>(self.conn)
-            .map(Some)
-            .map_err(|err| {
-                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?
-            .ok_or_else(|| {
-                SchemaStoreError::NotFoundError(
-                    "Could not get all definitions from storage for schema".to_string(),
-                )
-            })?
-            .into_iter()
-            .map(PropertyDefinition::from)
-            .collect();
+            let defns = query
+                .load::<GridPropertyDefinition>(self.conn)
+                .map(Some)
+                .map_err(|err| {
+                    SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?
+                .ok_or_else(|| {
+                    SchemaStoreError::NotFoundError(
+                        "Could not get all definitions from storage for schema".to_string(),
+                    )
+                })?
+                .into_iter()
+                .map(PropertyDefinition::from)
+                .collect();
 
-        Ok(defns)
+            Ok(defns)
+        })
     }
 }
 
@@ -76,32 +78,34 @@ impl<'a> ListPropertyDefinitionsOperation
         &self,
         service_id: Option<&str>,
     ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
-        let mut query = grid_property_definition::table
-            .into_boxed()
-            .select(grid_property_definition::all_columns)
-            .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM));
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let mut query = grid_property_definition::table
+                .into_boxed()
+                .select(grid_property_definition::all_columns)
+                .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM));
 
-        if let Some(service_id) = service_id {
-            query = query.filter(grid_property_definition::service_id.eq(service_id));
-        } else {
-            query = query.filter(grid_property_definition::service_id.is_null());
-        }
+            if let Some(service_id) = service_id {
+                query = query.filter(grid_property_definition::service_id.eq(service_id));
+            } else {
+                query = query.filter(grid_property_definition::service_id.is_null());
+            }
 
-        let defns = query
-            .load::<GridPropertyDefinition>(self.conn)
-            .map(Some)
-            .map_err(|err| {
-                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?
-            .ok_or_else(|| {
-                SchemaStoreError::NotFoundError(
-                    "Could not get all definitions from storage for schema".to_string(),
-                )
-            })?
-            .into_iter()
-            .map(PropertyDefinition::from)
-            .collect();
+            let defns = query
+                .load::<GridPropertyDefinition>(self.conn)
+                .map(Some)
+                .map_err(|err| {
+                    SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?
+                .ok_or_else(|| {
+                    SchemaStoreError::NotFoundError(
+                        "Could not get all definitions from storage for schema".to_string(),
+                    )
+                })?
+                .into_iter()
+                .map(PropertyDefinition::from)
+                .collect();
 
-        Ok(defns)
+            Ok(defns)
+        })
     }
 }

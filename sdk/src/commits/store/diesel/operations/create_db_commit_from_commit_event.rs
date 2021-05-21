@@ -35,28 +35,30 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
         &self,
         event: &CommitEvent,
     ) -> Result<Option<Commit>, CommitEventError> {
-        let commit_id = event.id.clone();
-        let commit_num = match event.height {
-            Some(height_u64) => height_u64.try_into().map_err(|err| {
-                CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
-            })?,
-            None => commits::table
-                .select(max(commits::commit_num))
-                .first(self.conn)
-                .map(|option: Option<i64>| match option {
-                    Some(num) => num + 1,
-                    None => 0,
-                })
-                .map_err(|err| {
+        self.conn.transaction::<_, CommitEventError, _>(|| {
+            let commit_id = event.id.clone();
+            let commit_num = match event.height {
+                Some(height_u64) => height_u64.try_into().map_err(|err| {
                     CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
                 })?,
-        };
-        let service_id = event.service_id.clone();
-        Ok(Some(Commit {
-            commit_id,
-            commit_num,
-            service_id,
-        }))
+                None => commits::table
+                    .select(max(commits::commit_num))
+                    .first(self.conn)
+                    .map(|option: Option<i64>| match option {
+                        Some(num) => num + 1,
+                        None => 0,
+                    })
+                    .map_err(|err| {
+                        CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?,
+            };
+            let service_id = event.service_id.clone();
+            Ok(Some(Commit {
+                commit_id,
+                commit_num,
+                service_id,
+            }))
+        })
     }
 }
 
@@ -68,27 +70,29 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
         &self,
         event: &CommitEvent,
     ) -> Result<Option<Commit>, CommitEventError> {
-        let commit_id = event.id.clone();
-        let commit_num = match event.height {
-            Some(height_u64) => height_u64.try_into().map_err(|err| {
-                CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
-            })?,
-            None => commits::table
-                .select(max(commits::commit_num))
-                .first(self.conn)
-                .map(|option: Option<i64>| match option {
-                    Some(num) => num + 1,
-                    None => 0,
-                })
-                .map_err(|err| {
+        self.conn.transaction::<_, CommitEventError, _>(|| {
+            let commit_id = event.id.clone();
+            let commit_num = match event.height {
+                Some(height_u64) => height_u64.try_into().map_err(|err| {
                     CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
                 })?,
-        };
-        let service_id = event.service_id.clone();
-        Ok(Some(Commit {
-            commit_id,
-            commit_num,
-            service_id,
-        }))
+                None => commits::table
+                    .select(max(commits::commit_num))
+                    .first(self.conn)
+                    .map(|option: Option<i64>| match option {
+                        Some(num) => num + 1,
+                        None => 0,
+                    })
+                    .map_err(|err| {
+                        CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
+                    })?,
+            };
+            let service_id = event.service_id.clone();
+            Ok(Some(Commit {
+                commit_id,
+                commit_num,
+                service_id,
+            }))
+        })
     }
 }

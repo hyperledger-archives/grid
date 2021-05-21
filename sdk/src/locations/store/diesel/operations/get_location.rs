@@ -50,39 +50,36 @@ impl<'a> LocationStoreGetLocationOperation<diesel::pg::PgConnection>
         location_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
-        self.conn
-            .build_transaction()
-            .read_write()
-            .run::<_, LocationStoreError, _>(|| {
-                let mut query = location::table
-                    .into_boxed()
-                    .select(location::all_columns)
-                    .filter(
-                        location::location_id
-                            .eq(&location_id)
-                            .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
+        self.conn.transaction::<_, LocationStoreError, _>(|| {
+            let mut query = location::table
+                .into_boxed()
+                .select(location::all_columns)
+                .filter(
+                    location::location_id
+                        .eq(&location_id)
+                        .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-                if let Some(service_id) = service_id {
-                    query = query.filter(location::service_id.eq(service_id));
-                } else {
-                    query = query.filter(location::service_id.is_null());
-                }
+            if let Some(service_id) = service_id {
+                query = query.filter(location::service_id.eq(service_id));
+            } else {
+                query = query.filter(location::service_id.is_null());
+            }
 
-                let loc = query
-                    .first::<LocationModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| {
-                        LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
+            let loc = query
+                .first::<LocationModel>(self.conn)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
 
-                let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
+            let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
 
-                let attrs = Self::get_attributes(&*self.conn, roots)?;
+            let attrs = Self::get_attributes(&*self.conn, roots)?;
 
-                Ok(loc.map(|loc| Location::from((loc, attrs))))
-            })
+            Ok(loc.map(|loc| Location::from((loc, attrs))))
+        })
     }
 
     fn get_root_attributes(
@@ -156,37 +153,36 @@ impl<'a> LocationStoreGetLocationOperation<diesel::sqlite::SqliteConnection>
         location_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
-        self.conn
-            .immediate_transaction::<_, LocationStoreError, _>(|| {
-                let mut query = location::table
-                    .into_boxed()
-                    .select(location::all_columns)
-                    .filter(
-                        location::location_id
-                            .eq(&location_id)
-                            .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    );
+        self.conn.transaction::<_, LocationStoreError, _>(|| {
+            let mut query = location::table
+                .into_boxed()
+                .select(location::all_columns)
+                .filter(
+                    location::location_id
+                        .eq(&location_id)
+                        .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-                if let Some(service_id) = service_id {
-                    query = query.filter(location::service_id.eq(service_id));
-                } else {
-                    query = query.filter(location::service_id.is_null());
-                }
+            if let Some(service_id) = service_id {
+                query = query.filter(location::service_id.eq(service_id));
+            } else {
+                query = query.filter(location::service_id.is_null());
+            }
 
-                let loc = query
-                    .first::<LocationModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-                    .map_err(|err| {
-                        LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                    })?;
+            let loc = query
+                .first::<LocationModel>(self.conn)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
 
-                let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
+            let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
 
-                let attrs = Self::get_attributes(&*self.conn, roots)?;
+            let attrs = Self::get_attributes(&*self.conn, roots)?;
 
-                Ok(loc.map(|loc| Location::from((loc, attrs))))
-            })
+            Ok(loc.map(|loc| Location::from((loc, attrs))))
+        })
     }
 
     fn get_root_attributes(

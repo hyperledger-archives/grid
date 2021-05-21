@@ -27,17 +27,19 @@ impl<'a> CommitStoreGetNextCommitNumOperation
     for CommitStoreOperations<'a, diesel::pg::PgConnection>
 {
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
-        let commit_num = commits::table
-            .select(max(commits::commit_num))
-            .first(self.conn)
-            .map(|option: Option<i64>| match option {
-                Some(num) => num + 1,
-                None => 0,
-            })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
-        Ok(commit_num)
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            let commit_num = commits::table
+                .select(max(commits::commit_num))
+                .first(self.conn)
+                .map(|option: Option<i64>| match option {
+                    Some(num) => num + 1,
+                    None => 0,
+                })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+            Ok(commit_num)
+        })
     }
 }
 
@@ -46,16 +48,18 @@ impl<'a> CommitStoreGetNextCommitNumOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
-        let commit_num = commits::table
-            .select(max(commits::commit_num))
-            .first(self.conn)
-            .map(|option: Option<i64>| match option {
-                Some(num) => num + 1,
-                None => 0,
-            })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
-        Ok(commit_num)
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            let commit_num = commits::table
+                .select(max(commits::commit_num))
+                .first(self.conn)
+                .map(|option: Option<i64>| match option {
+                    Some(num) => num + 1,
+                    None => 0,
+                })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+            Ok(commit_num)
+        })
     }
 }

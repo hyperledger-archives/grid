@@ -44,32 +44,34 @@ impl<'a> GetPropertyDefinitionByNameOperation
         definition_name: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
-        let mut query = grid_property_definition::table
-            .into_boxed()
-            .select(grid_property_definition::all_columns)
-            .filter(
-                grid_property_definition::schema_name
-                    .eq(&schema_name)
-                    .and(grid_property_definition::name.eq(&definition_name))
-                    .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
-            );
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let mut query = grid_property_definition::table
+                .into_boxed()
+                .select(grid_property_definition::all_columns)
+                .filter(
+                    grid_property_definition::schema_name
+                        .eq(&schema_name)
+                        .and(grid_property_definition::name.eq(&definition_name))
+                        .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-        if let Some(service_id) = service_id {
-            query = query.filter(grid_property_definition::service_id.eq(service_id));
-        } else {
-            query = query.filter(grid_property_definition::service_id.is_null());
-        }
+            if let Some(service_id) = service_id {
+                query = query.filter(grid_property_definition::service_id.eq(service_id));
+            } else {
+                query = query.filter(grid_property_definition::service_id.is_null());
+            }
 
-        let defn = query
-            .first::<GridPropertyDefinition>(self.conn)
-            .map(PropertyDefinition::from)
-            .map(Some)
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
+            let defn = query
+                .first::<GridPropertyDefinition>(self.conn)
+                .map(PropertyDefinition::from)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
 
-        Ok(defn)
+            Ok(defn)
+        })
     }
 }
 
@@ -83,31 +85,33 @@ impl<'a> GetPropertyDefinitionByNameOperation
         definition_name: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
-        let mut query = grid_property_definition::table
-            .into_boxed()
-            .select(grid_property_definition::all_columns)
-            .filter(
-                grid_property_definition::schema_name
-                    .eq(&schema_name)
-                    .and(grid_property_definition::name.eq(&definition_name))
-                    .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
-            );
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            let mut query = grid_property_definition::table
+                .into_boxed()
+                .select(grid_property_definition::all_columns)
+                .filter(
+                    grid_property_definition::schema_name
+                        .eq(&schema_name)
+                        .and(grid_property_definition::name.eq(&definition_name))
+                        .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
-        if let Some(service_id) = service_id {
-            query = query.filter(grid_property_definition::service_id.eq(service_id));
-        } else {
-            query = query.filter(grid_property_definition::service_id.is_null());
-        }
+            if let Some(service_id) = service_id {
+                query = query.filter(grid_property_definition::service_id.eq(service_id));
+            } else {
+                query = query.filter(grid_property_definition::service_id.is_null());
+            }
 
-        let defn = query
-            .first::<GridPropertyDefinition>(self.conn)
-            .map(PropertyDefinition::from)
-            .map(Some)
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
+            let defn = query
+                .first::<GridPropertyDefinition>(self.conn)
+                .map(PropertyDefinition::from)
+                .map(Some)
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
 
-        Ok(defn)
+            Ok(defn)
+        })
     }
 }

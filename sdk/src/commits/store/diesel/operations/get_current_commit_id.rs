@@ -27,16 +27,18 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
     for CommitStoreOperations<'a, diesel::pg::PgConnection>
 {
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
-        commits::table
-            .select(commits::all_columns)
-            .order_by(commits::commit_num.desc())
-            .limit(1)
-            .first::<CommitModel>(self.conn)
-            .map(|commit| Some(commit.commit_id))
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            commits::table
+                .select(commits::all_columns)
+                .order_by(commits::commit_num.desc())
+                .limit(1)
+                .first::<CommitModel>(self.conn)
+                .map(|commit| Some(commit.commit_id))
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })
+        })
     }
 }
 
@@ -45,15 +47,17 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
-        commits::table
-            .select(commits::all_columns)
-            .order_by(commits::commit_num.desc())
-            .limit(1)
-            .first::<CommitModel>(self.conn)
-            .map(|commit| Some(commit.commit_id))
-            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            commits::table
+                .select(commits::all_columns)
+                .order_by(commits::commit_num.desc())
+                .limit(1)
+                .first::<CommitModel>(self.conn)
+                .map(|commit| Some(commit.commit_id))
+                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })
+        })
     }
 }

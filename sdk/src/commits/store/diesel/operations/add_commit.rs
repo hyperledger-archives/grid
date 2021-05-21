@@ -30,50 +30,52 @@ pub(in crate::commits) trait CommitStoreAddCommitOperation {
 #[cfg(feature = "postgres")]
 impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg::PgConnection> {
     fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError> {
-        let duplicate_commit = commits::table
-            .filter(commits::commit_id.eq(&commit.commit_id))
-            .first::<CommitModel>(self.conn)
-            .map(Some)
-            .or_else(|err| {
-                if err == dsl_error::NotFound {
-                    Ok(None)
-                } else {
-                    Err(err)
-                }
-            })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
-        if duplicate_commit.is_some() {
-            return Err(CommitStoreError::ConstraintViolationError(
-                ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
-            ));
-        }
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            let duplicate_commit = commits::table
+                .filter(commits::commit_id.eq(&commit.commit_id))
+                .first::<CommitModel>(self.conn)
+                .map(Some)
+                .or_else(|err| {
+                    if err == dsl_error::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
+                })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+            if duplicate_commit.is_some() {
+                return Err(CommitStoreError::ConstraintViolationError(
+                    ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
+                ));
+            }
 
-        insert_into(commits::table)
-            .values(commit)
-            .execute(self.conn)
-            .map(|_| ())
-            .map_err(|err| match err {
-                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                    CommitStoreError::ConstraintViolationError(
-                        ConstraintViolationError::from_source_with_violation_type(
-                            ConstraintViolationType::Unique,
-                            Box::new(err),
-                        ),
-                    )
-                }
-                dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                    CommitStoreError::ConstraintViolationError(
-                        ConstraintViolationError::from_source_with_violation_type(
-                            ConstraintViolationType::ForeignKey,
-                            Box::new(err),
-                        ),
-                    )
-                }
-                _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
-            })?;
-        Ok(())
+            insert_into(commits::table)
+                .values(commit)
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        CommitStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        CommitStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
+                })?;
+            Ok(())
+        })
     }
 }
 
@@ -82,49 +84,51 @@ impl<'a> CommitStoreAddCommitOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError> {
-        let duplicate_commit = commits::table
-            .filter(commits::commit_id.eq(&commit.commit_id))
-            .first::<CommitModel>(self.conn)
-            .map(Some)
-            .or_else(|err| {
-                if err == dsl_error::NotFound {
-                    Ok(None)
-                } else {
-                    Err(err)
-                }
-            })
-            .map_err(|err| {
-                CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })?;
-        if duplicate_commit.is_some() {
-            return Err(CommitStoreError::ConstraintViolationError(
-                ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
-            ));
-        }
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
+            let duplicate_commit = commits::table
+                .filter(commits::commit_id.eq(&commit.commit_id))
+                .first::<CommitModel>(self.conn)
+                .map(Some)
+                .or_else(|err| {
+                    if err == dsl_error::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
+                })
+                .map_err(|err| {
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })?;
+            if duplicate_commit.is_some() {
+                return Err(CommitStoreError::ConstraintViolationError(
+                    ConstraintViolationError::with_violation_type(ConstraintViolationType::Unique),
+                ));
+            }
 
-        insert_into(commits::table)
-            .values(commit)
-            .execute(self.conn)
-            .map(|_| ())
-            .map_err(|err| match err {
-                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                    CommitStoreError::ConstraintViolationError(
-                        ConstraintViolationError::from_source_with_violation_type(
-                            ConstraintViolationType::Unique,
-                            Box::new(err),
-                        ),
-                    )
-                }
-                dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                    CommitStoreError::ConstraintViolationError(
-                        ConstraintViolationError::from_source_with_violation_type(
-                            ConstraintViolationType::ForeignKey,
-                            Box::new(err),
-                        ),
-                    )
-                }
-                _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
-            })?;
-        Ok(())
+            insert_into(commits::table)
+                .values(commit)
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| match err {
+                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                        CommitStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::Unique,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                        CommitStoreError::ConstraintViolationError(
+                            ConstraintViolationError::from_source_with_violation_type(
+                                ConstraintViolationType::ForeignKey,
+                                Box::new(err),
+                            ),
+                        )
+                    }
+                    _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
+                })?;
+            Ok(())
+        })
     }
 }

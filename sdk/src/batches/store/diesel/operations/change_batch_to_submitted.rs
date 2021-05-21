@@ -25,14 +25,16 @@ pub(in crate::batches::store::diesel) trait ChangeBatchToSubmittedOperation {
 #[cfg(feature = "postgres")]
 impl<'a> ChangeBatchToSubmittedOperation for BatchStoreOperations<'a, diesel::pg::PgConnection> {
     fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError> {
-        update(batches::table)
-            .filter(batches::header_signature.eq(id))
-            .set(batches::submitted.eq(true))
-            .execute(self.conn)
-            .map(|_| ())
-            .map_err(|err| {
-                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+        self.conn.transaction::<_, BatchStoreError, _>(|| {
+            update(batches::table)
+                .filter(batches::header_signature.eq(id))
+                .set(batches::submitted.eq(true))
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })
+        })
     }
 }
 
@@ -41,13 +43,15 @@ impl<'a> ChangeBatchToSubmittedOperation
     for BatchStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError> {
-        update(batches::table)
-            .filter(batches::header_signature.eq(id))
-            .set(batches::submitted.eq(true))
-            .execute(self.conn)
-            .map(|_| ())
-            .map_err(|err| {
-                BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
-            })
+        self.conn.transaction::<_, BatchStoreError, _>(|| {
+            update(batches::table)
+                .filter(batches::header_signature.eq(id))
+                .set(batches::submitted.eq(true))
+                .execute(self.conn)
+                .map(|_| ())
+                .map_err(|err| {
+                    BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
+                })
+        })
     }
 }

@@ -54,54 +54,50 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
         offset: i64,
         limit: i64,
     ) -> Result<LocationList, LocationStoreError> {
-        self.conn
-            .build_transaction()
-            .read_write()
-            .run::<_, LocationStoreError, _>(|| {
-                let mut query = location::table
-                    .into_boxed()
-                    .select(location::all_columns)
-                    .limit(limit)
-                    .offset(offset)
-                    .filter(location::end_commit_num.eq(MAX_COMMIT_NUM));
+        self.conn.transaction::<_, LocationStoreError, _>(|| {
+            let mut query = location::table
+                .into_boxed()
+                .select(location::all_columns)
+                .limit(limit)
+                .offset(offset)
+                .filter(location::end_commit_num.eq(MAX_COMMIT_NUM));
 
-                if let Some(service_id) = service_id {
-                    query = query.filter(location::service_id.eq(service_id));
-                } else {
-                    query = query.filter(location::service_id.is_null());
-                }
+            if let Some(service_id) = service_id {
+                query = query.filter(location::service_id.eq(service_id));
+            } else {
+                query = query.filter(location::service_id.is_null());
+            }
 
-                let locs = query.load::<LocationModel>(self.conn).map_err(|err| {
-                    LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
+            let locs = query.load::<LocationModel>(self.conn).map_err(|err| {
+                LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
-                let mut locations = Vec::new();
+            let mut locations = Vec::new();
 
-                for l in locs {
-                    let loc: LocationModel = l;
-                    let roots =
-                        Self::get_root_attributes(&*self.conn, &loc.location_id, service_id)?;
+            for l in locs {
+                let loc: LocationModel = l;
+                let roots = Self::get_root_attributes(&*self.conn, &loc.location_id, service_id)?;
 
-                    let attrs = Self::get_attributes(&*self.conn, roots)?;
+                let attrs = Self::get_attributes(&*self.conn, roots)?;
 
-                    locations.push(Location::from((loc, attrs)));
-                }
+                locations.push(Location::from((loc, attrs)));
+            }
 
-                let mut count_query = location::table.into_boxed().select(location::all_columns);
+            let mut count_query = location::table.into_boxed().select(location::all_columns);
 
-                if let Some(service_id) = service_id {
-                    count_query = count_query.filter(location::service_id.eq(service_id));
-                } else {
-                    count_query = count_query.filter(location::service_id.is_null());
-                }
+            if let Some(service_id) = service_id {
+                count_query = count_query.filter(location::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(location::service_id.is_null());
+            }
 
-                let total = count_query.count().get_result(self.conn)?;
+            let total = count_query.count().get_result(self.conn)?;
 
-                Ok(LocationList::new(
-                    locations,
-                    Paging::new(offset, limit, total),
-                ))
-            })
+            Ok(LocationList::new(
+                locations,
+                Paging::new(offset, limit, total),
+            ))
+        })
     }
 
     fn get_root_attributes(
@@ -176,52 +172,50 @@ impl<'a> LocationStoreListLocationsOperation<diesel::sqlite::SqliteConnection>
         offset: i64,
         limit: i64,
     ) -> Result<LocationList, LocationStoreError> {
-        self.conn
-            .immediate_transaction::<_, LocationStoreError, _>(|| {
-                let mut query = location::table
-                    .into_boxed()
-                    .select(location::all_columns)
-                    .limit(limit)
-                    .offset(offset)
-                    .filter(location::end_commit_num.eq(MAX_COMMIT_NUM));
+        self.conn.transaction::<_, LocationStoreError, _>(|| {
+            let mut query = location::table
+                .into_boxed()
+                .select(location::all_columns)
+                .limit(limit)
+                .offset(offset)
+                .filter(location::end_commit_num.eq(MAX_COMMIT_NUM));
 
-                if let Some(service_id) = service_id {
-                    query = query.filter(location::service_id.eq(service_id));
-                } else {
-                    query = query.filter(location::service_id.is_null());
-                }
+            if let Some(service_id) = service_id {
+                query = query.filter(location::service_id.eq(service_id));
+            } else {
+                query = query.filter(location::service_id.is_null());
+            }
 
-                let locs = query.load::<LocationModel>(self.conn).map_err(|err| {
-                    LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
+            let locs = query.load::<LocationModel>(self.conn).map_err(|err| {
+                LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
-                let mut locations = Vec::new();
+            let mut locations = Vec::new();
 
-                for l in locs {
-                    let loc: LocationModel = l;
-                    let roots =
-                        Self::get_root_attributes(&*self.conn, &loc.location_id, service_id)?;
+            for l in locs {
+                let loc: LocationModel = l;
+                let roots = Self::get_root_attributes(&*self.conn, &loc.location_id, service_id)?;
 
-                    let attrs = Self::get_attributes(&*self.conn, roots)?;
+                let attrs = Self::get_attributes(&*self.conn, roots)?;
 
-                    locations.push(Location::from((loc, attrs)));
-                }
+                locations.push(Location::from((loc, attrs)));
+            }
 
-                let mut count_query = location::table.into_boxed().select(location::all_columns);
+            let mut count_query = location::table.into_boxed().select(location::all_columns);
 
-                if let Some(service_id) = service_id {
-                    count_query = count_query.filter(location::service_id.eq(service_id));
-                } else {
-                    count_query = count_query.filter(location::service_id.is_null());
-                }
+            if let Some(service_id) = service_id {
+                count_query = count_query.filter(location::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(location::service_id.is_null());
+            }
 
-                let total = count_query.count().get_result(self.conn)?;
+            let total = count_query.count().get_result(self.conn)?;
 
-                Ok(LocationList::new(
-                    locations,
-                    Paging::new(offset, limit, total),
-                ))
-            })
+            Ok(LocationList::new(
+                locations,
+                Paging::new(offset, limit, total),
+            ))
+        })
     }
 
     fn get_root_attributes(
