@@ -57,13 +57,13 @@ pub struct GridProductList {
 #[derive(Debug, Deserialize, Clone)]
 pub struct GridPropertyValue {
     pub name: String,
-    pub data_type: String,
+    pub data_type: schemas::DataType,
     pub bytes_value: Option<Vec<u8>>,
     pub boolean_value: Option<bool>,
     pub number_value: Option<i64>,
     pub string_value: Option<String>,
     pub enum_value: Option<u32>,
-    pub struct_values: Option<Vec<String>>,
+    pub struct_values: Option<Vec<GridPropertyValue>>,
     pub lat_long_value: Option<LatLong>,
 }
 
@@ -117,7 +117,7 @@ pub fn display_product(product: &GridProduct) {
         "Product Id: {:?}\n Product Namespace: {:?}\n Owner: {:?}\n Properties:",
         product.product_id, product.product_namespace, product.owner,
     );
-    display_product_property_definitions(&product.properties);
+    display_product_property_definitions(&product.properties, 1);
 }
 
 /**
@@ -125,21 +125,67 @@ pub fn display_product(product: &GridProduct) {
  *
  * properties - Property values to be printed
  */
-pub fn display_product_property_definitions(properties: &[GridPropertyValue]) {
-    properties.iter().for_each(|def| {
-        println!(
-            "\tProperty Name: {:?}\n\t Data Type: {:?}\n\t Bytes Value: {:?}\n\t Boolean Value: {:?}
-        Number Value: {:?}\n\t String Value: {:?}\n\t Enum Value: {:?}\n\t Struct Values: {:?}\n\t Lat/Lon Values: {:?}\n\t",
-            def.name,
-            def.data_type,
-            def.bytes_value,
-            def.boolean_value,
-            def.number_value,
-            def.string_value,
-            def.enum_value,
-            def.struct_values,
-            def.lat_long_value,
-        );
+pub fn display_product_property_definitions(properties: &[GridPropertyValue], depth: usize) {
+    properties.iter().for_each(|p| match p.data_type {
+        schemas::DataType::Bytes => {
+            println!(
+                "{:tabs$}{}: {:?}",
+                "\t",
+                p.name,
+                p.bytes_value.as_ref().unwrap(),
+                tabs = depth
+            );
+        }
+        schemas::DataType::Boolean => {
+            println!(
+                "{:tabs$}{}: {:?}",
+                "\t",
+                p.name,
+                p.boolean_value.as_ref().unwrap(),
+                tabs = depth
+            );
+        }
+        schemas::DataType::Number => {
+            println!(
+                "{:tabs$}{}: {:?}",
+                "\t",
+                p.name,
+                p.number_value.as_ref().unwrap(),
+                tabs = depth
+            );
+        }
+        schemas::DataType::String => {
+            println!(
+                "{:tabs$}{}: {:?}",
+                "\t",
+                p.name,
+                p.string_value.as_ref().unwrap(),
+                tabs = depth
+            );
+        }
+        schemas::DataType::Enum => {
+            println!(
+                "{:tabs$}{}: {:?}",
+                "\t",
+                p.name,
+                p.enum_value.as_ref().unwrap(),
+                tabs = depth
+            );
+        }
+        schemas::DataType::Struct => {
+            println!("{:tabs$}{}:\n", "\t", p.name, tabs = depth);
+            display_product_property_definitions(p.struct_values.as_ref().unwrap(), depth + 1);
+        }
+        schemas::DataType::LatLong => {
+            println!(
+                "{:tabs$}{}: {}, {}",
+                "\t",
+                p.name,
+                p.lat_long_value.as_ref().unwrap().latitude,
+                p.lat_long_value.as_ref().unwrap().longitude,
+                tabs = depth
+            );
+        }
     })
 }
 
