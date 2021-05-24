@@ -35,13 +35,7 @@ impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg:
                 .filter(commits::commit_id.eq(&commit.commit_id))
                 .first::<CommitModel>(self.conn)
                 .map(Some)
-                .or_else(|err| {
-                    if err == dsl_error::NotFound {
-                        Ok(None)
-                    } else {
-                        Err(err)
-                    }
-                })
+                .optional()
                 .map_err(|err| {
                     CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
@@ -89,13 +83,7 @@ impl<'a> CommitStoreAddCommitOperation
                 .filter(commits::commit_id.eq(&commit.commit_id))
                 .first::<CommitModel>(self.conn)
                 .map(Some)
-                .or_else(|err| {
-                    if err == dsl_error::NotFound {
-                        Ok(None)
-                    } else {
-                        Err(err)
-                    }
-                })
+                .optional()
                 .map_err(|err| {
                     CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
