@@ -15,7 +15,7 @@
 use std::convert::TryInto;
 
 use super::CommitStoreOperations;
-use crate::commits::store::diesel::{schema::commits, Commit, CommitEvent, CommitEventError};
+use crate::commits::store::diesel::{schema::commits, Commit, CommitEvent, CommitStoreError};
 use crate::error::InternalError;
 
 use diesel::{dsl::max, prelude::*};
@@ -24,7 +24,7 @@ pub(in crate::commits) trait CommitStoreCreateDbCommitFromCommitEventOperation {
     fn create_db_commit_from_commit_event(
         &self,
         event: &CommitEvent,
-    ) -> Result<Option<Commit>, CommitEventError>;
+    ) -> Result<Option<Commit>, CommitStoreError>;
 }
 
 #[cfg(feature = "postgres")]
@@ -34,12 +34,12 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
     fn create_db_commit_from_commit_event(
         &self,
         event: &CommitEvent,
-    ) -> Result<Option<Commit>, CommitEventError> {
-        self.conn.transaction::<_, CommitEventError, _>(|| {
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
             let commit_id = event.id.clone();
             let commit_num = match event.height {
                 Some(height_u64) => height_u64.try_into().map_err(|err| {
-                    CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?,
                 None => commits::table
                     .select(max(commits::commit_num))
@@ -49,7 +49,7 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
                         None => 0,
                     })
                     .map_err(|err| {
-                        CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
+                        CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?,
             };
             let service_id = event.service_id.clone();
@@ -69,12 +69,12 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
     fn create_db_commit_from_commit_event(
         &self,
         event: &CommitEvent,
-    ) -> Result<Option<Commit>, CommitEventError> {
-        self.conn.transaction::<_, CommitEventError, _>(|| {
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        self.conn.transaction::<_, CommitStoreError, _>(|| {
             let commit_id = event.id.clone();
             let commit_num = match event.height {
                 Some(height_u64) => height_u64.try_into().map_err(|err| {
-                    CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
+                    CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?,
                 None => commits::table
                     .select(max(commits::commit_num))
@@ -84,7 +84,7 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
                         None => 0,
                     })
                     .map_err(|err| {
-                        CommitEventError::InternalError(InternalError::from_source(Box::new(err)))
+                        CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                     })?,
             };
             let service_id = event.service_id.clone();
