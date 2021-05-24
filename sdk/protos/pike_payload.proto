@@ -46,6 +46,8 @@ message PikePayload {
   CreateRoleAction create_role = 8;
   UpdateRoleAction update_role = 9;
   DeleteRoleAction delete_role = 10;
+
+  uint64 timestamp = 11;
 }
 
 message CreateAgentAction {

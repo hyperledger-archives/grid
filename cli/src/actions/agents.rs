@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::actions::ListSlice;
 use crate::error::CliError;
 use crate::http::submit_batches;
@@ -47,8 +49,14 @@ pub fn do_create_agent(
     create_agent: CreateAgentAction,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
     let payload = PikePayloadBuilder::new()
         .with_action(Action::CreateAgent(create_agent))
+        .with_timestamp(timestamp)
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -70,8 +78,14 @@ pub fn do_update_agent(
     update_agent: UpdateAgentAction,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
     let payload = PikePayloadBuilder::new()
         .with_action(Action::UpdateAgent(update_agent))
+        .with_timestamp(timestamp)
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 

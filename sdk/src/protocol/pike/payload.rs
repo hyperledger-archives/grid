@@ -1586,11 +1586,16 @@ impl DeleteRoleActionBuilder {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PikePayload {
     action: Action,
+    timestamp: u64,
 }
 
 impl PikePayload {
     pub fn action(&self) -> &Action {
         &self.action
+    }
+
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
     }
 }
 
@@ -1639,13 +1644,16 @@ impl FromProto<protos::pike_payload::PikePayload> for PikePayload {
             }
         };
 
-        Ok(Self { action })
+        let timestamp = payload.get_timestamp();
+
+        Ok(Self { action, timestamp })
     }
 }
 
 impl FromNative<PikePayload> for protos::pike_payload::PikePayload {
     fn from_native(native: PikePayload) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::pike_payload::PikePayload::new();
+        proto.set_timestamp(native.timestamp());
 
         match native.action() {
             Action::CreateAgent(payload) => {
@@ -1748,6 +1756,7 @@ impl std::fmt::Display for PikePayloadBuildError {
 #[derive(Default, Clone)]
 pub struct PikePayloadBuilder {
     pub action: Option<Action>,
+    pub timestamp: Option<u64>,
 }
 
 impl PikePayloadBuilder {
@@ -1760,12 +1769,21 @@ impl PikePayloadBuilder {
         self
     }
 
+    pub fn with_timestamp(mut self, timestamp: u64) -> Self {
+        self.timestamp = Some(timestamp);
+        self
+    }
+
     pub fn build(self) -> Result<PikePayload, PikePayloadBuildError> {
         let action = self.action.ok_or_else(|| {
             PikePayloadBuildError::MissingField("'action' field is required".to_string())
         })?;
 
-        Ok(PikePayload { action })
+        let timestamp = self.timestamp.ok_or_else(|| {
+            PikePayloadBuildError::MissingField("'timestamp' field is required".into())
+        })?;
+
+        Ok(PikePayload { action, timestamp })
     }
 }
 
@@ -1980,6 +1998,7 @@ mod tests {
         let builder = PikePayloadBuilder::new();
         let payload = builder
             .with_action(Action::CreateAgent(action.clone()))
+            .with_timestamp(0)
             .build()
             .unwrap();
 
@@ -2015,6 +2034,7 @@ mod tests {
 
         let payload = builder
             .with_action(Action::UpdateAgent(action.clone()))
+            .with_timestamp(0)
             .build()
             .unwrap();
 
@@ -2039,6 +2059,7 @@ mod tests {
         let builder = PikePayloadBuilder::new();
         let payload = builder
             .with_action(Action::CreateOrganization(action.clone()))
+            .with_timestamp(0)
             .build()
             .unwrap();
 
@@ -2064,6 +2085,7 @@ mod tests {
         let builder = PikePayloadBuilder::new();
         let payload = builder
             .with_action(Action::UpdateOrganization(action.clone()))
+            .with_timestamp(0)
             .build()
             .unwrap();
 
@@ -2089,6 +2111,7 @@ mod tests {
         let builder = PikePayloadBuilder::new();
         let original = builder
             .with_action(Action::UpdateOrganization(action))
+            .with_timestamp(0)
             .build()
             .unwrap();
 
