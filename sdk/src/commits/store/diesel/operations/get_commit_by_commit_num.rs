@@ -18,7 +18,7 @@ use crate::commits::store::diesel::{
 };
 use crate::error::InternalError;
 
-use diesel::{prelude::*, result::Error::NotFound};
+use diesel::prelude::*;
 
 pub(in crate::commits) trait CommitStoreGetCommitByCommitNumOperation {
     fn get_commit_by_commit_num(&self, commit_num: i64)
@@ -38,8 +38,8 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
                 .select(commits::all_columns)
                 .filter(commits::commit_num.eq(&commit_num))
                 .first::<CommitModel>(self.conn)
-                .map(|commit| Some(Commit::from(commit)))
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map(Commit::from)
+                .optional()
                 .map_err(|err| {
                     CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })
@@ -60,8 +60,8 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
                 .select(commits::all_columns)
                 .filter(commits::commit_num.eq(&commit_num))
                 .first::<CommitModel>(self.conn)
-                .map(|commit| Some(Commit::from(commit)))
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map(Commit::from)
+                .optional()
                 .map_err(|err| {
                     CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })

@@ -16,7 +16,7 @@ use super::CommitStoreOperations;
 use crate::commits::store::diesel::{models::CommitModel, schema::commits, CommitStoreError};
 use crate::error::InternalError;
 
-use diesel::{prelude::*, result::Error::NotFound};
+use diesel::prelude::*;
 
 pub(in crate::commits) trait CommitStoreGetCurrentCommitIdOperation {
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError>;
@@ -33,8 +33,8 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
                 .order_by(commits::commit_num.desc())
                 .limit(1)
                 .first::<CommitModel>(self.conn)
-                .map(|commit| Some(commit.commit_id))
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map(|commit| commit.commit_id)
+                .optional()
                 .map_err(|err| {
                     CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })
@@ -53,8 +53,8 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
                 .order_by(commits::commit_num.desc())
                 .limit(1)
                 .first::<CommitModel>(self.conn)
-                .map(|commit| Some(commit.commit_id))
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                .map(|commit| commit.commit_id)
+                .optional()
                 .map_err(|err| {
                     CommitStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })
