@@ -28,7 +28,6 @@ use crate::products::{store::diesel::DieselProductStore, ProductStore};
 use crate::purchase_order::{store::diesel::DieselPurchaseOrderStore, PurchaseOrderStore};
 #[cfg(feature = "schema")]
 use crate::schemas::{store::diesel::DieselSchemaStore, SchemaStore};
-#[cfg(feature = "batch-submitter")]
 #[cfg(feature = "track-and-trace")]
 use crate::track_and_trace::{store::diesel::DieselTrackAndTraceStore, TrackAndTraceStore};
 

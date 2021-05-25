@@ -19,11 +19,10 @@ use futures::prelude::*;
 use protobuf::Message;
 use sawtooth_sdk::messages::batch::Batch;
 
-use crate::submitter::{
-    BatchStatus, BatchStatusLink, BatchStatuses, BatchSubmitter, InvalidTransaction, SubmitBatches,
+use super::{
+    BackendClient, BackendClientError, BatchStatus, BatchStatusLink, BatchStatuses,
+    InvalidTransaction, SubmitBatches,
 };
-
-use super::error::BatchSubmitterError;
 
 macro_rules! try_fut {
     ($try_expr:expr) => {
@@ -35,25 +34,25 @@ macro_rules! try_fut {
 }
 
 #[derive(Clone)]
-pub struct SplinterBatchSubmitter {
+pub struct SplinterBackendClient {
     node_url: String,
 }
 
-impl SplinterBatchSubmitter {
-    /// Constructs a new splinter BatchSubmitter instance, using the given url for the node's REST
+impl SplinterBackendClient {
+    /// Constructs a new splinter BackendClient instance, using the given url for the node's REST
     /// API.
     pub fn new(node_url: String) -> Self {
         Self { node_url }
     }
 }
 
-impl BatchSubmitter for SplinterBatchSubmitter {
+impl BackendClient for SplinterBackendClient {
     fn submit_batches(
         &self,
         msg: SubmitBatches,
-    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BatchSubmitterError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BackendClientError>> + Send>> {
         let service_arg = try_fut!(msg.service_id.ok_or_else(|| {
-            BatchSubmitterError::BadRequestError("A service id must be provided".into())
+            BackendClientError::BadRequestError("A service id must be provided".into())
         }));
 
         let service_info = try_fut!(SplinterService::from_str(&service_arg));
@@ -64,7 +63,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
         );
 
         let batch_list_bytes = try_fut!(msg.batch_list.write_to_bytes().map_err(|err| {
-            BatchSubmitterError::BadRequestError(format!("Malformed batch list: {}", err))
+            BackendClientError::BadRequestError(format!("Malformed batch list: {}", err))
         }));
 
         let batch_query = msg
@@ -88,7 +87,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
             .then(|res| {
                 future::ready(match res {
                     Ok(_) => Ok(BatchStatusLink { link }),
-                    Err(err) => Err(BatchSubmitterError::InternalError(format!(
+                    Err(err) => Err(BackendClientError::InternalError(format!(
                         "Unable to submit batch: {}",
                         err
                     ))),
@@ -100,9 +99,9 @@ impl BatchSubmitter for SplinterBatchSubmitter {
     fn batch_status(
         &self,
         msg: BatchStatuses,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BatchSubmitterError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BackendClientError>> + Send>> {
         let service_arg = try_fut!(msg.service_id.ok_or_else(|| {
-            BatchSubmitterError::BadRequestError("A service id must be provided".into())
+            BackendClientError::BadRequestError("A service id must be provided".into())
         }));
 
         let service_info = try_fut!(SplinterService::from_str(&service_arg));
@@ -138,7 +137,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
                         stats.into_iter().map(|status| status.into()).collect()
                     })
                     .map_err(|err| {
-                        BatchSubmitterError::InternalError(format!(
+                        BackendClientError::InternalError(format!(
                             "Unable to retrieve batch statuses: {}",
                             err
                         ))
@@ -147,7 +146,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
             .boxed()
     }
 
-    fn clone_box(&self) -> Box<dyn BatchSubmitter> {
+    fn clone_box(&self) -> Box<dyn BackendClient> {
         Box::new(self.clone())
     }
 }
@@ -205,20 +204,20 @@ struct SplinterService {
 }
 
 impl FromStr for SplinterService {
-    type Err = BatchSubmitterError;
+    type Err = BackendClientError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split("::");
         let circuit_id: String = parts
             .next()
             .ok_or_else(|| {
-                BatchSubmitterError::BadRequestError("Empty service_id parameter provided".into())
+                BackendClientError::BadRequestError("Empty service_id parameter provided".into())
             })?
             .into();
         let service_id: String = parts
             .next()
             .ok_or_else(|| {
-                BatchSubmitterError::BadRequestError(
+                BackendClientError::BadRequestError(
                     "Must provide a fully-qualified service_id: <circuit_id>::<service_id>".into(),
                 )
             })?

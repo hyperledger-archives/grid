@@ -19,11 +19,11 @@
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use grid_sdk::backend::SawtoothBackendClient;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
-use grid_sdk::rest_api::actix_web_3::{BatchSubmitterState, StoreState};
+use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
 use grid_sdk::store::{create_store_factory, ConnectionUri};
-use grid_sdk::submitter::SawtoothBatchSubmitter;
 
 use crate::config::GridConfig;
 use crate::database::ConnectionPool;
@@ -43,8 +43,8 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
-    let batch_submitter = SawtoothBatchSubmitter::new(sawtooth_connection.get_sender());
-    let batch_submitter_state = BatchSubmitterState::with_sawtooth(batch_submitter);
+    let backend_client = SawtoothBackendClient::new(sawtooth_connection.get_sender());
+    let backend_state = BackendState::with_sawtooth(backend_client);
     let (store_state, evt_processor) = {
         let commit_store = store_factory.get_grid_commit_store();
         let current_commit = commit_store
@@ -95,7 +95,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
         store_state,
-        batch_submitter_state,
+        backend_state,
         #[cfg(feature = "integration")]
         key_state,
         config.endpoint().clone(),

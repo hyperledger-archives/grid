@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod batch_submitter_state;
+mod backend_state;
 mod endpoint;
 mod key_state;
 mod paging;
@@ -21,7 +21,7 @@ mod run;
 mod service;
 mod store_state;
 
-pub use batch_submitter_state::BatchSubmitterState;
+pub use backend_state::BackendState;
 pub use endpoint::{Backend, Endpoint};
 pub use key_state::KeyState;
 pub use paging::QueryPaging;

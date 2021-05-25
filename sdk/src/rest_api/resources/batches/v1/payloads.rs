@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::submitter;
+use crate::backend;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BatchStatus {
@@ -21,8 +21,8 @@ pub struct BatchStatus {
     pub status: String,
 }
 
-impl From<submitter::BatchStatus> for BatchStatus {
-    fn from(batch_status: submitter::BatchStatus) -> Self {
+impl From<backend::BatchStatus> for BatchStatus {
+    fn from(batch_status: backend::BatchStatus) -> Self {
         Self {
             id: batch_status.id,
             invalid_transactions: batch_status
@@ -42,8 +42,8 @@ pub struct InvalidTransaction {
     pub extended_data: String,
 }
 
-impl From<submitter::InvalidTransaction> for InvalidTransaction {
-    fn from(invalid_transaction: submitter::InvalidTransaction) -> Self {
+impl From<backend::InvalidTransaction> for InvalidTransaction {
+    fn from(invalid_transaction: backend::InvalidTransaction) -> Self {
         Self {
             id: invalid_transaction.id,
             message: invalid_transaction.message,
@@ -63,8 +63,8 @@ pub struct BatchStatusLink {
     pub link: String,
 }
 
-impl From<submitter::BatchStatusLink> for BatchStatusLink {
-    fn from(batch_status_link: submitter::BatchStatusLink) -> Self {
+impl From<backend::BatchStatusLink> for BatchStatusLink {
+    fn from(batch_status_link: backend::BatchStatusLink) -> Self {
         Self {
             link: batch_status_link.link,
         }

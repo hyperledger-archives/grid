@@ -14,28 +14,33 @@
 
 use std::sync::Arc;
 
-use crate::submitter::{BatchSubmitter, SawtoothBatchSubmitter, SplinterBatchSubmitter};
+use crate::backend::BackendClient;
+#[cfg(feature = "backend-sawtooth")]
+use crate::backend::SawtoothBackendClient;
+#[cfg(feature = "backend-splinter")]
+use crate::backend::SplinterBackendClient;
 
-#[cfg(feature = "batch-submitter")]
 #[derive(Clone)]
-pub struct BatchSubmitterState {
-    pub batch_submitter: Arc<dyn BatchSubmitter + 'static>,
+pub struct BackendState {
+    pub client: Arc<dyn BackendClient + 'static>,
 }
 
-impl BatchSubmitterState {
-    pub fn new(batch_submitter: Arc<dyn BatchSubmitter + 'static>) -> Self {
-        Self { batch_submitter }
+impl BackendState {
+    pub fn new(client: Arc<dyn BackendClient + 'static>) -> Self {
+        Self { client }
     }
 
-    pub fn with_sawtooth(submitter: SawtoothBatchSubmitter) -> Self {
+    #[cfg(feature = "backend-sawtooth")]
+    pub fn with_sawtooth(client: SawtoothBackendClient) -> Self {
         Self {
-            batch_submitter: Arc::new(submitter),
+            client: Arc::new(client),
         }
     }
 
-    pub fn with_splinter(submitter: SplinterBatchSubmitter) -> Self {
+    #[cfg(feature = "backend-splinter")]
+    pub fn with_splinter(client: SplinterBackendClient) -> Self {
         Self {
-            batch_submitter: Arc::new(submitter),
+            client: Arc::new(client),
         }
     }
 }

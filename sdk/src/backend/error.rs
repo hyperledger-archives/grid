@@ -16,26 +16,26 @@ use std::error::Error;
 use std::fmt;
 
 #[derive(Debug)]
-pub enum BatchSubmitterError {
+pub enum BackendClientError {
     BadRequestError(String),
     ConnectionError(String),
     InternalError(String),
     ResourceTemporarilyUnavailableError(String),
 }
 
-impl Error for BatchSubmitterError {
+impl Error for BackendClientError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         None
     }
 }
 
-impl fmt::Display for BatchSubmitterError {
+impl fmt::Display for BackendClientError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            BatchSubmitterError::BadRequestError(err) => write!(f, "{}", err),
-            BatchSubmitterError::ConnectionError(err) => write!(f, "{}", err),
-            BatchSubmitterError::InternalError(err) => write!(f, "{}", err),
-            BatchSubmitterError::ResourceTemporarilyUnavailableError(err) => write!(f, "{}", err),
+            BackendClientError::BadRequestError(err) => write!(f, "{}", err),
+            BackendClientError::ConnectionError(err) => write!(f, "{}", err),
+            BackendClientError::InternalError(err) => write!(f, "{}", err),
+            BackendClientError::ResourceTemporarilyUnavailableError(err) => write!(f, "{}", err),
         }
     }
 }

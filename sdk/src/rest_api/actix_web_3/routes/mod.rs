@@ -14,7 +14,7 @@
 
 #[cfg(feature = "pike")]
 mod agents;
-#[cfg(feature = "batch-submitter")]
+#[cfg(feature = "rest-api-endpoint-batches")]
 mod batches;
 #[cfg(feature = "location")]
 mod locations;
@@ -34,7 +34,7 @@ mod submit;
 
 #[cfg(feature = "pike")]
 pub use agents::*;
-#[cfg(feature = "batch-submitter")]
+#[cfg(feature = "rest-api-endpoint-batches")]
 pub use batches::*;
 #[cfg(feature = "location")]
 pub use locations::*;

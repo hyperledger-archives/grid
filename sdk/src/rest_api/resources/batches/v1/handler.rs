@@ -17,18 +17,16 @@ use std::sync::Arc;
 use sawtooth_sdk::messages::batch::BatchList;
 use url::Url;
 
-use crate::{
-    rest_api::resources::error::ErrorResponse,
-    submitter::{
-        BatchStatuses, BatchSubmitter, BatchSubmitterError, SubmitBatches, DEFAULT_TIME_OUT,
-    },
+use crate::backend::{
+    BackendClient, BackendClientError, BatchStatuses, SubmitBatches, DEFAULT_TIME_OUT,
 };
+use crate::rest_api::resources::error::ErrorResponse;
 
 use super::payloads::{BatchStatus, BatchStatusLink, BatchStatusResponse};
 
 pub async fn submit_batches(
     response_url: Url,
-    submitter: Arc<dyn BatchSubmitter>,
+    backend_client: Arc<dyn BackendClient>,
     bytes: &[u8],
     service_id: Option<String>,
 ) -> Result<BatchStatusLink, ErrorResponse> {
@@ -42,7 +40,7 @@ pub async fn submit_batches(
         }
     };
 
-    submitter
+    backend_client
         .submit_batches(SubmitBatches {
             batch_list,
             response_url,
@@ -50,10 +48,10 @@ pub async fn submit_batches(
         })
         .await
         .map_err(|err| match err {
-            BatchSubmitterError::BadRequestError(ref msg) => ErrorResponse::new(400, msg),
-            BatchSubmitterError::ConnectionError(ref msg) => ErrorResponse::new(503, msg),
-            BatchSubmitterError::InternalError(ref msg) => ErrorResponse::new(500, msg),
-            BatchSubmitterError::ResourceTemporarilyUnavailableError(ref msg) => {
+            BackendClientError::BadRequestError(ref msg) => ErrorResponse::new(400, msg),
+            BackendClientError::ConnectionError(ref msg) => ErrorResponse::new(503, msg),
+            BackendClientError::InternalError(ref msg) => ErrorResponse::new(500, msg),
+            BackendClientError::ResourceTemporarilyUnavailableError(ref msg) => {
                 ErrorResponse::new(503, msg)
             }
         })
@@ -62,7 +60,7 @@ pub async fn submit_batches(
 
 pub async fn get_batch_statuses(
     response_url: String,
-    submitter: Arc<dyn BatchSubmitter>,
+    backend_client: Arc<dyn BackendClient>,
     ids: String,
     wait: Option<String>,
     service_id: Option<String>,
@@ -102,7 +100,7 @@ pub async fn get_batch_statuses(
         None => Some(max_wait_time),
     };
 
-    submitter
+    backend_client
         .batch_status(BatchStatuses {
             batch_ids,
             wait,
@@ -110,10 +108,10 @@ pub async fn get_batch_statuses(
         })
         .await
         .map_err(|err| match err {
-            BatchSubmitterError::BadRequestError(ref msg) => ErrorResponse::new(400, msg),
-            BatchSubmitterError::ConnectionError(ref msg) => ErrorResponse::new(503, msg),
-            BatchSubmitterError::InternalError(ref msg) => ErrorResponse::new(500, msg),
-            BatchSubmitterError::ResourceTemporarilyUnavailableError(ref msg) => {
+            BackendClientError::BadRequestError(ref msg) => ErrorResponse::new(400, msg),
+            BackendClientError::ConnectionError(ref msg) => ErrorResponse::new(503, msg),
+            BackendClientError::InternalError(ref msg) => ErrorResponse::new(500, msg),
+            BackendClientError::ResourceTemporarilyUnavailableError(ref msg) => {
                 ErrorResponse::new(500, msg)
             }
         })

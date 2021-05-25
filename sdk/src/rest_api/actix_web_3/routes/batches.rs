@@ -17,7 +17,7 @@ use futures::future;
 use futures_util::StreamExt;
 
 use crate::rest_api::{
-    actix_web_3::{AcceptServiceIdParam, BatchSubmitterState, QueryServiceId},
+    actix_web_3::{AcceptServiceIdParam, BackendState, QueryServiceId},
     resources::{batches::v1, error::ErrorResponse},
 };
 
@@ -27,7 +27,7 @@ const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
 pub async fn submit_batches(
     req: HttpRequest,
     mut body: web::Payload,
-    state: web::Data<BatchSubmitterState>,
+    state: web::Data<BackendState>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
@@ -56,13 +56,7 @@ pub async fn submit_batches(
                 bytes.extend_from_slice(&item);
             }
 
-            match v1::submit_batches(
-                response_url,
-                state.batch_submitter.clone(),
-                &*bytes,
-                service_id,
-            )
-            .await
+            match v1::submit_batches(response_url, state.client.clone(), &*bytes, service_id).await
             {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
@@ -85,7 +79,7 @@ pub struct QueryParams {
 #[get("/batch_statuses")]
 pub async fn get_batch_statuses(
     req: HttpRequest,
-    state: web::Data<BatchSubmitterState>,
+    state: web::Data<BackendState>,
     query: web::Query<QueryParams>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
@@ -106,14 +100,8 @@ pub async fn get_batch_statuses(
                 }
             };
 
-            match v1::get_batch_statuses(
-                response_url,
-                state.batch_submitter.clone(),
-                id,
-                wait,
-                service_id,
-            )
-            .await
+            match v1::get_batch_statuses(response_url, state.client.clone(), id, wait, service_id)
+                .await
             {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(

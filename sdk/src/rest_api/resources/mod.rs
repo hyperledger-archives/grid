@@ -14,7 +14,7 @@
 
 #[cfg(feature = "pike")]
 pub mod agents;
-#[cfg(feature = "batch-submitter")]
+#[cfg(feature = "rest-api-endpoint-batches")]
 pub mod batches;
 pub mod error;
 #[cfg(feature = "location")]
