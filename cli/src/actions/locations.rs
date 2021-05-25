@@ -31,6 +31,7 @@ use grid_sdk::{
         schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder},
     },
     protos::IntoProto,
+    schemas::addressing::GRID_SCHEMA_NAMESPACE,
 };
 use reqwest::Client;
 use serde::Deserialize;
@@ -170,6 +171,7 @@ fn submit_payloads(
         builder.add_transaction(
             &action.into_proto()?,
             &[
+                GRID_SCHEMA_NAMESPACE.to_string(),
                 PIKE_NAMESPACE.to_string(),
                 GRID_LOCATION_NAMESPACE.to_string(),
             ],
