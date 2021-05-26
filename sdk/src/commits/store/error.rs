@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,42 +50,14 @@ impl fmt::Display for CommitStoreError {
     }
 }
 
-/// Represents CommitEvent errors
-#[derive(Debug)]
-pub enum CommitEventError {
-    InternalError(InternalError),
-    ConstraintViolationError(ConstraintViolationError),
-    ResourceTemporarilyUnavailableError(ResourceTemporarilyUnavailableError),
-}
-
-impl Error for CommitEventError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            CommitEventError::InternalError(err) => Some(err),
-            CommitEventError::ConstraintViolationError(err) => Some(err),
-            CommitEventError::ResourceTemporarilyUnavailableError(err) => Some(err),
-        }
-    }
-}
-
-impl fmt::Display for CommitEventError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            CommitEventError::InternalError(err) => err.fmt(f),
-            CommitEventError::ConstraintViolationError(err) => err.fmt(f),
-            CommitEventError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
-        }
-    }
-}
-
 #[cfg(feature = "diesel")]
-impl From<diesel::result::Error> for CommitEventError {
-    fn from(err: diesel::result::Error) -> Self {
+impl From<diesel::result::Error> for CommitStoreError {
+    fn from(err: diesel::result::Error) -> CommitStoreError {
         match err {
             diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UniqueViolation,
                 _,
-            ) => CommitEventError::ConstraintViolationError(
+            ) => CommitStoreError::ConstraintViolationError(
                 ConstraintViolationError::from_source_with_violation_type(
                     ConstraintViolationType::Unique,
                     Box::new(err),
@@ -94,21 +66,21 @@ impl From<diesel::result::Error> for CommitEventError {
             diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::ForeignKeyViolation,
                 _,
-            ) => CommitEventError::ConstraintViolationError(
+            ) => CommitStoreError::ConstraintViolationError(
                 ConstraintViolationError::from_source_with_violation_type(
                     ConstraintViolationType::ForeignKey,
                     Box::new(err),
                 ),
             ),
-            _ => CommitEventError::InternalError(InternalError::from_source(Box::new(err))),
+            _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
         }
     }
 }
 
 #[cfg(feature = "diesel")]
-impl From<diesel::r2d2::PoolError> for CommitEventError {
-    fn from(err: diesel::r2d2::PoolError) -> CommitEventError {
-        CommitEventError::ResourceTemporarilyUnavailableError(
+impl From<diesel::r2d2::PoolError> for CommitStoreError {
+    fn from(err: diesel::r2d2::PoolError) -> CommitStoreError {
+        CommitStoreError::ResourceTemporarilyUnavailableError(
             ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
         )
     }

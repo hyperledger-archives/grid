@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 pub mod diesel;
 mod error;
 
-pub use error::{CommitEventError, CommitStoreError};
+pub use error::CommitStoreError;
 
 /// Represents a Grid commit
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -91,7 +91,7 @@ pub trait CommitStore: Send + Sync {
     fn create_db_commit_from_commit_event(
         &self,
         event: &CommitEvent,
-    ) -> Result<Option<Commit>, CommitEventError>;
+    ) -> Result<Option<Commit>, CommitStoreError>;
 }
 
 impl<CS> CommitStore for Box<CS>
@@ -124,7 +124,7 @@ where
     fn create_db_commit_from_commit_event(
         &self,
         event: &CommitEvent,
-    ) -> Result<Option<Commit>, CommitEventError> {
+    ) -> Result<Option<Commit>, CommitStoreError> {
         (**self).create_db_commit_from_commit_event(event)
     }
 }

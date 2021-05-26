@@ -17,11 +17,7 @@ use crate::commits::store::diesel::models::{CommitModel, NewCommitModel};
 use crate::commits::store::diesel::{schema::commits, CommitStoreError};
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 
-use diesel::{
-    dsl::insert_into,
-    prelude::*,
-    result::{DatabaseErrorKind, Error as dsl_error},
-};
+use diesel::{dsl::insert_into, prelude::*, result::Error as dsl_error};
 
 pub(in crate::commits) trait CommitStoreAddCommitOperation {
     fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError>;
@@ -48,26 +44,7 @@ impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg:
             insert_into(commits::table)
                 .values(commit)
                 .execute(self.conn)
-                .map(|_| ())
-                .map_err(|err| match err {
-                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                        CommitStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::Unique,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                        CommitStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::ForeignKey,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
-                })?;
+                .map(|_| ())?;
             Ok(())
         })
     }
@@ -96,26 +73,7 @@ impl<'a> CommitStoreAddCommitOperation
             insert_into(commits::table)
                 .values(commit)
                 .execute(self.conn)
-                .map(|_| ())
-                .map_err(|err| match err {
-                    dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                        CommitStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::Unique,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                        CommitStoreError::ConstraintViolationError(
-                            ConstraintViolationError::from_source_with_violation_type(
-                                ConstraintViolationType::ForeignKey,
-                                Box::new(err),
-                            ),
-                        )
-                    }
-                    _ => CommitStoreError::InternalError(InternalError::from_source(Box::new(err))),
-                })?;
+                .map(|_| ())?;
             Ok(())
         })
     }
