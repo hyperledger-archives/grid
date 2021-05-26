@@ -29,10 +29,9 @@ license = "Apache-2.0"
 
 [dependencies]
 actix-web = { version = "3", optional = true }
-base64 = { version = "0.10", optional = true }
-byteorder = "1"
-cfg-if = "0.1"
-chrono = "0.4"
+base64 = { version = "0.13", optional = true }
+cfg-if = { version = "1", optional = true }
+chrono = { version = "0.4", optional = true }
 diesel = { version = "1.0", features = ["chrono", "r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 log = { version = "0.4", optional = true }
@@ -109,7 +108,7 @@ client-reqwest = ["client", "reqwest"]
 location = ["pike", "schema"]
 location-store-postgres = ["postgres"]
 location-store-sqlite = ["sqlite"]
-pike = []
+pike = ["cfg-if"]
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
 product-gdsn = [
     "reqwest"
@@ -126,7 +125,7 @@ batch-processor = ["batch-store", "batch-submitter", "log"]
 batch-store = []
 batch-submitter = ["base64", "futures", "reqwest", "uuid", "url"]
 
-postgres = ["diesel/postgres", "diesel_migrations", "log"]
+postgres = ["chrono", "diesel/postgres", "diesel_migrations", "log"]
 rest-api-actix-web-3 = [
     "actix-web", "futures", "futures-util", "rest-api-resources", "sqlite", "postgres", "url"]
 rest-api-resources = ["cylinder", "sabre-sdk", "log", "reqwest", "url"]
@@ -134,5 +133,5 @@ sawtooth-compat = [
     "sabre-sdk",
     "sawtooth-sdk"
 ]
-sqlite = ["diesel/sqlite", "diesel_migrations"]
+sqlite = ["chrono", "diesel/sqlite", "diesel_migrations"]
 workflow = []
