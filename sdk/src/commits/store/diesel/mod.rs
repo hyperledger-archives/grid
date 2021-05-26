@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Database-backed implementation of the [CommitStore], powered by [diesel].
+
 pub(in crate::commits) mod models;
 mod operations;
 pub(in crate) mod schema;
