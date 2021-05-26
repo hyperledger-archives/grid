@@ -104,7 +104,8 @@ fn run() -> Result<(), CliError> {
             (about: "Generates keys with which the user can sign transactions and batches.")
             (@arg key_name: +takes_value "Name of the key to create")
             (@arg force: --force "Overwrite files if they exist")
-            (@arg key_dir: -d --("key-dir") +takes_value conflicts_with[system] "Specify the directory for the key files")
+            (@arg key_dir: -d --("key-dir") +takes_value conflicts_with[system]
+                "Specify the directory for the key files")
             (@arg system: --system "Generate system keys in /etc/grid/keys")
         )
 
@@ -213,7 +214,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .use_delimiter(true)
                                 .multiple(true)
-                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                                .help("Key-value pairs (format: <key>=<value>) in a \
+                                    comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("key")
@@ -272,7 +274,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .use_delimiter(true)
                                 .multiple(true)
-                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                                .help("Key-value pairs (format: <key>=<value>) in a \
+                                    comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("key")
@@ -323,8 +326,8 @@ fn run() -> Result<(), CliError> {
                             .arg(
                                 Arg::with_name("line-per-role")
                                     .long("line-per-role")
-                                    .help("Displays agent information for each role on it's own line. \
-                                          Useful when filtering by role.")
+                                    .help("Displays agent information for each role on it's own \
+                                        line. Useful when filtering by role.")
                             )
                     ),
         )
@@ -367,7 +370,8 @@ fn run() -> Result<(), CliError> {
                                 .long("alternate-ids")
                                 .multiple(true)
                                 .use_delimiter(true)
-                                .help("Alternate IDs for organization (format: <id_type>:<id>) in a comma-separated list"),
+                                .help("Alternate IDs for organization (format: <id_type>:<id>) in \
+                                    a comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("metadata")
@@ -375,7 +379,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .use_delimiter(true)
-                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                                .help("Key-value pairs (format: <key>=<value>) in a \
+                                    comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("key")
@@ -419,7 +424,8 @@ fn run() -> Result<(), CliError> {
                                 .long("alternate-ids")
                                 .multiple(true)
                                 .use_delimiter(true)
-                                .help("Alternate IDs for organization (format: <id_type>:<id>) in a comma-separated list"),
+                                .help("Alternate IDs for organization (format: <id_type>:<id>) in \
+                                    a comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("metadata")
@@ -427,7 +433,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .use_delimiter(true)
-                                .help("Key-value pairs (format: <key>=<value>) in a comma-separated list"),
+                                .help("Key-value pairs (format: <key>=<value>) in a \
+                                    comma-separated list"),
                         )
                         .arg(
                             Arg::with_name("key")
@@ -806,7 +813,10 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .conflicts_with("file")
-                                .help("Key value pair specifying a product property formatted as key=value"),
+                                .help(
+                                    "Key value pair specifying a product property formatted as \
+                                    key=value",
+                                ),
                         )
                         .arg(
                             #[cfg(not(feature = "product-gdsn"))]
@@ -836,7 +846,7 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        )
+                        ),
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -862,7 +872,10 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .conflicts_with("file")
-                                .help("Key value pair specifying a product property formatted as key=value"),
+                                .help(
+                                    "Key value pair specifying a product property formatted as \
+                                    key=value",
+                                ),
                         )
                         .arg(
                             #[cfg(not(feature = "product-gdsn"))]
@@ -993,7 +1006,10 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .conflicts_with("file")
-                                .help("Key value pair specifying a location property formatted as key=value"),
+                                .help(
+                                    "Key value pair specifying a location property formatted as \
+                                    key=value",
+                                ),
                         )
                         .arg(
                             Arg::with_name("file")
@@ -1040,7 +1056,10 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .conflicts_with("file")
-                                .help("Key value pair specifying a location property formatted as key=value"),
+                                .help(
+                                    "Key value pair specifying a location property formatted as \
+                                    key=value",
+                                ),
                         )
                         .arg(
                             Arg::with_name("file")
@@ -1092,7 +1111,10 @@ fn run() -> Result<(), CliError> {
                                 .help("How long to wait for transaction to be committed"),
                         ),
                 )
-                .subcommand(SubCommand::with_name("list").about("List currently defined locations"))
+                .subcommand(SubCommand::with_name("list").about(
+                    "List currently defined \
+                    locations",
+                ))
                 .subcommand(
                     SubCommand::with_name("show")
                         .about("Show locations specified by ID argument")
