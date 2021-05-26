@@ -18,14 +18,17 @@
 
 use std::path::PathBuf;
 use std::process;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use cylinder::load_key;
+use grid_sdk::backend::SplinterBackendClient;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
 use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
 use grid_sdk::store::ConnectionUri;
-use grid_sdk::backend::SplinterBackendClient;
 use splinter::events::Reactor;
 
 use crate::config::GridConfig;
@@ -84,7 +87,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
     let backend_client = SplinterBackendClient::new(config.endpoint().url());
-    let backend_state = BackendState::with_splinter(backend_client);
+    let backend_state = BackendState::new(Arc::new(backend_client));
 
     #[cfg(feature = "integration")]
     let key_state = KeyState::new(&config.key_file_name());

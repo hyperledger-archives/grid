@@ -15,10 +15,6 @@
 use std::sync::Arc;
 
 use crate::backend::BackendClient;
-#[cfg(feature = "backend-sawtooth")]
-use crate::backend::SawtoothBackendClient;
-#[cfg(feature = "backend-splinter")]
-use crate::backend::SplinterBackendClient;
 
 #[derive(Clone)]
 pub struct BackendState {
@@ -28,19 +24,5 @@ pub struct BackendState {
 impl BackendState {
     pub fn new(client: Arc<dyn BackendClient + 'static>) -> Self {
         Self { client }
-    }
-
-    #[cfg(feature = "backend-sawtooth")]
-    pub fn with_sawtooth(client: SawtoothBackendClient) -> Self {
-        Self {
-            client: Arc::new(client),
-        }
-    }
-
-    #[cfg(feature = "backend-splinter")]
-    pub fn with_splinter(client: SplinterBackendClient) -> Self {
-        Self {
-            client: Arc::new(client),
-        }
     }
 }

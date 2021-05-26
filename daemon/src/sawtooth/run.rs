@@ -17,7 +17,10 @@
  */
 
 use std::process;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use grid_sdk::backend::SawtoothBackendClient;
 #[cfg(feature = "integration")]
@@ -44,7 +47,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
 
     let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
     let backend_client = SawtoothBackendClient::new(sawtooth_connection.get_sender());
-    let backend_state = BackendState::with_sawtooth(backend_client);
+    let backend_state = BackendState::new(Arc::new(backend_client));
     let (store_state, evt_processor) = {
         let commit_store = store_factory.get_grid_commit_store();
         let current_commit = commit_store
