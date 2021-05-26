@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::error::CliError;
 use crate::http::submit_batches;
 use crate::transaction::pike_batch_builder;
@@ -33,9 +35,14 @@ pub fn do_create_organization(
     create_org: CreateOrganizationAction,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::CreateOrganization)
-        .with_create_organization(create_org)
+        .with_action(Action::CreateOrganization(create_org))
+        .with_timestamp(timestamp)
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -57,9 +64,14 @@ pub fn do_update_organization(
     update_org: UpdateOrganizationAction,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
     let payload = PikePayloadBuilder::new()
-        .with_action(Action::UpdateOrganization)
-        .with_update_organization(update_org)
+        .with_action(Action::UpdateOrganization(update_org))
+        .with_timestamp(timestamp)
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
