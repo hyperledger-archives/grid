@@ -17,7 +17,7 @@ use crate::commits::store::diesel::models::{CommitModel, NewCommitModel};
 use crate::commits::store::diesel::{schema::commits, CommitStoreError};
 use crate::error::{ConstraintViolationError, ConstraintViolationType, InternalError};
 
-use diesel::{dsl::insert_into, prelude::*, result::Error as dsl_error};
+use diesel::{dsl::insert_into, prelude::*};
 
 pub(in crate::commits) trait CommitStoreAddCommitOperation {
     fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError>;
