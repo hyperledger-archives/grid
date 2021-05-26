@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-    xmlns:gdsn_common="urn:gs1:gdsn:gdsn_common:xsd:3"
-    xmlns:shared_common="urn:gs1:shared:shared_common:xsd:3"
     xmlns:ti="urn:gs1:gdsn:trade_item:xsd:3">
     <xsd:annotation>
         <xsd:documentation>
@@ -22,13 +20,9 @@
             ]]>
         </xsd:documentation>
     </xsd:annotation>
-    <!-- GDSN Modules -->
-    <!-- General imports -->
-    <xsd:import namespace="urn:gs1:shared:shared_common:xsd:3" schemaLocation="http://www.gs1globalregistry.net/3.1/schemas/gs1/shared/SharedCommon.xsd"/>
-    <xsd:import namespace="urn:gs1:gdsn:gdsn_common:xsd:3" schemaLocation="http://www.gs1globalregistry.net/3.1/schemas/gs1/gdsn/GdsnCommon.xsd"/>
+
     <!-- Trade Item Module-->
     <xsd:import namespace="urn:gs1:gdsn:trade_item:xsd:3" schemaLocation="http://www.gs1globalregistry.net/3.1/schemas/gs1/gdsn/TradeItem.xsd"/>
-
 
     <!-- Product attributes -->
     <xsd:element name="gridTradeItems" type="gridTradeItems"/>
