@@ -115,7 +115,7 @@ pub struct BatchList {
 }
 
 impl BatchList {
-    fn new(data: Vec<Batch>, paging: Paging) -> Self {
+    pub fn new(data: Vec<Batch>, paging: Paging) -> Self {
         Self { data, paging }
     }
 }

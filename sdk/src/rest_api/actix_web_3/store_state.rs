@@ -14,22 +14,37 @@
 
 use std::sync::Arc;
 
+#[cfg(feature = "diesel")]
 use diesel::r2d2::{ConnectionManager, Pool};
 
+#[cfg(all(feature = "diesel", feature = "batch-store"))]
+use crate::batches::store::diesel::DieselBatchStore;
 #[cfg(feature = "batch-store")]
-use crate::batches::{store::diesel::DieselBatchStore, BatchStore};
+use crate::batches::BatchStore;
+#[cfg(all(feature = "diesel", feature = "location"))]
+use crate::locations::store::diesel::DieselLocationStore;
 #[cfg(feature = "location")]
-use crate::locations::{store::diesel::DieselLocationStore, LocationStore};
+use crate::locations::LocationStore;
+#[cfg(all(feature = "diesel", feature = "pike"))]
+use crate::pike::store::diesel::DieselPikeStore;
 #[cfg(feature = "pike")]
-use crate::pike::{store::diesel::DieselPikeStore, PikeStore};
+use crate::pike::PikeStore;
+#[cfg(all(feature = "diesel", feature = "product"))]
+use crate::products::store::diesel::DieselProductStore;
 #[cfg(feature = "product")]
-use crate::products::{store::diesel::DieselProductStore, ProductStore};
+use crate::products::ProductStore;
+#[cfg(all(feature = "diesel", feature = "purchase-order"))]
+use crate::purchase_order::store::diesel::DieselPurchaseOrderStore;
 #[cfg(feature = "purchase-order")]
-use crate::purchase_order::{store::diesel::DieselPurchaseOrderStore, PurchaseOrderStore};
+use crate::purchase_order::PurchaseOrderStore;
+#[cfg(all(feature = "diesel", feature = "schema"))]
+use crate::schemas::store::diesel::DieselSchemaStore;
 #[cfg(feature = "schema")]
-use crate::schemas::{store::diesel::DieselSchemaStore, SchemaStore};
+use crate::schemas::SchemaStore;
+#[cfg(all(feature = "diesel", feature = "track-and-trace"))]
+use crate::track_and_trace::store::diesel::DieselTrackAndTraceStore;
 #[cfg(feature = "track-and-trace")]
-use crate::track_and_trace::{store::diesel::DieselTrackAndTraceStore, TrackAndTraceStore};
+use crate::track_and_trace::TrackAndTraceStore;
 
 #[derive(Clone)]
 pub struct StoreState {
@@ -50,6 +65,7 @@ pub struct StoreState {
 }
 
 #[allow(clippy::redundant_clone)]
+#[cfg(feature = "postgres")]
 impl StoreState {
     pub fn with_pg_pool(
         connection_pool: Pool<ConnectionManager<diesel::pg::PgConnection>>,
@@ -87,6 +103,7 @@ impl StoreState {
         }
     }
 
+    #[cfg(feature = "sqlite")]
     pub fn with_sqlite_pool(
         connection_pool: Pool<ConnectionManager<diesel::sqlite::SqliteConnection>>,
     ) -> Self {
