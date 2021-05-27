@@ -21,7 +21,7 @@ use crate::rest_api::resources::{
     submit::v1::{submit_batches, SubmitBatchRequest},
 };
 
-const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
+use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[post("/submit")]
 async fn submit(

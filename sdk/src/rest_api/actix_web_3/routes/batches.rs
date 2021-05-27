@@ -21,7 +21,7 @@ use crate::rest_api::{
     resources::{batches::v1, error::ErrorResponse},
 };
 
-const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
+use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[post("/batches")]
 pub async fn submit_batches(

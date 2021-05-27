@@ -20,7 +20,7 @@ use crate::rest_api::{
     resources::track_and_trace::v1,
 };
 
-const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";
+use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[get("/record/{record_id}")]
 pub async fn get_record(
