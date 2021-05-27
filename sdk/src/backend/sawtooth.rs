@@ -26,18 +26,17 @@ use sawtooth_sdk::messaging::stream::MessageSender;
 use sawtooth_sdk::messaging::zmq_stream::ZmqMessageSender;
 use uuid::Uuid;
 
-use crate::submitter::{
-    BatchStatus, BatchStatusLink, BatchStatuses, BatchSubmitter, SubmitBatches, DEFAULT_TIME_OUT,
+use super::{
+    BackendClient, BackendClientError, BatchStatus, BatchStatusLink, BatchStatuses, SubmitBatches,
+    DEFAULT_TIME_OUT,
 };
 
-use super::error::BatchSubmitterError;
-
 #[derive(Clone)]
-pub struct SawtoothBatchSubmitter {
+pub struct SawtoothBackendClient {
     sender: ZmqMessageSender,
 }
 
-impl SawtoothBatchSubmitter {
+impl SawtoothBackendClient {
     pub fn new(sender: ZmqMessageSender) -> Self {
         Self { sender }
     }
@@ -52,11 +51,11 @@ macro_rules! try_fut {
     };
 }
 
-impl BatchSubmitter for SawtoothBatchSubmitter {
+impl BackendClient for SawtoothBackendClient {
     fn submit_batches(
         &self,
         msg: SubmitBatches,
-    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BatchSubmitterError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BackendClientError>> + Send>> {
         let mut client_submit_request = ClientBatchSubmitRequest::new();
         client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
             msg.batch_list.get_batches().to_vec(),
@@ -92,7 +91,7 @@ impl BatchSubmitter for SawtoothBatchSubmitter {
     fn batch_status(
         &self,
         msg: BatchStatuses,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BatchSubmitterError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BackendClientError>> + Send>> {
         let mut batch_status_request = ClientBatchStatusRequest::new();
         batch_status_request.set_batch_ids(protobuf::RepeatedField::from_vec(msg.batch_ids));
         match msg.wait {
@@ -114,7 +113,7 @@ impl BatchSubmitter for SawtoothBatchSubmitter {
         future::ready(process_batch_status_response(response_status)).boxed()
     }
 
-    fn clone_box(&self) -> Box<dyn BatchSubmitter> {
+    fn clone_box(&self) -> Box<dyn BackendClient> {
         Box::new(self.clone())
     }
 }
@@ -123,9 +122,9 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     sender: &MS,
     message_type: Message_MessageType,
     message: &C,
-) -> Result<T, BatchSubmitterError> {
+) -> Result<T, BackendClientError> {
     let content = protobuf::Message::write_to_bytes(message).map_err(|err| {
-        BatchSubmitterError::BadRequestError(format!(
+        BackendClientError::BadRequestError(format!(
             "Failed to serialize batch submit request. {}",
             err.to_string()
         ))
@@ -136,7 +135,7 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     let mut response_future = sender
         .send(message_type, &correlation_id, &content)
         .map_err(|err| {
-            BatchSubmitterError::ConnectionError(format!(
+            BackendClientError::ConnectionError(format!(
                 "Failed to send message to validator. {}",
                 err.to_string()
             ))
@@ -145,11 +144,11 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     protobuf::Message::parse_from_bytes(
         response_future
             .get_timeout(Duration::new(DEFAULT_TIME_OUT.into(), 0))
-            .map_err(|err| BatchSubmitterError::InternalError(err.to_string()))?
+            .map_err(|err| BackendClientError::InternalError(err.to_string()))?
             .get_content(),
     )
     .map_err(|err| {
-        BatchSubmitterError::InternalError(format!(
+        BackendClientError::InternalError(format!(
             "Failed to parse validator response from bytes. {}",
             err.to_string()
         ))
@@ -158,17 +157,17 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
 
 pub fn process_validator_response(
     status: ClientBatchSubmitResponse_Status,
-) -> Result<(), BatchSubmitterError> {
+) -> Result<(), BackendClientError> {
     match status {
         ClientBatchSubmitResponse_Status::OK => Ok(()),
         ClientBatchSubmitResponse_Status::INVALID_BATCH => {
-            Err(BatchSubmitterError::BadRequestError(
+            Err(BackendClientError::BadRequestError(
                 "The submitted BatchList was rejected by the validator. It was '
             'poorly formed, or has an invalid signature."
                     .to_string(),
             ))
         }
-        _ => Err(BatchSubmitterError::InternalError(format!(
+        _ => Err(BackendClientError::InternalError(format!(
             "Validator responded with error {:?}",
             status
         ))),
@@ -177,7 +176,7 @@ pub fn process_validator_response(
 
 pub fn process_batch_status_response(
     response: ClientBatchStatusResponse,
-) -> Result<Vec<BatchStatus>, BatchSubmitterError> {
+) -> Result<Vec<BatchStatus>, BackendClientError> {
     let status = response.get_status();
     match status {
         ClientBatchStatusResponse_Status::OK => Ok(response
@@ -185,12 +184,12 @@ pub fn process_batch_status_response(
             .iter()
             .map(BatchStatus::from_proto)
             .collect()),
-        ClientBatchStatusResponse_Status::INVALID_ID => Err(BatchSubmitterError::BadRequestError(
+        ClientBatchStatusResponse_Status::INVALID_ID => Err(BackendClientError::BadRequestError(
             "Blockchain items are identified by 128 character hex-strings. A submitted \
              batch id was invalid"
                 .to_string(),
         )),
-        _ => Err(BatchSubmitterError::InternalError(format!(
+        _ => Err(BackendClientError::InternalError(format!(
             "Validator responded with error {:?}",
             status
         ))),

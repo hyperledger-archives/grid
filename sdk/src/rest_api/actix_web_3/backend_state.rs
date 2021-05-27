@@ -12,20 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod backend_state;
-mod endpoint;
-mod key_state;
-mod paging;
-pub mod routes;
-mod run;
-mod service;
-mod store_state;
+use std::sync::Arc;
 
-pub use backend_state::BackendState;
-pub use endpoint::{Backend, Endpoint};
-pub use key_state::KeyState;
-pub use paging::QueryPaging;
-pub use routes::submit;
-pub use run::run;
-pub use service::{AcceptServiceIdParam, QueryServiceId};
-pub use store_state::StoreState;
+use crate::backend::BackendClient;
+
+#[derive(Clone)]
+pub struct BackendState {
+    pub client: Arc<dyn BackendClient + 'static>,
+}
+
+impl BackendState {
+    pub fn new(client: Arc<dyn BackendClient + 'static>) -> Self {
+        Self { client }
+    }
+}

@@ -18,14 +18,17 @@
 
 use std::path::PathBuf;
 use std::process;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use cylinder::load_key;
+use grid_sdk::backend::SplinterBackendClient;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
-use grid_sdk::rest_api::actix_web_3::{BatchSubmitterState, StoreState};
+use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
 use grid_sdk::store::ConnectionUri;
-use grid_sdk::submitter::SplinterBatchSubmitter;
 use splinter::events::Reactor;
 
 use crate::config::GridConfig;
@@ -83,8 +86,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-    let batch_submitter = SplinterBatchSubmitter::new(config.endpoint().url());
-    let batch_submitter_state = BatchSubmitterState::with_splinter(batch_submitter);
+    let backend_client = SplinterBackendClient::new(config.endpoint().url());
+    let backend_state = BackendState::new(Arc::new(backend_client));
 
     #[cfg(feature = "integration")]
     let key_state = KeyState::new(&config.key_file_name());
@@ -92,7 +95,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
         store_state,
-        batch_submitter_state,
+        backend_state,
         #[cfg(feature = "integration")]
         key_state,
         config.endpoint().clone(),

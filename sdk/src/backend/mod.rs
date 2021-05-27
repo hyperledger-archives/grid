@@ -13,8 +13,10 @@
 // limitations under the License.
 
 mod error;
+#[cfg(feature = "backend-sawtooth")]
 pub mod sawtooth;
-pub mod splinter;
+#[cfg(feature = "backend-splinter")]
+mod splinter;
 
 use std::pin::Pin;
 
@@ -23,28 +25,30 @@ use sawtooth_sdk::messages::batch::BatchList;
 use sawtooth_sdk::messages::client_batch_submit::ClientBatchStatus;
 use url::Url;
 
-pub use error::BatchSubmitterError;
-pub use sawtooth::SawtoothBatchSubmitter;
-pub use splinter::SplinterBatchSubmitter;
+pub use error::BackendClientError;
+#[cfg(feature = "backend-sawtooth")]
+pub use sawtooth::SawtoothBackendClient;
+#[cfg(feature = "backend-splinter")]
+pub use splinter::SplinterBackendClient;
 
 pub const DEFAULT_TIME_OUT: u32 = 300; // Max timeout 300 seconds == 5 minutes
 
-pub trait BatchSubmitter: Send + Sync + 'static {
+pub trait BackendClient: Send + Sync + 'static {
     fn submit_batches(
         &self,
         submit_batches: SubmitBatches,
-    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BatchSubmitterError>> + Send>>;
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BackendClientError>> + Send>>;
 
     fn batch_status(
         &self,
         batch_statuses: BatchStatuses,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BatchSubmitterError>> + Send>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BackendClientError>> + Send>>;
 
-    fn clone_box(&self) -> Box<dyn BatchSubmitter>;
+    fn clone_box(&self) -> Box<dyn BackendClient>;
 }
 
-impl Clone for Box<dyn BatchSubmitter> {
-    fn clone(&self) -> Box<dyn BatchSubmitter> {
+impl Clone for Box<dyn BackendClient> {
+    fn clone(&self) -> Box<dyn BackendClient> {
         self.clone_box()
     }
 }

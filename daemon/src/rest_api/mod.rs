@@ -25,7 +25,7 @@ use actix_web::{dev, App, HttpServer, Result};
 use futures::executor::block_on;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
-use grid_sdk::rest_api::actix_web_3::{routes, BatchSubmitterState, Endpoint, StoreState};
+use grid_sdk::rest_api::actix_web_3::{routes, BackendState, Endpoint, StoreState};
 
 pub struct RestApiShutdownHandle {
     server: dev::Server,
@@ -40,7 +40,7 @@ impl RestApiShutdownHandle {
 pub fn run(
     bind_url: &str,
     store_state: StoreState,
-    batch_submitter_state: BatchSubmitterState,
+    backend_state: BackendState,
     #[cfg(feature = "integration")] key_state: KeyState,
     endpoint: Endpoint,
 ) -> Result<
@@ -63,7 +63,7 @@ pub fn run(
                 #[allow(unused_mut)]
                 let mut app = App::new()
                     .data(store_state.clone())
-                    .data(batch_submitter_state.clone())
+                    .data(backend_state.clone())
                     .app_data(endpoint.clone())
                     .service(routes::submit_batches)
                     .service(routes::get_batch_statuses);
@@ -169,6 +169,12 @@ mod test {
     use futures::prelude::*;
     use serde_json;
 
+    use grid_sdk::backend::BackendClientError;
+    use grid_sdk::backend::{
+        sawtooth::{process_batch_status_response, process_validator_response, query_validator},
+        BackendClient, BatchStatus, BatchStatusLink, BatchStatusResponse, BatchStatuses,
+        SubmitBatches,
+    };
     #[cfg(feature = "test-postgres")]
     use grid_sdk::migrations::{clear_postgres_database, run_postgres_migrations};
     #[cfg(not(feature = "test-postgres"))]
@@ -177,12 +183,6 @@ mod test {
     use grid_sdk::rest_api::resources::track_and_trace::v1::*;
     use grid_sdk::rest_api::resources::{
         agents::v1::*, locations::v1::*, organizations::v1::*, products::v1::*, schemas::v1::*,
-    };
-    use grid_sdk::submitter::BatchSubmitterError;
-    use grid_sdk::submitter::{
-        sawtooth::{process_batch_status_response, process_validator_response, query_validator},
-        BatchStatus, BatchStatusLink, BatchStatusResponse, BatchStatuses, BatchSubmitter,
-        SubmitBatches,
     };
     #[cfg(feature = "track-and-trace")]
     use grid_sdk::track_and_trace::store::{
@@ -267,15 +267,15 @@ mod test {
         };
     }
 
-    struct MockBatchSubmitter {
+    struct MockBackendClient {
         sender: MockMessageSender,
     }
 
-    impl BatchSubmitter for MockBatchSubmitter {
+    impl BackendClient for MockBackendClient {
         fn submit_batches(
             &self,
             msg: SubmitBatches,
-        ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BatchSubmitterError>> + Send>>
+        ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BackendClientError>> + Send>>
         {
             let mut client_submit_request = ClientBatchSubmitRequest::new();
             client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
@@ -315,7 +315,7 @@ mod test {
         fn batch_status(
             &self,
             msg: BatchStatuses,
-        ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BatchSubmitterError>> + Send>>
+        ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BackendClientError>> + Send>>
         {
             let mut batch_status_request = ClientBatchStatusRequest::new();
             batch_status_request.set_batch_ids(protobuf::RepeatedField::from_vec(msg.batch_ids));
@@ -338,7 +338,7 @@ mod test {
             future::ready(process_batch_status_response(response_status)).boxed()
         }
 
-        fn clone_box(&self) -> Box<dyn BatchSubmitter> {
+        fn clone_box(&self) -> Box<dyn BackendClient> {
             unimplemented!()
         }
     }
@@ -415,10 +415,10 @@ mod test {
     fn create_test_server(backend: Backend, response_type: ResponseType) -> TestServer {
         start(move || {
             let mock_sender = MockMessageSender::new(response_type);
-            let mock_batch_submitter = Arc::new(MockBatchSubmitter {
+            let mock_backend_client = Arc::new(MockBackendClient {
                 sender: mock_sender,
             });
-            let batch_submitter_state = BatchSubmitterState::new(mock_batch_submitter);
+            let backend_state = BackendState::new(mock_backend_client);
 
             #[cfg(feature = "test-postgres")]
             let store_state = StoreState::with_pg_pool(get_connection_pool().pool);
@@ -432,7 +432,7 @@ mod test {
             #[allow(unused_mut)]
             let mut app = App::new()
                 .data(store_state)
-                .data(batch_submitter_state)
+                .data(backend_state)
                 .app_data(Endpoint::from(
                     format!("{}tcp://localhost:9090", endpoint_backend).as_str(),
                 ))
