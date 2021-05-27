@@ -129,7 +129,7 @@ schema-store-postgres = ["postgres"]
 schema-store-sqlite = ["sqlite"]
 track-and-trace = ["base64"]
 batch-processor = ["batch-store", "backend", "log", "uuid"]
-batch-store = []
+batch-store = ["chrono"]
 
 postgres = ["chrono", "diesel/postgres", "diesel_migrations", "log"]
 rest-api = []
@@ -137,10 +137,8 @@ rest-api-actix-web-3 = [
     "actix-web",
     "futures",
     "futures-util",
-    "postgres",
     "rest-api",
     "rest-api-resources",
-    "sqlite",
     "url"
 ]
 rest-api-endpoint-batches = ["backend"]

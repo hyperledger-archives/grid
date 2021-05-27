@@ -18,12 +18,16 @@ extern crate log;
 mod error;
 
 use std::env;
+#[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
 use std::str::FromStr;
 use std::sync::Arc;
 
 use clap::{App, Arg};
+#[cfg(feature = "diesel")]
 use diesel::r2d2::{ConnectionManager, Pool};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
+#[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
+use grid_sdk::store::ConnectionUri;
 use grid_sdk::{
     batch_processor::{
         submitter::{
@@ -32,7 +36,6 @@ use grid_sdk::{
         BatchProcessorBuilder,
     },
     rest_api::actix_web_3::{self, Endpoint, KeyState, StoreState},
-    store::ConnectionUri,
 };
 use log::Record;
 use users::get_current_username;
@@ -47,11 +50,20 @@ fn log_format(
     write!(w, "{}", record.args(),)
 }
 
+#[cfg(not(any(feature = "database-postgres", feature = "database-sqlite")))]
+fn griddle_store_state(_db_url: &str) -> Result<StoreState, Error> {
+    Err(Error::from_message(
+        "no database feature was enabled during compilation",
+    ))
+}
+
+#[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
 fn griddle_store_state(db_url: &str) -> Result<StoreState, Error> {
     let connection_url =
         ConnectionUri::from_str(&db_url).map_err(|err| Error::from_message(&format!("{}", err)))?;
 
     Ok(match connection_url {
+        #[cfg(feature = "database-postgres")]
         ConnectionUri::Postgres(_) => {
             let connection_manager = ConnectionManager::<diesel::pg::PgConnection>::new(db_url);
             let pool_builder = Pool::builder();
@@ -60,6 +72,7 @@ fn griddle_store_state(db_url: &str) -> Result<StoreState, Error> {
                 .map_err(|err| Error::from_message(&format!("{}", err)))?;
             StoreState::with_pg_pool(pool)
         }
+        #[cfg(feature = "database-sqlite")]
         ConnectionUri::Sqlite(_) => {
             let connection_manager =
                 ConnectionManager::<diesel::sqlite::SqliteConnection>::new(db_url);

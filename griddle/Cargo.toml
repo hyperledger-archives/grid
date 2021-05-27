@@ -11,7 +11,7 @@ description = "Grid integration component"
 [dependencies]
 actix-web = "3"
 clap = "2.33.3"
-diesel = { version = "1.0", features = ["r2d2"] }
+diesel = { version = "1.0", features = ["r2d2"], optional = true }
 flexi_logger = "0.14"
 grid-sdk = { path = "../sdk", features = ["rest-api-actix-web-3", "batch-processor"] }
 log = "0.4"
@@ -30,4 +30,9 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "database-postgres",
+    "database-sqlite",
 ]
+
+database-postgres = ["diesel", "grid-sdk/postgres"]
+database-sqlite = ["diesel", "grid-sdk/sqlite"]
