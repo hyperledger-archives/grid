@@ -15,22 +15,24 @@
  * -----------------------------------------------------------------------------
  */
 
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use crate::actions::ListSlice;
-use crate::error::CliError;
-use crate::http::submit_batches;
-use crate::transaction::pike_batch_builder;
-use reqwest::Client;
-use serde::Deserialize;
 use std::cmp;
 use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use grid_sdk::{
     pike::addressing::PIKE_NAMESPACE,
     protocol::pike::payload::{Action, CreateAgentAction, PikePayloadBuilder, UpdateAgentAction},
     protos::IntoProto,
 };
+
+use cylinder::Signer;
+use reqwest::Client;
+use serde::Deserialize;
+
+use crate::actions::ListSlice;
+use crate::error::CliError;
+use crate::http::submit_batches;
+use crate::transaction::pike_batch_builder;
 
 #[derive(Debug, Deserialize)]
 pub struct AgentSlice {
@@ -44,7 +46,7 @@ pub struct AgentSlice {
 
 pub fn do_create_agent(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     create_agent: CreateAgentAction,
     service_id: Option<String>,
@@ -60,7 +62,7 @@ pub fn do_create_agent(
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-    let batch_list = pike_batch_builder(key)
+    let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
             &[PIKE_NAMESPACE.to_string()],
@@ -73,7 +75,7 @@ pub fn do_create_agent(
 
 pub fn do_update_agent(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     update_agent: UpdateAgentAction,
     service_id: Option<String>,
@@ -89,7 +91,7 @@ pub fn do_update_agent(
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-    let batch_list = pike_batch_builder(key)
+    let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
             &[PIKE_NAMESPACE.to_string()],

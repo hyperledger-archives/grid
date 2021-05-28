@@ -33,6 +33,8 @@ use grid_sdk::{
     protos::IntoProto,
     schemas::addressing::GRID_SCHEMA_NAMESPACE,
 };
+
+use cylinder::Signer;
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -46,14 +48,14 @@ use crate::{
 
 pub fn do_create_location(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<LocationCreateAction>,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
         url,
-        key,
+        signer,
         wait,
         actions.into_iter().map(Action::LocationCreate).collect(),
         service_id,
@@ -62,14 +64,14 @@ pub fn do_create_location(
 
 pub fn do_update_location(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<LocationUpdateAction>,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
         url,
-        key,
+        signer,
         wait,
         actions.into_iter().map(Action::LocationUpdate).collect(),
         service_id,
@@ -78,14 +80,14 @@ pub fn do_update_location(
 
 pub fn do_delete_location(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     action: LocationDeleteAction,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
         url,
-        key,
+        signer,
         wait,
         vec![Action::LocationDelete(action)],
         service_id,
@@ -149,12 +151,12 @@ pub fn do_show_location(
 
 fn submit_payloads(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<Action>,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let mut builder = location_batch_builder(key);
+    let mut builder = location_batch_builder(signer);
 
     for action in actions {
         let timestamp = SystemTime::now()

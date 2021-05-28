@@ -16,6 +16,7 @@ use crate::actions::schemas::{self, get_schema, GridPropertyDefinitionSlice};
 use crate::actions::Paging;
 use crate::http::submit_batches;
 use crate::transaction::product_batch_builder;
+use cylinder::Signer;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "product-gdsn")]
@@ -147,20 +148,20 @@ pub fn display_product_property_definitions(properties: &[GridPropertyValue]) {
  * Create a new product
  *
  * url - Url for the REST API
- * key - Signing key of the agent
+ * signer - Signer for the agent
  * wait - Time in seconds to wait for commit
  * path - Path to the yaml file that contains the product descriptions
  */
 pub fn do_create_products(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<ProductCreateAction>,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     submit_payloads(
         url,
-        key,
+        signer,
         wait,
         actions.into_iter().map(Action::ProductCreate).collect(),
         service_id.as_deref(),
@@ -171,20 +172,20 @@ pub fn do_create_products(
  * Update an existing product
  *
  * url - Url for the REST API
- * key - Signing key of the agent
+ * signer - Signer for the agent
  * wait - Time in seconds to wait for commit
  * path - Path to the yaml file that contains the product descriptions
  */
 pub fn do_update_products(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<ProductUpdateAction>,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     submit_payloads(
         url,
-        key,
+        signer,
         wait,
         actions.into_iter().map(Action::ProductUpdate).collect(),
         service_id.as_deref(),
@@ -195,20 +196,20 @@ pub fn do_update_products(
  * Delete an existing product
  *
  * url - Url for the REST API
- * key - Signing key of the agent
+ * signer - Signer for the agent
  * wait - Time in seconds to wait for commit
  * path - Path to the yaml file that contains the product descriptions
  */
 pub fn do_delete_products(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     action: ProductDeleteAction,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     submit_payloads(
         url,
-        key,
+        signer,
         wait,
         vec![Action::ProductDelete(action)],
         service_id.as_deref(),
@@ -687,12 +688,12 @@ fn yaml_to_property_values(
 
 fn submit_payloads(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<Action>,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let mut builder = product_batch_builder(key);
+    let mut builder = product_batch_builder(signer);
 
     for action in actions {
         let timestamp = SystemTime::now()

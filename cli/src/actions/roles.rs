@@ -21,6 +21,7 @@ use crate::actions::Paging;
 use crate::error::CliError;
 use crate::http::submit_batches;
 use crate::transaction::pike_batch_builder;
+use cylinder::Signer;
 use grid_sdk::{
     pike::addressing::PIKE_NAMESPACE,
     protocol::pike::payload::{
@@ -126,7 +127,7 @@ pub fn display_inherit_from(inherited: &[GridInheritFrom]) {
 
 pub fn do_create_role(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     create_role: CreateRoleAction,
     service_id: Option<String>,
@@ -142,7 +143,7 @@ pub fn do_create_role(
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-    let batch_list = pike_batch_builder(key)
+    let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
             &[PIKE_NAMESPACE.to_string()],
@@ -155,7 +156,7 @@ pub fn do_create_role(
 
 pub fn do_update_role(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     update_role: UpdateRoleAction,
     service_id: Option<String>,
@@ -171,7 +172,7 @@ pub fn do_update_role(
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-    let batch_list = pike_batch_builder(key)
+    let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
             &[PIKE_NAMESPACE.to_string()],
@@ -184,7 +185,7 @@ pub fn do_update_role(
 
 pub fn do_delete_role(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     delete_role: DeleteRoleAction,
     service_id: Option<String>,
@@ -200,7 +201,7 @@ pub fn do_delete_role(
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-    let batch_list = pike_batch_builder(key)
+    let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
             &[PIKE_NAMESPACE.to_string()],

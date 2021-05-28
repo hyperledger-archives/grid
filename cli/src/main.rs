@@ -20,9 +20,9 @@ extern crate log;
 mod actions;
 mod error;
 mod http;
-mod key;
 #[cfg(feature = "sawtooth")]
 mod sawtooth;
+mod signing;
 #[cfg(feature = "splinter")]
 mod splinter;
 mod transaction;
@@ -1686,6 +1686,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let active = if m.is_present("inactive") {
                         false
@@ -1714,13 +1715,15 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to create agent...");
-                    agents::do_create_agent(&url, key, wait, create_agent, service_id)?;
+                    agents::do_create_agent(&url, signer, wait, create_agent, service_id)?;
                 }
                 ("update", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let signer = signing::load_signer(key)?;
 
                     let active = if m.is_present("inactive") {
                         false
@@ -1749,7 +1752,7 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to update agent...");
-                    agents::do_update_agent(&url, key, wait, update_agent, service_id)?;
+                    agents::do_update_agent(&url, signer, wait, update_agent, service_id)?;
                 }
                 ("list", Some(m)) => agents::do_list_agents(
                     &url,
@@ -1781,6 +1784,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -1793,13 +1797,14 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to create organization...");
-                    orgs::do_create_organization(&url, key, wait, create_org, service_id)?;
+                    orgs::do_create_organization(&url, signer, wait, create_org, service_id)?;
                 }
                 ("update", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -1818,7 +1823,7 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to update organization...");
-                    orgs::do_update_organization(&url, key, wait, update_org, service_id)?;
+                    orgs::do_update_organization(&url, signer, wait, update_org, service_id)?;
                 }
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
@@ -1841,6 +1846,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -1877,13 +1883,14 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to create role...");
-                    roles::do_create_role(&url, key, wait, create_role, service_id)?;
+                    roles::do_create_role(&url, signer, wait, create_role, service_id)?;
                 }
                 ("update", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -1920,13 +1927,14 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to update role...");
-                    roles::do_update_role(&url, key, wait, update_role, service_id)?;
+                    roles::do_update_role(&url, signer, wait, update_role, service_id)?;
                 }
                 ("delete", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -1937,7 +1945,7 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to delete role...");
-                    roles::do_delete_role(&url, key, wait, delete_role, service_id)?;
+                    roles::do_delete_role(&url, signer, wait, delete_role, service_id)?;
                 }
                 ("show", Some(m)) => roles::do_show_role(
                     &url,
@@ -1969,13 +1977,14 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     info!("Submitting request to create schema...");
                     schemas::do_create_schemas(
                         &url,
-                        key,
+                        signer,
                         wait,
                         m.value_of("path").unwrap(),
                         service_id,
@@ -1986,13 +1995,14 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     info!("Submitting request to update schema...");
                     schemas::do_update_schemas(
                         &url,
-                        key,
+                        signer,
                         wait,
                         m.value_of("path").unwrap(),
                         service_id,
@@ -2052,6 +2062,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2063,7 +2074,7 @@ fn run() -> Result<(), CliError> {
                     )?;
 
                     info!("Submitting request to create product...");
-                    products::do_create_products(&url, key, wait, actions, service_id)?;
+                    products::do_create_products(&url, signer, wait, actions, service_id)?;
                 }
                 #[cfg(not(feature = "product-gdsn"))]
                 ("create", Some(m)) if m.is_present("file") => {
@@ -2071,6 +2082,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2081,13 +2093,14 @@ fn run() -> Result<(), CliError> {
                     )?;
 
                     info!("Submitting request to create product...");
-                    products::do_create_products(&url, key, wait, actions, service_id)?;
+                    products::do_create_products(&url, signer, wait, actions, service_id)?;
                 }
                 ("create", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2117,7 +2130,7 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to create product...");
-                    products::do_create_products(&url, key, wait, vec![action], service_id)?;
+                    products::do_create_products(&url, signer, wait, vec![action], service_id)?;
                 }
                 #[cfg(feature = "product-gdsn")]
                 ("update", Some(m)) if m.is_present("file") => {
@@ -2125,6 +2138,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2135,7 +2149,7 @@ fn run() -> Result<(), CliError> {
                     )?;
 
                     info!("Submitting request to update product...");
-                    products::do_update_products(&url, key, wait, actions, service_id)?;
+                    products::do_update_products(&url, signer, wait, actions, service_id)?;
                 }
                 #[cfg(not(feature = "product-gdsn"))]
                 ("update", Some(m)) if m.is_present("file") => {
@@ -2143,6 +2157,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2153,13 +2168,14 @@ fn run() -> Result<(), CliError> {
                     )?;
 
                     info!("Submitting request to update product...");
-                    products::do_update_products(&url, key, wait, actions, service_id)?;
+                    products::do_update_products(&url, signer, wait, actions, service_id)?;
                 }
                 ("update", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2188,13 +2204,14 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to update product...");
-                    products::do_update_products(&url, key, wait, vec![action], service_id)?;
+                    products::do_update_products(&url, signer, wait, vec![action], service_id)?;
                 }
                 ("delete", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2215,7 +2232,7 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to delete product...");
-                    products::do_delete_products(&url, key, wait, action, service_id)?;
+                    products::do_delete_products(&url, signer, wait, action, service_id)?;
                 }
                 ("list", Some(_)) => products::do_list_products(&url, service_id)?,
                 ("show", Some(m)) => {
@@ -2242,6 +2259,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2252,13 +2270,20 @@ fn run() -> Result<(), CliError> {
                     )?;
 
                     info!("Submitting request to create location...");
-                    locations::do_create_location(&url, key, wait, actions, service_id.as_deref())?;
+                    locations::do_create_location(
+                        &url,
+                        signer,
+                        wait,
+                        actions,
+                        service_id.as_deref(),
+                    )?;
                 }
                 ("create", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2290,7 +2315,7 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to create location...");
                     locations::do_create_location(
                         &url,
-                        key,
+                        signer,
                         wait,
                         vec![action],
                         service_id.as_deref(),
@@ -2301,6 +2326,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2311,13 +2337,20 @@ fn run() -> Result<(), CliError> {
                     )?;
 
                     info!("Submitting request to update location...");
-                    locations::do_update_location(&url, key, wait, actions, service_id.as_deref())?;
+                    locations::do_update_location(
+                        &url,
+                        signer,
+                        wait,
+                        actions,
+                        service_id.as_deref(),
+                    )?;
                 }
                 ("update", Some(m)) => {
                     let key = m
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2348,7 +2381,7 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to update location...");
                     locations::do_update_location(
                         &url,
-                        key,
+                        signer,
                         wait,
                         vec![action],
                         service_id.as_deref(),
@@ -2359,6 +2392,7 @@ fn run() -> Result<(), CliError> {
                         .value_of("key")
                         .map(String::from)
                         .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
@@ -2379,7 +2413,13 @@ fn run() -> Result<(), CliError> {
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                     info!("Submitting request to delete location...");
-                    locations::do_delete_location(&url, key, wait, action, service_id.as_deref())?;
+                    locations::do_delete_location(
+                        &url,
+                        signer,
+                        wait,
+                        action,
+                        service_id.as_deref(),
+                    )?;
                 }
                 ("list", Some(_)) => locations::do_list_locations(&url, service_id.as_deref())?,
                 ("show", Some(_)) => locations::do_show_location(
