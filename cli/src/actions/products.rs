@@ -304,7 +304,8 @@ fn determine_file_type(path: &str) -> Result<ProductFileType, CliError> {
             Some("yaml") | Some("yml") => Ok(ProductFileType::SchemaBasedDefinition),
             Some("xml") => Ok(ProductFileType::Gdsn3_1),
             Some(_) => Err(CliError::UserError(format!(
-                "File has an unsupported format: {}\n Accepted formats: GDSN 3.1 XML, Grid Product YAML definition",
+                "File has an unsupported format: {}, Accepted formats: GDSN 3.1 XML, Grid \
+                    Product YAML definition",
                 path
             ))),
         },
