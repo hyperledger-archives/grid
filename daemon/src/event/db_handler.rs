@@ -31,8 +31,8 @@ use grid_sdk::{
     location::{
         addressing::GRID_LOCATION_NAMESPACE,
         store::{
-            diesel::DieselLocationStore, LatLongValue as LocationLatLongValue, Location,
-            LocationAttribute, LocationStore,
+            DieselLocationStore, LatLongValue as LocationLatLongValue, Location, LocationAttribute,
+            LocationStore,
         },
     },
     protocol::location::state::LocationList,
@@ -45,8 +45,8 @@ use grid_sdk::{
             PIKE_AGENT_NAMESPACE, PIKE_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE, PIKE_ROLE_NAMESPACE,
         },
         store::{
-            diesel::DieselPikeStore, Agent, AlternateId, Organization, OrganizationMetadata,
-            PikeStore, Role,
+            Agent, AlternateId, DieselPikeStore, Organization, OrganizationMetadata, PikeStore,
+            Role,
         },
     },
     protocol::pike::state::{AgentList, OrganizationList, RoleList},
@@ -56,7 +56,7 @@ use grid_sdk::{
     product::{
         addressing::GRID_PRODUCT_NAMESPACE,
         store::{
-            diesel::DieselProductStore, LatLongValue as ProductLatLongValue, Product, ProductStore,
+            DieselProductStore, LatLongValue as ProductLatLongValue, Product, ProductStore,
             PropertyValue as ProductPropertyValue,
         },
     },
@@ -74,9 +74,8 @@ use grid_sdk::{
             TRACK_AND_TRACE_RECORD_NAMESPACE,
         },
         store::{
-            diesel::DieselTrackAndTraceStore, AssociatedAgent, LatLongValue as TntLatLongValue,
-            Property, Proposal, Record, ReportedValue as StoreReportedValue, Reporter,
-            TrackAndTraceStore,
+            AssociatedAgent, DieselTrackAndTraceStore, LatLongValue as TntLatLongValue, Property,
+            Proposal, Record, ReportedValue as StoreReportedValue, Reporter, TrackAndTraceStore,
         },
     },
 };
@@ -86,8 +85,7 @@ use grid_sdk::{
     schema::{
         addressing::GRID_SCHEMA_NAMESPACE,
         store::{
-            diesel::DieselSchemaStore, PropertyDefinition as StorePropertyDefinition, Schema,
-            SchemaStore,
+            DieselSchemaStore, PropertyDefinition as StorePropertyDefinition, Schema, SchemaStore,
         },
     },
 };

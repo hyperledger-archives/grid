@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub mod diesel;
+pub(in crate) mod diesel;
 pub mod error;
 
 use crate::paging::Paging;
 
+#[cfg(feature = "diesel")]
+pub use self::diesel::DieselProductStore;
 pub use error::ProductStoreError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

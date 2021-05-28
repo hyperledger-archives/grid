@@ -18,18 +18,18 @@ use diesel::{
 };
 
 #[cfg(feature = "batch-store")]
-use crate::batches::store::{diesel::DieselBatchStore, BatchStore};
-use crate::commits::store::{diesel::DieselCommitStore, CommitStore};
+use crate::batches::store::{BatchStore, DieselBatchStore};
+use crate::commits::store::{CommitStore, DieselCommitStore};
 #[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
-use crate::location::store::{diesel::DieselLocationStore, LocationStore};
+use crate::location::store::{DieselLocationStore, LocationStore};
 #[cfg(feature = "pike")]
-use crate::pike::store::{diesel::DieselPikeStore, PikeStore};
+use crate::pike::store::{DieselPikeStore, PikeStore};
 #[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
-use crate::product::store::{diesel::DieselProductStore, ProductStore};
+use crate::product::store::{DieselProductStore, ProductStore};
 #[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
-use crate::schema::store::{diesel::DieselSchemaStore, SchemaStore};
+use crate::schema::store::{DieselSchemaStore, SchemaStore};
 #[cfg(feature = "track-and-trace")]
-use crate::track_and_trace::store::{diesel::DieselTrackAndTraceStore, TrackAndTraceStore};
+use crate::track_and_trace::store::{DieselTrackAndTraceStore, TrackAndTraceStore};
 
 use super::StoreFactory;
 

@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub mod diesel;
+pub(in crate) mod diesel;
 mod error;
 
+#[cfg(feature = "diesel")]
+pub use self::diesel::DieselCommitStore;
 pub use error::CommitStoreError;
 
 /// Represents a Grid commit
