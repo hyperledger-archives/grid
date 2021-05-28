@@ -18,10 +18,5 @@ pub mod store;
 
 pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 
-#[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
-pub use store::diesel::DieselProductStore;
-#[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
-pub use store::ProductStore;
-
 #[cfg(feature = "product-gdsn")]
 pub mod gdsn;

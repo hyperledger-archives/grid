@@ -14,7 +14,3 @@
 
 pub mod addressing;
 pub mod store;
-
-#[cfg(feature = "diesel")]
-pub use store::diesel::DieselPikeStore;
-pub use store::PikeStore;

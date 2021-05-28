@@ -25,7 +25,9 @@ use std::{
 
 use sawtooth_sdk::messages::batch::BatchList;
 
-use crate::{batches::BatchStore, error::InternalError, hex};
+use crate::batches::store::BatchStore;
+use crate::error::InternalError;
+use crate::hex;
 
 use submitter::{BatchSubmitter, BatchSubmitterError, SubmitBatches};
 

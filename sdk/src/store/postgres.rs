@@ -17,6 +17,20 @@ use diesel::{
     r2d2::{ConnectionManager, Pool},
 };
 
+#[cfg(feature = "batch-store")]
+use crate::batches::store::{diesel::DieselBatchStore, BatchStore};
+use crate::commits::store::{diesel::DieselCommitStore, CommitStore};
+#[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
+use crate::location::store::{diesel::DieselLocationStore, LocationStore};
+#[cfg(feature = "pike")]
+use crate::pike::store::{diesel::DieselPikeStore, PikeStore};
+#[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
+use crate::product::store::{diesel::DieselProductStore, ProductStore};
+#[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
+use crate::schema::store::{diesel::DieselSchemaStore, SchemaStore};
+#[cfg(feature = "track-and-trace")]
+use crate::track_and_trace::store::{diesel::DieselTrackAndTraceStore, TrackAndTraceStore};
+
 use super::StoreFactory;
 
 /// A `StoryFactory` backed by a PostgreSQL database.
@@ -31,41 +45,37 @@ impl PgStoreFactory {
 }
 
 impl StoreFactory for PgStoreFactory {
-    fn get_grid_commit_store(&self) -> Box<dyn crate::commits::CommitStore> {
-        Box::new(crate::commits::DieselCommitStore::new(self.pool.clone()))
+    fn get_grid_commit_store(&self) -> Box<dyn CommitStore> {
+        Box::new(DieselCommitStore::new(self.pool.clone()))
     }
 
     #[cfg(feature = "pike")]
-    fn get_grid_pike_store(&self) -> Box<dyn crate::pike::PikeStore> {
-        Box::new(crate::pike::DieselPikeStore::new(self.pool.clone()))
+    fn get_grid_pike_store(&self) -> Box<dyn PikeStore> {
+        Box::new(DieselPikeStore::new(self.pool.clone()))
     }
 
     #[cfg(all(feature = "diesel", feature = "location-store-postgres"))]
-    fn get_grid_location_store(&self) -> Box<dyn crate::location::LocationStore> {
-        Box::new(crate::location::DieselLocationStore::new(self.pool.clone()))
+    fn get_grid_location_store(&self) -> Box<dyn LocationStore> {
+        Box::new(DieselLocationStore::new(self.pool.clone()))
     }
 
     #[cfg(all(feature = "diesel", feature = "product-store-postgres"))]
-    fn get_grid_product_store(&self) -> Box<dyn crate::product::ProductStore> {
-        Box::new(crate::product::DieselProductStore::new(self.pool.clone()))
+    fn get_grid_product_store(&self) -> Box<dyn ProductStore> {
+        Box::new(DieselProductStore::new(self.pool.clone()))
     }
 
     #[cfg(all(feature = "diesel", feature = "schema-store-postgres"))]
-    fn get_grid_schema_store(&self) -> Box<dyn crate::schema::SchemaStore> {
-        Box::new(crate::schema::DieselSchemaStore::new(self.pool.clone()))
+    fn get_grid_schema_store(&self) -> Box<dyn SchemaStore> {
+        Box::new(DieselSchemaStore::new(self.pool.clone()))
     }
 
     #[cfg(feature = "track-and-trace")]
-    fn get_grid_track_and_trace_store(
-        &self,
-    ) -> Box<dyn crate::track_and_trace::TrackAndTraceStore> {
-        Box::new(crate::track_and_trace::DieselTrackAndTraceStore::new(
-            self.pool.clone(),
-        ))
+    fn get_grid_track_and_trace_store(&self) -> Box<dyn TrackAndTraceStore> {
+        Box::new(DieselTrackAndTraceStore::new(self.pool.clone()))
     }
 
     #[cfg(feature = "batch-store")]
-    fn get_batch_store(&self) -> Box<dyn crate::batches::BatchStore> {
-        Box::new(crate::batches::DieselBatchStore::new(self.pool.clone()))
+    fn get_batch_store(&self) -> Box<dyn BatchStore> {
+        Box::new(DieselBatchStore::new(self.pool.clone()))
     }
 }

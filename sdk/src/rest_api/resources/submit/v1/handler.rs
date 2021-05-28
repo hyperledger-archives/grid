@@ -25,13 +25,11 @@ use sabre_sdk::{
 };
 use sawtooth_sdk::messages::{batch, transaction};
 
-use super::payloads::{Batch, SubmitBatchRequest, SubmitBatchResponse};
-use crate::batches::{
-    store::{Batch as DbBatch, BatchStoreError},
-    BatchStore,
-};
+use crate::batches::store::{Batch as DbBatch, BatchStore, BatchStoreError};
 use crate::protos::IntoBytes;
 use crate::rest_api::resources::error::ErrorResponse;
+
+use super::payloads::{Batch, SubmitBatchRequest, SubmitBatchResponse};
 
 const SABRE_FAMILY_NAME: &str = "sabre";
 const SABRE_FAMILY_VERSION: &str = "0.5";
