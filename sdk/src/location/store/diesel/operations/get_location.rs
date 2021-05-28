@@ -13,18 +13,18 @@
 // limitations under the License.
 
 use super::LocationStoreOperations;
-use crate::locations::store::diesel::{
+use crate::location::store::diesel::{
     schema::{location, location_attribute},
     LocationStoreError,
 };
 
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
-use crate::locations::store::diesel::models::{LocationAttributeModel, LocationModel};
-use crate::locations::store::{Location, LocationAttribute};
+use crate::location::store::diesel::models::{LocationAttributeModel, LocationModel};
+use crate::location::store::{Location, LocationAttribute};
 use diesel::{prelude::*, result::Error::NotFound, QueryResult};
 
-pub(in crate::locations::store::diesel) trait LocationStoreGetLocationOperation<C: Connection> {
+pub(in crate::location::store::diesel) trait LocationStoreGetLocationOperation<C: Connection> {
     fn get_location(
         &self,
         location_id: &str,

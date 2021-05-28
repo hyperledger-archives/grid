@@ -190,7 +190,7 @@ mod test {
         Record, ReportedValue, Reporter, TrackAndTraceStore,
     };
     use grid_sdk::{
-        locations::store::{
+        location::store::{
             diesel::DieselLocationStore, Location, LocationAttribute, LocationStore,
         },
         pike::store::{diesel::DieselPikeStore, Agent, Organization, PikeStore},

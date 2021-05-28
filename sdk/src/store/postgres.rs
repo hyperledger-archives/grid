@@ -41,10 +41,8 @@ impl StoreFactory for PgStoreFactory {
     }
 
     #[cfg(all(feature = "diesel", feature = "location-store-postgres"))]
-    fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore> {
-        Box::new(crate::locations::DieselLocationStore::new(
-            self.pool.clone(),
-        ))
+    fn get_grid_location_store(&self) -> Box<dyn crate::location::LocationStore> {
+        Box::new(crate::location::DieselLocationStore::new(self.pool.clone()))
     }
 
     #[cfg(all(feature = "diesel", feature = "product-store-postgres"))]

@@ -22,9 +22,9 @@ use crate::batches::store::diesel::DieselBatchStore;
 #[cfg(feature = "batch-store")]
 use crate::batches::BatchStore;
 #[cfg(all(feature = "diesel", feature = "location"))]
-use crate::locations::store::diesel::DieselLocationStore;
+use crate::location::store::diesel::DieselLocationStore;
 #[cfg(feature = "location")]
-use crate::locations::LocationStore;
+use crate::location::LocationStore;
 #[cfg(all(feature = "diesel", feature = "pike"))]
 use crate::pike::store::diesel::DieselPikeStore;
 #[cfg(feature = "pike")]

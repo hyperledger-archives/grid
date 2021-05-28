@@ -33,7 +33,7 @@ pub trait StoreFactory {
     fn get_grid_pike_store(&self) -> Box<dyn crate::pike::PikeStore>;
     /// Get a new `LocationStore`
     #[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
-    fn get_grid_location_store(&self) -> Box<dyn crate::locations::LocationStore>;
+    fn get_grid_location_store(&self) -> Box<dyn crate::location::LocationStore>;
     /// Get a new `ProductStore`
     #[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
     fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore>;

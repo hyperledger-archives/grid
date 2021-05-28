@@ -16,7 +16,7 @@
 
 use crate::commits::store::diesel::schema::{chain_record::dsl::*, commits::dsl::*};
 #[cfg(feature = "location-store-postgres")]
-use crate::locations::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
+use crate::location::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
 #[cfg(all(feature = "pike", feature = "location-store-postgres"))]
 use crate::pike::store::diesel::schema::pike_organization_location_assoc::dsl::*;
 #[cfg(feature = "pike")]

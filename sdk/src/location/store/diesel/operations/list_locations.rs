@@ -14,19 +14,19 @@
 
 use super::LocationStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
-use crate::locations::store::diesel::{
+use crate::location::store::diesel::{
     schema::{location, location_attribute},
     LocationStoreError,
 };
 
 use crate::error::InternalError;
-use crate::locations::store::diesel::models::{LocationAttributeModel, LocationModel};
-use crate::locations::store::{Location, LocationAttribute, LocationList};
+use crate::location::store::diesel::models::{LocationAttributeModel, LocationModel};
+use crate::location::store::{Location, LocationAttribute, LocationList};
 use crate::paging::Paging;
 
 use diesel::prelude::*;
 
-pub(in crate::locations::store::diesel) trait LocationStoreListLocationsOperation<C: Connection> {
+pub(in crate::location::store::diesel) trait LocationStoreListLocationsOperation<C: Connection> {
     fn list_locations(
         &self,
         service_id: Option<&str>,

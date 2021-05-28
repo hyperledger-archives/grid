@@ -28,7 +28,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    locations::addressing::GRID_NAMESPACE,
+    location::addressing::GRID_NAMESPACE,
     permissions::PermissionChecker,
     protocol::location::{
         payload::{

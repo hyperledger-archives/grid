@@ -400,7 +400,7 @@ mod tests {
     use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
 
     #[cfg(feature = "location")]
-    use grid_sdk::locations::addressing::GRID_LOCATION_NAMESPACE;
+    use grid_sdk::location::addressing::GRID_LOCATION_NAMESPACE;
 
     /// Verify that a valid set of Sawtooth events can be converted to a `CommitEvent`.
     #[test]

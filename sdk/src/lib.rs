@@ -46,7 +46,7 @@ pub mod commits;
 pub mod error;
 mod hex;
 #[cfg(feature = "location")]
-pub mod locations;
+pub mod location;
 pub mod migrations;
 pub mod paging;
 #[cfg(feature = "pike")]

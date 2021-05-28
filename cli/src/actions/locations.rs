@@ -20,7 +20,7 @@ use std::{
 };
 
 use grid_sdk::{
-    locations::addressing::GRID_LOCATION_NAMESPACE,
+    location::addressing::GRID_LOCATION_NAMESPACE,
     pike::addressing::PIKE_NAMESPACE,
     protocol::{
         location::payload::{

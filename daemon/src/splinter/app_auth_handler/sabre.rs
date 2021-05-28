@@ -19,7 +19,7 @@ use std::convert::TryInto;
 use std::time::Duration;
 
 #[cfg(feature = "location")]
-use grid_sdk::locations::addressing::GRID_LOCATION_NAMESPACE;
+use grid_sdk::location::addressing::GRID_LOCATION_NAMESPACE;
 #[cfg(feature = "pike")]
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 #[cfg(feature = "product")]

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    locations::store::{LatLongValue, Location, LocationAttribute},
+    location::store::{LatLongValue, Location, LocationAttribute},
     rest_api::resources::paging::v1::Paging,
 };
 

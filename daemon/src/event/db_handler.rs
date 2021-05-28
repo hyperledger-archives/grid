@@ -28,7 +28,7 @@ use grid_sdk::protocol::schema::state::PropertyValue;
 use grid_sdk::protos::FromBytes;
 #[cfg(feature = "location")]
 use grid_sdk::{
-    locations::{
+    location::{
         addressing::GRID_LOCATION_NAMESPACE,
         store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute},
         DieselLocationStore, LocationStore,

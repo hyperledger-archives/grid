@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::LocationStoreOperations;
-use crate::locations::store::diesel::{
+use crate::location::store::diesel::{
     schema::{location, location_attribute},
     LocationStoreError,
 };
@@ -21,7 +21,7 @@ use crate::locations::store::diesel::{
 use crate::commits::MAX_COMMIT_NUM;
 use diesel::{dsl::update, prelude::*};
 
-pub(in crate::locations::store::diesel) trait LocationStoreDeleteLocationOperation {
+pub(in crate::location::store::diesel) trait LocationStoreDeleteLocationOperation {
     fn delete_location(
         &self,
         address: &str,

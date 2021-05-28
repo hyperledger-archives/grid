@@ -30,7 +30,7 @@ cfg_if! {
     } else if #[cfg(feature = "product")] {
         use grid_sdk::products::addressing::GRID_NAMESPACE;
     } else if #[cfg(feature = "location")] {
-        use grid_sdk::locations::addressing::GRID_NAMESPACE;
+        use grid_sdk::location::addressing::GRID_NAMESPACE;
     }
 }
 

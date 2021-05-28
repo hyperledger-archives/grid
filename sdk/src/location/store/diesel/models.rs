@@ -14,7 +14,7 @@
 
 use chrono::NaiveDateTime;
 
-use crate::locations::store::diesel::schema::{location, location_attribute};
+use super::schema::{location, location_attribute};
 
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "location"]
