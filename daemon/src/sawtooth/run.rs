@@ -48,6 +48,13 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
     let backend_client = SawtoothBackendClient::new(sawtooth_connection.get_sender());
     let backend_state = BackendState::new(Arc::new(backend_client));
+
+    #[cfg(not(any(feature = "database-postgres", feature = "database-sqlite")))]
+    return Err(DaemonError::with_message(
+        "A database backend is required to be active. Supported backends are postgreSQL and SQLite",
+    ));
+
+    #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
     let (store_state, evt_processor) = {
         let commit_store = store_factory.get_grid_commit_store();
         let current_commit = commit_store
@@ -55,6 +62,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
             .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
         match connection_uri {
+            #[cfg(feature = "database-postgres")]
             ConnectionUri::Postgres(_) => {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
                     ConnectionPool::new(config.database_url())
@@ -71,6 +79,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                     evt_processor,
                 )
             }
+            #[cfg(feature = "database-sqlite")]
             ConnectionUri::Sqlite(_) => {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())

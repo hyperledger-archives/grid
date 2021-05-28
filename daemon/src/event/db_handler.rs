@@ -296,6 +296,7 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
     }
 }
 
+#[cfg(feature = "database-sqlite")]
 impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
     pub fn from_sqlite_pool(
         connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
@@ -329,6 +330,7 @@ impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
     }
 }
 
+#[cfg(feature = "database-sqlite")]
 impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
         debug!("Received commit event: {}", event);

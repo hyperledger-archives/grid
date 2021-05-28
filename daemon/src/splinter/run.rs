@@ -50,12 +50,20 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
 
+    #[cfg(not(any(feature = "database-postgres", feature = "database-sqlite")))]
+    return Err(DaemonError::with_message(
+        "A database backend is required to be active. Supported backends are postgreSQL and SQLite",
+    ));
+
+    #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
     let (store_state, db_handler): (StoreState, Box<dyn EventHandler + Sync + 'static>) = {
         let connection_uri = config
             .database_url()
             .parse()
             .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+
         match connection_uri {
+            #[cfg(feature = "database-postgres")]
             ConnectionUri::Postgres(_) => {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
                     ConnectionPool::new(config.database_url())
@@ -65,6 +73,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
                 )
             }
+            #[cfg(feature = "database-sqlite")]
             ConnectionUri::Sqlite(_) => {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())
