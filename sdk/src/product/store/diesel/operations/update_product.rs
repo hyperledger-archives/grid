@@ -14,13 +14,13 @@
 
 use super::ProductStoreOperations;
 
-use crate::products::{
+use crate::product::{
     store::{diesel::schema::product_property_value, error::ProductStoreError},
     MAX_COMMIT_NUM,
 };
 use diesel::{dsl::update, prelude::*};
 
-pub(in crate::products) trait UpdateProductOperation {
+pub(in crate::product) trait UpdateProductOperation {
     fn update_product(
         &self,
         product_id: &str,

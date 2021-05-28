@@ -16,7 +16,7 @@ use std::cmp::Ordering;
 use std::ffi::CString;
 
 use crate::error::{InternalError, InvalidArgumentError};
-use crate::products::gdsn::error::ProductGdsnError;
+use crate::product::gdsn::error::ProductGdsnError;
 
 use libc::{c_char, c_int, c_uint};
 

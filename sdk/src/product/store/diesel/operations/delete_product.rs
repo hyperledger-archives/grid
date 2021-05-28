@@ -14,7 +14,7 @@
 
 use super::ProductStoreOperations;
 
-use crate::products::{
+use crate::product::{
     store::{
         diesel::schema::{product, product_property_value},
         error::ProductStoreError,
@@ -23,7 +23,7 @@ use crate::products::{
 };
 use diesel::{dsl::update, prelude::*};
 
-pub(in crate::products) trait DeleteProductOperation {
+pub(in crate::product) trait DeleteProductOperation {
     fn delete_product(
         &self,
         address: &str,

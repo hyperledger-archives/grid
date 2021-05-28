@@ -30,9 +30,9 @@ use crate::pike::store::diesel::DieselPikeStore;
 #[cfg(feature = "pike")]
 use crate::pike::PikeStore;
 #[cfg(all(feature = "diesel", feature = "product"))]
-use crate::products::store::diesel::DieselProductStore;
+use crate::product::store::diesel::DieselProductStore;
 #[cfg(feature = "product")]
-use crate::products::ProductStore;
+use crate::product::ProductStore;
 #[cfg(all(feature = "diesel", feature = "purchase-order"))]
 use crate::purchase_order::store::diesel::DieselPurchaseOrderStore;
 #[cfg(feature = "purchase-order")]

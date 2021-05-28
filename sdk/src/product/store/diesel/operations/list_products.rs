@@ -16,7 +16,7 @@ use super::ProductStoreOperations;
 
 use crate::{
     paging::Paging,
-    products::{
+    product::{
         store::{
             diesel::{
                 models::{Product as ModelProduct, ProductPropertyValue},
@@ -30,7 +30,7 @@ use crate::{
 };
 use diesel::prelude::*;
 
-pub(in crate::products) trait ListProductsOperation {
+pub(in crate::product) trait ListProductsOperation {
     fn list_products(
         &self,
         service_id: Option<&str>,

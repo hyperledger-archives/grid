@@ -397,7 +397,7 @@ mod tests {
     use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
 
     #[cfg(feature = "product")]
-    use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+    use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 
     #[cfg(feature = "location")]
     use grid_sdk::location::addressing::GRID_LOCATION_NAMESPACE;

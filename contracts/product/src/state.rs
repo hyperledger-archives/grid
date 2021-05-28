@@ -24,7 +24,7 @@ cfg_if! {
 
 use grid_sdk::{
     pike::addressing::compute_organization_address,
-    products::addressing::compute_gs1_product_address,
+    product::addressing::compute_gs1_product_address,
     protocol::{
         pike::state::{Organization, OrganizationList},
         product::state::{Product, ProductList, ProductListBuilder},

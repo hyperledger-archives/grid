@@ -54,7 +54,7 @@ pub mod permissions;
 #[cfg(feature = "pike")]
 pub mod pike;
 #[cfg(feature = "product")]
-pub mod products;
+pub mod product;
 pub mod protocol;
 pub mod protos;
 #[cfg(feature = "purchase-order")]

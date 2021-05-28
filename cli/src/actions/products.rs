@@ -17,9 +17,9 @@ use crate::actions::Paging;
 use crate::http::submit_batches;
 use crate::transaction::product_batch_builder;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
-use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "product-gdsn")]
-use grid_sdk::products::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
+use grid_sdk::product::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
     ProductPayloadBuilder, ProductUpdateAction, ProductUpdateActionBuilder,

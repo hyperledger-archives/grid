@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(in crate::products) mod models;
+pub(in crate::product) mod models;
 mod operations;
 pub(in crate) mod schema;
 
 use crate::error::ResourceTemporarilyUnavailableError;
-use crate::products::MAX_COMMIT_NUM;
+use crate::product::MAX_COMMIT_NUM;
 
 use models::{NewProduct, NewProductPropertyValue, Product as ModelProduct, ProductPropertyValue};
 use operations::{

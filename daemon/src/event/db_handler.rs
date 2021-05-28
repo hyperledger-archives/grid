@@ -49,7 +49,7 @@ use grid_sdk::{
 };
 #[cfg(feature = "product")]
 use grid_sdk::{
-    products::{
+    product::{
         addressing::GRID_PRODUCT_NAMESPACE,
         store::{
             LatLongValue as ProductLatLongValue, Product, PropertyValue as ProductPropertyValue,

@@ -14,7 +14,7 @@
 
 use super::ProductStoreOperations;
 
-use crate::products::{
+use crate::product::{
     store::{
         diesel::{
             models::{Product as ModelProduct, ProductPropertyValue},
@@ -27,7 +27,7 @@ use crate::products::{
 };
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::products) trait GetProductOperation {
+pub(in crate::product) trait GetProductOperation {
     fn get_product(
         &self,
         product_id: &str,

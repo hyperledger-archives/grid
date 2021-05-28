@@ -23,7 +23,7 @@ use grid_sdk::location::addressing::GRID_LOCATION_NAMESPACE;
 #[cfg(feature = "pike")]
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 #[cfg(feature = "product")]
-use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "purchase-order")]
 use grid_sdk::purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE;
 #[cfg(feature = "schema")]

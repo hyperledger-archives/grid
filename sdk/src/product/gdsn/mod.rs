@@ -95,7 +95,7 @@ impl TradeItem {
 /// does not contain well-formed XML.
 ///
 /// View the GridTradeItems XML schema definition here:
-///     https://github.com/hyperledger/grid/blob/main/sdk/src/products/gdsn/GridTradeItems.xsd
+///     https://github.com/hyperledger/grid/blob/main/sdk/src/product/gdsn/GridTradeItems.xsd
 ///
 /// # Arguments
 ///
@@ -238,7 +238,7 @@ mod tests {
     #[test]
     fn test_get_trade_item_from_xml_success() {
         let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product.xml");
+        test_gdsn_product_path.push("src/product/gdsn/test_files/gdsn_product.xml");
 
         let path_str = test_gdsn_product_path.to_str().unwrap();
         let result = get_trade_items_from_xml(path_str);
@@ -248,7 +248,7 @@ mod tests {
         let expected = TradeItem {
             gtin: TEST_GTIN_1.to_string(),
             payload: get_expected_trade_item_payload_from_file(
-                "src/products/gdsn/test_files/test_trade_item_payload_1.xml",
+                "src/product/gdsn/test_files/test_trade_item_payload_1.xml",
             ),
         };
 
@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn test_get_multiple_trade_items_from_xml_success() {
         let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product_multiple.xml");
+        test_gdsn_product_path.push("src/product/gdsn/test_files/gdsn_product_multiple.xml");
 
         let path_str = test_gdsn_product_path.to_str().unwrap();
         let result = get_trade_items_from_xml(path_str);
@@ -271,14 +271,14 @@ mod tests {
         let expected_1 = TradeItem {
             gtin: TEST_GTIN_1.to_string(),
             payload: get_expected_trade_item_payload_from_file(
-                "src/products/gdsn/test_files/test_trade_item_payload_1.xml",
+                "src/product/gdsn/test_files/test_trade_item_payload_1.xml",
             ),
         };
 
         let expected_2 = TradeItem {
             gtin: TEST_GTIN_2.to_string(),
             payload: get_expected_trade_item_payload_from_file(
-                "src/products/gdsn/test_files/test_trade_item_payload_2.xml",
+                "src/product/gdsn/test_files/test_trade_item_payload_2.xml",
             ),
         };
 
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn test_get_trade_items_from_xml_invalid() {
         let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product_invalid.xml");
+        test_gdsn_product_path.push("src/product/gdsn/test_files/gdsn_product_invalid.xml");
 
         let path_str = test_gdsn_product_path.to_str().unwrap();
         let result = get_trade_items_from_xml(path_str);
@@ -305,7 +305,7 @@ mod tests {
     #[test]
     fn test_get_trade_items_from_xml_poorly_formed() {
         let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        test_gdsn_product_path.push("src/products/gdsn/test_files/gdsn_product_poorly_formed.xml");
+        test_gdsn_product_path.push("src/product/gdsn/test_files/gdsn_product_poorly_formed.xml");
 
         let path_str = test_gdsn_product_path.to_str().unwrap();
         let result = get_trade_items_from_xml(path_str);

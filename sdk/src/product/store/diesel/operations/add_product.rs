@@ -14,7 +14,7 @@
 
 use super::ProductStoreOperations;
 
-use crate::products::{
+use crate::product::{
     store::{
         diesel::{
             models::{NewProduct, NewProductPropertyValue},
@@ -31,7 +31,7 @@ use diesel::{
     prelude::*,
 };
 
-pub(in crate::products) trait AddProductOperation {
+pub(in crate::product) trait AddProductOperation {
     fn add_product(&self, product: Product) -> Result<(), ProductStoreError>;
 }
 

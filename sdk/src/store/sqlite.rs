@@ -46,8 +46,8 @@ impl StoreFactory for SqliteStoreFactory {
     }
 
     #[cfg(all(feature = "diesel", feature = "product-store-sqlite"))]
-    fn get_grid_product_store(&self) -> Box<dyn crate::products::ProductStore> {
-        Box::new(crate::products::DieselProductStore::new(self.pool.clone()))
+    fn get_grid_product_store(&self) -> Box<dyn crate::product::ProductStore> {
+        Box::new(crate::product::DieselProductStore::new(self.pool.clone()))
     }
 
     #[cfg(all(feature = "diesel", feature = "schema-store-sqlite"))]
