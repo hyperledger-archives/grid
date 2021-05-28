@@ -17,6 +17,7 @@ mod endpoint;
 mod key_state;
 mod paging;
 pub mod routes;
+#[cfg(feature = "rest-api-actix-web-3-run")]
 mod run;
 mod service;
 mod store_state;
@@ -25,7 +26,7 @@ pub use backend_state::BackendState;
 pub use endpoint::{Backend, Endpoint};
 pub use key_state::KeyState;
 pub use paging::QueryPaging;
-pub use routes::submit;
+#[cfg(feature = "rest-api-actix-web-3-run")]
 pub use run::run;
 pub use service::{AcceptServiceIdParam, QueryServiceId};
 pub use store_state::StoreState;

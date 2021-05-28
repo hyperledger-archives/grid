@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "pike")]
+#[cfg(feature = "rest-api-endpoint-agent")]
 pub mod agents;
 #[cfg(feature = "rest-api-endpoint-batches")]
 pub mod batches;
 pub mod error;
-#[cfg(feature = "location")]
+#[cfg(feature = "rest-api-endpoint-location")]
 pub mod locations;
-#[cfg(feature = "pike")]
+#[cfg(feature = "rest-api-endpoint-organization")]
 pub mod organizations;
 pub mod paging;
-#[cfg(feature = "product")]
+#[cfg(feature = "rest-api-endpoint-product")]
 pub mod products;
-#[cfg(feature = "purchase-order")]
+#[cfg(feature = "rest-api-endpoint-purchase-order")]
 pub mod purchase_order;
-#[cfg(feature = "pike")]
+#[cfg(feature = "rest-api-endpoint-role")]
 pub mod roles;
-#[cfg(feature = "schema")]
+#[cfg(feature = "rest-api-endpoint-schema")]
 pub mod schemas;
-#[cfg(feature = "batch-store")]
+#[cfg(feature = "rest-api-endpoint-submit")]
 pub mod submit;
-#[cfg(feature = "track-and-trace")]
+#[cfg(feature = "rest-api-endpoint-record")]
 pub mod track_and_trace;

@@ -16,7 +16,7 @@ use actix_web::{App, HttpServer};
 
 use crate::error::InternalError;
 
-use super::{submit, KeyState, StoreState};
+use super::{routes::submit, KeyState, StoreState};
 
 pub async fn run(
     bind: &str,
