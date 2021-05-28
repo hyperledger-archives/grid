@@ -394,13 +394,13 @@ mod tests {
     use sawtooth_sdk::messages::events::Event_Attribute;
 
     #[cfg(feature = "schema")]
-    use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
+    use grid_sdk::schema::addressing::GRID_SCHEMA_NAMESPACE;
 
     #[cfg(feature = "product")]
-    use grid_sdk::products::addressing::GRID_PRODUCT_NAMESPACE;
+    use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 
     #[cfg(feature = "location")]
-    use grid_sdk::locations::addressing::GRID_LOCATION_NAMESPACE;
+    use grid_sdk::location::addressing::GRID_LOCATION_NAMESPACE;
 
     /// Verify that a valid set of Sawtooth events can be converted to a `CommitEvent`.
     #[test]

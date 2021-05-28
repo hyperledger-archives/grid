@@ -46,7 +46,7 @@ pub mod commits;
 pub mod error;
 mod hex;
 #[cfg(feature = "location")]
-pub mod locations;
+pub mod location;
 pub mod migrations;
 pub mod paging;
 #[cfg(feature = "pike")]
@@ -54,7 +54,7 @@ pub mod permissions;
 #[cfg(feature = "pike")]
 pub mod pike;
 #[cfg(feature = "product")]
-pub mod products;
+pub mod product;
 pub mod protocol;
 pub mod protos;
 #[cfg(feature = "purchase-order")]
@@ -62,7 +62,7 @@ pub mod purchase_order;
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
 #[cfg(feature = "schema")]
-pub mod schemas;
+pub mod schema;
 pub mod store;
 #[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;

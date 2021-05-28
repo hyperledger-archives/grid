@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    products::store::{LatLongValue, Product, PropertyValue},
+    product::store::{LatLongValue, Product, PropertyValue},
     rest_api::resources::paging::v1::Paging,
 };
 

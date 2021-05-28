@@ -28,7 +28,7 @@ use grid_sdk::protocol::schema::state::PropertyValue;
 use grid_sdk::protos::FromBytes;
 #[cfg(feature = "location")]
 use grid_sdk::{
-    locations::{
+    location::{
         addressing::GRID_LOCATION_NAMESPACE,
         store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute},
         DieselLocationStore, LocationStore,
@@ -49,7 +49,7 @@ use grid_sdk::{
 };
 #[cfg(feature = "product")]
 use grid_sdk::{
-    products::{
+    product::{
         addressing::GRID_PRODUCT_NAMESPACE,
         store::{
             LatLongValue as ProductLatLongValue, Product, PropertyValue as ProductPropertyValue,
@@ -79,7 +79,7 @@ use grid_sdk::{
 #[cfg(feature = "schema")]
 use grid_sdk::{
     protocol::schema::state::{PropertyDefinition, SchemaList},
-    schemas::{
+    schema::{
         addressing::GRID_SCHEMA_NAMESPACE,
         store::{PropertyDefinition as StorePropertyDefinition, Schema},
         DieselSchemaStore, SchemaStore,

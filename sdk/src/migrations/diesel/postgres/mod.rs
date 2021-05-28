@@ -16,7 +16,7 @@
 
 use crate::commits::store::diesel::schema::{chain_record::dsl::*, commits::dsl::*};
 #[cfg(feature = "location-store-postgres")]
-use crate::locations::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
+use crate::location::store::diesel::schema::{location::dsl::*, location_attribute::dsl::*};
 #[cfg(all(feature = "pike", feature = "location-store-postgres"))]
 use crate::pike::store::diesel::schema::pike_organization_location_assoc::dsl::*;
 #[cfg(feature = "pike")]
@@ -26,9 +26,9 @@ use crate::pike::store::diesel::schema::{
     pike_organization_metadata::dsl::*, pike_permissions::dsl::*, pike_role::dsl::*,
 };
 #[cfg(feature = "product-store-postgres")]
-use crate::products::store::diesel::schema::{product::dsl::*, product_property_value::dsl::*};
+use crate::product::store::diesel::schema::{product::dsl::*, product_property_value::dsl::*};
 #[cfg(feature = "schema-store-postgres")]
-use crate::schemas::store::diesel::schema::{
+use crate::schema::store::diesel::schema::{
     grid_property_definition::dsl::grid_property_definition, grid_schema::dsl::*,
 };
 #[cfg(feature = "track-and-trace")]

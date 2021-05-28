@@ -22,25 +22,25 @@ use crate::batches::store::diesel::DieselBatchStore;
 #[cfg(feature = "batch-store")]
 use crate::batches::BatchStore;
 #[cfg(all(feature = "diesel", feature = "location"))]
-use crate::locations::store::diesel::DieselLocationStore;
+use crate::location::store::diesel::DieselLocationStore;
 #[cfg(feature = "location")]
-use crate::locations::LocationStore;
+use crate::location::LocationStore;
 #[cfg(all(feature = "diesel", feature = "pike"))]
 use crate::pike::store::diesel::DieselPikeStore;
 #[cfg(feature = "pike")]
 use crate::pike::PikeStore;
 #[cfg(all(feature = "diesel", feature = "product"))]
-use crate::products::store::diesel::DieselProductStore;
+use crate::product::store::diesel::DieselProductStore;
 #[cfg(feature = "product")]
-use crate::products::ProductStore;
+use crate::product::ProductStore;
 #[cfg(all(feature = "diesel", feature = "purchase-order"))]
 use crate::purchase_order::store::diesel::DieselPurchaseOrderStore;
 #[cfg(feature = "purchase-order")]
 use crate::purchase_order::PurchaseOrderStore;
 #[cfg(all(feature = "diesel", feature = "schema"))]
-use crate::schemas::store::diesel::DieselSchemaStore;
+use crate::schema::store::diesel::DieselSchemaStore;
 #[cfg(feature = "schema")]
-use crate::schemas::SchemaStore;
+use crate::schema::SchemaStore;
 #[cfg(all(feature = "diesel", feature = "track-and-trace"))]
 use crate::track_and_trace::store::diesel::DieselTrackAndTraceStore;
 #[cfg(feature = "track-and-trace")]

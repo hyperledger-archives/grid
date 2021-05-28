@@ -33,7 +33,7 @@ use grid_sdk::protocol::schema::payload::{
 };
 use grid_sdk::protocol::schema::state::SchemaBuilder;
 use grid_sdk::protos::FromBytes;
-use grid_sdk::schemas::addressing::GRID_NAMESPACE;
+use grid_sdk::schema::addressing::GRID_NAMESPACE;
 
 use crate::payload::validate_payload;
 use crate::permissions::{permission_to_perm_string, Permission};
@@ -270,7 +270,7 @@ mod tests {
             },
         },
         protos::IntoBytes,
-        schemas::addressing::compute_schema_address,
+        schema::addressing::compute_schema_address,
     };
 
     use sawtooth_sdk::processor::handler::ApplyError;

@@ -16,7 +16,7 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 
 use crate::{
-    locations::store::{LocationStore, LocationStoreError},
+    location::store::{LocationStore, LocationStoreError},
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
 };
 

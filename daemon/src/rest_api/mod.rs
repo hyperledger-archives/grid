@@ -190,12 +190,12 @@ mod test {
         Record, ReportedValue, Reporter, TrackAndTraceStore,
     };
     use grid_sdk::{
-        locations::store::{
+        location::store::{
             diesel::DieselLocationStore, Location, LocationAttribute, LocationStore,
         },
         pike::store::{diesel::DieselPikeStore, Agent, Organization, PikeStore},
-        products::store::{diesel::DieselProductStore, Product, ProductStore, PropertyValue},
-        schemas::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
+        product::store::{diesel::DieselProductStore, Product, ProductStore, PropertyValue},
+        schema::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
     };
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{

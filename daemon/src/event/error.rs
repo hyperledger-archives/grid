@@ -19,9 +19,9 @@ use std::error::Error;
 use std::fmt;
 
 use grid_sdk::{
-    commits::store::CommitStoreError, locations::store::LocationStoreError,
-    pike::store::PikeStoreError, products::store::ProductStoreError,
-    schemas::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
+    commits::store::CommitStoreError, location::store::LocationStoreError,
+    pike::store::PikeStoreError, product::store::ProductStoreError,
+    schema::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
 };
 
 #[derive(Debug)]

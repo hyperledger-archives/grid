@@ -20,7 +20,7 @@ use std::{
 };
 
 use grid_sdk::{
-    locations::addressing::GRID_LOCATION_NAMESPACE,
+    location::addressing::GRID_LOCATION_NAMESPACE,
     pike::addressing::PIKE_NAMESPACE,
     protocol::{
         location::payload::{
@@ -31,7 +31,7 @@ use grid_sdk::{
         schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder},
     },
     protos::IntoProto,
-    schemas::addressing::GRID_SCHEMA_NAMESPACE,
+    schema::addressing::GRID_SCHEMA_NAMESPACE,
 };
 use reqwest::Client;
 use serde::Deserialize;

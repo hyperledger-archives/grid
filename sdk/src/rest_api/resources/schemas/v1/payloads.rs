@@ -14,7 +14,7 @@
 
 use crate::{
     rest_api::resources::paging::v1::Paging,
-    schemas::store::{PropertyDefinition, Schema},
+    schema::store::{PropertyDefinition, Schema},
 };
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -23,7 +23,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    locations::addressing::compute_gs1_location_address,
+    location::addressing::compute_gs1_location_address,
     pike::addressing::compute_organization_address,
     protocol::{
         location::state::{Location, LocationList, LocationListBuilder},
@@ -31,7 +31,7 @@ use grid_sdk::{
         schema::state::{Schema, SchemaList},
     },
     protos::{FromBytes, IntoBytes},
-    schemas::addressing::compute_schema_address,
+    schema::addressing::compute_schema_address,
 };
 
 pub struct LocationState<'a> {

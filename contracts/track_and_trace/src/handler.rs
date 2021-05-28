@@ -48,7 +48,7 @@ use grid_sdk::{
         },
     },
     protos::FromBytes,
-    schemas::addressing::GRID_NAMESPACE,
+    schema::addressing::GRID_NAMESPACE,
     track_and_trace::addressing::TRACK_AND_TRACE_NAMESPACE,
 };
 
@@ -1098,7 +1098,7 @@ mod tests {
             },
         },
         protos::IntoBytes,
-        schemas::addressing::compute_schema_address,
+        schema::addressing::compute_schema_address,
         track_and_trace::addressing::{
             make_property_address, make_proposal_address, make_record_address,
         },

@@ -29,7 +29,7 @@ cfg_if! {
 
 use grid_sdk::{
     permissions::PermissionChecker,
-    products::addressing::GRID_NAMESPACE,
+    product::addressing::GRID_NAMESPACE,
     protocol::product::{
         payload::{
             Action, ProductCreateAction, ProductDeleteAction, ProductPayload, ProductUpdateAction,
@@ -435,7 +435,7 @@ mod tests {
         pike::addressing::{
             compute_agent_address, compute_organization_address, compute_role_address,
         },
-        products::addressing::compute_gs1_product_address,
+        product::addressing::compute_gs1_product_address,
         protocol::{
             pike::state::{
                 AgentBuilder, AgentListBuilder, AlternateIdBuilder, OrganizationBuilder,
@@ -454,7 +454,7 @@ mod tests {
             },
         },
         protos::IntoBytes,
-        schemas::addressing::compute_schema_address,
+        schema::addressing::compute_schema_address,
     };
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};

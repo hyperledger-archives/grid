@@ -28,7 +28,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    locations::addressing::GRID_NAMESPACE,
+    location::addressing::GRID_NAMESPACE,
     permissions::PermissionChecker,
     protocol::location::{
         payload::{
@@ -438,7 +438,7 @@ mod tests {
             },
         },
         protos::IntoBytes,
-        schemas::addressing::compute_schema_address,
+        schema::addressing::compute_schema_address,
     };
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
