@@ -394,7 +394,7 @@ mod tests {
     use sawtooth_sdk::messages::events::Event_Attribute;
 
     #[cfg(feature = "schema")]
-    use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
+    use grid_sdk::schema::addressing::GRID_SCHEMA_NAMESPACE;
 
     #[cfg(feature = "product")]
     use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;

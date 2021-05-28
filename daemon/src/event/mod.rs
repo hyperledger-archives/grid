@@ -26,7 +26,7 @@ use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 
 cfg_if! {
     if #[cfg(feature = "schema")] {
-        use grid_sdk::schemas::addressing::GRID_NAMESPACE;
+        use grid_sdk::schema::addressing::GRID_NAMESPACE;
     } else if #[cfg(feature = "product")] {
         use grid_sdk::product::addressing::GRID_NAMESPACE;
     } else if #[cfg(feature = "location")] {

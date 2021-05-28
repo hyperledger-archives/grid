@@ -51,8 +51,8 @@ impl StoreFactory for SqliteStoreFactory {
     }
 
     #[cfg(all(feature = "diesel", feature = "schema-store-sqlite"))]
-    fn get_grid_schema_store(&self) -> Box<dyn crate::schemas::SchemaStore> {
-        Box::new(crate::schemas::DieselSchemaStore::new(self.pool.clone()))
+    fn get_grid_schema_store(&self) -> Box<dyn crate::schema::SchemaStore> {
+        Box::new(crate::schema::DieselSchemaStore::new(self.pool.clone()))
     }
 
     #[cfg(feature = "track-and-trace")]

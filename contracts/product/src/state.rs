@@ -31,7 +31,7 @@ use grid_sdk::{
         schema::state::{Schema, SchemaList},
     },
     protos::{FromBytes, IntoBytes},
-    schemas::addressing::compute_schema_address,
+    schema::addressing::compute_schema_address,
 };
 
 pub struct ProductState<'a> {

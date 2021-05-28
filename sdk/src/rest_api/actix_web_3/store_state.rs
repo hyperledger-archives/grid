@@ -38,9 +38,9 @@ use crate::purchase_order::store::diesel::DieselPurchaseOrderStore;
 #[cfg(feature = "purchase-order")]
 use crate::purchase_order::PurchaseOrderStore;
 #[cfg(all(feature = "diesel", feature = "schema"))]
-use crate::schemas::store::diesel::DieselSchemaStore;
+use crate::schema::store::diesel::DieselSchemaStore;
 #[cfg(feature = "schema")]
-use crate::schemas::SchemaStore;
+use crate::schema::SchemaStore;
 #[cfg(all(feature = "diesel", feature = "track-and-trace"))]
 use crate::track_and_trace::store::diesel::DieselTrackAndTraceStore;
 #[cfg(feature = "track-and-trace")]

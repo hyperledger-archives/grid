@@ -14,7 +14,7 @@
 
 use super::SchemaStoreOperations;
 
-use crate::schemas::{
+use crate::schema::{
     store::{
         diesel::schema::{grid_property_definition, grid_schema},
         error::SchemaStoreError,
@@ -27,7 +27,7 @@ use diesel::{
     prelude::*,
 };
 
-pub(in crate::schemas) trait AddSchemaOperation {
+pub(in crate::schema) trait AddSchemaOperation {
     fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError>;
 }
 

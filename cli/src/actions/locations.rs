@@ -31,7 +31,7 @@ use grid_sdk::{
         schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder},
     },
     protos::IntoProto,
-    schemas::addressing::GRID_SCHEMA_NAMESPACE,
+    schema::addressing::GRID_SCHEMA_NAMESPACE,
 };
 use reqwest::Client;
 use serde::Deserialize;

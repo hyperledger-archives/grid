@@ -21,7 +21,7 @@ use std::fmt;
 use grid_sdk::{
     commits::store::CommitStoreError, location::store::LocationStoreError,
     pike::store::PikeStoreError, product::store::ProductStoreError,
-    schemas::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
+    schema::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
 };
 
 #[derive(Debug)]

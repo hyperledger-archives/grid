@@ -195,7 +195,7 @@ mod test {
         },
         pike::store::{diesel::DieselPikeStore, Agent, Organization, PikeStore},
         product::store::{diesel::DieselProductStore, Product, ProductStore, PropertyValue},
-        schemas::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
+        schema::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
     };
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{

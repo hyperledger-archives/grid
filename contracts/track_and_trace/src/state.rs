@@ -33,7 +33,7 @@ use grid_sdk::{
         },
     },
     protos::{FromBytes, IntoBytes},
-    schemas::addressing::compute_schema_address,
+    schema::addressing::compute_schema_address,
     track_and_trace::addressing::*,
 };
 

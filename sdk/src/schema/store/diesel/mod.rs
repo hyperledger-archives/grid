@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(in crate::schemas) mod models;
+pub(in crate::schema) mod models;
 mod operations;
 pub(in crate) mod schema;
 

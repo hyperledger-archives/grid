@@ -15,7 +15,7 @@
 use super::SchemaStoreOperations;
 
 use crate::error::InternalError;
-use crate::schemas::{
+use crate::schema::{
     store::{
         diesel::{models::GridPropertyDefinition, schema::grid_property_definition},
         error::SchemaStoreError,
@@ -23,37 +23,26 @@ use crate::schemas::{
     },
     MAX_COMMIT_NUM,
 };
-use diesel::{prelude::*, result::Error::NotFound};
+use diesel::prelude::*;
 
-pub(in crate::schemas) trait GetPropertyDefinitionByNameOperation {
-    fn get_property_definition_by_name(
+pub(in crate::schema) trait ListPropertyDefinitionsOperation {
+    fn list_property_definitions(
         &self,
-        schema_name: &str,
-        definition_name: &str,
         service_id: Option<&str>,
-    ) -> Result<Option<PropertyDefinition>, SchemaStoreError>;
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> GetPropertyDefinitionByNameOperation
-    for SchemaStoreOperations<'a, diesel::pg::PgConnection>
-{
-    fn get_property_definition_by_name(
+impl<'a> ListPropertyDefinitionsOperation for SchemaStoreOperations<'a, diesel::pg::PgConnection> {
+    fn list_property_definitions(
         &self,
-        schema_name: &str,
-        definition_name: &str,
         service_id: Option<&str>,
-    ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
             let mut query = grid_property_definition::table
                 .into_boxed()
                 .select(grid_property_definition::all_columns)
-                .filter(
-                    grid_property_definition::schema_name
-                        .eq(&schema_name)
-                        .and(grid_property_definition::name.eq(&definition_name))
-                        .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
+                .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM));
 
             if let Some(service_id) = service_id {
                 query = query.filter(grid_property_definition::service_id.eq(service_id));
@@ -61,40 +50,39 @@ impl<'a> GetPropertyDefinitionByNameOperation
                 query = query.filter(grid_property_definition::service_id.is_null());
             }
 
-            let defn = query
-                .first::<GridPropertyDefinition>(self.conn)
-                .map(PropertyDefinition::from)
+            let defns = query
+                .load::<GridPropertyDefinition>(self.conn)
                 .map(Some)
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
                 .map_err(|err| {
                     SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
+                })?
+                .ok_or_else(|| {
+                    SchemaStoreError::NotFoundError(
+                        "Could not get all definitions from storage for schema".to_string(),
+                    )
+                })?
+                .into_iter()
+                .map(PropertyDefinition::from)
+                .collect();
 
-            Ok(defn)
+            Ok(defns)
         })
     }
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> GetPropertyDefinitionByNameOperation
+impl<'a> ListPropertyDefinitionsOperation
     for SchemaStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn get_property_definition_by_name(
+    fn list_property_definitions(
         &self,
-        schema_name: &str,
-        definition_name: &str,
         service_id: Option<&str>,
-    ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
             let mut query = grid_property_definition::table
                 .into_boxed()
                 .select(grid_property_definition::all_columns)
-                .filter(
-                    grid_property_definition::schema_name
-                        .eq(&schema_name)
-                        .and(grid_property_definition::name.eq(&definition_name))
-                        .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
+                .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM));
 
             if let Some(service_id) = service_id {
                 query = query.filter(grid_property_definition::service_id.eq(service_id));
@@ -102,16 +90,22 @@ impl<'a> GetPropertyDefinitionByNameOperation
                 query = query.filter(grid_property_definition::service_id.is_null());
             }
 
-            let defn = query
-                .first::<GridPropertyDefinition>(self.conn)
-                .map(PropertyDefinition::from)
+            let defns = query
+                .load::<GridPropertyDefinition>(self.conn)
                 .map(Some)
-                .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
                 .map_err(|err| {
                     SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
-                })?;
+                })?
+                .ok_or_else(|| {
+                    SchemaStoreError::NotFoundError(
+                        "Could not get all definitions from storage for schema".to_string(),
+                    )
+                })?
+                .into_iter()
+                .map(PropertyDefinition::from)
+                .collect();
 
-            Ok(defn)
+            Ok(defns)
         })
     }
 }

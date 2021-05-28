@@ -27,7 +27,7 @@ use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "purchase-order")]
 use grid_sdk::purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE;
 #[cfg(feature = "schema")]
-use grid_sdk::schemas::addressing::GRID_SCHEMA_NAMESPACE;
+use grid_sdk::schema::addressing::GRID_SCHEMA_NAMESPACE;
 
 use sabre_sdk::protocol::payload::{
     CreateContractActionBuilder, CreateContractRegistryActionBuilder,

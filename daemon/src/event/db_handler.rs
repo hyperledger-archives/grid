@@ -79,7 +79,7 @@ use grid_sdk::{
 #[cfg(feature = "schema")]
 use grid_sdk::{
     protocol::schema::state::{PropertyDefinition, SchemaList},
-    schemas::{
+    schema::{
         addressing::GRID_SCHEMA_NAMESPACE,
         store::{PropertyDefinition as StorePropertyDefinition, Schema},
         DieselSchemaStore, SchemaStore,

@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
-    schemas::store::{SchemaStore, SchemaStoreError},
+    schema::store::{SchemaStore, SchemaStoreError},
 };
 
 use super::payloads::{SchemaListSlice, SchemaSlice};

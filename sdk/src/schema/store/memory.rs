@@ -18,7 +18,7 @@ use std::{
 };
 
 use crate::error::InternalError;
-use crate::schemas::store::{Schema, SchemaStore, SchemaStoreError};
+use crate::schema::store::{Schema, SchemaStore, SchemaStoreError};
 
 #[derive(Clone, Default)]
 pub struct MemorySchemaStore {

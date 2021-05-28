@@ -26,7 +26,7 @@ use crate::pike::store::diesel::schema::{
 #[cfg(feature = "product-store-sqlite")]
 use crate::product::store::diesel::schema::{product::dsl::*, product_property_value::dsl::*};
 #[cfg(feature = "schema-store-sqlite")]
-use crate::schemas::store::diesel::schema::{
+use crate::schema::store::diesel::schema::{
     grid_property_definition::dsl::grid_property_definition, grid_schema::dsl::*,
 };
 #[cfg(feature = "track-and-trace")]

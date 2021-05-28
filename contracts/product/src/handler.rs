@@ -454,7 +454,7 @@ mod tests {
             },
         },
         protos::IntoBytes,
-        schemas::addressing::compute_schema_address,
+        schema::addressing::compute_schema_address,
     };
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};

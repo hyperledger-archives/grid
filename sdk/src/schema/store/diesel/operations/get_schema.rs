@@ -14,81 +14,70 @@
 
 use super::SchemaStoreOperations;
 
-use crate::{
-    paging::Paging,
-    schemas::{
-        store::{
-            diesel::{
-                models::{GridPropertyDefinition, GridSchema},
-                schema::{grid_property_definition, grid_schema},
-            },
-            error::SchemaStoreError,
-            PropertyDefinition, Schema, SchemaList,
+use crate::schema::{
+    store::{
+        diesel::{
+            models::{GridPropertyDefinition, GridSchema},
+            schema::{grid_property_definition, grid_schema},
         },
-        MAX_COMMIT_NUM,
+        error::SchemaStoreError,
+        PropertyDefinition, Schema,
     },
+    MAX_COMMIT_NUM,
 };
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in crate::schemas) trait ListSchemasOperation {
-    fn list_schemas(
+pub(in crate::schema) trait GetSchemaOperation {
+    fn get_schema(
         &self,
+        name: &str,
         service_id: Option<&str>,
-        offset: i64,
-        limit: i64,
-    ) -> Result<SchemaList, SchemaStoreError>;
+    ) -> Result<Option<Schema>, SchemaStoreError>;
 }
 
 #[cfg(feature = "postgres")]
-impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::pg::PgConnection> {
-    fn list_schemas(
+impl<'a> GetSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnection> {
+    fn get_schema(
         &self,
+        name: &str,
         service_id: Option<&str>,
-        offset: i64,
-        limit: i64,
-    ) -> Result<SchemaList, SchemaStoreError> {
+    ) -> Result<Option<Schema>, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
-            let (db_schemas, total) =
-                pg::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
+            let schema = if let Some(schema) = pg::get_grid_schema(&*self.conn, name, service_id)? {
+                schema
+            } else {
+                return Ok(None);
+            };
 
-            let mut schemas = Vec::new();
+            let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
 
-            for schema in db_schemas {
-                let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
+            let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
 
-                let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
-
-                schemas.push(Schema::from((schema, properties)));
-            }
-
-            Ok(SchemaList::new(schemas, Paging::new(offset, limit, total)))
+            Ok(Some(Schema::from((schema, properties))))
         })
     }
 }
 
 #[cfg(feature = "sqlite")]
-impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn list_schemas(
+impl<'a> GetSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn get_schema(
         &self,
+        name: &str,
         service_id: Option<&str>,
-        offset: i64,
-        limit: i64,
-    ) -> Result<SchemaList, SchemaStoreError> {
+    ) -> Result<Option<Schema>, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
-            let (db_schemas, total) =
-                sqlite::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
+            let schema =
+                if let Some(schema) = sqlite::get_grid_schema(&*self.conn, name, service_id)? {
+                    schema
+                } else {
+                    return Ok(None);
+                };
 
-            let mut schemas = Vec::new();
+            let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
 
-            for schema in db_schemas {
-                let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
+            let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
 
-                let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
-
-                schemas.push(Schema::from((schema, properties)));
-            }
-
-            Ok(SchemaList::new(schemas, Paging::new(offset, limit, total)))
+            Ok(Some(Schema::from((schema, properties))))
         })
     }
 }
@@ -97,18 +86,19 @@ impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqli
 mod pg {
     use super::*;
 
-    pub fn fetch_grid_schemas(
+    pub fn get_grid_schema(
         conn: &PgConnection,
+        name: &str,
         service_id: Option<&str>,
-        offset: i64,
-        limit: i64,
-    ) -> QueryResult<(Vec<GridSchema>, i64)> {
+    ) -> QueryResult<Option<GridSchema>> {
         let mut query = grid_schema::table
             .into_boxed()
             .select(grid_schema::all_columns)
-            .offset(offset)
-            .limit(limit)
-            .filter(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM));
+            .filter(
+                grid_schema::name
+                    .eq(name)
+                    .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
 
         if let Some(service_id) = service_id {
             query = query.filter(grid_schema::service_id.eq(service_id));
@@ -116,19 +106,10 @@ mod pg {
             query = query.filter(grid_schema::service_id.is_null());
         }
 
-        let mut count_query = grid_schema::table
-            .into_boxed()
-            .select(grid_schema::all_columns);
-
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(grid_schema::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(grid_schema::service_id.is_null());
-        }
-
-        let total = count_query.count().get_result(conn)?;
-
-        query.load(conn).map(|list| (list, total))
+        query
+            .first(conn)
+            .map(Some)
+            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
     }
 
     pub fn get_root_definitions(
@@ -176,18 +157,19 @@ mod pg {
 mod sqlite {
     use super::*;
 
-    pub fn fetch_grid_schemas(
+    pub fn get_grid_schema(
         conn: &SqliteConnection,
+        name: &str,
         service_id: Option<&str>,
-        offset: i64,
-        limit: i64,
-    ) -> QueryResult<(Vec<GridSchema>, i64)> {
+    ) -> QueryResult<Option<GridSchema>> {
         let mut query = grid_schema::table
             .into_boxed()
             .select(grid_schema::all_columns)
-            .offset(offset)
-            .limit(limit)
-            .filter(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM));
+            .filter(
+                grid_schema::name
+                    .eq(name)
+                    .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
 
         if let Some(service_id) = service_id {
             query = query.filter(grid_schema::service_id.eq(service_id));
@@ -195,19 +177,10 @@ mod sqlite {
             query = query.filter(grid_schema::service_id.is_null());
         }
 
-        let mut count_query = grid_schema::table
-            .into_boxed()
-            .select(grid_schema::all_columns);
-
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(grid_schema::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(grid_schema::service_id.is_null());
-        }
-
-        let total = count_query.count().get_result(conn)?;
-
-        query.load(conn).map(|list| (list, total))
+        query
+            .first(conn)
+            .map(Some)
+            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
     }
 
     pub fn get_root_definitions(
