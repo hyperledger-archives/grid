@@ -71,7 +71,8 @@ fn run() -> Result<(), DaemonError> {
         (@arg database_url: --("database-url") +takes_value
          "specifies the database URL to connect to.")
         (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
-        (@arg admin_key_dir: --("admin-key-dir") +takes_value "directory containing the Scabbard admin key files"));
+        (@arg admin_key_dir: --("admin-key-dir") +takes_value
+            "directory containing the Scabbard admin key files"));
 
     #[cfg(feature = "integration")]
     {
@@ -115,7 +116,8 @@ fn run() -> Result<(), DaemonError> {
             }
             #[cfg(not(feature = "sawtooth-support"))]
             Err(DaemonError::with_message(&format!(
-                "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not enabled for this binary.",
+                "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not \
+                enabled for this binary.",
                 config.endpoint().url()
             )))
         }
@@ -127,7 +129,8 @@ fn run() -> Result<(), DaemonError> {
             }
             #[cfg(not(feature = "splinter-support"))]
             Err(DaemonError::with_message(&format!(
-                "A Splinter connection endpoint ({}) was provided but Splinter support is not enabled for this binary.",
+                "A Splinter connection endpoint ({}) was provided but Splinter support is not \
+                enabled for this binary.",
                 config.endpoint().url()
             )))
         }

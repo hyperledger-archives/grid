@@ -97,7 +97,18 @@ purchase-order = ["pike"]
 rest-api = ["database"]
 sawtooth-support = ["database", "event", "rest-api"]
 schema = ["pike"]
-splinter-support = ["database", "event", "rest-api", "reqwest", "scabbard", "sabre-sdk", "splinter", "transact/contract-archive", "serde_json", "serde"]
+splinter-support = [
+  "database",
+  "event",
+  "reqwest",
+  "rest-api",
+  "sabre-sdk",
+  "scabbard",
+  "serde_json",
+  "serde",
+  "splinter",
+  "transact/contract-archive",
+]
 test-postgres = []
 track-and-trace = []
 integration = []
