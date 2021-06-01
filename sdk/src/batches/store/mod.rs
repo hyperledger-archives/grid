@@ -13,13 +13,16 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub mod diesel;
+pub(in crate) mod diesel;
 mod error;
 
 use chrono::NaiveDateTime;
 
 use crate::hex;
 use crate::paging::Paging;
+
+#[cfg(feature = "diesel")]
+pub use self::diesel::DieselBatchStore;
 pub use error::BatchStoreError;
 
 #[derive(Clone, Debug, PartialEq)]

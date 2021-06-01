@@ -186,16 +186,14 @@ mod test {
     };
     #[cfg(feature = "track-and-trace")]
     use grid_sdk::track_and_trace::store::{
-        diesel::DieselTrackAndTraceStore, AssociatedAgent, LatLongValue, Property, Proposal,
-        Record, ReportedValue, Reporter, TrackAndTraceStore,
+        AssociatedAgent, DieselTrackAndTraceStore, LatLongValue, Property, Proposal, Record,
+        ReportedValue, Reporter, TrackAndTraceStore,
     };
     use grid_sdk::{
-        location::store::{
-            diesel::DieselLocationStore, Location, LocationAttribute, LocationStore,
-        },
-        pike::store::{diesel::DieselPikeStore, Agent, Organization, PikeStore},
-        product::store::{diesel::DieselProductStore, Product, ProductStore, PropertyValue},
-        schema::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
+        location::store::{DieselLocationStore, Location, LocationAttribute, LocationStore},
+        pike::store::{Agent, DieselPikeStore, Organization, PikeStore},
+        product::store::{DieselProductStore, Product, ProductStore, PropertyValue},
+        schema::store::{DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
     };
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{

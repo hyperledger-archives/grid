@@ -17,34 +17,34 @@ use std::sync::Arc;
 #[cfg(feature = "diesel")]
 use diesel::r2d2::{ConnectionManager, Pool};
 
-#[cfg(all(feature = "diesel", feature = "batch-store"))]
-use crate::batches::store::diesel::DieselBatchStore;
 #[cfg(feature = "batch-store")]
-use crate::batches::BatchStore;
+use crate::batches::store::BatchStore;
+#[cfg(all(feature = "diesel", feature = "batch-store"))]
+use crate::batches::store::DieselBatchStore;
 #[cfg(all(feature = "diesel", feature = "location"))]
-use crate::location::store::diesel::DieselLocationStore;
+use crate::location::store::DieselLocationStore;
 #[cfg(feature = "location")]
-use crate::location::LocationStore;
+use crate::location::store::LocationStore;
 #[cfg(all(feature = "diesel", feature = "pike"))]
-use crate::pike::store::diesel::DieselPikeStore;
+use crate::pike::store::DieselPikeStore;
 #[cfg(feature = "pike")]
-use crate::pike::PikeStore;
+use crate::pike::store::PikeStore;
 #[cfg(all(feature = "diesel", feature = "product"))]
-use crate::product::store::diesel::DieselProductStore;
+use crate::product::store::DieselProductStore;
 #[cfg(feature = "product")]
-use crate::product::ProductStore;
+use crate::product::store::ProductStore;
 #[cfg(all(feature = "diesel", feature = "purchase-order"))]
-use crate::purchase_order::store::diesel::DieselPurchaseOrderStore;
+use crate::purchase_order::store::DieselPurchaseOrderStore;
 #[cfg(feature = "purchase-order")]
-use crate::purchase_order::PurchaseOrderStore;
+use crate::purchase_order::store::PurchaseOrderStore;
 #[cfg(all(feature = "diesel", feature = "schema"))]
-use crate::schema::store::diesel::DieselSchemaStore;
+use crate::schema::store::DieselSchemaStore;
 #[cfg(feature = "schema")]
-use crate::schema::SchemaStore;
+use crate::schema::store::SchemaStore;
 #[cfg(all(feature = "diesel", feature = "track-and-trace"))]
-use crate::track_and_trace::store::diesel::DieselTrackAndTraceStore;
+use crate::track_and_trace::store::DieselTrackAndTraceStore;
 #[cfg(feature = "track-and-trace")]
-use crate::track_and_trace::TrackAndTraceStore;
+use crate::track_and_trace::store::TrackAndTraceStore;
 
 #[derive(Clone)]
 pub struct StoreState {

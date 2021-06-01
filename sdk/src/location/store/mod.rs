@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub mod diesel;
+pub(in crate) mod diesel;
 mod error;
 
 use crate::paging::Paging;
 
+#[cfg(feature = "diesel")]
+pub use self::diesel::DieselLocationStore;
 pub use error::LocationStoreError;
 
 /// Represents a Grid Location

@@ -14,7 +14,3 @@
 
 pub mod addressing;
 pub mod store;
-
-#[cfg(feature = "diesel")]
-pub use store::diesel::DieselTrackAndTraceStore;
-pub use store::TrackAndTraceStore;

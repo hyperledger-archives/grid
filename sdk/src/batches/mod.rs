@@ -13,7 +13,3 @@
 // limitations under the License.
 
 pub mod store;
-
-#[cfg(feature = "diesel")]
-pub use store::diesel::DieselBatchStore;
-pub use store::BatchStore;

@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub mod diesel;
+pub(in crate) mod diesel;
 mod error;
 
 use crate::paging::Paging;
 
+#[cfg(feature = "diesel")]
+pub use self::diesel::DieselPurchaseOrderStore;
 pub use error::PurchaseOrderStoreError;
 
 /// Represents a list of Grid Purchase Orders

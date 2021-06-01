@@ -17,35 +17,47 @@ pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 
-use crate::error::InternalError;
-
 use std::str::FromStr;
 
 #[cfg(feature = "diesel")]
 use diesel::r2d2::{ConnectionManager, Pool};
 
+#[cfg(feature = "batch-store")]
+use crate::batches::store::BatchStore;
+use crate::commits::store::CommitStore;
+use crate::error::InternalError;
+#[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
+use crate::location::store::LocationStore;
+#[cfg(feature = "pike")]
+use crate::pike::store::PikeStore;
+#[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
+use crate::product::store::ProductStore;
+#[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
+use crate::schema::store::SchemaStore;
+#[cfg(feature = "track-and-trace")]
+use crate::track_and_trace::store::TrackAndTraceStore;
+
 /// An abstract factory for creating Grid stores backed by the same storage
 pub trait StoreFactory {
     /// Get a new `CommitStore`
-    fn get_grid_commit_store(&self) -> Box<dyn crate::commits::CommitStore>;
+    fn get_grid_commit_store(&self) -> Box<dyn CommitStore>;
     /// Get a new `PikeStore`
     #[cfg(feature = "pike")]
-    fn get_grid_pike_store(&self) -> Box<dyn crate::pike::PikeStore>;
+    fn get_grid_pike_store(&self) -> Box<dyn PikeStore>;
     /// Get a new `LocationStore`
     #[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
-    fn get_grid_location_store(&self) -> Box<dyn crate::location::LocationStore>;
+    fn get_grid_location_store(&self) -> Box<dyn LocationStore>;
     /// Get a new `ProductStore`
     #[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
-    fn get_grid_product_store(&self) -> Box<dyn crate::product::ProductStore>;
+    fn get_grid_product_store(&self) -> Box<dyn ProductStore>;
     /// Get a new `SchemaStore`
     #[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
-    fn get_grid_schema_store(&self) -> Box<dyn crate::schema::SchemaStore>;
+    fn get_grid_schema_store(&self) -> Box<dyn SchemaStore>;
     /// Get a new `TrackAndTraceStore`
     #[cfg(feature = "track-and-trace")]
-    fn get_grid_track_and_trace_store(&self)
-        -> Box<dyn crate::track_and_trace::TrackAndTraceStore>;
+    fn get_grid_track_and_trace_store(&self) -> Box<dyn TrackAndTraceStore>;
     #[cfg(feature = "batch-store")]
-    fn get_batch_store(&self) -> Box<dyn crate::batches::BatchStore>;
+    fn get_batch_store(&self) -> Box<dyn BatchStore>;
 }
 
 /// Creates a `StoreFactory` backed by the given connection
