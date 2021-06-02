@@ -32,7 +32,7 @@ path = "src/main.rs"
 assert_cmd = "1.0"
 clap = "2"
 diesel = { version = "1.0", features = ["postgres"], optional = true }
-cylinder = "0.2"
+cylinder = { version = "0.2.2", features = ["key-load"] }
 libc = "0.2"
 log = "0.4"
 flexi_logger = "0.14"

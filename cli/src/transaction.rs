@@ -22,6 +22,7 @@ use crypto::sha2::Sha512;
 
 use protobuf::Message;
 
+use cylinder::Signer;
 use sabre_sdk::protocol::payload::ExecuteContractActionBuilder;
 use sabre_sdk::protos::IntoBytes;
 use sawtooth_sdk::messages::batch::Batch;
@@ -29,9 +30,6 @@ use sawtooth_sdk::messages::batch::BatchHeader;
 use sawtooth_sdk::messages::batch::BatchList;
 use sawtooth_sdk::messages::transaction::Transaction;
 use sawtooth_sdk::messages::transaction::TransactionHeader;
-use sawtooth_sdk::signing;
-
-use crate::key;
 
 use crate::CliError;
 
@@ -50,36 +48,40 @@ const SABRE_NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
 const SABRE_CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 const SABRE_CONTRACT_PREFIX: &str = "00ec02";
 
-pub fn schema_batch_builder(key: Option<String>) -> BatchBuilder {
-    BatchBuilder::new(GRID_SCHEMA_FAMILY_NAME, GRID_SCHEMA_FAMILY_VERSION, key)
+pub fn schema_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
+    BatchBuilder::new(GRID_SCHEMA_FAMILY_NAME, GRID_SCHEMA_FAMILY_VERSION, signer)
 }
 
-pub fn pike_batch_builder(key: Option<String>) -> BatchBuilder {
-    BatchBuilder::new(PIKE_FAMILY_NAME, PIKE_FAMILY_VERSION, key)
+pub fn pike_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
+    BatchBuilder::new(PIKE_FAMILY_NAME, PIKE_FAMILY_VERSION, signer)
 }
 
-pub fn product_batch_builder(key: Option<String>) -> BatchBuilder {
-    BatchBuilder::new(GRID_PRODUCT_FAMILY_NAME, GRID_PRODUCT_FAMILY_VERSION, key)
+pub fn product_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
+    BatchBuilder::new(
+        GRID_PRODUCT_FAMILY_NAME,
+        GRID_PRODUCT_FAMILY_VERSION,
+        signer,
+    )
 }
 
-pub fn location_batch_builder(key: Option<String>) -> BatchBuilder {
-    BatchBuilder::new("grid_location", "1", key)
+pub fn location_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
+    BatchBuilder::new("grid_location", "1", signer)
 }
 
 #[derive(Clone)]
 pub struct BatchBuilder {
     family_name: String,
     family_version: String,
-    key_name: Option<String>,
+    signer: Box<dyn Signer>,
     batches: Vec<Batch>,
 }
 
 impl BatchBuilder {
-    pub fn new(family_name: &str, family_version: &str, key_name: Option<String>) -> BatchBuilder {
+    pub fn new(family_name: &str, family_version: &str, signer: Box<dyn Signer>) -> BatchBuilder {
         BatchBuilder {
             family_name: family_name.to_string(),
             family_version: family_version.to_string(),
-            key_name,
+            signer,
             batches: Vec::new(),
         }
     }
@@ -142,11 +144,10 @@ impl BatchBuilder {
         }
         output_addresses.append(&mut outputs.to_vec());
 
-        let private_key = key::load_signing_key(self.key_name.clone())?;
-        let context = signing::create_context("secp256k1")?;
-        let public_key = context.get_public_key(&private_key)?.as_hex();
-        let factory = signing::CryptoFactory::new(&*context);
-        let signer = factory.new_signer(&private_key);
+        let public_key = self
+            .signer
+            .public_key()
+            .map_err(|err| CliError::ActionError(err.to_string()))?;
 
         let mut txn = Transaction::new();
         let mut txn_header = TransactionHeader::new();
@@ -154,8 +155,8 @@ impl BatchBuilder {
         txn_header.set_family_name(SABRE_FAMILY_NAME.into());
         txn_header.set_family_version(SABRE_FAMILY_VERSION.into());
         txn_header.set_nonce(create_nonce());
-        txn_header.set_signer_public_key(public_key.clone());
-        txn_header.set_batcher_public_key(public_key.clone());
+        txn_header.set_signer_public_key(public_key.as_hex());
+        txn_header.set_batcher_public_key(public_key.as_hex());
 
         txn_header.set_inputs(protobuf::RepeatedField::from_vec(input_addresses));
         txn_header.set_outputs(protobuf::RepeatedField::from_vec(output_addresses));
@@ -172,7 +173,11 @@ impl BatchBuilder {
         txn.set_header(txn_header_bytes.clone());
 
         let b: &[u8] = &txn_header_bytes;
-        txn.set_header_signature(signer.sign(b)?);
+        let header_signature = self
+            .signer
+            .sign(b)
+            .map_err(|err| CliError::ActionError(err.to_string()))?;
+        txn.set_header_signature(header_signature.as_hex());
 
         let mut batch = Batch::new();
         let mut batch_header = BatchHeader::new();
@@ -180,13 +185,17 @@ impl BatchBuilder {
         batch_header.set_transaction_ids(protobuf::RepeatedField::from_vec(vec![txn
             .header_signature
             .clone()]));
-        batch_header.set_signer_public_key(public_key);
+        batch_header.set_signer_public_key(public_key.as_hex());
         batch.set_transactions(protobuf::RepeatedField::from_vec(vec![txn]));
 
         let batch_header_bytes = batch_header.write_to_bytes()?;
         batch.set_header(batch_header_bytes.clone());
 
-        batch.set_header_signature(signer.sign(&batch_header_bytes)?);
+        let batch_header_signature = self
+            .signer
+            .sign(&batch_header_bytes)
+            .map_err(|err| CliError::ActionError(err.to_string()))?;
+        batch.set_header_signature(batch_header_signature.as_hex());
 
         self.batches.push(batch);
 

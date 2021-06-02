@@ -20,6 +20,7 @@ use crate::yaml_parser::{
     parse_value_as_boolean, parse_value_as_data_type, parse_value_as_i32, parse_value_as_sequence,
     parse_value_as_string, parse_value_as_vec_string,
 };
+use cylinder::Signer;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
@@ -201,13 +202,13 @@ pub fn get_schema(
 
 pub fn do_create_schemas(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     path: &str,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payloads = parse_yaml(path, Action::SchemaCreate(SchemaCreateAction::default()))?;
-    let mut batch_list_builder = schema_batch_builder(key);
+    let mut batch_list_builder = schema_batch_builder(signer);
     for payload in payloads {
         batch_list_builder = batch_list_builder.add_transaction(
             &payload.into_proto()?,
@@ -226,13 +227,13 @@ pub fn do_create_schemas(
 
 pub fn do_update_schemas(
     url: &str,
-    key: Option<String>,
+    signer: Box<dyn Signer>,
     wait: u64,
     path: &str,
     service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payloads = parse_yaml(path, Action::SchemaUpdate(SchemaUpdateAction::default()))?;
-    let mut batch_list_builder = schema_batch_builder(key);
+    let mut batch_list_builder = schema_batch_builder(signer);
     for payload in payloads {
         batch_list_builder = batch_list_builder.add_transaction(
             &payload.into_proto()?,
