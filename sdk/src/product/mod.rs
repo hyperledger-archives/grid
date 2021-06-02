@@ -13,7 +13,6 @@
 // limitations under the License.
 
 pub mod addressing;
-#[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
 pub mod store;
 
 pub const MAX_COMMIT_NUM: i64 = i64::MAX;
