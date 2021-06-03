@@ -53,9 +53,6 @@ FLAGS
 OPTIONS
 =======
 
-`--owner`
-: Organization ID of the owner
-
 `--namespace`
 : Namespace of the product (default: "GS1")
 
