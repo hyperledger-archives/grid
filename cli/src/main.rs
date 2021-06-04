@@ -305,16 +305,6 @@ fn run() -> Result<(), CliError> {
                         SubCommand::with_name("list")
                             .about("List all agents for a given service")
                             .arg(
-                                Arg::with_name("service_id")
-                                    .long("service-id")
-                                    .takes_value(true)
-                                    .help(
-                                        "The ID of the service the payload should be \
-                                    sent to; required if running on Splinter. Format \
-                                    <circuit-id>::<service-id>",
-                                    ),
-                            )
-                            .arg(
                                 Arg::with_name("format")
                                     .short("F")
                                     .long("format")
