@@ -1170,10 +1170,24 @@ fn run() -> Result<(), CliError> {
                             .takes_value(true)
                             .help("Workflow status of this Purchase Order version"),
                     )
-                    .arg(Arg::with_name("draft").long("draft").help(
-                        "Specify this Purchase Order version is not a draft. \
-                        By default, a newly created version is a draft.",
-                    ))
+                    .arg(
+                        Arg::with_name("draft")
+                            .long("draft")
+                            .conflicts_with("not-draft")
+                            .help(
+                                "Specify this Purchase Order version is a draft. \
+                                By default, a newly created version is a draft.",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("not_draft")
+                            .long("not-draft")
+                            .conflicts_with("draft")
+                            .help(
+                                "Specify this Purchase Order version is not a draft. \
+                                By default, a newly created version is a draft.",
+                            ),
+                    )
                     .arg(
                         Arg::with_name("order_xml")
                             .value_name("file")
