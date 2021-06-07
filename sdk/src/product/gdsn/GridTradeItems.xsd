@@ -22,7 +22,7 @@
     </xsd:annotation>
 
     <!-- Trade Item Module-->
-    <xsd:import namespace="urn:gs1:gdsn:trade_item:xsd:3" schemaLocation="http://www.gs1globalregistry.net/3.1/schemas/gs1/gdsn/TradeItem.xsd"/>
+    <xsd:import namespace="urn:gs1:gdsn:trade_item:xsd:3" schemaLocation="http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/TradeItem.xsd"/>
 
     <!-- Product attributes -->
     <xsd:element name="gridTradeItems" type="gridTradeItems"/>
