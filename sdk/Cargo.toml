@@ -138,7 +138,7 @@ schema = ["pike"]
 schema-store-postgres = ["postgres"]
 schema-store-sqlite = ["sqlite"]
 track-and-trace = ["base64"]
-batch-processor = ["batch-store", "backend", "log", "uuid"]
+batch-processor = ["batch-store", "backend", "log", "reqwest", "uuid"]
 batch-store = ["chrono"]
 
 postgres = ["chrono", "diesel/postgres", "diesel_migrations", "log"]
