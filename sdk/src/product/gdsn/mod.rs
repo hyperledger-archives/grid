@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod error;
-pub mod validate;
+mod validate;
 
 use std::io::{Cursor, Read};
 
