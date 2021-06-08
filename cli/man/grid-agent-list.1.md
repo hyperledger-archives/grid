@@ -25,34 +25,33 @@ agents corresponding to that `service_id` will be shown.
 FLAGS
 =====
 
+`-F`, `--format`
+: Specifies the output format of the list. Possible values for formatting are `human` and `csv`. Defaults to `human`.
+
 `-h`, `--help`
 : Prints help information
 
-`-k`, `--key`
-: Base name for private key file
+`--line-per-role`
+: Displays agent information for each role on it's own line. Useful when filtering by role.
 
 `-q`, `--quiet`
 : Do not display output
-
-`--service-id`
-: The ID of the service the payload should be sent to; required if running on
-Splinter. Format <circuit-id>::<service-id>
 
 `-V`, `--version`
 : Prints version information
 
 `-v`
-: Increases verbosity (the opposite of `-q`). Specify multiple times for more
-output
+: Increases verbosity (the opposite of `-q`). Specify multiple times for more output
 
+OPTIONS
+=======
+
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
+  
 `--url`
 : URL for the REST API
-
-`--line-per-role`
-: Displays agent information for each role on it's own line. Useful when filtering by role.
-
-`-F`, `--format=FORMAT`
-: Specifies the output format of the list. Possible values for formatting are `human` and `csv`. Defaults to `human`.
 
 EXAMPLES
 ========
@@ -86,11 +85,10 @@ ENVIRONMENT VARIABLES
 =====================
 
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========
