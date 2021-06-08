@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod error;
+mod error;
 pub mod validate;
 
 use std::io::{Cursor, Read};
@@ -35,7 +35,7 @@ use crate::protocol::{
     },
     schema::state::{DataType, PropertyValueBuilder},
 };
-use error::ProductGdsnError;
+pub use error::ProductGdsnError;
 use validate::validate_product_definitons;
 
 // Name of the property where GDSN 3.1 XML data will be stored
