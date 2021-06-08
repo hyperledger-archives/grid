@@ -84,6 +84,13 @@ stable = [
     "rest-api-endpoint-product",
     "rest-api-endpoint-role",
     "rest-api-endpoint-schema",
+    "rest-api-resources-agent",
+    "rest-api-resources-batches",
+    "rest-api-resources-location",
+    "rest-api-resources-organization",
+    "rest-api-resources-product",
+    "rest-api-resources-role",
+    "rest-api-resources-schema",
     "schema",
 ]
 
@@ -109,6 +116,9 @@ experimental = [
     "rest-api-endpoint-purchase-order",
     "rest-api-endpoint-record",
     "rest-api-endpoint-submit",
+    "rest-api-resources-purchase-order",
+    "rest-api-resources-submit",
+    "rest-api-resources-track-and-trace",
     "sawtooth-compat",
     "schema-store-postgres",
     "schema-store-sqlite",
@@ -153,24 +163,27 @@ rest-api-actix-web-3 = [
     "url"
 ]
 rest-api-actix-web-3-run = ["rest-api-endpoint-submit"]
-rest-api-endpoint-agent = ["pike"]
-rest-api-endpoint-batches = ["backend"]
-rest-api-endpoint-location = ["location"]
-rest-api-endpoint-organization = ["pike"]
-rest-api-endpoint-product = ["product"]
-rest-api-endpoint-purchase-order = ["purchase-order"]
-rest-api-endpoint-record = ["track-and-trace"]
-rest-api-endpoint-role = ["pike"]
-rest-api-endpoint-schema = ["schema"]
-rest-api-endpoint-submit = ["batch-store"]
-rest-api-resources = [
-    "cylinder",
-    "log",
-    "reqwest",
-    "rest-api",
-    "sabre-sdk",
-    "url"
-]
+rest-api-endpoint-agent = ["pike", "rest-api-resources-agent"]
+rest-api-endpoint-batches = ["backend", "rest-api-resources-batches"]
+rest-api-endpoint-location = ["location", "rest-api-resources-location"]
+rest-api-endpoint-organization = ["pike", "rest-api-resources-organization"]
+rest-api-endpoint-product = ["product", "rest-api-resources-product"]
+rest-api-endpoint-purchase-order = ["purchase-order", "rest-api-resources-purchase-order"]
+rest-api-endpoint-record = ["rest-api-resources-track-and-trace", "track-and-trace"]
+rest-api-endpoint-role = ["pike", "rest-api-resources-role"]
+rest-api-endpoint-schema = ["rest-api-resources-schema", "schema"]
+rest-api-endpoint-submit = ["batch-store", "rest-api-resources-submit"]
+rest-api-resources = ["rest-api"]
+rest-api-resources-agent = ["pike", "rest-api-resources", "serde_json"]
+rest-api-resources-batches = ["backend", "rest-api-resources"]
+rest-api-resources-location = ["location", "rest-api-resources"]
+rest-api-resources-organization = ["pike", "rest-api-resources"]
+rest-api-resources-product = ["product", "rest-api-resources"]
+rest-api-resources-purchase-order = ["purchase-order", "rest-api-resources"]
+rest-api-resources-role = ["pike", "rest-api-resources"]
+rest-api-resources-schema = ["rest-api-resources", "schema"]
+rest-api-resources-submit = ["batch-store", "cylinder", "rest-api-resources", "sabre-sdk"]
+rest-api-resources-track-and-trace = ["rest-api-resources", "track-and-trace"]
 sawtooth-compat = [
     "sabre-sdk",
     "sawtooth-sdk"
