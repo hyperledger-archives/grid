@@ -6,33 +6,36 @@
   https://creativecommons.org/licenses/by/4.0/
 -->
 
-# NAME
+NAME
+====
 
 **grid-agent-show** — Show the details of a specific agent
 
-# SYNOPSIS
+SYNOPSIS
+========
 
-**grid agent show** \[**FLAGS**\] \[**OPTIONS**\] <public_key>
+**grid agent show** \[**FLAGS**\] \[**OPTIONS**\] <PUBLIC_KEY>
 
-# DESCRIPTION
+DESCRIPTION
+===========
 
 Show the complete details of a specific agent. This command requires the
-`<public_key>` argument to specify the unique identifier for the agent that is to be retrieved.
+`PUBLIC_KEY` argument to specify the unique identifier for the agent that is to be retrieved.
 
-# FLAGS
+ARGS
+====
+
+`PUBLIC_KEY`
+: A public key that is used as an unique identifier for agents
+
+FLAGS
+=====
 
 `-h`, `--help`
 : Prints help information
 
-`-k`, `--key`
-: Base name for private key file
-
 `-q`, `--quiet`
 : Do not display output
-
-`--service-id`
-: The ID of the service the payload should be sent to; required if running on
-Splinter. Format <circuit-id>::<service-id>
 
 `-V`, `--version`
 : Prints version information
@@ -41,15 +44,18 @@ Splinter. Format <circuit-id>::<service-id>
 : Increases verbosity (the opposite of `-q`). Specify multiple times for more
 output
 
+OPTIONS
+=======
+
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
+
 `--url`
 : URL for the REST API
 
-# ARGS
-
-`<public_key>`
-: A public key that is used as an unique identifier for agents
-
-# EXAMPLES
+EXAMPLES
+========
 
 The command
 
@@ -70,16 +76,17 @@ Metadata:
     field2: value2
 ```
 
-# ENVIRONMENT VARIABLES
+ENVIRONMENT VARIABLES
+=====================
 
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
-# SEE ALSO
+SEE ALSO
+========
 
 | `grid organization(1)`
 | `grid agent(1)`
