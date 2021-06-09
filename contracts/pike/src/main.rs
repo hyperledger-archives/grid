@@ -41,6 +41,7 @@ cfg_if! {
 
 pub mod handler;
 pub mod permissions;
+pub mod state;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), CliError> {
