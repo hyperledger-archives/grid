@@ -105,6 +105,7 @@ splinter-support = [
   "cylinder/key-load",
   "database",
   "event",
+  "grid-sdk/backend-splinter",
   "reqwest",
   "rest-api",
   "sabre-sdk",
