@@ -47,7 +47,7 @@ dirs = "3"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
 diesel_migrations = "1.4"
-whoami = "0.7.0"
+whoami = "1"
 
 [features]
 default = [
