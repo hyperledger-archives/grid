@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(any(
+    feature = "batch-store",
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "purchase-order",
+    feature = "schema",
+    feature = "track-and-trace",
+))]
 use std::sync::Arc;
 
 #[cfg(feature = "diesel")]
@@ -65,6 +74,7 @@ pub struct StoreState {
 }
 
 #[allow(clippy::redundant_clone)]
+#[allow(unused_variables)]
 #[cfg(feature = "postgres")]
 impl StoreState {
     pub fn with_pg_pool(
