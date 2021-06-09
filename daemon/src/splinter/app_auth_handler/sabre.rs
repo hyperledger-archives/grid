@@ -90,6 +90,10 @@ pub fn setup_grid(
     #[cfg(feature = "pike")]
     make_pike_txns(&mut txns, &version, &signer)?;
 
+    // Make schema transactions
+    #[cfg(feature = "schema")]
+    make_schema_txns(&mut txns, &version, &signer)?;
+
     // Make Product transactions
     #[cfg(feature = "product")]
     make_product_txns(&mut txns, &version, &signer)?;
@@ -97,10 +101,6 @@ pub fn setup_grid(
     // Make Location transactions
     #[cfg(feature = "location")]
     make_location_txns(&mut txns, &version, &signer)?;
-
-    // Make schema transactions
-    #[cfg(feature = "schema")]
-    make_schema_txns(&mut txns, &version, &signer)?;
 
     // Make Purchase Order transactions
     #[cfg(feature = "purchase-order")]
@@ -126,7 +126,7 @@ fn make_pike_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let pike_contract =
-        SmartContractArchive::from_scar_file("grid_pike", &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file("grid-pike", &version, &default_scar_path())?;
     let pike_contract_registry_txn = CreateContractRegistryActionBuilder::new()
         .with_name(String::from(&pike_contract.metadata.name))
         .with_owners(vec![bytes_to_hex_str(signer.public_key())])
