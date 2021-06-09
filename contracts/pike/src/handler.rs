@@ -309,7 +309,7 @@ impl<'a> PikeState<'a> {
             },
             None => OrganizationList::new(),
         };
-        // remove old agent if it exists and sort the agents by public key
+        // remove old organization if it exists and sort the organizations by org ID
         let organizations = organization_list.get_organizations().to_vec();
         let mut index = None;
         for (i, organization) in organizations.iter().enumerate() {
