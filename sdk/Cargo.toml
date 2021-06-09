@@ -61,7 +61,7 @@ tempfile = "3"
 
 [build-dependencies]
 protoc-rust = "2.14"
-glob = "0.2"
+glob = "0.3"
 
 [features]
 default = []
