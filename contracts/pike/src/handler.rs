@@ -80,13 +80,12 @@ impl<'a> PikeState<'a> {
                         )));
                     }
                 };
-
-                for role in roles.roles() {
-                    if role.name() == name && role.org_id() == org_id {
-                        return Ok(Some(role.clone()));
-                    }
-                }
-                Ok(None)
+                let role = roles
+                    .roles()
+                    .iter()
+                    .find(|role| role.name() == name && role.org_id() == org_id)
+                    .map(ToOwned::to_owned);
+                Ok(role)
             }
             None => Ok(None),
         }
@@ -207,13 +206,12 @@ impl<'a> PikeState<'a> {
                         )))
                     }
                 };
-
-                for agent in agents.get_agents() {
-                    if agent.public_key == public_key {
-                        return Ok(Some(agent.clone()));
-                    }
-                }
-                Ok(None)
+                let agent = agents
+                    .get_agents()
+                    .iter()
+                    .find(|agent| agent.public_key == public_key)
+                    .map(ToOwned::to_owned);
+                Ok(agent)
             }
             None => Ok(None),
         }
@@ -278,13 +276,12 @@ impl<'a> PikeState<'a> {
                             )))
                         }
                     };
-
-                for org in orgs.get_organizations() {
-                    if org.org_id == id {
-                        return Ok(Some(org.clone()));
-                    }
-                }
-                Ok(None)
+                let org = orgs
+                    .get_organizations()
+                    .iter()
+                    .find(|org| org.org_id == id)
+                    .map(ToOwned::to_owned);
+                Ok(org)
             }
             None => Ok(None),
         }
@@ -360,14 +357,12 @@ impl<'a> PikeState<'a> {
                             )));
                         }
                     };
-
-                for entry in entries.entries() {
-                    if entry.id_type() == id_type && entry.id() == id {
-                        return Ok(Some(entry.clone()));
-                    }
-                }
-
-                Ok(None)
+                let entry = entries
+                    .entries()
+                    .iter()
+                    .find(|entry| entry.id_type() == id_type && entry.id() == id)
+                    .map(ToOwned::to_owned);
+                Ok(entry)
             }
             None => Ok(None),
         }
