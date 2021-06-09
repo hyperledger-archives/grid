@@ -90,6 +90,10 @@ pub fn setup_grid(
     #[cfg(feature = "pike")]
     make_pike_txns(&mut txns, &version, &signer)?;
 
+    // Make schema transactions
+    #[cfg(feature = "schema")]
+    make_schema_txns(&mut txns, &version, &signer)?;
+
     // Make Product transactions
     #[cfg(feature = "product")]
     make_product_txns(&mut txns, &version, &signer)?;
@@ -97,10 +101,6 @@ pub fn setup_grid(
     // Make Location transactions
     #[cfg(feature = "location")]
     make_location_txns(&mut txns, &version, &signer)?;
-
-    // Make schema transactions
-    #[cfg(feature = "schema")]
-    make_schema_txns(&mut txns, &version, &signer)?;
 
     // Make Purchase Order transactions
     #[cfg(feature = "purchase-order")]
