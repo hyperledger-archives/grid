@@ -124,20 +124,59 @@ impl BatchList {
 }
 
 pub trait BatchStore: Send + Sync {
+    /// Adds a batch to the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `batch` - The batch to be added
     fn add_batch(&self, batch: Batch) -> Result<(), BatchStoreError>;
 
+    /// Fetches a batch from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The id of the batch to fetch
     fn get_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError>;
 
+    ///  Lists batches from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
     fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError>;
 
+    /// Fetches batches from the underlying storage that have either an expired
+    /// or `null` `claim_expires` value. This then extends that value a
+    /// specified number of seconds into the future. The updated batches are
+    /// then returned.
+    ///
+    /// # Arguments
+    ///
+    ///  * `limit` - The number of items to retrieve
+    ///  * `secs_claim_is_valid` - The number of seconds to extend the claims'
+    ///     validity
     fn get_unclaimed_batches(
         &self,
         limit: i64,
         secs_claim_is_valid: i64,
     ) -> Result<Vec<BatchSubmitInfo>, BatchStoreError>;
 
+    ///  Updates a batch's status to submitted in the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The id of the batch to update
     fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError>;
 
+    ///  Updates a batch's submission error status with the appropriate error
+    /// info if submission fails
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The id of the batch to update
+    ///  * `error` - The error type
+    ///  * `error_message` - The explanation of the error
     fn update_submission_error_info(
         &self,
         id: &str,
@@ -145,5 +184,10 @@ pub trait BatchStore: Send + Sync {
         error_message: &str,
     ) -> Result<(), BatchStoreError>;
 
+    ///  Updates a batch's claim status to reflect relinquishing a claim
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The id of the batch to update
     fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError>;
 }
