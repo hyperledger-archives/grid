@@ -46,6 +46,9 @@ use grid_sdk::{
 use crate::permissions::{permission_to_perm_string, Permission};
 use crate::state::PikeState;
 
+const PIKE_FAMILY_NAME: &str = "pike";
+const PIKE_FAMILY_VERSION: &str = "2";
+
 pub struct PikeTransactionHandler {
     family_name: String,
     family_versions: Vec<String>,
@@ -56,8 +59,8 @@ impl PikeTransactionHandler {
     #[allow(clippy::new_without_default)]
     pub fn new() -> PikeTransactionHandler {
         PikeTransactionHandler {
-            family_name: "pike".to_string(),
-            family_versions: vec!["2".to_string()],
+            family_name: PIKE_FAMILY_NAME.to_string(),
+            family_versions: vec![PIKE_FAMILY_VERSION.to_string()],
             namespaces: vec![PIKE_NAMESPACE.to_string()],
         }
     }
