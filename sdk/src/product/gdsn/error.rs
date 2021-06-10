@@ -17,6 +17,7 @@ use std::fmt;
 
 use crate::error::{InternalError, InvalidArgumentError};
 
+/// An error that can occur in the handling of GDSN XML data
 #[derive(Debug)]
 pub enum ProductGdsnError {
     Internal(InternalError),

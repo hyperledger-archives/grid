@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod error;
-pub mod validate;
+mod error;
+mod validate;
 
 use std::io::{Cursor, Read};
 
@@ -35,18 +35,20 @@ use crate::protocol::{
     },
     schema::state::{DataType, PropertyValueBuilder},
 };
-use error::ProductGdsnError;
+pub use error::ProductGdsnError;
 use validate::validate_product_definitons;
 
 // Name of the property where GDSN 3.1 XML data will be stored
 pub const GDSN_3_1_PROPERTY_NAME: &str = "GDSN_3_1";
 
 #[derive(Debug, Deserialize, PartialEq)]
+// Struct used for serde deserialization of the GDSN XML elements
 pub struct GridTradeItems {
     #[serde(rename = "tradeItem")]
     pub trade_items: Vec<TradeItem>,
 }
 
+// Representation of a GDSN trade item, including the GTIN and GDSN XML element
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct TradeItem {
     pub gtin: String,
