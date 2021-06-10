@@ -113,6 +113,8 @@ experimental = [
     "schema-store-postgres",
     "schema-store-sqlite",
     "sqlite",
+    "test-postgres",
+    "test-sqlite",
     "track-and-trace",
     "workflow"
 ]
@@ -137,6 +139,8 @@ product-store-sqlite = ["sqlite"]
 schema = ["pike"]
 schema-store-postgres = ["postgres"]
 schema-store-sqlite = ["sqlite"]
+test-postgres = ["postgres", "diesel"]
+test-sqlite = ["sqlite", "diesel"]
 track-and-trace = ["base64"]
 batch-processor = ["batch-store", "backend", "log", "uuid"]
 batch-store = ["chrono"]

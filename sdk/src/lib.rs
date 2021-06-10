@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Required due to a bug in rust-protobuf: https://github.com/stepancheg/rust-protobuf/issues/331
-#![allow(renamed_and_removed_lints)]
-
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -64,6 +61,8 @@ pub mod rest_api;
 #[cfg(feature = "schema")]
 pub mod schema;
 pub mod store;
+#[cfg(any(feature = "test-postgres", feature = "test-sqlite"))]
+pub mod testing;
 #[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;
 #[cfg(feature = "workflow")]
