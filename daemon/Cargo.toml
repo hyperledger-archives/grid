@@ -37,7 +37,7 @@ byteorder = "1"
 cfg-if = "0.1"
 clap = "2"
 ctrlc = "3.0"
-cylinder = "0.2"
+cylinder = "0.2.2"
 diesel = { version = "1.0.0", features = ["r2d2", "serde_json"] }
 diesel_migrations = "1.4"
 flexi_logger = "0.14"
@@ -102,8 +102,10 @@ rest-api = ["database"]
 sawtooth-support = ["database", "event", "rest-api"]
 schema = ["pike"]
 splinter-support = [
+  "cylinder/key-load",
   "database",
   "event",
+  "grid-sdk/backend-splinter",
   "reqwest",
   "rest-api",
   "sabre-sdk",

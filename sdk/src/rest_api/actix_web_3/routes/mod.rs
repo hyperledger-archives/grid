@@ -54,4 +54,16 @@ pub use schemas::*;
 #[cfg(feature = "rest-api-endpoint-submit")]
 pub use submit::*;
 
+#[cfg(any(
+    feature = "rest-api-endpoint-agent",
+    feature = "rest-api-endpoint-batches",
+    feature = "rest-api-endpoint-location",
+    feature = "rest-api-endpoint-organization",
+    feature = "rest-api-endpoint-product",
+    feature = "rest-api-endpoint-purchase-order",
+    feature = "rest-api-endpoint-record",
+    feature = "rest-api-endpoint-role",
+    feature = "rest-api-endpoint-schema",
+    feature = "rest-api-endpoint-submit",
+))]
 pub(in crate::rest_api) const DEFAULT_GRID_PROTOCOL_VERSION: &str = "1";

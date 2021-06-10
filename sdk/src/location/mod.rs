@@ -13,5 +13,4 @@
 // limitations under the License.
 
 pub mod addressing;
-#[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
 pub mod store;
