@@ -1,4 +1,4 @@
-// Copyright 2018 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ cfg_if! {
 
 pub mod handler;
 pub mod permissions;
+pub mod state;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), CliError> {
