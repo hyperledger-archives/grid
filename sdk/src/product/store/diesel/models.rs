@@ -14,6 +14,11 @@
 
 use chrono::NaiveDateTime;
 
+use crate::product::{
+    store::{LatLongValue, Product as GridProduct, PropertyValue},
+    MAX_COMMIT_NUM,
+};
+
 use super::schema::{product, product_property_value};
 
 #[derive(Clone, Insertable, Debug)]
@@ -81,4 +86,131 @@ pub struct ProductPropertyValue {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
+}
+
+impl From<GridProduct> for (NewProduct, Vec<NewProductPropertyValue>) {
+    fn from(product: GridProduct) -> Self {
+        let new_product = NewProduct {
+            product_id: product.product_id.clone(),
+            product_address: product.product_address.clone(),
+            product_namespace: product.product_namespace.clone(),
+            owner: product.owner.clone(),
+            start_commit_num: product.start_commit_num,
+            end_commit_num: product.end_commit_num,
+            service_id: product.service_id.clone(),
+        };
+
+        (new_product, make_property_values(None, &product.properties))
+    }
+}
+
+impl From<(Product, Vec<PropertyValue>)> for GridProduct {
+    fn from((model, properties): (Product, Vec<PropertyValue>)) -> Self {
+        Self {
+            product_id: model.product_id,
+            product_address: model.product_address,
+            product_namespace: model.product_namespace,
+            owner: model.owner,
+            start_commit_num: model.start_commit_num,
+            end_commit_num: model.end_commit_num,
+            service_id: model.service_id,
+            last_updated: model.last_updated.map(|d| d.timestamp()),
+            properties,
+        }
+    }
+}
+
+fn make_property_values(
+    parent_property: Option<String>,
+    properties: &[PropertyValue],
+) -> Vec<NewProductPropertyValue> {
+    let mut model_properties: Vec<NewProductPropertyValue> = Vec::new();
+
+    for property in properties {
+        model_properties.push(NewProductPropertyValue {
+            product_id: property.product_id.clone(),
+            product_address: property.product_address.clone(),
+            property_name: property.property_name.clone(),
+            parent_property: parent_property.clone(),
+            data_type: property.data_type.clone(),
+            bytes_value: property.bytes_value.clone(),
+            boolean_value: property.boolean_value,
+            number_value: property.number_value,
+            string_value: property.string_value.clone(),
+            enum_value: property.enum_value,
+            latitude_value: property.lat_long_value.clone().map(|l| l.latitude),
+            longitude_value: property.lat_long_value.clone().map(|l| l.longitude),
+            start_commit_num: property.start_commit_num,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id: property.service_id.clone(),
+        });
+
+        if !property.struct_values.is_empty() {
+            model_properties.append(&mut make_property_values(
+                Some(format!(
+                    "{}:{}",
+                    property.product_id, property.property_name
+                )),
+                &property.struct_values,
+            ));
+        }
+    }
+
+    model_properties
+}
+
+impl From<ProductPropertyValue> for PropertyValue {
+    fn from(model: ProductPropertyValue) -> Self {
+        Self {
+            product_id: model.product_id,
+            product_address: model.product_address,
+            property_name: model.property_name,
+            data_type: model.data_type,
+            bytes_value: model.bytes_value,
+            boolean_value: model.boolean_value,
+            number_value: model.number_value,
+            string_value: model.string_value,
+            enum_value: model.enum_value,
+            struct_values: vec![],
+            lat_long_value: if model.latitude_value.is_some() && model.longitude_value.is_some() {
+                Some(LatLongValue {
+                    latitude: model.latitude_value.unwrap(),
+                    longitude: model.longitude_value.unwrap(),
+                })
+            } else {
+                None
+            },
+            start_commit_num: model.start_commit_num,
+            end_commit_num: model.end_commit_num,
+            service_id: model.service_id,
+        }
+    }
+}
+
+impl From<(ProductPropertyValue, Vec<PropertyValue>)> for PropertyValue {
+    fn from((model, children): (ProductPropertyValue, Vec<PropertyValue>)) -> Self {
+        Self {
+            product_id: model.product_id,
+            product_address: model.product_address,
+            property_name: model.property_name,
+            data_type: model.data_type,
+            bytes_value: model.bytes_value,
+            boolean_value: model.boolean_value,
+            number_value: model.number_value,
+            string_value: model.string_value,
+            enum_value: model.enum_value,
+            struct_values: children,
+            lat_long_value: if model.latitude_value.is_some() && model.longitude_value.is_some() {
+                Some(LatLongValue {
+                    latitude: model.latitude_value.unwrap(),
+                    longitude: model.longitude_value.unwrap(),
+                })
+            } else {
+                None
+            },
+            start_commit_num: model.start_commit_num,
+            end_commit_num: model.end_commit_num,
+            service_id: model.service_id,
+        }
+    }
 }
