@@ -59,7 +59,7 @@ extern "C" {
 ///
 /// * `xml_path` - The path to an XML file containing GDSN trade item definitions
 ///
-pub fn validate_product_definitons(xml_path: &str) -> Result<(), ProductGdsnError> {
+pub fn validate_product_definitions(xml_path: &str) -> Result<(), ProductGdsnError> {
     let schema = load_schema();
     let path = CString::new(xml_path)
         .map_err(|err| ProductGdsnError::Internal(InternalError::from_source(Box::new(err))))?;
