@@ -72,14 +72,32 @@ pub struct LatLongValue {
 }
 
 pub trait ProductStore: Send + Sync {
+    /// Adds a product to the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `product` - The product to be added
     fn add_product(&self, product: Product) -> Result<(), ProductStoreError>;
 
+    /// Gets a product from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `product_id` - The ID of the product to be fetched
+    ///  * `service_id` - The service ID to fetch the product for
     fn get_product(
         &self,
         product_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Product>, ProductStoreError>;
 
+    /// Gets a list of products from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `service_id` - The service ID to fetch the product for
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
     fn list_products(
         &self,
         service_id: Option<&str>,
@@ -87,6 +105,13 @@ pub trait ProductStore: Send + Sync {
         limit: i64,
     ) -> Result<ProductList, ProductStoreError>;
 
+    /// Updates a product in the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `product` - The updated product
+    ///  * `service_id` - The service ID to fetch the product for
+    ///  * `current_commit_num` - The current commit height
     fn update_product(
         &self,
         product_id: &str,
@@ -94,6 +119,12 @@ pub trait ProductStore: Send + Sync {
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError>;
 
+    /// Deletes a product from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `address` - The address of the record to be deleted
+    ///  * `current_commit_num` - The current commit height
     fn delete_product(
         &self,
         address: &str,
