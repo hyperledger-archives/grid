@@ -12,21 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides addressing functionality for Pike.
+
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
 
+/// Namespace for Pike objects, prefixes addresses
 pub const PIKE_NAMESPACE: &str = "621dee05";
 
+/// Address prefix representing Pike agents
 pub const AGENT_PREFIX: &str = "00";
+/// Namespace specific to Pike agents
 pub const PIKE_AGENT_NAMESPACE: &str = "621dee0500";
 
+/// Address prefix representing Pike organizations
 pub const ORG_PREFIX: &str = "01";
+/// Namespace specific to Pike organizations
 pub const PIKE_ORGANIZATION_NAMESPACE: &str = "621dee0501";
 
+/// Address prefix representing Pike roles
 pub const ROLE_PREFIX: &str = "02";
+/// Namespace specific to Pike roles
 pub const PIKE_ROLE_NAMESPACE: &str = "621dee0502";
 
+/// Address prefix representing Pike alternate IDs
 pub const ALTERNATE_ID_INDEX_ENTRY_PREFIX: &str = "03";
+/// Namespace specific to Pike alternate IDs
 pub const PIKE_ALTERNATE_ID_INDEX_ENTRY_NAMESPACE: &str = "621dee0503";
 
 /// Computes the address a Pike Agent is stored at based on its public_key

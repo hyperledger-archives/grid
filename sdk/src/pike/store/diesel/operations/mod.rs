@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides database operations for the `DieselPikeStore`.
+
 pub(super) mod add_agent;
 pub(super) mod add_organization;
 pub(super) mod add_role;

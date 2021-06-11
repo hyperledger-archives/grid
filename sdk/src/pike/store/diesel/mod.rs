@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Database backend support for the PikeStore, powered by
+//! [`Diesel`](https://crates.io/crates/diesel).
+//!
+//! This module contains the [`DieselPikeStore`], which provides an implementation of the
+//! [`PikeStore`] trait.
+//!
+//! [`DieselPikeStore`]: struct.DieselPikeStore.html
+//! [`PikeStore`]: ../trait.PikeStore.html
+
 pub mod models;
 mod operations;
 pub(in crate) mod schema;

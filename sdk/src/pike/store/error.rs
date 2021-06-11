@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Types for errors that can be raised while using a `PikeStore`
+
 #[cfg(feature = "diesel")]
 use diesel::r2d2::PoolError;
 #[cfg(feature = "diesel")]

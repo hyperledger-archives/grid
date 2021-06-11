@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides the "add organization" operation for the `DieselPikeStore`.
+
 use super::PikeStoreOperations;
 use crate::pike::store::diesel::{
     schema::{
