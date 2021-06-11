@@ -36,7 +36,7 @@ use crate::protocol::{
     schema::state::{DataType, PropertyValueBuilder},
 };
 pub use error::ProductGdsnError;
-use validate::validate_product_definitons;
+use validate::validate_product_definitions;
 
 // Name of the property where GDSN 3.1 XML data will be stored
 pub const GDSN_3_1_PROPERTY_NAME: &str = "GDSN_3_1";
@@ -126,7 +126,7 @@ pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGds
         ))
     })?;
 
-    validate_product_definitons(path)?;
+    validate_product_definitions(path)?;
 
     let mut reader = Reader::from_str(&xml_str);
     reader.trim_text(true);
