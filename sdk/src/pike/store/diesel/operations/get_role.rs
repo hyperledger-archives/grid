@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides the "get role" operation for the `DieselPikeStore`.
+
 use super::PikeStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;

@@ -12,6 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Data store for writing and reading Pike smart contract state.
+//!
+//! The [`PikeStore`] trait provides the public interface for storing Pike agents, organizations
+//! and roles Grid provides the following implementations:
+//!
+//! * [`DieselPikeStore`] - A database-backed store, powered by [`Diesel`], that currently
+//!   supports SQLite databases (with the `sqlite` feature) and PostgreSQL databases (with the
+//!   `postgres` feature).
+//!
+//! [`PikeStore`]: trait.PikeStore.html
+//! [`DieselPikeStore`]: diesel/struct.DieselPikeStore.html
+//! [`Diesel`]: https://crates.io/crates/diesel
+
 #[cfg(feature = "diesel")]
 pub(in crate) mod diesel;
 mod error;
