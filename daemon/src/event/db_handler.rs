@@ -211,26 +211,27 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                 match op {
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Agents(agents) => {
-                        debug!("Inserting {} agents", agents.len());
+                        debug!("Inserting {} agent(s)", agents.len());
                         agents
                             .into_iter()
                             .try_for_each(|agent| self.pike_store.add_agent(agent))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
-                        debug!("Inserting {} organizations", orgs.len());
+                        debug!("Inserting {} organization(s)", orgs.len());
                         orgs.into_iter()
                             .try_for_each(|org| self.pike_store.add_organization(org))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Roles(roles) => {
-                        debug!("Inserting {} roles", roles.len());
+                        debug!("Inserting {} role(s)", roles.len());
                         roles
                             .into_iter()
                             .try_for_each(|role| self.pike_store.add_role(role))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::RemoveRole(ref address, current_commit_num) => {
+                        debug!("Removing role at address {}", address);
                         self.pike_store.delete_role(address, current_commit_num)?;
                     }
                     #[cfg(feature = "schema")]
@@ -395,26 +396,27 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
                 match op {
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Agents(agents) => {
-                        debug!("Inserting {} agents", agents.len());
+                        debug!("Inserting {} agent(s)", agents.len());
                         agents
                             .into_iter()
                             .try_for_each(|agent| self.pike_store.add_agent(agent))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
-                        debug!("Inserting {} organizations", orgs.len());
+                        debug!("Inserting {} organization(s)", orgs.len());
                         orgs.into_iter()
                             .try_for_each(|org| self.pike_store.add_organization(org))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Roles(roles) => {
-                        debug!("Inserting {} roles", roles.len());
+                        debug!("Inserting {} role(s)", roles.len());
                         roles
                             .into_iter()
                             .try_for_each(|role| self.pike_store.add_role(role))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::RemoveRole(ref address, current_commit_num) => {
+                        debug!("Removing role at address {}", &address);
                         self.pike_store.delete_role(address, current_commit_num)?;
                     }
 
