@@ -14,7 +14,13 @@ NAME
 SYNOPSIS
 ========
 
-**grid agent create** \[**FLAGS**\] \[**OPTIONS**\] ORG_ID PUBLIC_KEY --active --inactive
+**grid agent create** \[**FLAGS**\] \[**OPTIONS**\] <ORG_ID> <PUBLIC_KEY> <{**--active**|**--inactive**}>
+
+DESCRIPTION
+===========
+
+This command creates a new agent. ORG_ID and PUBLIC_KEY arguments are required, 
+as well as the --active or --inactive flag.
 
 ARGS
 ====
@@ -40,21 +46,28 @@ FLAGS
 `-v`
 : Log verbosely
 
+`--active`
+: sets agent as active. conflicts with `--inactive`
+
+`--inactive`
+: sets agent as inactive. conflicts with `--active`
+
 OPTIONS
 =======
 
 `-k`, `--key`
-: Base name for private signing key file
+: base name or path to a private signing key file
 
 `--metadata`
 : Key-value pairs (format: <key>=<value>) in a comma-separated list
 
 `--role`
-: Roles assigned to the agent
+: Roles assigned to the agent. Multiple roles can be assigned in a 
+  comma-separated list.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
-Splinter. Format <circuit-id>::<service-id>
+  Splinter. Format <circuit-id>::<service-id>.
 
 `--url`
 : URL for the REST API
@@ -65,16 +78,18 @@ Splinter. Format <circuit-id>::<service-id>
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========
