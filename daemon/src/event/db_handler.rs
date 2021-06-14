@@ -120,6 +120,7 @@ pub struct DatabaseEventHandler<C: diesel::Connection + 'static> {
     tnt_store: DieselTrackAndTraceStore<C>,
 }
 
+#[cfg(feature = "database-postgres")]
 impl DatabaseEventHandler<diesel::pg::PgConnection> {
     pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> Self {
         let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
@@ -151,6 +152,7 @@ impl DatabaseEventHandler<diesel::pg::PgConnection> {
     }
 }
 
+#[cfg(feature = "database-postgres")]
 impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
         debug!("Received commit event: {}", event);
