@@ -61,8 +61,6 @@ pub mod rest_api;
 #[cfg(feature = "schema")]
 pub mod schema;
 pub mod store;
-#[cfg(any(feature = "test-postgres", feature = "test-sqlite"))]
-pub mod testing;
 #[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;
 #[cfg(feature = "workflow")]
