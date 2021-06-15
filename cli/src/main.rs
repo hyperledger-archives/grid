@@ -73,6 +73,30 @@ const GRID_SERVICE_ID: &str = "GRID_SERVICE_ID";
 
 const SYSTEM_KEY_PATH: &str = "/etc/grid/keys";
 
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order"
+))]
+const AFTER_HELP_WITHOUT_KEY: &str = r"ENV:
+    GRID_DAEMON_ENDPOINT   Specifies a default value for --url
+    GRID_SERVICE_ID        Specifies a default value for --service-id";
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order"
+))]
+const AFTER_HELP_WITH_KEY: &str = r"ENV:
+    CYLINDER_PATH          Path to search for private signing keys
+    GRID_DAEMON_ENDPOINT   Specifies a default value for --url
+    GRID_DAEMON_KEY        Specifies a default value for -k, --key
+    GRID_SERVICE_ID        Specifies a default value for --service-id";
+
 // log format for cli that will only show the log message
 pub fn log_format(
     w: &mut dyn std::io::Write,
@@ -229,7 +253,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed")
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY)
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -289,7 +314,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed")
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                     )
                     .subcommand(
                         SubCommand::with_name("show")
@@ -300,6 +326,7 @@ fn run() -> Result<(), CliError> {
                                     .required(true)
                                     .help("Public Key and unique identifier for agents"),
                             )
+                            .after_help(AFTER_HELP_WITHOUT_KEY),
                     )
                     .subcommand(
                         SubCommand::with_name("list")
@@ -329,6 +356,7 @@ fn run() -> Result<(), CliError> {
                                     .help("Displays agent information for each role on it's own \
                                         line. Useful when filtering by role.")
                             )
+                            .after_help(AFTER_HELP_WITHOUT_KEY),
                     ),
         )
         .subcommand(
@@ -394,7 +422,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed")
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -448,7 +477,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed")
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
         )
         .subcommand(
@@ -541,7 +571,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed")
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -615,7 +646,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed")
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("delete")
@@ -644,7 +676,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed")
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("show")
@@ -660,7 +693,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .required(true)
                                 .help("Name of role"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("list")
@@ -671,6 +705,7 @@ fn run() -> Result<(), CliError> {
                                 .required(true)
                                 .help("Org ID of role"),
                         )
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
                 ),
         );
     }
@@ -720,7 +755,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -743,9 +779,14 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
-                .subcommand(SubCommand::with_name("list").about("List currently defined schemas"))
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("List currently defined schemas")
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
+                )
                 .subcommand(
                     SubCommand::with_name("show")
                         .about("Show schema specified by name argument")
@@ -754,7 +795,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .required(true)
                                 .help("Name of schema"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
                 ),
         );
     }
@@ -846,7 +888,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -905,7 +948,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("delete")
@@ -934,9 +978,14 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
-                .subcommand(SubCommand::with_name("list").about("List currently defined products"))
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("List currently defined products")
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
+                )
                 .subcommand(
                     SubCommand::with_name("show")
                         .about("Show product specified by ID argument")
@@ -945,7 +994,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .required(true)
                                 .help("ID of product"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
                 ),
         );
     }
@@ -1030,7 +1080,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -1080,7 +1131,8 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("delete")
@@ -1109,12 +1161,14 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
-                .subcommand(SubCommand::with_name("list").about(
-                    "List currently defined \
-                    locations",
-                ))
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("List currently defined locations")
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
+                )
                 .subcommand(
                     SubCommand::with_name("show")
                         .about("Show locations specified by ID argument")
@@ -1123,7 +1177,8 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .required(true)
                                 .help("Unique identifier for location"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
                 ),
         );
     }
@@ -1212,7 +1267,8 @@ fn run() -> Result<(), CliError> {
                             .long("url")
                             .takes_value(true)
                             .help("URL for the REST API"),
-                    ),
+                    )
+                    .after_help(AFTER_HELP_WITH_KEY),
             )
             .subcommand(
                 SubCommand::with_name("update")
@@ -1278,7 +1334,8 @@ fn run() -> Result<(), CliError> {
                             .long("url")
                             .takes_value(true)
                             .help("URL for the REST API"),
-                    ),
+                    )
+                    .after_help(AFTER_HELP_WITH_KEY),
             )
             .subcommand(
                 SubCommand::with_name("list")
@@ -1334,7 +1391,8 @@ fn run() -> Result<(), CliError> {
                             .long("url")
                             .takes_value(true)
                             .help("URL for the REST API"),
-                    ),
+                    )
+                    .after_help(AFTER_HELP_WITHOUT_KEY),
             );
 
         app = app.subcommand(
@@ -1407,7 +1465,8 @@ fn run() -> Result<(), CliError> {
                                 .long("url")
                                 .takes_value(true)
                                 .help("URL for the REST API"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("list")
@@ -1467,7 +1526,8 @@ fn run() -> Result<(), CliError> {
                                 .long("url")
                                 .takes_value(true)
                                 .help("URL for the REST API"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("update")
@@ -1561,7 +1621,8 @@ fn run() -> Result<(), CliError> {
                                 .long("url")
                                 .takes_value(true)
                                 .help("URL for the REST API"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
                     SubCommand::with_name("show")
@@ -1629,7 +1690,8 @@ fn run() -> Result<(), CliError> {
                                 .long("url")
                                 .takes_value(true)
                                 .help("URL for the REST API"),
-                        ),
+                        )
+                        .after_help(AFTER_HELP_WITHOUT_KEY),
                 ),
         );
     }
