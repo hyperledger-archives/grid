@@ -13,4 +13,5 @@
 // limitations under the License.
 
 pub mod addressing;
+pub mod permissions;
 pub mod store;

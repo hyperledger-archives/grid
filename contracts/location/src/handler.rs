@@ -29,7 +29,7 @@ cfg_if! {
 
 use grid_sdk::{
     location::addressing::GRID_NAMESPACE,
-    permissions::PermissionChecker,
+    pike::permissions::PermissionChecker,
     protocol::location::{
         payload::{
             Action, LocationCreateAction, LocationDeleteAction, LocationNamespace, LocationPayload,

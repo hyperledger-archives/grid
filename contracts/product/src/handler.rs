@@ -28,7 +28,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    permissions::PermissionChecker,
+    pike::permissions::PermissionChecker,
     product::addressing::GRID_NAMESPACE,
     protocol::product::{
         payload::{

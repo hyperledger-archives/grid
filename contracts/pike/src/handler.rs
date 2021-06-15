@@ -30,8 +30,8 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    permissions::PermissionChecker,
     pike::addressing::PIKE_NAMESPACE,
+    pike::permissions::PermissionChecker,
     protocol::pike::state::{AlternateIdIndexEntryBuilder, RoleBuilder},
     protos::{
         pike_payload::{
