@@ -47,8 +47,6 @@ pub mod location;
 pub mod migrations;
 pub mod paging;
 #[cfg(feature = "pike")]
-pub mod permissions;
-#[cfg(feature = "pike")]
 pub mod pike;
 #[cfg(feature = "product")]
 pub mod product;
