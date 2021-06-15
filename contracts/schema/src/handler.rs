@@ -27,7 +27,7 @@ cfg_if! {
     }
 }
 
-use grid_sdk::permissions::PermissionChecker;
+use grid_sdk::pike::permissions::PermissionChecker;
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaPayload, SchemaUpdateAction,
 };

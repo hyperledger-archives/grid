@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2019-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,71 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::error::Error;
-use std::fmt;
+pub mod error;
+use crate::pike::addressing::{compute_agent_address, compute_role_address};
+use crate::pike::permissions::error::PermissionCheckerError;
+use crate::protocol::pike::state::{Agent, AgentList, Role, RoleList};
+use crate::protos::FromBytes;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        use sabre_sdk::WasmSdkError as ContextError;
         use sabre_sdk::TransactionContext;
     } else {
-        use sawtooth_sdk::processor::handler::ContextError;
         use sawtooth_sdk::processor::handler::TransactionContext;
     }
 }
-
-use crate::pike::addressing::{compute_agent_address, compute_role_address};
-use crate::protocol::pike::state::{Agent, AgentList, Role, RoleList};
-use crate::protos::{FromBytes, ProtoConversionError};
-
-#[derive(Debug)]
-pub enum PermissionCheckerError {
-    /// Returned for an error originating at the TransactionContext.
-    Context(ContextError),
-    /// Returned for an invalid agent public key.
-    InvalidPublicKey(String),
-    /// Returned for an invalid role.
-    InvalidRole(String),
-    /// Returned for an error in the protobuf data.
-    ProtoConversion(ProtoConversionError),
-}
-
-impl fmt::Display for PermissionCheckerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            PermissionCheckerError::Context(ref e) => e.fmt(f),
-            PermissionCheckerError::InvalidPublicKey(ref msg) => {
-                write!(f, "InvalidPublicKey: {}", msg)
-            }
-            PermissionCheckerError::InvalidRole(ref msg) => write!(f, "InvalidRole: {}", msg),
-            PermissionCheckerError::ProtoConversion(ref e) => e.fmt(f),
-        }
-    }
-}
-
-impl Error for PermissionCheckerError {
-    fn cause(&self) -> Option<&dyn Error> {
-        match *self {
-            PermissionCheckerError::Context(_) => None,
-            PermissionCheckerError::InvalidPublicKey(_) => None,
-            PermissionCheckerError::InvalidRole(_) => None,
-            PermissionCheckerError::ProtoConversion(ref e) => Some(e),
-        }
-    }
-}
-
-impl From<ContextError> for PermissionCheckerError {
-    fn from(err: ContextError) -> PermissionCheckerError {
-        PermissionCheckerError::Context(err)
-    }
-}
-
-impl From<ProtoConversionError> for PermissionCheckerError {
-    fn from(err: ProtoConversionError) -> PermissionCheckerError {
-        PermissionCheckerError::ProtoConversion(err)
-    }
-}
-
 /// Helper struct for Pike functionality.
 pub struct PermissionChecker<'a> {
     /// A PermissionChecker is tied to a version of state, so it has a
@@ -220,7 +168,10 @@ impl<'a> PermissionChecker<'a> {
                     let name = t[1];
                     (name, org_id)
                 } else {
-                    return Err(PermissionCheckerError::InvalidRole("External roles need to be prefixed with their org ID. Format: <org_id>.<role_name>".to_string()));
+                    return Err(PermissionCheckerError::InvalidRole(
+                        "External roles need to be prefixed with their org ID. Format: <org_id>.<role_name>"
+                        .to_string(),
+                    ));
                 }
             }
         };
@@ -254,6 +205,8 @@ mod tests {
         AgentBuilder, AgentListBuilder, RoleBuilder, RoleListBuilder,
     };
     use crate::protos::IntoBytes;
+
+    use sawtooth_sdk::processor::handler::ContextError;
 
     const PUBLIC_KEY_ALPHA: &str = "alpha_agent_public_key";
     const PUBLIC_KEY_BETA: &str = "beta_agent_public_key";
