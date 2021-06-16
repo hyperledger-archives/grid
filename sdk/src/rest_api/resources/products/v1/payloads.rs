@@ -33,17 +33,17 @@ pub struct ProductSlice {
 impl From<Product> for ProductSlice {
     fn from(product: Product) -> Self {
         Self {
-            product_id: product.product_id.clone(),
-            product_address: product.product_address.clone(),
-            product_namespace: product.product_namespace.clone(),
-            owner: product.owner.clone(),
+            product_id: product.product_id().to_string(),
+            product_address: product.product_address().to_string(),
+            product_namespace: product.product_namespace().to_string(),
+            owner: product.owner().to_string(),
             properties: product
-                .properties
+                .properties()
                 .into_iter()
                 .map(ProductPropertyValueSlice::from)
                 .collect(),
-            service_id: product.service_id,
-            last_updated: product.last_updated,
+            service_id: product.service_id().map(String::from),
+            last_updated: product.last_updated().cloned(),
         }
     }
 }
@@ -73,20 +73,41 @@ pub struct ProductPropertyValueSlice {
 impl From<PropertyValue> for ProductPropertyValueSlice {
     fn from(property_value: PropertyValue) -> Self {
         Self {
-            name: property_value.property_name.clone(),
-            data_type: property_value.data_type.clone(),
-            service_id: property_value.service_id.clone(),
-            bytes_value: property_value.bytes_value.clone(),
-            boolean_value: property_value.boolean_value,
-            number_value: property_value.number_value,
-            string_value: property_value.string_value.clone(),
-            enum_value: property_value.enum_value,
+            name: property_value.property_name().to_string(),
+            data_type: property_value.data_type().to_string(),
+            service_id: property_value.service_id().map(String::from),
+            bytes_value: property_value.bytes_value(),
+            boolean_value: property_value.boolean_value(),
+            number_value: property_value.number_value(),
+            string_value: property_value.string_value().map(String::from),
+            enum_value: property_value.enum_value(),
             struct_values: property_value
-                .struct_values
+                .struct_values()
                 .into_iter()
                 .map(ProductPropertyValueSlice::from)
                 .collect(),
-            lat_long_value: property_value.lat_long_value.map(LatLongSlice::from),
+            lat_long_value: property_value.lat_long_value().map(LatLongSlice::from),
+        }
+    }
+}
+
+impl From<&PropertyValue> for ProductPropertyValueSlice {
+    fn from(property_value: &PropertyValue) -> Self {
+        Self {
+            name: property_value.property_name().to_string(),
+            data_type: property_value.data_type().to_string(),
+            service_id: property_value.service_id().map(String::from),
+            bytes_value: property_value.bytes_value(),
+            boolean_value: property_value.boolean_value(),
+            number_value: property_value.number_value(),
+            string_value: property_value.string_value().map(String::from),
+            enum_value: property_value.enum_value(),
+            struct_values: property_value
+                .struct_values()
+                .into_iter()
+                .map(ProductPropertyValueSlice::from)
+                .collect(),
+            lat_long_value: property_value.lat_long_value().map(LatLongSlice::from),
         }
     }
 }

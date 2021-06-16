@@ -183,7 +183,10 @@ mod test {
     use grid_sdk::{
         location::store::{DieselLocationStore, Location, LocationAttribute, LocationStore},
         pike::store::{Agent, DieselPikeStore, Organization, PikeStore},
-        product::store::{DieselProductStore, Product, ProductStore, PropertyValue},
+        product::store::{
+            DieselProductStore, Product, ProductBuilder, ProductStore, PropertyValue,
+            PropertyValueBuilder,
+        },
         schema::store::{DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
     };
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
@@ -2991,17 +2994,20 @@ mod test {
     }
 
     fn get_product(service_id: Option<String>) -> Vec<Product> {
-        vec![Product {
-            product_id: "041205707820".to_string(),
-            product_address: "test_address".to_string(),
-            product_namespace: "Grid Product".to_string(),
-            owner: "phillips001".to_string(),
-            start_commit_num: 0,
-            end_commit_num: i64::MAX,
-            properties: get_product_property_value(service_id.clone()),
-            service_id,
-            last_updated: None,
-        }]
+        let product = ProductBuilder::default()
+            .with_product_id("041205707820".to_string())
+            .with_product_address("test_address".to_string())
+            .with_product_namespace("Grid Product".to_string())
+            .with_owner("phillips001".to_string())
+            .with_start_commit_number(0)
+            .with_end_commit_number(i64::MAX)
+            .with_properties(get_product_property_value(service_id.clone()))
+            .with_service_id(service_id)
+            .with_last_updated(None)
+            .build()
+            .unwrap();
+
+        vec![product]
     }
 
     fn populate_location_table(
@@ -3561,38 +3567,40 @@ mod test {
 
     fn get_product_property_value(service_id: Option<String>) -> Vec<PropertyValue> {
         vec![
-            PropertyValue {
-                start_commit_num: 0,
-                end_commit_num: i64::MAX,
-                product_id: "041205707820".to_string(),
-                product_address: "test_address".to_string(),
-                property_name: "Test Grid Product".to_string(),
-                data_type: "Lightbulb".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: Some(0),
-                string_value: None,
-                enum_value: None,
-                struct_values: vec![],
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            PropertyValue {
-                start_commit_num: 0,
-                end_commit_num: i64::MAX,
-                product_id: "041205707820".to_string(),
-                product_address: "test_address".to_string(),
-                property_name: "Test Grid Product".to_string(),
-                data_type: "Lightbulb".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: Some(0),
-                string_value: None,
-                enum_value: None,
-                struct_values: vec![],
-                lat_long_value: None,
-                service_id,
-            },
+            PropertyValueBuilder::default()
+                .with_product_id("041205707820".to_string())
+                .with_product_address("test_address".to_string())
+                .with_property_name("Test Grid Product".to_string())
+                .with_data_type("Lightbulb".to_string())
+                .with_bytes_value(None)
+                .with_boolean_value(None)
+                .with_number_value(Some(0))
+                .with_string_value(None)
+                .with_enum_value(None)
+                .with_struct_values(vec![])
+                .with_lat_long_value(None)
+                .with_start_commit_number(0)
+                .with_end_commit_number(i64::MAX)
+                .with_service_id(service_id.clone())
+                .build()
+                .unwrap(),
+            PropertyValueBuilder::default()
+                .with_product_id("041205707820".to_string())
+                .with_product_address("test_address".to_string())
+                .with_property_name("Test Grid Product".to_string())
+                .with_data_type("Lightbulb".to_string())
+                .with_bytes_value(None)
+                .with_boolean_value(None)
+                .with_number_value(Some(0))
+                .with_string_value(None)
+                .with_enum_value(None)
+                .with_struct_values(vec![])
+                .with_lat_long_value(None)
+                .with_start_commit_number(0)
+                .with_end_commit_number(i64::MAX)
+                .with_service_id(service_id.clone())
+                .build()
+                .unwrap(),
         ]
     }
 
