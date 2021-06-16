@@ -26,13 +26,13 @@ use diesel::r2d2::{ConnectionManager, Pool};
 use crate::batches::store::BatchStore;
 use crate::commits::store::CommitStore;
 use crate::error::InternalError;
-#[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
+#[cfg(feature = "location")]
 use crate::location::store::LocationStore;
 #[cfg(feature = "pike")]
 use crate::pike::store::PikeStore;
-#[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
+#[cfg(feature = "product")]
 use crate::product::store::ProductStore;
-#[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
+#[cfg(feature = "schema")]
 use crate::schema::store::SchemaStore;
 #[cfg(feature = "track-and-trace")]
 use crate::track_and_trace::store::TrackAndTraceStore;
@@ -45,13 +45,13 @@ pub trait StoreFactory {
     #[cfg(feature = "pike")]
     fn get_grid_pike_store(&self) -> Box<dyn PikeStore>;
     /// Get a new `LocationStore`
-    #[cfg(any(feature = "location-store-postgres", feature = "location-store-sqlite"))]
+    #[cfg(feature = "location")]
     fn get_grid_location_store(&self) -> Box<dyn LocationStore>;
     /// Get a new `ProductStore`
-    #[cfg(any(feature = "product-store-postgres", feature = "product-store-sqlite"))]
+    #[cfg(feature = "product")]
     fn get_grid_product_store(&self) -> Box<dyn ProductStore>;
     /// Get a new `SchemaStore`
-    #[cfg(any(feature = "schema-store-postgres", feature = "schema-store-sqlite"))]
+    #[cfg(feature = "schema")]
     fn get_grid_schema_store(&self) -> Box<dyn SchemaStore>;
     /// Get a new `TrackAndTraceStore`
     #[cfg(feature = "track-and-trace")]
