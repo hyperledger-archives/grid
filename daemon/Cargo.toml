@@ -42,7 +42,8 @@ diesel = { version = "1.0.0", features = ["r2d2", "serde_json"] }
 diesel_migrations = "1.4"
 flexi_logger = "0.17"
 futures = "0.3"
-grid-sdk = { path = "../sdk", features = ["experimental"] }
+
+grid-sdk = { path = "../sdk", features = ["rest-api-actix-web-3"]}
 log = "0.4"
 protobuf = "2.19"
 reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"] }
@@ -94,13 +95,26 @@ event = ["database"]
 database = []
 database-postgres = ["grid-sdk/postgres"]
 database-sqlite = ["grid-sdk/sqlite"]
-location = ["pike", "schema"]
-pike = ["serde_json"]
-product = ["pike", "schema"]
-purchase-order = ["pike"]
-rest-api = ["database"]
-sawtooth-support = ["database", "event", "rest-api"]
-schema = ["pike"]
+location = ["grid-sdk/location", "grid-sdk/rest-api-endpoint-location", "pike", "schema"]
+pike = [
+    "grid-sdk/pike",
+    "grid-sdk/pike-rest-api",
+    "grid-sdk/rest-api-endpoint-agent",
+    "grid-sdk/rest-api-endpoint-organization",
+    "grid-sdk/rest-api-endpoint-role",
+    "serde_json",
+]
+product = ["grid-sdk/product", "grid-sdk/rest-api-endpoint-product", "pike", "schema"]
+purchase-order = ["grid-sdk/rest-api-endpoint-purchase-order", "grid-sdk/purchase-order", "pike"]
+rest-api = ["database", "grid-sdk/rest-api-endpoint-batches"]
+sawtooth-support = [
+    "database",
+    "event",
+    "grid-sdk/backend-sawtooth",
+    "grid-sdk/sawtooth-compat",
+    "rest-api"
+]
+schema = ["grid-sdk/rest-api-endpoint-schema", "grid-sdk/schema", "pike"]
 splinter-support = [
   "cylinder/key-load",
   "database",
@@ -116,8 +130,8 @@ splinter-support = [
   "transact/contract-archive",
 ]
 test-postgres = []
-track-and-trace = []
-integration = []
+track-and-trace = ["grid-sdk/rest-api-endpoint-record", "grid-sdk/track-and-trace"]
+integration = ["grid-sdk/batch-processor", "grid-sdk/rest-api-endpoint-submit"]
 
 
 [package.metadata.deb]
