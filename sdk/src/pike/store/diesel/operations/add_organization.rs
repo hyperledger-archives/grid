@@ -57,7 +57,6 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
             let mut query = pike_organization::table.into_boxed().filter(
                 pike_organization::org_id
                     .eq(&org.org_id)
-                    .and(pike_organization::service_id.eq(&org.service_id))
                     .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
             );
 
@@ -82,17 +81,30 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
                 })?;
 
             if duplicate_org.is_some() {
-                update(pike_organization::table)
-                    .filter(
-                        pike_organization::org_id
-                            .eq(&org.org_id)
-                            .and(pike_organization::service_id.eq(&org.service_id))
-                            .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_organization::end_commit_num.eq(org.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                if let Some(service_id) = &org.service_id {
+                    update(pike_organization::table)
+                        .filter(
+                            pike_organization::org_id
+                                .eq(&org.org_id)
+                                .and(pike_organization::service_id.eq(service_id))
+                                .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_organization::end_commit_num.eq(org.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                } else {
+                    update(pike_organization::table)
+                        .filter(
+                            pike_organization::org_id
+                                .eq(&org.org_id)
+                                .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_organization::end_commit_num.eq(org.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
             }
 
             insert_into(pike_organization::table)
@@ -139,26 +151,52 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_organization_location_assoc::table)
-                        .filter(
-                            pike_organization_location_assoc::org_id
-                                .eq(&org.org_id)
-                                .and(
-                                    pike_organization_location_assoc::location_id
-                                        .eq(&location.location_id),
-                                )
-                                .and(
-                                    pike_organization_location_assoc::end_commit_num
-                                        .eq(MAX_COMMIT_NUM),
-                                ),
-                        )
-                        .set(
-                            pike_organization_location_assoc::end_commit_num
-                                .eq(location.start_commit_num),
-                        )
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &location.service_id {
+                        update(pike_organization_location_assoc::table)
+                            .filter(
+                                pike_organization_location_assoc::org_id
+                                    .eq(&org.org_id)
+                                    .and(
+                                        pike_organization_location_assoc::location_id
+                                            .eq(&location.location_id),
+                                    )
+                                    .and(
+                                        pike_organization_location_assoc::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    )
+                                    .and(
+                                        pike_organization_location_assoc::service_id.eq(service_id),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_location_assoc::end_commit_num
+                                    .eq(location.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_organization_location_assoc::table)
+                            .filter(
+                                pike_organization_location_assoc::org_id
+                                    .eq(&org.org_id)
+                                    .and(
+                                        pike_organization_location_assoc::location_id
+                                            .eq(&location.location_id),
+                                    )
+                                    .and(
+                                        pike_organization_location_assoc::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_location_assoc::end_commit_num
+                                    .eq(location.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_organization_location_assoc::table)
@@ -207,30 +245,58 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_organization_alternate_id::table)
-                        .filter(
-                            pike_organization_alternate_id::org_id
-                                .eq(&entry.org_id)
-                                .and(
-                                    pike_organization_alternate_id::alternate_id_type
-                                        .eq(&entry.alternate_id_type),
-                                )
-                                .and(
-                                    pike_organization_alternate_id::alternate_id
-                                        .eq(&entry.alternate_id),
-                                )
-                                .and(
-                                    pike_organization_alternate_id::end_commit_num
-                                        .eq(MAX_COMMIT_NUM),
-                                ),
-                        )
-                        .set(
-                            pike_organization_alternate_id::end_commit_num
-                                .eq(entry.start_commit_num),
-                        )
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &entry.service_id {
+                        update(pike_organization_alternate_id::table)
+                            .filter(
+                                pike_organization_alternate_id::org_id
+                                    .eq(&entry.org_id)
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id_type
+                                            .eq(&entry.alternate_id_type),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id
+                                            .eq(&entry.alternate_id),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    )
+                                    .and(pike_organization_alternate_id::service_id.eq(service_id)),
+                            )
+                            .set(
+                                pike_organization_alternate_id::end_commit_num
+                                    .eq(entry.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_organization_alternate_id::table)
+                            .filter(
+                                pike_organization_alternate_id::org_id
+                                    .eq(&entry.org_id)
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id_type
+                                            .eq(&entry.alternate_id_type),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id
+                                            .eq(&entry.alternate_id),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_alternate_id::end_commit_num
+                                    .eq(entry.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_organization_alternate_id::table)
@@ -272,17 +338,39 @@ impl<'a> PikeStoreAddOrganizationOperation for PikeStoreOperations<'a, diesel::p
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_organization_metadata::table)
-                        .filter(
-                            pike_organization_metadata::org_id
-                                .eq(&data.org_id)
-                                .and(pike_organization_metadata::service_id.eq(&data.service_id))
-                                .and(pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_organization_metadata::end_commit_num.eq(data.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &data.service_id {
+                        update(pike_organization_metadata::table)
+                            .filter(
+                                pike_organization_metadata::org_id
+                                    .eq(&data.org_id)
+                                    .and(pike_organization_metadata::service_id.eq(service_id))
+                                    .and(
+                                        pike_organization_metadata::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_metadata::end_commit_num
+                                    .eq(data.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_organization_metadata::table)
+                            .filter(
+                                pike_organization_metadata::org_id.eq(&data.org_id).and(
+                                    pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM),
+                                ),
+                            )
+                            .set(
+                                pike_organization_metadata::end_commit_num
+                                    .eq(data.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_organization_metadata::table)
@@ -312,7 +400,6 @@ impl<'a> PikeStoreAddOrganizationOperation
             let mut query = pike_organization::table.into_boxed().filter(
                 pike_organization::org_id
                     .eq(&org.org_id)
-                    .and(pike_organization::service_id.eq(&org.service_id))
                     .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
             );
 
@@ -337,17 +424,30 @@ impl<'a> PikeStoreAddOrganizationOperation
                 })?;
 
             if duplicate_org.is_some() {
-                update(pike_organization::table)
-                    .filter(
-                        pike_organization::org_id
-                            .eq(&org.org_id)
-                            .and(pike_organization::service_id.eq(&org.service_id))
-                            .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_organization::end_commit_num.eq(org.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                if let Some(service_id) = &org.service_id {
+                    update(pike_organization::table)
+                        .filter(
+                            pike_organization::org_id
+                                .eq(&org.org_id)
+                                .and(pike_organization::service_id.eq(service_id))
+                                .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_organization::end_commit_num.eq(org.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                } else {
+                    update(pike_organization::table)
+                        .filter(
+                            pike_organization::org_id
+                                .eq(&org.org_id)
+                                .and(pike_organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_organization::end_commit_num.eq(org.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
             }
 
             insert_into(pike_organization::table)
@@ -394,26 +494,52 @@ impl<'a> PikeStoreAddOrganizationOperation
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_organization_location_assoc::table)
-                        .filter(
-                            pike_organization_location_assoc::org_id
-                                .eq(&org.org_id)
-                                .and(
-                                    pike_organization_location_assoc::location_id
-                                        .eq(&location.location_id),
-                                )
-                                .and(
-                                    pike_organization_location_assoc::end_commit_num
-                                        .eq(MAX_COMMIT_NUM),
-                                ),
-                        )
-                        .set(
-                            pike_organization_location_assoc::end_commit_num
-                                .eq(location.start_commit_num),
-                        )
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &location.service_id {
+                        update(pike_organization_location_assoc::table)
+                            .filter(
+                                pike_organization_location_assoc::org_id
+                                    .eq(&org.org_id)
+                                    .and(
+                                        pike_organization_location_assoc::location_id
+                                            .eq(&location.location_id),
+                                    )
+                                    .and(
+                                        pike_organization_location_assoc::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    )
+                                    .and(
+                                        pike_organization_location_assoc::service_id.eq(service_id),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_location_assoc::end_commit_num
+                                    .eq(location.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_organization_location_assoc::table)
+                            .filter(
+                                pike_organization_location_assoc::org_id
+                                    .eq(&org.org_id)
+                                    .and(
+                                        pike_organization_location_assoc::location_id
+                                            .eq(&location.location_id),
+                                    )
+                                    .and(
+                                        pike_organization_location_assoc::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_location_assoc::end_commit_num
+                                    .eq(location.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_organization_location_assoc::table)
@@ -462,30 +588,58 @@ impl<'a> PikeStoreAddOrganizationOperation
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_organization_alternate_id::table)
-                        .filter(
-                            pike_organization_alternate_id::org_id
-                                .eq(&entry.org_id)
-                                .and(
-                                    pike_organization_alternate_id::alternate_id_type
-                                        .eq(&entry.alternate_id_type),
-                                )
-                                .and(
-                                    pike_organization_alternate_id::alternate_id
-                                        .eq(&entry.alternate_id),
-                                )
-                                .and(
-                                    pike_organization_alternate_id::end_commit_num
-                                        .eq(MAX_COMMIT_NUM),
-                                ),
-                        )
-                        .set(
-                            pike_organization_alternate_id::end_commit_num
-                                .eq(entry.start_commit_num),
-                        )
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &entry.service_id {
+                        update(pike_organization_alternate_id::table)
+                            .filter(
+                                pike_organization_alternate_id::org_id
+                                    .eq(&entry.org_id)
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id_type
+                                            .eq(&entry.alternate_id_type),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id
+                                            .eq(&entry.alternate_id),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    )
+                                    .and(pike_organization_alternate_id::service_id.eq(service_id)),
+                            )
+                            .set(
+                                pike_organization_alternate_id::end_commit_num
+                                    .eq(entry.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_organization_alternate_id::table)
+                            .filter(
+                                pike_organization_alternate_id::org_id
+                                    .eq(&entry.org_id)
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id_type
+                                            .eq(&entry.alternate_id_type),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::alternate_id
+                                            .eq(&entry.alternate_id),
+                                    )
+                                    .and(
+                                        pike_organization_alternate_id::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_alternate_id::end_commit_num
+                                    .eq(entry.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_organization_alternate_id::table)
@@ -527,17 +681,39 @@ impl<'a> PikeStoreAddOrganizationOperation
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_organization_metadata::table)
-                        .filter(
-                            pike_organization_metadata::org_id
-                                .eq(&data.org_id)
-                                .and(pike_organization_metadata::service_id.eq(&data.service_id))
-                                .and(pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_organization_metadata::end_commit_num.eq(data.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &data.service_id {
+                        update(pike_organization_metadata::table)
+                            .filter(
+                                pike_organization_metadata::org_id
+                                    .eq(&data.org_id)
+                                    .and(pike_organization_metadata::service_id.eq(service_id))
+                                    .and(
+                                        pike_organization_metadata::end_commit_num
+                                            .eq(MAX_COMMIT_NUM),
+                                    ),
+                            )
+                            .set(
+                                pike_organization_metadata::end_commit_num
+                                    .eq(data.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_organization_metadata::table)
+                            .filter(
+                                pike_organization_metadata::org_id.eq(&data.org_id).and(
+                                    pike_organization_metadata::end_commit_num.eq(MAX_COMMIT_NUM),
+                                ),
+                            )
+                            .set(
+                                pike_organization_metadata::end_commit_num
+                                    .eq(data.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_organization_metadata::table)
