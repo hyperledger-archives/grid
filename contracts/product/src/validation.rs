@@ -69,22 +69,20 @@ fn check_digit_validation(gtin: &str) -> Result<(), ApplyError> {
         for digit in &gtin_vec {
             if is_even(index) {
                 sum += convert_char_to_int(*digit);
-                index += 1;
             } else {
                 sum += 3 * convert_char_to_int(*digit);
-                index += 1;
             }
+            index += 1;
         }
     } else {
         // For gtin 12, 14
         for digit in &gtin_vec {
             if is_even(index) {
                 sum += 3 * convert_char_to_int(*digit);
-                index += 1;
             } else {
                 sum += convert_char_to_int(*digit);
-                index += 1;
             }
+            index += 1;
         }
     }
 
