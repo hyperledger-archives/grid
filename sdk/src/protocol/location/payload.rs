@@ -269,7 +269,7 @@ impl FromProto<location_payload::LocationCreateAction> for LocationCreateAction 
 impl FromNative<LocationCreateAction> for location_payload::LocationCreateAction {
     fn from_native(native: LocationCreateAction) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::location_payload::LocationCreateAction::new();
-        proto.set_namespace(native.namespace().clone().into_proto()?);
+        proto.set_namespace((*native.namespace()).into_proto()?);
         proto.set_location_id(native.location_id().to_string());
         proto.set_owner(native.owner().to_string());
         proto.set_properties(RepeatedField::from_vec(
@@ -403,7 +403,7 @@ impl FromProto<protos::location_payload::LocationUpdateAction> for LocationUpdat
 impl FromNative<LocationUpdateAction> for protos::location_payload::LocationUpdateAction {
     fn from_native(native: LocationUpdateAction) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::location_payload::LocationUpdateAction::new();
-        proto.set_namespace(native.namespace().clone().into_proto()?);
+        proto.set_namespace((*native.namespace()).into_proto()?);
         proto.set_location_id(native.location_id().to_string());
         proto.set_properties(RepeatedField::from_vec(
             native
@@ -532,7 +532,7 @@ impl FromProto<protos::location_payload::LocationDeleteAction> for LocationDelet
 impl FromNative<LocationDeleteAction> for protos::location_payload::LocationDeleteAction {
     fn from_native(native: LocationDeleteAction) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::location_payload::LocationDeleteAction::new();
-        proto.set_namespace(native.namespace().clone().into_proto()?);
+        proto.set_namespace((*native.namespace()).into_proto()?);
         proto.set_location_id(native.location_id().to_string());
         Ok(proto)
     }
