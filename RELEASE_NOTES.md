@@ -1,5 +1,14 @@
 # Release Notes
 
+## Changes in Grid 0.1.3
+
+### Bug Fix
+
+This release fixes a bug with transaction creation for Grid Location in the Grid
+CLI. Previously, the Grid Schema namespace was not being added to the input
+addresses of 'LocationCreateAction' transactions, causing them to be invalid.
+This issue has now been fixed.
+
 ## Changes in Grid 0.1.2
 
 ### Overview
