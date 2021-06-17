@@ -37,7 +37,9 @@ use crate::error::CliError;
 use crate::http::submit_batches;
 use crate::{
     actions::schemas::{self, get_schema, GridPropertyDefinitionSlice},
-    transaction::{location_batch_builder, GRID_LOCATION_NAMESPACE, PIKE_NAMESPACE},
+    transaction::{
+        location_batch_builder, GRID_LOCATION_NAMESPACE, GRID_SCHEMA_NAMESPACE, PIKE_NAMESPACE,
+    },
 };
 
 pub fn do_create_location(
@@ -153,6 +155,7 @@ fn submit_payloads(
         builder.add_transaction(
             &action.into_proto()?,
             &[
+                GRID_SCHEMA_NAMESPACE.to_string(),
                 PIKE_NAMESPACE.to_string(),
                 GRID_LOCATION_NAMESPACE.to_string(),
             ],
