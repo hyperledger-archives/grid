@@ -16,7 +16,6 @@ pub(super) mod add_location;
 pub(super) mod delete_location;
 pub(super) mod get_location;
 pub(super) mod list_locations;
-pub(super) mod update_location;
 
 pub(super) struct LocationStoreOperations<'a, C> {
     conn: &'a C,
