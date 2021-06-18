@@ -109,13 +109,6 @@ pub trait LocationStore: Send + Sync {
         limit: i64,
     ) -> Result<LocationList, LocationStoreError>;
 
-    /// Updates a location in the underlying storage
-    ///
-    /// # Arguments
-    ///
-    ///  * `location` - The updated location
-    fn update_location(&self, location: Location) -> Result<(), LocationStoreError>;
-
     /// Deletes a location from the underlying storage
     ///
     /// # Arguments
@@ -152,10 +145,6 @@ where
         limit: i64,
     ) -> Result<LocationList, LocationStoreError> {
         (**self).list_locations(service_id, offset, limit)
-    }
-
-    fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
-        (**self).update_location(location)
     }
 
     fn delete_location(
