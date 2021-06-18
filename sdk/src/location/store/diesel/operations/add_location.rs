@@ -49,13 +49,19 @@ impl<'a> LocationStoreAddLocationOperation
         current_commit_num: i64,
     ) -> Result<(), LocationStoreError> {
         self.conn.transaction::<_, LocationStoreError, _>(|| {
-            let duplicate_loc = location::table
-                .filter(
-                    location::location_id
-                        .eq(&location.location_id)
-                        .and(location::service_id.eq(&location.service_id))
-                        .and(location.end_commit_num.eq(&MAX_COMMIT_NUM)),
-                )
+            let mut query = location::table.into_boxed().filter(
+                location::location_id
+                    .eq(&location.location_id)
+                    .and(location.end_commit_num.eq(&MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &location.service_id {
+                query = query.filter(location::service_id.eq(service_id));
+            } else {
+                query = query.filter(location::service_id.is_null());
+            }
+
+            let duplicate_loc = query
                 .first::<LocationModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -70,37 +76,70 @@ impl<'a> LocationStoreAddLocationOperation
                 })?;
 
             if duplicate_loc.is_some() {
-                update(location::table)
-                    .filter(
-                        location::location_id
-                            .eq(&location.location_id)
-                            .and(location::service_id.eq(&location.service_id))
-                            .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(location::end_commit_num.eq(current_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            LocationStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            LocationStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => LocationStoreError::InternalError(InternalError::from_source(
-                            Box::new(err),
-                        )),
-                    })?;
+                if let Some(service_id) = &location.service_id {
+                    update(location::table)
+                        .filter(
+                            location::location_id
+                                .eq(&location.location_id)
+                                .and(location::service_id.eq(service_id))
+                                .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(location::end_commit_num.eq(current_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
+                        })?;
+                } else {
+                    update(location::table)
+                        .filter(
+                            location::location_id
+                                .eq(&location.location_id)
+                                .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(location::end_commit_num.eq(current_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
+                        })?;
+                }
             }
 
             insert_into(location::table)
@@ -130,14 +169,20 @@ impl<'a> LocationStoreAddLocationOperation
                 })?;
 
             for attr in attributes {
-                let duplicate_attr = location_attribute::table
-                    .filter(
-                        location_attribute::location_id
-                            .eq(&attr.location_id)
-                            .and(location_attribute::property_name.eq(&attr.property_name))
-                            .and(location_attribute::service_id.eq(&attr.service_id))
-                            .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = location_attribute::table.into_boxed().filter(
+                    location_attribute::location_id
+                        .eq(&attr.location_id)
+                        .and(location_attribute::property_name.eq(&attr.property_name))
+                        .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &location.service_id {
+                    query = query.filter(location_attribute::service_id.eq(service_id));
+                } else {
+                    query = query.filter(location_attribute::service_id.is_null());
+                }
+
+                let duplicate_attr = query
                     .first::<LocationAttributeModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
@@ -152,38 +197,74 @@ impl<'a> LocationStoreAddLocationOperation
                     })?;
 
                 if duplicate_attr.is_some() {
-                    update(location_attribute::table)
-                        .filter(
-                            location_attribute::location_id
-                                .eq(&attr.location_id)
-                                .and(location_attribute::property_name.eq(&attr.property_name))
-                                .and(location_attribute::service_id.eq(&attr.service_id))
-                                .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(location_attribute::end_commit_num.eq(current_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                LocationStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                LocationStoreError::ConstraintViolationError(
+                    if let Some(service_id) = &location.service_id {
+                        update(location_attribute::table)
+                            .filter(
+                                location_attribute::location_id
+                                    .eq(&attr.location_id)
+                                    .and(location_attribute::property_name.eq(&attr.property_name))
+                                    .and(location_attribute::service_id.eq(service_id))
+                                    .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(location_attribute::end_commit_num.eq(current_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    LocationStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => LocationStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
-                                )
-                            }
-                            _ => LocationStoreError::InternalError(InternalError::from_source(
-                                Box::new(err),
-                            )),
-                        })?;
+                                ),
+                                _ => LocationStoreError::InternalError(InternalError::from_source(
+                                    Box::new(err),
+                                )),
+                            })?;
+                    } else {
+                        update(location_attribute::table)
+                            .filter(
+                                location_attribute::location_id
+                                    .eq(&attr.location_id)
+                                    .and(location_attribute::property_name.eq(&attr.property_name))
+                                    .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(location_attribute::end_commit_num.eq(current_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    LocationStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                ),
+                                _ => LocationStoreError::InternalError(InternalError::from_source(
+                                    Box::new(err),
+                                )),
+                            })?;
+                    }
                 }
 
                 insert_into(location_attribute::table)
@@ -229,13 +310,20 @@ impl<'a> LocationStoreAddLocationOperation
         current_commit_num: i64,
     ) -> Result<(), LocationStoreError> {
         self.conn.transaction::<_, LocationStoreError, _>(|| {
-            let duplicate_loc = location::table
-                .filter(
-                    location::location_id
-                        .eq(&location.location_id)
-                        .and(location::service_id.eq(&location.service_id))
-                        .and(location.end_commit_num.eq(&MAX_COMMIT_NUM)),
-                )
+            let mut query = location::table.into_boxed().filter(
+                location::location_id
+                    .eq(&location.location_id)
+                    .and(location::service_id.eq(&location.service_id))
+                    .and(location.end_commit_num.eq(&MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &location.service_id {
+                query = query.filter(location::service_id.eq(service_id));
+            } else {
+                query = query.filter(location::service_id.is_null());
+            }
+
+            let duplicate_loc = query
                 .first::<LocationModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -250,37 +338,70 @@ impl<'a> LocationStoreAddLocationOperation
                 })?;
 
             if duplicate_loc.is_some() {
-                update(location::table)
-                    .filter(
-                        location::location_id
-                            .eq(&location.location_id)
-                            .and(location::service_id.eq(&location.service_id))
-                            .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(location::end_commit_num.eq(current_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(|err| match err {
-                        dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                            LocationStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::Unique,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                            LocationStoreError::ConstraintViolationError(
-                                ConstraintViolationError::from_source_with_violation_type(
-                                    ConstraintViolationType::ForeignKey,
-                                    Box::new(err),
-                                ),
-                            )
-                        }
-                        _ => LocationStoreError::InternalError(InternalError::from_source(
-                            Box::new(err),
-                        )),
-                    })?;
+                if let Some(service_id) = &location.service_id {
+                    update(location::table)
+                        .filter(
+                            location::location_id
+                                .eq(&location.location_id)
+                                .and(location::service_id.eq(service_id))
+                                .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(location::end_commit_num.eq(current_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
+                        })?;
+                } else {
+                    update(location::table)
+                        .filter(
+                            location::location_id
+                                .eq(&location.location_id)
+                                .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(location::end_commit_num.eq(current_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| match err {
+                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::Unique,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
+                                LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                )
+                            }
+                            _ => LocationStoreError::InternalError(InternalError::from_source(
+                                Box::new(err),
+                            )),
+                        })?;
+                }
             }
 
             insert_into(location::table)
@@ -310,14 +431,21 @@ impl<'a> LocationStoreAddLocationOperation
                 })?;
 
             for attr in attributes {
-                let duplicate_attr = location_attribute::table
-                    .filter(
-                        location_attribute::location_id
-                            .eq(&attr.location_id)
-                            .and(location_attribute::property_name.eq(&attr.property_name))
-                            .and(location_attribute::service_id.eq(&attr.service_id))
-                            .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = location_attribute::table.into_boxed().filter(
+                    location_attribute::location_id
+                        .eq(&attr.location_id)
+                        .and(location_attribute::property_name.eq(&attr.property_name))
+                        .and(location_attribute::service_id.eq(&attr.service_id))
+                        .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &location.service_id {
+                    query = query.filter(location_attribute::service_id.eq(service_id));
+                } else {
+                    query = query.filter(location_attribute::service_id.is_null());
+                }
+
+                let duplicate_attr = query
                     .first::<LocationAttributeModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
@@ -332,38 +460,74 @@ impl<'a> LocationStoreAddLocationOperation
                     })?;
 
                 if duplicate_attr.is_some() {
-                    update(location_attribute::table)
-                        .filter(
-                            location_attribute::location_id
-                                .eq(&attr.location_id)
-                                .and(location_attribute::property_name.eq(&attr.property_name))
-                                .and(location_attribute::service_id.eq(&attr.service_id))
-                                .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(location_attribute::end_commit_num.eq(current_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(|err| match err {
-                            dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                                LocationStoreError::ConstraintViolationError(
-                                    ConstraintViolationError::from_source_with_violation_type(
-                                        ConstraintViolationType::Unique,
-                                        Box::new(err),
-                                    ),
-                                )
-                            }
-                            dsl_error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                                LocationStoreError::ConstraintViolationError(
+                    if let Some(service_id) = &location.service_id {
+                        update(location_attribute::table)
+                            .filter(
+                                location_attribute::location_id
+                                    .eq(&attr.location_id)
+                                    .and(location_attribute::property_name.eq(&attr.property_name))
+                                    .and(location_attribute::service_id.eq(service_id))
+                                    .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(location_attribute::end_commit_num.eq(current_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    LocationStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => LocationStoreError::ConstraintViolationError(
                                     ConstraintViolationError::from_source_with_violation_type(
                                         ConstraintViolationType::ForeignKey,
                                         Box::new(err),
                                     ),
-                                )
-                            }
-                            _ => LocationStoreError::InternalError(InternalError::from_source(
-                                Box::new(err),
-                            )),
-                        })?;
+                                ),
+                                _ => LocationStoreError::InternalError(InternalError::from_source(
+                                    Box::new(err),
+                                )),
+                            })?;
+                    } else {
+                        update(location_attribute::table)
+                            .filter(
+                                location_attribute::location_id
+                                    .eq(&attr.location_id)
+                                    .and(location_attribute::property_name.eq(&attr.property_name))
+                                    .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(location_attribute::end_commit_num.eq(current_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| match err {
+                                dsl_error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                                    LocationStoreError::ConstraintViolationError(
+                                        ConstraintViolationError::from_source_with_violation_type(
+                                            ConstraintViolationType::Unique,
+                                            Box::new(err),
+                                        ),
+                                    )
+                                }
+                                dsl_error::DatabaseError(
+                                    DatabaseErrorKind::ForeignKeyViolation,
+                                    _,
+                                ) => LocationStoreError::ConstraintViolationError(
+                                    ConstraintViolationError::from_source_with_violation_type(
+                                        ConstraintViolationType::ForeignKey,
+                                        Box::new(err),
+                                    ),
+                                ),
+                                _ => LocationStoreError::InternalError(InternalError::from_source(
+                                    Box::new(err),
+                                )),
+                            })?;
+                    }
                 }
 
                 insert_into(location_attribute::table)
