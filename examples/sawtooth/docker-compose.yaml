@@ -246,7 +246,7 @@ services:
     depends_on:
       - sawtooth-validator
     command: |
-        devmode-engine-rust -vv --connect tcp://sawtooth-validator:5050
+      devmode-engine-rust -vv --connect tcp://sawtooth-validator:5050
     stop_signal: SIGKILL
 
   # ---== alpha node ==---
@@ -291,8 +291,8 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid keygen && \
-        grid keygen --system && \
+        grid keygen --skip && \
+        grid keygen --system --skip && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-alpha/grid &&
         gridd -vv -b 0.0.0.0:8080 -k root -C tcp://sawtooth-validator:4004 \
@@ -340,11 +340,11 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid keygen && \
-        grid keygen --system && \
+        grid keygen --skip && \
+        grid keygen --system --skip && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-beta/grid &&
         gridd -vv -b 0.0.0.0:8080 -C tcp://sawtooth-validator:4004 \
             -k root \
-            --database-url postgres://grid:grid_example@db-beta/grid &&
+            --database-url postgres://grid:grid_example@db-beta/grid
       "

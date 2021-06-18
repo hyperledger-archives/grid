@@ -31,25 +31,52 @@ use cylinder::{secp256k1::Secp256k1Context, Context};
 
 use super::chown;
 
+pub enum ConflictStrategy {
+    Force,
+    Skip,
+    Error,
+}
+
 pub fn create_key_pair(
     key_dir: &Path,
     private_key_path: PathBuf,
     public_key_path: PathBuf,
-    force_create: bool,
+    conflict_strategy: ConflictStrategy,
     change_permissions: bool,
-) -> Result<Vec<u8>, CliError> {
-    if !force_create {
-        if private_key_path.exists() {
-            return Err(CliError::UserError(format!(
-                "File already exists: {:?}",
-                private_key_path
-            )));
+) -> Result<(), CliError> {
+    match conflict_strategy {
+        ConflictStrategy::Force => (),
+        ConflictStrategy::Skip => {
+            if public_key_path.exists() && !private_key_path.exists() {
+                return Err(CliError::UserError(format!(
+                    "{} already exists without a corresponding private key. \
+                     Rerun with --force to overwrite existing files",
+                    public_key_path.as_path().display(),
+                )));
+            }
+
+            if !public_key_path.exists() && private_key_path.exists() {
+                return Err(CliError::UserError(format!(
+                    "{} already exists without a corresponding public key. \
+                     Rerun with --force to overwrite existing files",
+                    private_key_path.as_path().display(),
+                )));
+            }
+
+            if public_key_path.exists() && private_key_path.exists() {
+                debug!("keys files exist; skipping generation");
+                return Ok(());
+            }
         }
-        if public_key_path.exists() {
-            return Err(CliError::UserError(format!(
-                "File already exists: {:?}",
-                public_key_path
-            )));
+        ConflictStrategy::Error => {
+            if public_key_path.exists() || private_key_path.exists() {
+                return Err(CliError::UserError(format!(
+                    "Key files already exist: {} and {}. Rerun with --force to \
+                     overwrite existing files",
+                    public_key_path.as_path().display(),
+                    private_key_path.as_path().display(),
+                )));
+            }
         }
     }
 
@@ -138,7 +165,7 @@ pub fn create_key_pair(
         chown(public_key_path.as_path(), key_dir_uid, key_dir_gid)?;
     }
 
-    Ok(public_key.into_bytes())
+    Ok(())
 }
 
 /// Generates a public/private key pair that can be used to sign transactions.
@@ -147,14 +174,24 @@ pub fn create_key_pair(
 ///   $HOME/.grid/keys/
 ///
 /// If no key_name is provided the key name is set to USER environment variable.
-pub fn generate_keys(key_name: String, force: bool, key_dir: PathBuf) -> Result<(), CliError> {
+pub fn generate_keys(
+    key_name: String,
+    conflict_strategy: ConflictStrategy,
+    key_dir: PathBuf,
+) -> Result<(), CliError> {
     create_dir_all(key_dir.as_path())
         .map_err(|err| CliError::UserError(format!("Failed to create keys directory: {}", err)))?;
 
     let private_key_path = key_dir.join(&key_name).with_extension("priv");
     let public_key_path = key_dir.join(&key_name).with_extension("pub");
 
-    create_key_pair(&key_dir, private_key_path, public_key_path, force, true)?;
+    create_key_pair(
+        &key_dir,
+        private_key_path,
+        public_key_path,
+        conflict_strategy,
+        true,
+    )?;
 
     Ok(())
 }
