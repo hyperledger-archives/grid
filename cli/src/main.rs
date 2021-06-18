@@ -127,7 +127,8 @@ fn run() -> Result<(), CliError> {
         (@subcommand keygen =>
             (about: "Generates keys with which the user can sign transactions and batches.")
             (@arg key_name: +takes_value "Name of the key to create")
-            (@arg force: --force "Overwrite files if they exist")
+            (@arg force: --force conflicts_with[skip] "Overwrite files if they exist")
+            (@arg skip: --skip conflicts_with[force] "Check if files exist; generate if missing" )
             (@arg key_dir: -d --("key-dir") +takes_value conflicts_with[system]
                 "Specify the directory for the key files")
             (@arg system: --system "Generate system keys in /etc/grid/keys")
@@ -2117,7 +2118,15 @@ fn run() -> Result<(), CliError> {
                     .ok_or_else(|| CliError::UserError("Home directory not found".into()))?
             };
 
-            keygen::generate_keys(key_name, m.is_present("force"), key_dir)?
+            let conflict_strategy = if m.is_present("force") {
+                keygen::ConflictStrategy::Force
+            } else if m.is_present("skip") {
+                keygen::ConflictStrategy::Skip
+            } else {
+                keygen::ConflictStrategy::Error
+            };
+
+            keygen::generate_keys(key_name, conflict_strategy, key_dir)?
         }
         ("product", Some(m)) => {
             let url = m
