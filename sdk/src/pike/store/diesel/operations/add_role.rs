@@ -83,29 +83,67 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::pg::PgCon
                 })?;
 
             if duplicate_role.is_some() {
-                update(pike_role::table)
-                    .filter(
-                        pike_role::name
-                            .eq(&role.name)
-                            .and(pike_role::org_id.eq(&role.org_id))
-                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_role::end_commit_num.eq(role.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                if let Some(service_id) = &role.service_id {
+                    update(pike_role::table)
+                        .filter(
+                            pike_role::name
+                                .eq(&role.name)
+                                .and(pike_role::org_id.eq(&role.org_id))
+                                .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM))
+                                .and(pike_role::service_id.eq(service_id)),
+                        )
+                        .set(pike_role::end_commit_num.eq(role.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
 
-                update(pike_role_state_address_assoc::table)
-                    .filter(
-                        pike_role_state_address_assoc::name
-                            .eq(&role.name)
-                            .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
-                            .and(pike_role_state_address_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                    update(pike_role_state_address_assoc::table)
+                        .filter(
+                            pike_role_state_address_assoc::name
+                                .eq(&role.name)
+                                .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
+                                .and(
+                                    pike_role_state_address_assoc::end_commit_num
+                                        .eq(MAX_COMMIT_NUM),
+                                )
+                                .and(pike_role_state_address_assoc::service_id.eq(service_id)),
+                        )
+                        .set(
+                            pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num),
+                        )
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                } else {
+                    update(pike_role::table)
+                        .filter(
+                            pike_role::name
+                                .eq(&role.name)
+                                .and(pike_role::org_id.eq(&role.org_id))
+                                .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_role::end_commit_num.eq(role.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+
+                    update(pike_role_state_address_assoc::table)
+                        .filter(
+                            pike_role_state_address_assoc::name
+                                .eq(&role.name)
+                                .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
+                                .and(
+                                    pike_role_state_address_assoc::end_commit_num
+                                        .eq(MAX_COMMIT_NUM),
+                                ),
+                        )
+                        .set(
+                            pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num),
+                        )
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
             }
 
             insert_into(pike_role::table)
@@ -153,19 +191,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::pg::PgCon
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_inherit_from::table)
-                        .filter(
-                            pike_inherit_from::role_name
-                                .eq(&role.name)
-                                .and(pike_inherit_from::role_name.eq(&i.role_name))
-                                .and(pike_inherit_from::org_id.eq(&role.org_id))
-                                .and(pike_inherit_from::org_id.eq(&i.org_id))
-                                .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_inherit_from::end_commit_num.eq(i.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &i.service_id {
+                        update(pike_inherit_from::table)
+                            .filter(
+                                pike_inherit_from::role_name
+                                    .eq(&role.name)
+                                    .and(pike_inherit_from::role_name.eq(&i.role_name))
+                                    .and(pike_inherit_from::org_id.eq(&role.org_id))
+                                    .and(pike_inherit_from::org_id.eq(&i.org_id))
+                                    .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_inherit_from::service_id.eq(service_id)),
+                            )
+                            .set(pike_inherit_from::end_commit_num.eq(i.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_inherit_from::table)
+                            .filter(
+                                pike_inherit_from::role_name
+                                    .eq(&role.name)
+                                    .and(pike_inherit_from::role_name.eq(&i.role_name))
+                                    .and(pike_inherit_from::org_id.eq(&role.org_id))
+                                    .and(pike_inherit_from::org_id.eq(&i.org_id))
+                                    .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_inherit_from::end_commit_num.eq(i.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_inherit_from::table)
@@ -195,19 +250,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::pg::PgCon
 
             for r in removed {
                 if !permissions.iter().any(|p| p.name == r.name) {
-                    update(pike_permissions::table)
-                        .filter(
-                            pike_permissions::role_name
-                                .eq(&role.name)
-                                .and(pike_permissions::role_name.eq(&r.role_name))
-                                .and(pike_permissions::org_id.eq(&role.org_id))
-                                .and(pike_permissions::org_id.eq(&r.org_id))
-                                .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &role.service_id {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::role_name.eq(&r.role_name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&r.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_permissions::service_id.eq(service_id)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::role_name.eq(&r.role_name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&r.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
             }
 
@@ -243,19 +315,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::pg::PgCon
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_permissions::table)
-                        .filter(
-                            pike_permissions::role_name
-                                .eq(&role.name)
-                                .and(pike_permissions::name.eq(&p.name))
-                                .and(pike_permissions::org_id.eq(&role.org_id))
-                                .and(pike_permissions::org_id.eq(&p.org_id))
-                                .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_permissions::end_commit_num.eq(p.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &p.service_id {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::name.eq(&p.name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&p.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_permissions::service_id.eq(service_id)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(p.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::name.eq(&p.name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&p.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(p.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_permissions::table)
@@ -296,19 +385,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::pg::PgCon
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_allowed_orgs::table)
-                        .filter(
-                            pike_allowed_orgs::role_name
-                                .eq(&role.name)
-                                .and(pike_allowed_orgs::role_name.eq(&a.role_name))
-                                .and(pike_allowed_orgs::org_id.eq(&role.org_id))
-                                .and(pike_allowed_orgs::org_id.eq(&a.org_id))
-                                .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_allowed_orgs::end_commit_num.eq(a.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &a.service_id {
+                        update(pike_allowed_orgs::table)
+                            .filter(
+                                pike_allowed_orgs::role_name
+                                    .eq(&role.name)
+                                    .and(pike_allowed_orgs::role_name.eq(&a.role_name))
+                                    .and(pike_allowed_orgs::org_id.eq(&role.org_id))
+                                    .and(pike_allowed_orgs::org_id.eq(&a.org_id))
+                                    .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_allowed_orgs::service_id.eq(service_id)),
+                            )
+                            .set(pike_allowed_orgs::end_commit_num.eq(a.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_allowed_orgs::table)
+                            .filter(
+                                pike_allowed_orgs::role_name
+                                    .eq(&role.name)
+                                    .and(pike_allowed_orgs::role_name.eq(&a.role_name))
+                                    .and(pike_allowed_orgs::org_id.eq(&role.org_id))
+                                    .and(pike_allowed_orgs::org_id.eq(&a.org_id))
+                                    .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_allowed_orgs::end_commit_num.eq(a.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_allowed_orgs::table)
@@ -361,29 +467,67 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::sqlite::S
                 })?;
 
             if duplicate_role.is_some() {
-                update(pike_role::table)
-                    .filter(
-                        pike_role::name
-                            .eq(&role.name)
-                            .and(pike_role::org_id.eq(&role.org_id))
-                            .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_role::end_commit_num.eq(role.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                if let Some(service_id) = &role.service_id {
+                    update(pike_role::table)
+                        .filter(
+                            pike_role::name
+                                .eq(&role.name)
+                                .and(pike_role::org_id.eq(&role.org_id))
+                                .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM))
+                                .and(pike_role::service_id.eq(service_id)),
+                        )
+                        .set(pike_role::end_commit_num.eq(role.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
 
-                update(pike_role_state_address_assoc::table)
-                    .filter(
-                        pike_role_state_address_assoc::name
-                            .eq(&role.name)
-                            .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
-                            .and(pike_role_state_address_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                    update(pike_role_state_address_assoc::table)
+                        .filter(
+                            pike_role_state_address_assoc::name
+                                .eq(&role.name)
+                                .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
+                                .and(
+                                    pike_role_state_address_assoc::end_commit_num
+                                        .eq(MAX_COMMIT_NUM),
+                                )
+                                .and(pike_role_state_address_assoc::service_id.eq(service_id)),
+                        )
+                        .set(
+                            pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num),
+                        )
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                } else {
+                    update(pike_role::table)
+                        .filter(
+                            pike_role::name
+                                .eq(&role.name)
+                                .and(pike_role::org_id.eq(&role.org_id))
+                                .and(pike_role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_role::end_commit_num.eq(role.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+
+                    update(pike_role_state_address_assoc::table)
+                        .filter(
+                            pike_role_state_address_assoc::name
+                                .eq(&role.name)
+                                .and(pike_role_state_address_assoc::org_id.eq(&role.org_id))
+                                .and(
+                                    pike_role_state_address_assoc::end_commit_num
+                                        .eq(MAX_COMMIT_NUM),
+                                ),
+                        )
+                        .set(
+                            pike_role_state_address_assoc::end_commit_num.eq(role.start_commit_num),
+                        )
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
             }
 
             insert_into(pike_role::table)
@@ -431,19 +575,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::sqlite::S
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_inherit_from::table)
-                        .filter(
-                            pike_inherit_from::role_name
-                                .eq(&role.name)
-                                .and(pike_inherit_from::role_name.eq(&i.role_name))
-                                .and(pike_inherit_from::org_id.eq(&role.org_id))
-                                .and(pike_inherit_from::org_id.eq(&i.org_id))
-                                .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_inherit_from::end_commit_num.eq(i.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &i.service_id {
+                        update(pike_inherit_from::table)
+                            .filter(
+                                pike_inherit_from::role_name
+                                    .eq(&role.name)
+                                    .and(pike_inherit_from::role_name.eq(&i.role_name))
+                                    .and(pike_inherit_from::org_id.eq(&role.org_id))
+                                    .and(pike_inherit_from::org_id.eq(&i.org_id))
+                                    .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_inherit_from::service_id.eq(service_id)),
+                            )
+                            .set(pike_inherit_from::end_commit_num.eq(i.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_inherit_from::table)
+                            .filter(
+                                pike_inherit_from::role_name
+                                    .eq(&role.name)
+                                    .and(pike_inherit_from::role_name.eq(&i.role_name))
+                                    .and(pike_inherit_from::org_id.eq(&role.org_id))
+                                    .and(pike_inherit_from::org_id.eq(&i.org_id))
+                                    .and(pike_inherit_from::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_inherit_from::end_commit_num.eq(i.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_inherit_from::table)
@@ -473,19 +634,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::sqlite::S
 
             for r in removed {
                 if !permissions.iter().any(|p| p.name == r.name) {
-                    update(pike_permissions::table)
-                        .filter(
-                            pike_permissions::role_name
-                                .eq(&role.name)
-                                .and(pike_permissions::role_name.eq(&r.role_name))
-                                .and(pike_permissions::org_id.eq(&role.org_id))
-                                .and(pike_permissions::org_id.eq(&r.org_id))
-                                .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &role.service_id {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::role_name.eq(&r.role_name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&r.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_permissions::service_id.eq(service_id)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::role_name.eq(&r.role_name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&r.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
             }
 
@@ -521,19 +699,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::sqlite::S
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_permissions::table)
-                        .filter(
-                            pike_permissions::role_name
-                                .eq(&role.name)
-                                .and(pike_permissions::name.eq(&p.name))
-                                .and(pike_permissions::org_id.eq(&role.org_id))
-                                .and(pike_permissions::org_id.eq(&p.org_id))
-                                .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_permissions::end_commit_num.eq(p.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &p.service_id {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::name.eq(&p.name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&p.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_permissions::service_id.eq(service_id)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(p.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_permissions::table)
+                            .filter(
+                                pike_permissions::role_name
+                                    .eq(&role.name)
+                                    .and(pike_permissions::name.eq(&p.name))
+                                    .and(pike_permissions::org_id.eq(&role.org_id))
+                                    .and(pike_permissions::org_id.eq(&p.org_id))
+                                    .and(pike_permissions::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_permissions::end_commit_num.eq(p.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_permissions::table)
@@ -574,19 +769,36 @@ impl<'a> PikeStoreAddRoleOperation for PikeStoreOperations<'a, diesel::sqlite::S
                     })?;
 
                 if duplicate.is_some() {
-                    update(pike_allowed_orgs::table)
-                        .filter(
-                            pike_allowed_orgs::role_name
-                                .eq(&role.name)
-                                .and(pike_allowed_orgs::role_name.eq(&a.role_name))
-                                .and(pike_allowed_orgs::org_id.eq(&role.org_id))
-                                .and(pike_allowed_orgs::org_id.eq(&a.org_id))
-                                .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_allowed_orgs::end_commit_num.eq(a.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &a.service_id {
+                        update(pike_allowed_orgs::table)
+                            .filter(
+                                pike_allowed_orgs::role_name
+                                    .eq(&role.name)
+                                    .and(pike_allowed_orgs::role_name.eq(&a.role_name))
+                                    .and(pike_allowed_orgs::org_id.eq(&role.org_id))
+                                    .and(pike_allowed_orgs::org_id.eq(&a.org_id))
+                                    .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(pike_allowed_orgs::service_id.eq(service_id)),
+                            )
+                            .set(pike_allowed_orgs::end_commit_num.eq(a.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_allowed_orgs::table)
+                            .filter(
+                                pike_allowed_orgs::role_name
+                                    .eq(&role.name)
+                                    .and(pike_allowed_orgs::role_name.eq(&a.role_name))
+                                    .and(pike_allowed_orgs::org_id.eq(&role.org_id))
+                                    .and(pike_allowed_orgs::org_id.eq(&a.org_id))
+                                    .and(pike_allowed_orgs::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_allowed_orgs::end_commit_num.eq(a.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_allowed_orgs::table)

@@ -47,13 +47,19 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
         roles: Vec<NewRoleAssociationModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
-            let duplicate_agent = pike_agent::table
-                .filter(
-                    pike_agent::public_key
-                        .eq(&agent.public_key)
-                        .and(pike_agent::service_id.eq(&agent.service_id))
-                        .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                )
+            let mut query = pike_agent::table.into_boxed().filter(
+                pike_agent::public_key
+                    .eq(&agent.public_key)
+                    .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &agent.service_id {
+                query = query.filter(pike_agent::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_agent::service_id.is_null());
+            }
+
+            let duplicate_agent = query
                 .first::<AgentModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -68,17 +74,30 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                 })?;
 
             if duplicate_agent.is_some() {
-                update(pike_agent::table)
-                    .filter(
-                        pike_agent::public_key
-                            .eq(&agent.public_key)
-                            .and(pike_agent::service_id.eq(&agent.service_id))
-                            .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                if let Some(service_id) = &agent.service_id {
+                    update(pike_agent::table)
+                        .filter(
+                            pike_agent::public_key
+                                .eq(&agent.public_key)
+                                .and(pike_agent::service_id.eq(service_id))
+                                .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                } else {
+                    update(pike_agent::table)
+                        .filter(
+                            pike_agent::public_key
+                                .eq(&agent.public_key)
+                                .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
             }
 
             insert_into(pike_agent::table)
@@ -88,17 +107,24 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                 .map_err(PikeStoreError::from)?;
 
             for role in roles {
-                let duplicate_role = pike_agent_role_assoc::table
-                    .filter(
-                        pike_agent_role_assoc::agent_public_key
-                            .eq(&role.agent_public_key)
-                            .and(pike_agent_role_assoc::agent_public_key.eq(&agent.public_key))
-                            .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
-                            .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
-                            .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
-                            .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
-                            .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = pike_agent_role_assoc::table.into_boxed().filter(
+                    pike_agent_role_assoc::agent_public_key
+                        .eq(&role.agent_public_key)
+                        .and(pike_agent_role_assoc::agent_public_key.eq(&agent.public_key))
+                        .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                        .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
+                        .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
+                        .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
+                        .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &role.service_id {
+                    query = query.filter(pike_agent_role_assoc::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_agent_role_assoc::service_id.is_null());
+                }
+
+                let duplicate_role = query
                     .first::<RoleAssociationModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
@@ -113,21 +139,44 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                     })?;
 
                 if duplicate_role.is_some() {
-                    update(pike_agent_role_assoc::table)
-                        .filter(
-                            pike_agent_role_assoc::agent_public_key
-                                .eq(&role.agent_public_key)
-                                .and(pike_agent_role_assoc::agent_public_key.eq(&agent.public_key))
-                                .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
-                                .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
-                                .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
-                                .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
-                                .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_agent_role_assoc::end_commit_num.eq(&role.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &role.service_id {
+                        update(pike_agent_role_assoc::table)
+                            .filter(
+                                pike_agent_role_assoc::agent_public_key
+                                    .eq(&role.agent_public_key)
+                                    .and(
+                                        pike_agent_role_assoc::agent_public_key
+                                            .eq(&agent.public_key),
+                                    )
+                                    .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                                    .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
+                                    .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
+                                    .and(pike_agent_role_assoc::service_id.eq(service_id))
+                                    .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_agent_role_assoc::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_agent_role_assoc::table)
+                            .filter(
+                                pike_agent_role_assoc::agent_public_key
+                                    .eq(&role.agent_public_key)
+                                    .and(
+                                        pike_agent_role_assoc::agent_public_key
+                                            .eq(&agent.public_key),
+                                    )
+                                    .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                                    .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
+                                    .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
+                                    .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_agent_role_assoc::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_agent_role_assoc::table)
@@ -150,13 +199,19 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
         roles: Vec<NewRoleAssociationModel>,
     ) -> Result<(), PikeStoreError> {
         self.conn.transaction::<_, PikeStoreError, _>(|| {
-            let duplicate_agent = pike_agent::table
-                .filter(
-                    pike_agent::public_key
-                        .eq(&agent.public_key)
-                        .and(pike_agent::service_id.eq(&agent.service_id))
-                        .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                )
+            let mut query = pike_agent::table.into_boxed().filter(
+                pike_agent::public_key
+                    .eq(&agent.public_key)
+                    .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &agent.service_id {
+                query = query.filter(pike_agent::service_id.eq(service_id));
+            } else {
+                query = query.filter(pike_agent::service_id.is_null());
+            }
+
+            let duplicate_agent = query
                 .first::<AgentModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -171,17 +226,30 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                 })?;
 
             if duplicate_agent.is_some() {
-                update(pike_agent::table)
-                    .filter(
-                        pike_agent::public_key
-                            .eq(&agent.public_key)
-                            .and(pike_agent::service_id.eq(&agent.service_id))
-                            .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PikeStoreError::from)?;
+                if let Some(service_id) = &agent.service_id {
+                    update(pike_agent::table)
+                        .filter(
+                            pike_agent::public_key
+                                .eq(&agent.public_key)
+                                .and(pike_agent::service_id.eq(service_id))
+                                .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                } else {
+                    update(pike_agent::table)
+                        .filter(
+                            pike_agent::public_key
+                                .eq(&agent.public_key)
+                                .and(pike_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(pike_agent::end_commit_num.eq(agent.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PikeStoreError::from)?;
+                }
             }
 
             insert_into(pike_agent::table)
@@ -191,17 +259,24 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                 .map_err(PikeStoreError::from)?;
 
             for role in roles {
-                let duplicate_role = pike_agent_role_assoc::table
-                    .filter(
-                        pike_agent_role_assoc::agent_public_key
-                            .eq(&role.agent_public_key)
-                            .and(pike_agent_role_assoc::agent_public_key.eq(&agent.public_key))
-                            .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
-                            .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
-                            .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
-                            .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
-                            .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = pike_agent_role_assoc::table.into_boxed().filter(
+                    pike_agent_role_assoc::agent_public_key
+                        .eq(&role.agent_public_key)
+                        .and(pike_agent_role_assoc::agent_public_key.eq(&agent.public_key))
+                        .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                        .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
+                        .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
+                        .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
+                        .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &role.service_id {
+                    query = query.filter(pike_agent_role_assoc::service_id.eq(service_id));
+                } else {
+                    query = query.filter(pike_agent_role_assoc::service_id.is_null());
+                }
+
+                let duplicate_role = query
                     .first::<RoleAssociationModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
@@ -216,21 +291,44 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                     })?;
 
                 if duplicate_role.is_some() {
-                    update(pike_agent_role_assoc::table)
-                        .filter(
-                            pike_agent_role_assoc::agent_public_key
-                                .eq(&role.agent_public_key)
-                                .and(pike_agent_role_assoc::agent_public_key.eq(&agent.public_key))
-                                .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
-                                .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
-                                .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
-                                .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
-                                .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(pike_agent_role_assoc::end_commit_num.eq(&role.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PikeStoreError::from)?;
+                    if let Some(service_id) = &role.service_id {
+                        update(pike_agent_role_assoc::table)
+                            .filter(
+                                pike_agent_role_assoc::agent_public_key
+                                    .eq(&role.agent_public_key)
+                                    .and(
+                                        pike_agent_role_assoc::agent_public_key
+                                            .eq(&agent.public_key),
+                                    )
+                                    .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                                    .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
+                                    .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
+                                    .and(pike_agent_role_assoc::service_id.eq(service_id))
+                                    .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_agent_role_assoc::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    } else {
+                        update(pike_agent_role_assoc::table)
+                            .filter(
+                                pike_agent_role_assoc::agent_public_key
+                                    .eq(&role.agent_public_key)
+                                    .and(
+                                        pike_agent_role_assoc::agent_public_key
+                                            .eq(&agent.public_key),
+                                    )
+                                    .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
+                                    .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
+                                    .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
+                                    .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(pike_agent_role_assoc::end_commit_num.eq(&role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PikeStoreError::from)?;
+                    }
                 }
 
                 insert_into(pike_agent_role_assoc::table)
