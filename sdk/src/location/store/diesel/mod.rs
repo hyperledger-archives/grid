@@ -31,7 +31,6 @@ use operations::add_location::LocationStoreAddLocationOperation as _;
 use operations::delete_location::LocationStoreDeleteLocationOperation as _;
 use operations::get_location::LocationStoreGetLocationOperation as _;
 use operations::list_locations::LocationStoreListLocationsOperation as _;
-use operations::update_location::LocationStoreUpdateLocationOperation as _;
 use operations::LocationStoreOperations;
 
 /// Manages creating organizations in the database
@@ -91,17 +90,6 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         .list_locations(service_id, offset, limit)
     }
 
-    fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
-        let attributes = make_location_attribute_models(&location.attributes, None);
-        let current_commit_num = location.start_commit_num;
-        LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            LocationStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .update_location(location.into(), attributes, current_commit_num)
-    }
-
     fn delete_location(
         &self,
         address: &str,
@@ -154,17 +142,6 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .list_locations(service_id, offset, limit)
-    }
-
-    fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
-        let attributes = make_location_attribute_models(&location.attributes, None);
-        let current_commit_num = location.start_commit_num;
-        LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            LocationStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .update_location(location.into(), attributes, current_commit_num)
     }
 
     fn delete_location(
