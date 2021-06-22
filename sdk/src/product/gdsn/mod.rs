@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides support for using GDSN data to create Grid Product transactions.
+//!
+//! This module exports a `get_trade_items_from_xml()` function, which can parse
+//! and validate GDSN 3.1 XML data. After being processed by this function, the
+//! resulting `TradeItem` structs can be converted into Grid Product transaction
+//! payloads.
 mod error;
 mod validate;
 
