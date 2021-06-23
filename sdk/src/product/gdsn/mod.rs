@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides support for using GDSN data to create Grid Product transactions.
+//!
+//! This module exports a `get_trade_items_from_xml()` function, which can parse
+//! and validate GDSN 3.1 XML data. After being processed by this function, the
+//! resulting `TradeItem` structs can be converted into Grid Product transaction
+//! payloads.
 mod error;
 mod validate;
 
@@ -38,17 +44,17 @@ use crate::protocol::{
 pub use error::ProductGdsnError;
 use validate::validate_product_definitions;
 
-// Name of the property where GDSN 3.1 XML data will be stored
+/// Name of the property where GDSN 3.1 XML data will be stored
 pub const GDSN_3_1_PROPERTY_NAME: &str = "GDSN_3_1";
 
 #[derive(Debug, Deserialize, PartialEq)]
-// Struct used for serde deserialization of the GDSN XML elements
+/// Struct used for serde deserialization of the GDSN XML elements
 pub struct GridTradeItems {
     #[serde(rename = "tradeItem")]
     pub trade_items: Vec<TradeItem>,
 }
 
-// Representation of a GDSN trade item, including the GTIN and GDSN XML element
+/// Representation of a GDSN trade item, including the GTIN and GDSN XML element
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct TradeItem {
     pub gtin: String,
