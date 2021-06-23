@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po** \[**FLAGS**\] \[**SUBCOMMAND**\]
+**grid po** \[**FLAGS**\] \[**OPTIONS**\] SUBCOMMAND
 
 DESCRIPTION
 ===========
@@ -41,14 +41,14 @@ OPTIONS
 =======
 
 `-k`, `--key`
-: Base name for private key file.
-
-`--url`
-: URL for the REST API.
+: base name or path to a private signing key file
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
   Splinter. Format <circuit-id>::<service-id>.
+
+`--url`
+: URL for the REST API
 
 `--wait`
 : How long to wait for transaction to be committed.
@@ -56,16 +56,20 @@ OPTIONS
 ENVIRONMENT VARIABLES
 =====================
 
+Many subcommands accept the following environment variables:
+
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
 SUBCOMMANDS
 ===========
