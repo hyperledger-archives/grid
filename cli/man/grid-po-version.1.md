@@ -8,12 +8,12 @@
 NAME
 ====
 
-**grid-po-version** — Create or update Grid Purchase Order versions.
+**grid-po-version** — Create, update or list Grid Purchase Order versions.
 
 SYNOPSIS
 ========
 
-**grid po version** \[**FLAGS**\] \[**SUBCOMMAND**\]
+**grid po version** \[**FLAGS**\] \[**OPTIONS**\] SUBCOMMAND
 
 DESCRIPTION
 ===========
@@ -41,10 +41,10 @@ OPTIONS
 =======
 
 `-k`, `--key`
-: Base name for private key file.
+: base name or path to a private signing key file
 
 `--url`
-: URL for the REST API.
+: URL for the REST API
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
@@ -56,16 +56,18 @@ OPTIONS
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
 SUBCOMMANDS
 ===========

@@ -13,13 +13,13 @@ NAME
 SYNOPSIS
 ========
 
-**grid po create** \[**FLAGS**\] \[**OPTIONS**\]
+**grid po create** \[**FLAGS**\] \[**OPTIONS**\] <**--org** ORGANIZATION>
 
 DESCRIPTION
 ===========
 
 This command allows for the creation of Grid Purchase Orders. It submits a
-Sabre transaction to create the purchase order.
+Sabre transaction to create the purchase order. `--org` is required.
 
 FLAGS
 =====
@@ -40,30 +40,30 @@ FLAGS
 OPTIONS
 =======
 
-`-k`, `--key`
-: Base name for private key file.
+`--id`
+: Optionally include an alternate ID. This may be specified multiple times. 
+  An ID is of the format `alternate_id_type:alternate_id`.
+  Examples: `po_number:12348959` and/or `internal_po_id:a8f9fke`.
 
-`--url`
-: URL for the REST API.
+`-k`, `--key`
+: base name or path to a private signing key file
+
+`--org`
+: Specify the organization that owns the purchase order. This option is required.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
   Splinter. Format <circuit-id>::<service-id>.
 
-`--org`
-: Specify the organization that owns the purchase order.
+`--url`
+: URL for the REST API
 
 `--uuid`
 : Optionally specify the UUID of the purchase order. Must conform to the UUID
   spec. If not specified, will be randomly generated.
 
-`--id`
-: Optionally include an alternate ID. This may be specified multiple times (0
-  to infinity). An ID is of the format `alternate_id_type:alternate_id`.
-  Examples: `po_number:12348959` and/or `internal_po_id:a8f9fke`.
-
 `--wait`
-: Specify how long to wait, in seconds, for the transaction to be committed.
+: Maximum number of seconds to wait for the batch to be committed.
 
 `--workflow-status`
 : Specifies the initial workflow state of the purchase order.
@@ -97,15 +97,18 @@ Transaction was committed successfully.
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
+
+**`GRID_DAEMON_KEY`**
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
-
-**`GRID_ORG_ID`**
-: Specifies the organization id that owns the purchase order.
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========
