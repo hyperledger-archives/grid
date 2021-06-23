@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Provides the "list organizations" operation for the `DieselPikeStore`.
+//! Provides the "delete role" operation for the `DieselPikeStore`.
 
 use super::PikeStoreOperations;
 use crate::error::InternalError;
