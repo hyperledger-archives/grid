@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po update** \[**FLAGS**\] \[**OPTIONS**\] IDENTIFIER
+**grid po update** \[**FLAGS**\] \[**OPTIONS**\] <IDENTIFIER>
 
 DESCRIPTION
 ===========
@@ -46,26 +46,11 @@ FLAGS
 OPTIONS
 =======
 
-`-k`, `--key`
-: Base name for private key file.
-
-`--url`
-: URL for the REST API.
-
-`--service-id`
-: The ID of the service the payload should be sent to; required if running on
-  Splinter. Format <circuit-id>::<service-id>.
-
-`--org`
-: Specify the organization that owns the purchase order.
+`--accepted-version`
+: Specifies the accepted version ID of the purchase order.
 
 `--add-id`
-: Add an alternate ID. This may be specified multiple times (0 to infinity).
-  An ID is of the format `alternate_id_type:alternate_id`.  Examples:
-  `po_number:12348959` and/or `internal_po_id:a8f9fke`.
-
-`--rm-id`
-: Remove an alternate ID. This may be specified multiple times (0 to infinity).
+: Add an alternate ID. This may be specified multiple times.
   An ID is of the format `alternate_id_type:alternate_id`.  Examples:
   `po_number:12348959` and/or `internal_po_id:a8f9fke`.
 
@@ -73,11 +58,26 @@ OPTIONS
 : Specifies if the purchuse order is closed or open. Possible values are `true`
   or `false`.
 
-`--accepted-version`
-: Specifies the accepted version ID of the purchase order.
+`-k`, `--key`
+: base name or path to a private signing key file
+
+`--org`
+: Specify the organization that owns the purchase order.
+
+`--rm-id`
+: Remove an alternate ID. This may be specified multiple times.
+  An ID is of the format `alternate_id_type:alternate_id`.  Examples:
+  `po_number:12348959` and/or `internal_po_id:a8f9fke`.
+
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
+
+`--url`
+: URL for the REST API
 
 `--wait`
-: Specify how long to wait, in seconds, for the transaction to be committed.
+: Maximum number of seconds to wait for the batch to be committed.
 
 `--workflow-status`
 : Specifies the workflow state of the purchase order.
@@ -134,15 +134,18 @@ Transaction was committed successfully.
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
+
+**`GRID_DAEMON_KEY`**
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
-
-**`GRID_ORG_ID`**
-: Specifies the organization id that owns the purchase order.
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========

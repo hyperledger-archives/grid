@@ -1424,10 +1424,7 @@ fn run() -> Result<(), CliError> {
                                 .long("org")
                                 .takes_value(true)
                                 .required(true)
-                                .help(
-                                    "ID of the organization which owns the Purchase Order. \
-                                Defaults to the GRID_ORG_ID environment variable value, if set",
-                                ),
+                                .help("ID of the organization which owns the Purchase Order"),
                         )
                         .arg(Arg::with_name("uuid").long("uuid").takes_value(true).help(
                             "UUID for Purchase Order. \
@@ -1564,10 +1561,7 @@ fn run() -> Result<(), CliError> {
                                 .long("org")
                                 .required(true)
                                 .takes_value(true)
-                                .help(
-                                    "ID of the organization which owns the Purchase Order. \
-                                Defaults to the GRID_ORG_ID environment variable, if set",
-                                ),
+                                .help("ID of the organization which owns the Purchase Order"),
                         )
                         .arg(
                             Arg::with_name("add_id")

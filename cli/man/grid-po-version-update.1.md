@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po create** \[**FLAGS**\] \[**OPTIONS**\] VERSION_ID
+**grid po version update** \[**FLAGS**\] \[**OPTIONS**\] <VERSION_ID> <**--org** ORG_ID>
 
 DESCRIPTION
 ===========
@@ -21,6 +21,9 @@ DESCRIPTION
 This command allows for the update of Grid Purchase Orders versions. It
 submits a Sabre transaction to create the purchase order version. Each update
 creates a new revision of that version.
+
+VERSION_ID argument and --org option are required.
+
 
 ARGS
 ====
@@ -45,16 +48,16 @@ FLAGS
   output.
 
 `--draft`
-: Sets the resulting version as a draft.
+: Sets the resulting version as a draft. Conflicts with `--not-draft`.
 
 `--not-draft`
-: Sets the resulting version as a non-draft.
+: Sets the resulting version as a non-draft. Conflicts with `--draft`.
 
 OPTIONS
 =======
 
 `-k`, `--key`
-: Base name for private key file.
+: base name or path to a private signing key file
 
 `--org`
 : Specify the organization that owns the purchase order.
@@ -64,10 +67,10 @@ OPTIONS
   Splinter. Format <circuit-id>::<service-id>.
 
 `--url`
-: URL for the REST API.
+: URL for the REST API
 
 `--wait`
-: Specify how long to wait, in seconds, for the transaction to be committed.
+: Maximum number of seconds to wait for the batch to be committed.
 
 `--workflow-status`
 : Specifies the initial workflow state of the purchase order.
@@ -102,15 +105,18 @@ Transaction was committed successfully.
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
+
+**`GRID_DAEMON_KEY`**
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
-
-**`GRID_ORG_ID`**
-: Specifies the organization id that owns the purchase order.
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========

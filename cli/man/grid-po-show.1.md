@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po show** \[**FLAGS**\] \[**OPTIONS**\] IDENTIFIER
+**grid po show** \[**FLAGS**\] \[**OPTIONS**\] <IDENTIFIER>
 
 DESCRIPTION
 ===========
@@ -46,27 +46,27 @@ FLAGS
 OPTIONS
 =======
 
-`--url`
-: URL for the REST API.
-
-`--service-id`
-: The ID of the service the payload should be sent to; required if running on
-  Splinter. Format <circuit-id>::<service-id>.
+`-F`, `--format=FORMAT`
+: Specifies the output format of the list. Possible values for formatting are
+  `human`, `csv`, `yaml`, and `json`. Defaults to `human`.
 
 `--org`
 : Specify the organization that owns the purchase order.
-
-`--version`
-: Specify the version ID of the purchase order to display. Defaults to the
-  accepted version.
 
 `--revision`
 : Specify the revision number for the specified version. Defaults to the latest
   revision.
 
-`-F`, `--format=FORMAT`
-: Specifies the output format of the list. Possible values for formatting are
-  `human`, `csv`, `yaml`, and `json`. Defaults to `human`.
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
+
+`--url`
+: URL for the REST API
+
+`--version`
+: Specify the version ID of the purchase order to display. Defaults to the
+  accepted version.
 
 EXAMPLES
 ========
@@ -132,14 +132,10 @@ ENVIRONMENT VARIABLES
 =====================
 
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
-
-**`GRID_ORG_ID`**
-: Specifies the organization id that owns the purchase order.
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========
