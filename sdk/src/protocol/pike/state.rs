@@ -584,7 +584,7 @@ impl std::fmt::Display for AlternateIdIndexEntryBuildError {
     }
 }
 
-/// Builder used to create a AlternateIdIndexEntry
+/// Builder used to create an AlternateIdIndexEntry
 #[derive(Default, Clone)]
 pub struct AlternateIdIndexEntryBuilder {
     pub id_type: Option<String>,
@@ -739,7 +739,7 @@ impl std::fmt::Display for AlternateIdIndexEntryListBuildError {
     }
 }
 
-/// Builder used to create a AlternateIdIndexEntryList
+/// Builder used to create an AlternateIdIndexEntryList
 #[derive(Default, Clone)]
 pub struct AlternateIdIndexEntryListBuilder {
     pub entries: Vec<AlternateIdIndexEntry>,
@@ -864,7 +864,7 @@ impl std::fmt::Display for AlternateIdBuildError {
     }
 }
 
-/// Builder used to create a AlternateId
+/// Builder used to create an AlternateId
 #[derive(Default, Clone)]
 pub struct AlternateIdBuilder {
     pub id_type: Option<String>,
@@ -1020,7 +1020,7 @@ impl std::fmt::Display for AgentBuildError {
     }
 }
 
-/// Builder used to create a Agent
+/// Builder used to create an Agent
 #[derive(Default, Clone)]
 pub struct AgentBuilder {
     pub org_id: Option<String>,
@@ -1179,7 +1179,7 @@ impl std::fmt::Display for AgentListBuildError {
     }
 }
 
-/// Builder used to create a AgentList
+/// Builder used to create an AgentList
 #[derive(Default, Clone)]
 pub struct AgentListBuilder {
     pub agents: Vec<Agent>,
@@ -1345,7 +1345,7 @@ impl std::fmt::Display for OrganizationBuildError {
     }
 }
 
-/// Builder used to create a Organization
+/// Builder used to create an Organization
 #[derive(Default, Clone)]
 pub struct OrganizationBuilder {
     pub org_id: Option<String>,
@@ -1508,7 +1508,7 @@ impl std::fmt::Display for OrganizationListBuildError {
     }
 }
 
-/// Builder used to create a Agent
+/// Builder used to create an OrganizationList
 #[derive(Default, Clone)]
 pub struct OrganizationListBuilder {
     pub organizations: Vec<Organization>,
