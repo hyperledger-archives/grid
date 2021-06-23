@@ -216,7 +216,7 @@ fn schema_update(
             .is_ok()
         {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Schema already has PropertyDefination with name {}",
+                "Schema already has PropertyDefinition with name {}",
                 property.name()
             )));
         }
@@ -701,7 +701,7 @@ mod tests {
         match schema_update(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
-                assert!(err.contains("Schema already has PropertyDefination with name TEST"));
+                assert!(err.contains("Schema already has PropertyDefinition with name TEST"));
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
