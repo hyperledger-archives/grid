@@ -1,6 +1,6 @@
 % GRID-LOCATION-CREATE(1) Cargill, Incorporated | Grid Commands
 <!--
-  Copyright 2018-2020 Cargill Incorporated
+  Copyright 2018-2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
   https://creativecommons.org/licenses/by/4.0/
 -->
@@ -13,12 +13,12 @@ NAME
 SYNOPSIS
 ========
 
-**grid location create** \[**FLAGS**\] \[**OPTIONS**\]
+**grid location create** \[**FLAGS**\] \[**OPTIONS**\] <{LOCATION_ID|**--file** FILENAME}>
 
 DESCRIPTION
 ===========
 
-Create a new location. This command requires the `<location_id>` argument to
+Create a new location. This command requires the `LOCATION_ID` argument to
 specify a unique identifier for the location, the `--owner` option to
 specify the `org_id` of the Pike organization that owns the location, and a
 list of `properties` that describe the product. The `--namespace` option must
@@ -26,6 +26,12 @@ also be specified otherwise the namespace used will default to GS1.
 
 Alternatively the `--file` option my be used with a YAML file describing
 multiple locations to create one or more locations at once.
+
+ARGS
+====
+
+`LOCATION_ID`
+: Unique identifier for location. Conflicts with `--file`
 
 FLAGS
 =====
@@ -46,24 +52,31 @@ FLAGS
 OPTIONS
 =======
 
-`--namespace`
-: Location name space (defaults to `GS1`)
-
-`--owner`
-: `org_id` of the Pike organization that owns the location
-
-`--property`
-: Key value pair describing a property of the location (example: locationName=Foo)
-
 `-f`, `--file`
 : Path to YAML file containing one or more location definitions. If this option is
-  used, `location_id`, `namespace`, and `property` cannot be specified.
+  used, `location_id`, `namespace`, `owner`, and `property` cannot be specified.
 
-ARGS
-====
+`-k`, `--key`
+: Base name or path to a private signing key file
 
-`<location_id>`
-: Unique identifier for location
+`--namespace`
+: Location name space (defaults to `GS1`). Conflicts with `--file`
+
+`--owner`
+: `org_id` of the Pike organization that owns the location. Conflicts with `--file`
+
+`--property`
+: Key value pair describing a property of the location (example: locationName=Foo). Conflicts with `--file`
+
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
+
+`--url`
+: URL for the REST API
+
+`--wait`
+: Maximum number of seconds to wait for the batch to be committed.
 
 EXAMPLES
 ========
@@ -123,16 +136,18 @@ $ grid location create --file locations.yaml
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========

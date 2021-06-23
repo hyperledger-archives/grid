@@ -1,6 +1,6 @@
-% GRID-LOCATION-LIST(1) Cargill, Incorporated | Grid Commands
+% GRID-LOCATION-SHOW(1) Cargill, Incorporated | Grid Commands
 <!--
-  Copyright 2018-2020 Cargill Incorporated
+  Copyright 2018-2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
   https://creativecommons.org/licenses/by/4.0/
 -->
@@ -8,18 +8,25 @@
 NAME
 ====
 
-**grid-location-list** — List all locations
+**grid-location-show** — Show the details of a specific location
 
 SYNOPSIS
 ========
 
-**grid location list** \[**FLAGS**\]
+**grid location show** \[**FLAGS**\] \[**OPTIONS**\] <LOCATION_ID>
 
 DESCRIPTION
 ===========
 
-List all locations in grid. If the `service_id` flag is specified, only
-locations corresponding to that `service_id` will be shown.
+Show the complete details of a specific location. This command requires the
+`LOCATION_ID` argument to specify the unique identifier for the location that
+is to be retrieved.
+
+ARGS
+====
+
+`LOCATION_ID`
+: A unique identifier for location
 
 FLAGS
 =====
@@ -27,15 +34,8 @@ FLAGS
 `-h`, `--help`
 : Prints help information
 
-`-k`, `--key`
-: Base name for private key file
-
 `-q`, `--quiet`
 : Do not display output
-
-`--service-id`
-: The ID of the service the payload should be sent to; required if running on
-  Splinter. Format <circuit-id>::<service-id>
 
 `-V`, `--version`
 : Prints version information
@@ -44,11 +44,15 @@ FLAGS
 : Increases verbosity (the opposite of `-q`). Specify multiple times for more
   output
 
+OPTIONS
+=======
+
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
+
 `--url`
 : URL for the REST API
-
-`--wait`
-: How long to wait for transaction to be committed
 
 EXAMPLES
 ========
@@ -56,10 +60,10 @@ EXAMPLES
 The command
 
 ```
-$ grid location list
+$ grid location show --location_id 762111177704
 ```
 
-Will list all locations and their properties
+Will show the details of the specified location
 
 ```
 Location ID: 762111177704
@@ -79,34 +83,16 @@ Properties:
     contactEmail: lorraine@fake-email.bike
     contactPhone: 612-555-1234
     contactDate: 01/15/2020
-Location ID: 7798033330005
-Namespace: GS1
-Owner: cgl
-Properties:
-    locationName: Grandma's shack
-    locationDescription: My grandma's old shack
-    locationType: 2
-    addressLine1: "615 Worf ave"
-    city: St. Paul
-    stateOrRegion: MN
-    postalCode: "55117"
-    country: United States
-    latLong: "46729554,-94685899"
-    contactName: Lorraine
-    contactEmail: lorraine@fake-email.bike
-    contactPhone: 612-555-1234
-    contactDate: 01/15/2020
 ```
 
 ENVIRONMENT VARIABLES
 =====================
 
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========

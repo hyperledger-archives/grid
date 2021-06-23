@@ -1,6 +1,6 @@
 % GRID-LOCATION-DELETE(1) Cargill, Incorporated | Grid Commands
 <!--
-  Copyright 2018-2020 Cargill Incorporated
+  Copyright 2018-2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
   https://creativecommons.org/licenses/by/4.0/
 -->
@@ -13,15 +13,21 @@ NAME
 SYNOPSIS
 ========
 
-**grid location delete** \[**FLAGS**\] \[**OPTIONS**\]
+**grid location delete** \[**FLAGS**\] \[**OPTIONS**\] <LOCATION_ID>
 
 DESCRIPTION
 ===========
 
-Delete an existing location. This command requires the `<location_id>` argument
+Delete an existing location. This command requires the `LOCATION_ID` argument
 to specify the unique identifier of the location that is to be deleted. The
 `--namespace` option must also be specified otherwise the namespace used will
 default to GS1.
+
+ARGS
+====
+
+`LOCATION_ID`
+: Unique identifier for location
 
 FLAGS
 =====
@@ -29,8 +35,6 @@ FLAGS
 `-h`, `--help`
 : Prints help information
 
-`-k`, `--key`
-: Base name for private key file
 
 `-q`, `--quiet`
 : Do not display output
@@ -45,14 +49,21 @@ FLAGS
 OPTIONS
 =======
 
+`-k`, `--key`
+: Base name or path to a private signing key file
+
 `--namespace`
 : Location name space (defaults to `GS1`)
 
-ARGS
-====
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
 
-`<location_id>`
-: Unique identifier for location
+`--url`
+: URL for the REST API
+
+`--wait`
+: Maximum number of seconds to wait for the batch to be committed.
 
 EXAMPLES
 ========
@@ -66,16 +77,18 @@ $ grid location delete --location_id 762111177704 --namespace GS1
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`
 
 SEE ALSO
 ========
