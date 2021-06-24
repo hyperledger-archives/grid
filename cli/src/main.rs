@@ -862,13 +862,6 @@ fn run() -> Result<(), CliError> {
                                 ),
                         )
                         .arg(
-                            #[cfg(not(feature = "product-gdsn"))]
-                            Arg::with_name("file")
-                                .long("file")
-                                .short("f")
-                                .takes_value(true)
-                                .help("Path to yaml file containing a list of products"),
-                            #[cfg(feature = "product-gdsn")]
                             Arg::with_name("file")
                                 .long("file")
                                 .short("f")
@@ -922,13 +915,6 @@ fn run() -> Result<(), CliError> {
                                 ),
                         )
                         .arg(
-                            #[cfg(not(feature = "product-gdsn"))]
-                            Arg::with_name("file")
-                                .long("file")
-                                .short("f")
-                                .takes_value(true)
-                                .help("Path to yaml file containing a list of products"),
-                            #[cfg(feature = "product-gdsn")]
                             Arg::with_name("file")
                                 .long("file")
                                 .short("f")
@@ -2135,7 +2121,6 @@ fn run() -> Result<(), CliError> {
                 .or_else(|| env::var(GRID_SERVICE_ID).ok());
 
             match m.subcommand() {
-                #[cfg(feature = "product-gdsn")]
                 ("create", Some(m)) if m.is_present("file") => {
                     let key = m
                         .value_of("key")
@@ -2150,25 +2135,6 @@ fn run() -> Result<(), CliError> {
                         &url,
                         service_id.as_deref(),
                         m.value_of("owner"),
-                    )?;
-
-                    info!("Submitting request to create product...");
-                    products::do_create_products(&url, signer, wait, actions, service_id)?;
-                }
-                #[cfg(not(feature = "product-gdsn"))]
-                ("create", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let actions = products::create_product_payloads_from_yaml(
-                        m.value_of("file").unwrap(),
-                        &url,
-                        service_id.as_deref(),
                     )?;
 
                     info!("Submitting request to create product...");
@@ -2211,7 +2177,6 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to create product...");
                     products::do_create_products(&url, signer, wait, vec![action], service_id)?;
                 }
-                #[cfg(feature = "product-gdsn")]
                 ("update", Some(m)) if m.is_present("file") => {
                     let key = m
                         .value_of("key")
@@ -2223,25 +2188,6 @@ fn run() -> Result<(), CliError> {
 
                     let actions = products::update_product_payloads_from_file(
                         m.values_of("file").unwrap().collect(),
-                        &url,
-                        service_id.as_deref(),
-                    )?;
-
-                    info!("Submitting request to update product...");
-                    products::do_update_products(&url, signer, wait, actions, service_id)?;
-                }
-                #[cfg(not(feature = "product-gdsn"))]
-                ("update", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let actions = products::update_product_payloads_from_yaml(
-                        m.value_of("file").unwrap(),
                         &url,
                         service_id.as_deref(),
                     )?;
