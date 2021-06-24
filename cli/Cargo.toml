@@ -54,6 +54,7 @@ default = [
     "sawtooth",
     "database",
     "postgres",
+    "sqlite",
 ]
 
 stable = [
@@ -73,7 +74,6 @@ experimental = [
     "product-gdsn",
     "purchase-order",
     "splinter",
-    "sqlite",
 ]
 
 database = ["diesel"]
