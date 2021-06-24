@@ -92,6 +92,7 @@ stable = [
     "rest-api-resources-role",
     "rest-api-resources-schema",
     "schema",
+    "sqlite",
 ]
 
 experimental = [
@@ -116,7 +117,6 @@ experimental = [
     "rest-api-resources-submit",
     "rest-api-resources-track-and-trace",
     "sawtooth-compat",
-    "sqlite",
     "track-and-trace",
     "workflow"
 ]
@@ -176,5 +176,5 @@ sawtooth-compat = [
     "sabre-sdk",
     "sawtooth-sdk"
 ]
-sqlite = ["chrono", "diesel/sqlite", "diesel_migrations"]
+sqlite = ["chrono", "diesel/sqlite", "diesel_migrations", "log"]
 workflow = []
