@@ -38,7 +38,7 @@ log = "0.4"
 flexi_logger = "0.17"
 sawtooth-sdk = "0.4"
 sabre-sdk = "0.5"
-grid-sdk = { path = "../sdk", features = ["postgres", "sqlite", "pike", "schema", "product", "location"] }
+grid-sdk = { path = "../sdk", features = ["postgres", "sqlite", "pike", "schema", "product", "product-gdsn", "location"] }
 rust-crypto = "0.2"
 protobuf = "2.19"
 users = "0.11"
@@ -71,7 +71,6 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
-    "product-gdsn",
     "purchase-order",
     "splinter",
 ]
@@ -88,9 +87,6 @@ admin-keygen = []
 location = ["pike", "schema"]
 pike = []
 product = ["pike", "schema"]
-product-gdsn = [
-    "grid-sdk/product-gdsn"
-]
 purchase-order = []
 sawtooth = []
 schema = ["pike"]

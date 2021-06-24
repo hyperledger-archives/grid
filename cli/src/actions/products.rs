@@ -20,7 +20,6 @@ use crate::transaction::product_batch_builder;
 use cylinder::Signer;
 use grid_sdk::pike::addressing::PIKE_NAMESPACE;
 use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
-#[cfg(feature = "product-gdsn")]
 use grid_sdk::product::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
@@ -281,13 +280,11 @@ pub fn do_show_products(
     Ok(())
 }
 
-#[cfg(feature = "product-gdsn")]
 enum ProductFileType {
     Gdsn3_1,
     SchemaBasedDefinition,
 }
 
-#[cfg(feature = "product-gdsn")]
 fn determine_file_type(path: &str) -> Result<ProductFileType, CliError> {
     let extension = std::path::Path::new(&path).extension();
 
@@ -314,7 +311,6 @@ fn determine_file_type(path: &str) -> Result<ProductFileType, CliError> {
     }
 }
 
-#[cfg(feature = "product-gdsn")]
 pub fn create_product_payloads_from_file(
     paths: Vec<&str>,
     url: &str,
@@ -374,7 +370,6 @@ pub fn create_product_payloads_from_file(
     Ok(total_payloads)
 }
 
-#[cfg(feature = "product-gdsn")]
 pub fn update_product_payloads_from_file(
     paths: Vec<&str>,
     url: &str,
@@ -424,7 +419,6 @@ pub fn update_product_payloads_from_file(
     Ok(total_payloads)
 }
 
-#[cfg(feature = "product-gdsn")]
 pub fn create_product_payloads_from_xml(
     path: &str,
     owner: &str,
@@ -464,7 +458,6 @@ pub fn create_product_payloads_from_yaml(
     Ok(payloads)
 }
 
-#[cfg(feature = "product-gdsn")]
 pub fn update_product_payloads_from_xml(path: &str) -> Result<Vec<ProductUpdateAction>, CliError> {
     let trade_items = get_trade_items_from_xml(&path)?;
 
@@ -525,7 +518,6 @@ impl ProductCreateYaml {
     }
 }
 
-#[cfg(feature = "product-gdsn")]
 fn check_duplicate_properties(
     product_id: String,
     props1: Vec<PropertyValue>,
@@ -579,7 +571,6 @@ fn yaml_to_property_values(
         } else if !def.required {
             continue;
         } else {
-            #[cfg(feature = "product-gdsn")]
             if def.name == GDSN_3_1_PROPERTY_NAME {
                 continue;
             }
