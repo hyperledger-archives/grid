@@ -35,7 +35,7 @@ table! {
         property_name -> Text,
         parent_property_name -> Nullable<Text>,
         data_type -> Text,
-        bytes_value -> Nullable<Bytea>,
+        bytes_value -> Nullable<Binary>,
         boolean_value -> Nullable<Bool>,
         number_value -> Nullable<Int8>,
         string_value -> Nullable<Text>,
