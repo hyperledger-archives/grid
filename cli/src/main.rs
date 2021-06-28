@@ -362,7 +362,7 @@ fn run() -> Result<(), CliError> {
         )
         .subcommand(
             SubCommand::with_name("organization")
-                .about("Update or create organization")
+                .about("Update, create, list or show organizations")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
                 .arg(
                     Arg::with_name("service_id")
@@ -480,6 +480,25 @@ fn run() -> Result<(), CliError> {
                                 .help("How long to wait for transaction to be committed")
                         )
                         .after_help(AFTER_HELP_WITH_KEY),
+                )
+                .subcommand(
+                    SubCommand::with_name("list")
+                    .about("List organizations")
+                    .arg(
+                        Arg::with_name("alternate_ids")
+                            .long("alternate-ids")
+                            .help("List organizations with the associated Alternate IDs")
+                    )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("F")
+                            .long("format")
+                            .help("Output format")
+                            .possible_values(&["human", "csv"])
+                            .default_value("human")
+                            .takes_value(true),
+                    )
+                    .after_help(AFTER_HELP_WITHOUT_KEY)
                 )
         )
         .subcommand(
@@ -1882,6 +1901,12 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to update organization...");
                     orgs::do_update_organization(&url, signer, wait, update_org, service_id)?;
                 }
+                ("list", Some(m)) => orgs::do_list_organizations(
+                    &url,
+                    service_id,
+                    m.value_of("format").unwrap(),
+                    m.is_present("alternate-ids"),
+                )?,
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
