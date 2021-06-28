@@ -47,7 +47,6 @@ mod sawtooth;
 mod splinter;
 
 use flexi_logger::{LogSpecBuilder, Logger};
-use grid_sdk::rest_api::actix_web_3::Backend;
 
 use crate::config::GridConfigBuilder;
 use crate::error::DaemonError;
@@ -107,33 +106,30 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
-    match config.endpoint().backend() {
-        Backend::Sawtooth => {
-            #[cfg(feature = "sawtooth-support")]
-            {
-                run_sawtooth(config)?;
-                Ok(())
-            }
-            #[cfg(not(feature = "sawtooth-support"))]
-            Err(DaemonError::with_message(&format!(
-                "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not \
-                enabled for this binary.",
-                config.endpoint().url()
-            )))
+    if config.endpoint().starts_with("splinter:") {
+        #[cfg(feature = "splinter-support")]
+        {
+            run_splinter(config)?;
+            Ok(())
         }
-        Backend::Splinter => {
-            #[cfg(feature = "splinter-support")]
-            {
-                run_splinter(config)?;
-                Ok(())
-            }
-            #[cfg(not(feature = "splinter-support"))]
-            Err(DaemonError::with_message(&format!(
-                "A Splinter connection endpoint ({}) was provided but Splinter support is not \
-                enabled for this binary.",
-                config.endpoint().url()
-            )))
+        #[cfg(not(feature = "splinter-support"))]
+        Err(DaemonError::with_message(&format!(
+            "A Splinter connection endpoint ({}) was provided but Splinter support is not \
+            enabled for this binary.",
+            config.endpoint()
+        )))
+    } else {
+        #[cfg(feature = "sawtooth-support")]
+        {
+            run_sawtooth(config)?;
+            Ok(())
         }
+        #[cfg(not(feature = "sawtooth-support"))]
+        Err(DaemonError::with_message(&format!(
+            "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not \
+            enabled for this binary.",
+            config.endpoint()
+        )))
     }
 }
 

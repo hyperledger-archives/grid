@@ -23,6 +23,8 @@ use std::sync::{
 };
 
 use grid_sdk::backend::SawtoothBackendClient;
+#[cfg(feature = "rest-api")]
+use grid_sdk::rest_api::actix_web_3::Endpoint;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
 use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
@@ -45,7 +47,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     let store_factory = create_store_factory(&connection_uri)
         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-    let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
+    let sawtooth_connection = SawtoothConnection::new(&config.endpoint());
     let backend_client = SawtoothBackendClient::new(sawtooth_connection.get_sender());
     let backend_state = BackendState::new(Arc::new(backend_client));
 
@@ -104,13 +106,14 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     #[cfg(feature = "integration")]
     let key_state = KeyState::new(&config.key_file_name());
 
+    #[cfg(feature = "rest-api")]
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
         store_state,
         backend_state,
         #[cfg(feature = "integration")]
         key_state,
-        config.endpoint().clone(),
+        Endpoint::from(config.endpoint()),
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
@@ -126,6 +129,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
 
         ctrlc_triggered.store(true, Ordering::SeqCst);
 
+        #[cfg(feature = "rest-api")]
         rest_api_shutdown_handle.shutdown();
 
         if let Err(err) = event_processor_shutdown_handle.shutdown() {
@@ -134,6 +138,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     })
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
+    #[cfg(feature = "rest-api")]
     rest_api_join_handle
         .join()
         .map_err(|_| DaemonError::with_message("Unable to cleanly join the REST API thread"))
