@@ -15,13 +15,11 @@
  * -----------------------------------------------------------------------------
  */
 
-use grid_sdk::rest_api::actix_web_3::{Backend, Endpoint};
-
 use crate::error::ConfigurationError;
 
 #[derive(Debug)]
 pub struct GridConfig {
-    endpoint: Endpoint,
+    endpoint: String,
     rest_api_endpoint: String,
     database_url: String,
     #[cfg(feature = "splinter-support")]
@@ -31,7 +29,7 @@ pub struct GridConfig {
 }
 
 impl GridConfig {
-    pub fn endpoint(&self) -> &Endpoint {
+    pub fn endpoint(&self) -> &str {
         &self.endpoint
     }
 
@@ -61,7 +59,7 @@ impl GridConfig {
 }
 
 pub struct GridConfigBuilder {
-    endpoint: Option<Endpoint>,
+    endpoint: Option<String>,
     rest_api_endpoint: Option<String>,
     database_url: Option<String>,
     #[cfg(feature = "splinter-support")]
@@ -73,10 +71,7 @@ pub struct GridConfigBuilder {
 impl Default for GridConfigBuilder {
     fn default() -> Self {
         Self {
-            endpoint: Some(Endpoint {
-                url: "tcp://127.0.0.1:4004".to_owned(),
-                backend: Backend::Sawtooth,
-            }),
+            endpoint: Some("tcp://127.0.0.1:4004".to_owned()),
             rest_api_endpoint: Some("127.0.0.1:8080".to_owned()),
             database_url: Some("postgres://grid:grid_example@localhost/grid".to_owned()),
             #[cfg(feature = "splinter-support")]
@@ -92,7 +87,8 @@ impl GridConfigBuilder {
         Self {
             endpoint: matches
                 .value_of("connect")
-                .map(Endpoint::from)
+                .map(ToOwned::to_owned)
+                .map(|s| s.to_lowercase())
                 .or_else(|| self.endpoint.take()),
 
             rest_api_endpoint: matches
@@ -169,7 +165,7 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("validator:4004", config.endpoint().url());
+        assert_eq!("validator:4004", config.endpoint());
         assert_eq!("rest_api:8080", config.rest_api_endpoint());
     }
 
@@ -185,7 +181,7 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("tcp://127.0.0.1:4004", config.endpoint().url());
+        assert_eq!("tcp://127.0.0.1:4004", config.endpoint());
         assert_eq!("127.0.0.1:8080", config.rest_api_endpoint());
     }
 }
