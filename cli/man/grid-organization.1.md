@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid organization** \[**FLAGS**\] \[**OPTIONS**\] <**SUBCOMMAND**>
+**grid organization** \[**FLAGS**\] \[**OPTIONS**\] SUBCOMMAND
 
 DESCRIPTION
 ===========
@@ -24,42 +24,46 @@ FLAGS
 =====
 
 `-h`, `--help`
-: Prints help information
+: Prints help information.
 
 `-q`, `--quiet`
-: Do not display output
+: Do not display output.
 
 `-V`, `--version`
-: Prints version information
+: Prints version information.
 
 `-v`
-: Log verbosely
+: Log verbosely.
 
 ENVIRONMENT VARIABLES
 =====================
 
+Many subcommands accept the following environment variables:
+
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions.
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`.
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`.
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`.
 
 SUBCOMMANDS
 ===========
 
 `create`
-: Create an organization
+: Create an organization.
 
 `help`
-: Prints this message or the help of the given subcommand(s)
+: Prints this message or the help of the given subcommand(s).
 
 `update`
-: Update an organization
+: Update an organization.
 
 SEE ALSO
 ========
