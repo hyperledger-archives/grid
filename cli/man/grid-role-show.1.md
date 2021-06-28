@@ -13,28 +13,28 @@ NAME
 SYNOPSIS
 ========
 
-**grid role show** \[**FLAGS**\] \[**OPTIONS**\] ORG_ID NAME
+**grid role show** \[**FLAGS**\] \[**OPTIONS**\] <ORG_ID> <NAME>
 
 ARGS
 ====
 
 `ORG_ID`
-: The organization identifier to show the role for
+: The organization identifier to show the role for.
 
 `NAME`
-: The user-specified name of the role to show
+: The user-specified name of the role to show.
 
 FLAGS
 =====
 
 `-h`, `--help`
-: Prints help information
+: Prints help information.
 
 `-q`, `--quiet`
-: Do not display output
+: Do not display output.
 
 `-V`, `--version`
-: Prints version information
+: Prints version information.
 
 `-v`
 : Log verbosely
@@ -43,15 +43,10 @@ ENVIRONMENT VARIABLES
 =====================
 
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
-
-**`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for `--url`.
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`.
 
 SEE ALSO
 ========

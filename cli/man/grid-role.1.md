@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid role** \[**FLAGS**\] \[**OPTIONS**\] <**SUBCOMMAND**>
+**grid role** \[**FLAGS**\] \[**OPTIONS**\] SUBCOMMAND
 
 DESCRIPTION
 ===========
@@ -24,51 +24,56 @@ FLAGS
 =====
 
 `-h`, `--help`
-: Prints help information
+: Prints help information.
 
 `-q`, `--quiet`
-: Do not display output
+: Do not display output.
 
 `-V`, `--version`
-: Prints version information
+: Prints version information.
 
 `-v`
-: Log verbosely
+: Log verbosely.
 
 ENVIRONMENT VARIABLES
 =====================
 
+Many subcommands accept the following environment variables:
+
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions.
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`.
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`.
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`.
+
 
 SUBCOMMANDS
 ===========
 
 `create`
-: Create a role
+: Create a role.
 
 `delete`
-: Delete a role
+: Delete a role.
 
 `help`
-: Prints this message or the help of the given subcommand(s)
+: Prints this message or the help of the given subcommand(s).
 
 `list`
-: List all roles for a given org ID
+: List all roles for a given org ID.
 
 `show`
-: Show role specified by org ID and name
+: Show role specified by org ID and name.
 
 `update`
-: Update a role
+: Update a role.
 
 SEE ALSO
 ========
@@ -77,5 +82,7 @@ SEE ALSO
 | `grid role create(1)`
 | `grid role delete(1)`
 | `grid role update(1)`
+| `grid role list(1)`
+| `grid role show(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.2/
