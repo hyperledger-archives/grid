@@ -43,7 +43,7 @@ diesel_migrations = "1.4"
 flexi_logger = "0.17"
 futures = "0.3"
 
-grid-sdk = { path = "../sdk", features = ["rest-api-actix-web-3"]}
+grid-sdk = { path = "../sdk"}
 log = "0.4"
 protobuf = "2.19"
 reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"] }
@@ -106,7 +106,7 @@ pike = [
 ]
 product = ["grid-sdk/product", "grid-sdk/rest-api-endpoint-product", "pike", "schema"]
 purchase-order = ["grid-sdk/rest-api-endpoint-purchase-order", "grid-sdk/purchase-order", "pike"]
-rest-api = ["database", "grid-sdk/rest-api-endpoint-batches"]
+rest-api = ["database", "grid-sdk/rest-api-endpoint-batches", "grid-sdk/rest-api-actix-web-3"]
 sawtooth-support = [
     "database",
     "event",
