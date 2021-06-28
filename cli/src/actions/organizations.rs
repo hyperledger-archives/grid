@@ -235,3 +235,50 @@ fn print_human_readable(column_names: Vec<String>, row_values: Vec<Vec<String>>)
         println!("{}", print_row);
     }
 }
+
+impl std::fmt::Display for OrganizationSlice {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut display_string =
+            format!("Organization ID: {}\nName: {}\n", &self.org_id, &self.name);
+        if let Some(service_id) = &self.service_id {
+            display_string += &format!("Service ID: {}\n", service_id);
+        }
+        display_string += "Locations:";
+        let locations = if self.locations.is_empty() {
+            " -\n".to_string()
+        } else {
+            self.locations
+                .iter()
+                .map(|locale| format!("\n\t{}", locale))
+                .collect::<Vec<String>>()
+                .join(",")
+        };
+        display_string += &locations;
+
+        display_string += "Alternate IDs:";
+        let ids = if self.alternate_ids.is_empty() {
+            " -\n".to_string()
+        } else {
+            self.alternate_ids
+                .iter()
+                .map(|alt_id| format!("\n\t{}: {}", alt_id.id_type, alt_id.id))
+                .collect::<Vec<String>>()
+                .join(",")
+        };
+        display_string += &ids;
+
+        display_string += "Metadata:";
+        let metadata = if self.metadata.is_empty() {
+            " -\n".to_string()
+        } else {
+            self.metadata
+                .iter()
+                .map(|data| format!("\n\t{}: {}", data.key, data.value))
+                .collect::<Vec<String>>()
+                .join(",")
+        };
+        display_string += &metadata;
+
+        write!(f, "{}", display_string)
+    }
+}
