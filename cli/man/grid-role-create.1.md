@@ -13,79 +13,82 @@ NAME
 SYNOPSIS
 ========
 
-**grid role create** \[**FLAGS**\] \[**OPTIONS**\] ORG_ID NAME
+**grid role create** \[**FLAGS**\] \[**OPTIONS**\] <ORG_ID> <NAME>
 
 ARGS
 ====
 
 `ORG_ID`
-: The organization identifier to create the role for
+: The organization identifier to create the role for.
 
 `NAME`
-: The user-specified name of the role
+: The user-specified name of the role.
 
 FLAGS
 =====
 
 `--active`
-: Set role as active
+: Set role as active. Conflicts with `--inactive`.
 
 `-h`, `--help`
-: Prints help information
+: Prints help information.
 
 `--inactive`
-: Set role as inactive
+: Set role as inactive. Conflicts with `--active`.
 
 `-q`, `--quiet`
-: Do not display output
+: Do not display output.
 
 `-V`, `--version`
-: Prints version information
+: Prints version information.
 
 `-v`
-: Log verbosely
+: Log verbosely.
 
 OPTIONS
 =======
 
 `--allowed-orgs`
-: List of organizations allowed use of the role
+: List of organizations allowed use of the role.
 
 `-d`, `--description`
-: Description of the role
+: Description of the role.
 
 `--inherit-from`
-: List of roles to inherit permissions from
+: List of roles to inherit permissions from.
 
 `-k`, `--key`
-: Base name for private signing key file
+: Base name or path to a private signing key file.
 
 `--permissions`
-: List of permissions belonging to the role
+: List of permissions belonging to the role. Multiple permissions can be 
+  assigned in a comma-separated list.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
-Splinter. Format <circuit-id>::<service-id>
+  Splinter. Format <circuit-id>::<service-id>.
 
 `--url`
-: URL for the REST API
+: URL for the REST API.
 
 `--wait`
-: How long to wait for transaction to be committed
+: Maximum number of seconds to wait for the batch to be committed.
 
 ENVIRONMENT VARIABLES
 =====================
 
+**`CYLINDER_PATH`**
+: Colon-separated path used to search for the key which will be used
+  to sign transactions.
+
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`.
 
 **`GRID_DAEMON_KEY`**
-: Specifies key used to sign transactions if `k` or `--key`
-  is not used.
+: Specifies a default value for  `-k`, `--key`.
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`.
 
 SEE ALSO
 ========
@@ -94,5 +97,7 @@ SEE ALSO
 | `grid role(1)`
 | `grid role delete(1)`
 | `grid role update(1)`
+| `grid role list(1)`
+| `grid role show(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.2/
