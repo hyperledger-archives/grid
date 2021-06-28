@@ -500,6 +500,17 @@ fn run() -> Result<(), CliError> {
                     )
                     .after_help(AFTER_HELP_WITHOUT_KEY)
                 )
+                .subcommand(
+                    SubCommand::with_name("show")
+                    .about("Show an organization specified by ID")
+                    .arg(
+                        Arg::with_name("org_id")
+                            .takes_value(true)
+                            .required(true)
+                            .help("Unique ID for organization")
+                    )
+                    .after_help(AFTER_HELP_WITHOUT_KEY)
+                )
         )
         .subcommand(
             SubCommand::with_name("role")
@@ -1905,8 +1916,11 @@ fn run() -> Result<(), CliError> {
                     &url,
                     service_id,
                     m.value_of("format").unwrap(),
-                    m.is_present("alternate-ids"),
+                    m.is_present("alternate_ids"),
                 )?,
+                ("show", Some(m)) => {
+                    orgs::do_show_organization(&url, service_id, m.value_of("org_id").unwrap())?
+                }
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
