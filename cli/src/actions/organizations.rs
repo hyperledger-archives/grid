@@ -17,9 +17,6 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::error::CliError;
-use crate::http::submit_batches;
-use crate::transaction::pike_batch_builder;
 use cylinder::Signer;
 use grid_sdk::{
     pike::addressing::PIKE_NAMESPACE,
@@ -28,6 +25,10 @@ use grid_sdk::{
     },
     protos::IntoProto,
 };
+
+use crate::error::CliError;
+use crate::http::submit_batches;
+use crate::transaction::pike_batch_builder;
 
 pub fn do_create_organization(
     url: &str,
