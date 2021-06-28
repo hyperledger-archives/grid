@@ -236,6 +236,30 @@ fn print_human_readable(column_names: Vec<String>, row_values: Vec<Vec<String>>)
     }
 }
 
+pub fn do_show_organization(
+    url: &str,
+    service_id: Option<String>,
+    org_id: &str,
+) -> Result<(), CliError> {
+    let client = Client::new();
+    let mut final_url = format!("{}/organization/{}", url, org_id);
+    if let Some(service_id) = service_id {
+        final_url = format!("{}?service_id={}", final_url, service_id);
+    }
+
+    let mut response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    let org = response.json::<OrganizationSlice>()?;
+
+    println!("{}", org);
+
+    Ok(())
+}
+
 impl std::fmt::Display for OrganizationSlice {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut display_string =
