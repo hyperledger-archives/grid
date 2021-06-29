@@ -25,7 +25,7 @@ extern crate diesel;
 extern crate diesel_migrations;
 #[macro_use]
 extern crate log;
-#[cfg(feature = "serde_json")]
+#[cfg(all(feature = "serde_json", feature = "pike"))]
 #[macro_use]
 extern crate serde_json;
 #[cfg(feature = "serde")]
