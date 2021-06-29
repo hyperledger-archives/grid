@@ -25,6 +25,8 @@ use std::sync::{
 
 use cylinder::load_key;
 use grid_sdk::backend::SplinterBackendClient;
+#[cfg(feature = "rest-api")]
+use grid_sdk::rest_api::actix_web_3::Endpoint;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
 use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
@@ -48,7 +50,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         .as_hex();
 
     let scabbard_event_connection_factory =
-        ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
+        ScabbardEventConnectionFactory::new(&config.endpoint(), reactor.igniter());
 
     #[cfg(not(any(feature = "database-postgres", feature = "database-sqlite")))]
     return Err(DaemonError::with_message(
@@ -87,7 +89,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     };
 
     app_auth_handler::run(
-        config.endpoint().url(),
+        config.endpoint().to_string(),
         scabbard_event_connection_factory,
         db_handler,
         reactor.igniter(),
@@ -95,19 +97,20 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-    let backend_client = SplinterBackendClient::new(config.endpoint().url());
+    let backend_client = SplinterBackendClient::new(config.endpoint().to_string());
     let backend_state = BackendState::new(Arc::new(backend_client));
 
     #[cfg(feature = "integration")]
     let key_state = KeyState::new(&config.key_file_name());
 
+    #[cfg(feature = "rest-api")]
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
         store_state,
         backend_state,
         #[cfg(feature = "integration")]
         key_state,
-        config.endpoint().clone(),
+        Endpoint::from(config.endpoint()),
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
@@ -129,10 +132,12 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
             );
         }
 
+        #[cfg(feature = "rest-api")]
         rest_api_shutdown_handle.shutdown();
     })
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
+    #[cfg(feature = "rest-api")]
     rest_api_join_handle
         .join()
         .map_err(|_| DaemonError::with_message("Unable to cleanly join the REST API thread"))
