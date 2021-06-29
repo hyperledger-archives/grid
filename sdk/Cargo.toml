@@ -55,8 +55,8 @@ sabre-sdk = "0.5"
 cylinder = { version = "0.2.2", features = ["key-load"], optional = true}
 rust-crypto = "0.2"
 sawtooth-sdk = "0.4"
-quick-xml = { version = "0.22", features = [ "serialize" ] }
-libc = "0.2.94"
+quick-xml = { version = "0.22", features = [ "serialize" ], optional = true }
+libc = { version = "0.2.94", optional = true}
 tempfile = "3"
 
 [build-dependencies]
@@ -77,6 +77,7 @@ stable = [
     "pike",
     "postgres",
     "product",
+    "product-gdsn",
     "rest-api",
     "rest-api-endpoint-agent",
     "rest-api-endpoint-batches",
@@ -105,7 +106,6 @@ experimental = [
     "client",
     "client-reqwest",
     "pike-rest-api",
-    "product-gdsn",
     "purchase-order",
     "rest-api-resources",
     "rest-api-actix-web-3",
@@ -129,9 +129,7 @@ client-reqwest = ["client", "reqwest"]
 location = ["pike", "schema"]
 pike = ["cfg-if"]
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
-product-gdsn = [
-    "reqwest"
-]
+product-gdsn = [ "libc", "quick-xml", "reqwest" ]
 purchase-order = []
 product = ["pike", "schema"]
 schema = ["pike"]
