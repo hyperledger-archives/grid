@@ -39,6 +39,7 @@ use crate::rest_api;
 use super::connection::SawtoothConnection;
 
 pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
+    let sawtooth_endpoint = Endpoint::from(config.endpoint());
     let connection_uri = config
         .database_url()
         .parse()
@@ -47,7 +48,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     let store_factory = create_store_factory(&connection_uri)
         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-    let sawtooth_connection = SawtoothConnection::new(&config.endpoint());
+    let sawtooth_connection = SawtoothConnection::new(&sawtooth_endpoint.url());
     let backend_client = SawtoothBackendClient::new(sawtooth_connection.get_sender());
     let backend_state = BackendState::new(Arc::new(backend_client));
 
@@ -113,7 +114,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
         backend_state,
         #[cfg(feature = "integration")]
         key_state,
-        Endpoint::from(config.endpoint()),
+        sawtooth_endpoint,
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
