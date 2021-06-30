@@ -42,6 +42,7 @@ use crate::rest_api;
 use super::{app_auth_handler, event::ScabbardEventConnectionFactory};
 
 pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
+    let splinter_endpoint = Endpoint::from(config.endpoint());
     let reactor = Reactor::new();
 
     let scabbard_admin_key = load_key("gridd", &[PathBuf::from(config.admin_key_dir())])
@@ -50,7 +51,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         .as_hex();
 
     let scabbard_event_connection_factory =
-        ScabbardEventConnectionFactory::new(&config.endpoint(), reactor.igniter());
+        ScabbardEventConnectionFactory::new(&splinter_endpoint.url(), reactor.igniter());
 
     #[cfg(not(any(feature = "database-postgres", feature = "database-sqlite")))]
     return Err(DaemonError::with_message(
@@ -89,7 +90,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     };
 
     app_auth_handler::run(
-        config.endpoint().to_string(),
+        splinter_endpoint.url(),
         scabbard_event_connection_factory,
         db_handler,
         reactor.igniter(),
@@ -97,7 +98,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-    let backend_client = SplinterBackendClient::new(config.endpoint().to_string());
+    let backend_client = SplinterBackendClient::new(splinter_endpoint.url());
     let backend_state = BackendState::new(Arc::new(backend_client));
 
     #[cfg(feature = "integration")]
@@ -110,7 +111,7 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         backend_state,
         #[cfg(feature = "integration")]
         key_state,
-        Endpoint::from(config.endpoint()),
+        splinter_endpoint,
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
