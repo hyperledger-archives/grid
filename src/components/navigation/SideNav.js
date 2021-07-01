@@ -50,17 +50,7 @@ export const SideNav = () => {
       <a href="/" className="brand">
         <div />
       </a>
-      <div className="nav-items">
-        {makeUserSaplingTabs(useUserSaplings())}
-        <div className="nav-tab">
-          <div className="border">
-            <div className="icon">
-              <Icon>eco_icon</Icon>
-            </div>
-          </div>
-          <div className="label">Saplings</div>
-        </div>
-      </div>
+      <div className="nav-items">{makeUserSaplingTabs(useUserSaplings())}</div>
       <div className="canopy-items">
         <ProfileTab />
       </div>
