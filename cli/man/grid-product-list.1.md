@@ -1,6 +1,6 @@
 % GRID-PRODUCT-LIST(1) Cargill, Incorporated | Grid Commands
 <!--
-  Copyright 2018-2020 Cargill Incorporated
+  Copyright 2018-2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
   https://creativecommons.org/licenses/by/4.0/
 -->
@@ -8,60 +8,51 @@
 NAME
 ====
 
-**grid-product-list** — List all products
+**grid-product-list** — List all products.
 
 SYNOPSIS
 ========
 
-**grid product list** \[**FLAGS**\]
+**grid product list** \[**FLAGS**\] \[**OPTIONS**\]
 
 DESCRIPTION
 ===========
 
-List all products in grid. If the `service_id` flag is specified, only
+List all products in grid. If the `service_id` option is specified, only
 products corresponding to that `service_id` will be shown.
 
 FLAGS
 =====
 
 `-h`, `--help`
-: Prints help information
-
-`-k`, `--key`
-: Base name for private key file
+: Prints help information.
 
 `-q`, `--quiet`
-: Do not display output
-
-`--service-id`
-: The ID of the service the payload should be sent to; required if running on
-  Splinter. Format <circuit-id>::<service-id>
+: Do not display output.
 
 `-V`, `--version`
-: Prints version information
+: Prints version information.
 
 `-v`
 : Increases verbosity (the opposite of `-q`). Specify multiple times for more
-  output
+  output.
+
+OPTIONS
+=======
+
+`--service-id`
+: The ID of the service the payload should be sent to; required if running on
+  Splinter. Format <circuit-id>::<service-id>.
 
 `--url`
-: URL for the REST API
-
-`--wait`
-: How long to wait for transaction to be committed
+: URL for the REST API.
 
 EXAMPLES
 ========
 
-The command
-
+The following command will list all products and their properties:
 ```
 $ grid product list
-```
-
-Will list all products and their properties
-
-```
 Product ID: 762111177704
 Product Namespace: GS1
 Owner: 314156
@@ -82,11 +73,10 @@ ENVIRONMENT VARIABLES
 =====================
 
 **`GRID_DAEMON_ENDPOINT`**
-: Specifies the endpoint for the grid daemon (`gridd`)
-  if `-U` or `--url` is not used.
+: Specifies a default value for `--url`.
 
 **`GRID_SERVICE_ID`**
-: Specifies service ID if `--service-id` is not used
+: Specifies a default value for `--service-id`.
 
 SEE ALSO
 ========
@@ -96,4 +86,4 @@ SEE ALSO
 | `grid-product-show(1)`
 | `grid-product-list(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.1/
+| Grid documentation: https://grid.hyperledger.org/docs/0.2/
