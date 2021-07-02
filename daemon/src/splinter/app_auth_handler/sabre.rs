@@ -29,6 +29,13 @@ use grid_sdk::purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE;
 #[cfg(feature = "schema")]
 use grid_sdk::schema::addressing::GRID_SCHEMA_NAMESPACE;
 
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "purchase-order",
+    feature = "schema"
+))]
 use sabre_sdk::protocol::payload::{
     CreateContractActionBuilder, CreateContractRegistryActionBuilder,
     CreateNamespaceRegistryActionBuilder, CreateNamespaceRegistryPermissionActionBuilder,
@@ -46,11 +53,15 @@ use scabbard::client::{ScabbardClient, ServiceId};
     feature = "schema"
 ))]
 use transact::contract::archive::default_scar_path;
-use transact::{
-    contract::archive::SmartContractArchive,
-    protocol::{batch::BatchBuilder, transaction::Transaction},
-    signing::Signer,
-};
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "purchase-order",
+    feature = "schema"
+))]
+use transact::{contract::archive::SmartContractArchive, protocol::transaction::Transaction};
+use transact::{protocol::batch::BatchBuilder, signing::Signer};
 
 use crate::splinter::app_auth_handler::error::AppAuthHandlerError;
 
@@ -84,6 +95,8 @@ pub fn setup_grid(
         return Ok(());
     }
 
+    // Allow unused mut if no features are enabled.
+    #[allow(unused_mut)]
     let mut txns = Vec::new();
 
     // Make Pike transactions

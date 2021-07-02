@@ -69,6 +69,7 @@ default = [
     "event",
     "rest-api",
     "sawtooth-support",
+    "splinter-support",
 ]
 
 stable = [
@@ -87,7 +88,6 @@ experimental = [
     # The following features are experimental:
     "integration",
     "purchase-order",
-    "splinter-support",
     "track-and-trace",
 ]
 
