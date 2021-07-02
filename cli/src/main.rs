@@ -493,7 +493,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("create")
-                        .about("Create a Role")
+                        .about("Create a role")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
@@ -567,7 +567,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("update")
-                        .about("Update a Role")
+                        .about("Update a role")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
@@ -642,7 +642,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("delete")
-                        .about("Delete a Role")
+                        .about("Delete a role")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
@@ -672,7 +672,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("show")
-                        .about("Show role specified by Org ID and Name")
+                        .about("Show role specified by org ID and name")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
