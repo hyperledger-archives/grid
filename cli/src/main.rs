@@ -209,7 +209,7 @@ fn run() -> Result<(), CliError> {
                             Arg::with_name("public_key")
                                 .takes_value(true)
                                 .required(true)
-                                .help("public key"),
+                                .help("Public key and unique identifier for agents"),
                         )
                         .arg(
                             Arg::with_name("active")
@@ -270,7 +270,7 @@ fn run() -> Result<(), CliError> {
                             Arg::with_name("public_key")
                                 .takes_value(true)
                                 .required(true)
-                                .help("public key"),
+                                .help("Public key and unique identifier for agents"),
                         )
                         .arg(
                             Arg::with_name("active")
@@ -320,12 +320,12 @@ fn run() -> Result<(), CliError> {
                     )
                     .subcommand(
                         SubCommand::with_name("show")
-                            .about("Show agents specified by Public Key")
+                            .about("Show agent specified by public key")
                             .arg(
                                 Arg::with_name("public_key")
                                     .takes_value(true)
                                     .required(true)
-                                    .help("Public Key and unique identifier for agents"),
+                                    .help("Public key and unique identifier for agents"),
                             )
                             .after_help(AFTER_HELP_WITHOUT_KEY),
                     )
