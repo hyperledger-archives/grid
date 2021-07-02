@@ -474,7 +474,7 @@ fn run() -> Result<(), CliError> {
         )
         .subcommand(
             SubCommand::with_name("role")
-                .about("Create or update a role")
+                .about("Create, update, delete, list, or show a role")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
                 .arg(
                     Arg::with_name("service_id")
