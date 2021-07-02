@@ -64,8 +64,14 @@ pub struct GridInheritFrom {
  */
 pub fn display_role(role: &GridRole) {
     println!(
-        "Organization ID: {:?}\nName: {:?}\nDescription: {:?}\nActive: {:?}\nPermissions: {:?}\nAllowed Orgs: {:?}\nInherit from:",
-        role.org_id, role.name, role.description, role.active, role.permissions, role.allowed_organizations,
+        "Organization ID: {:?}\nName: {:?}\nDescription: {:?}\nActive: {:?}\nPermissions: {:?}\n\
+        Allowed Orgs: {:?}\nInherit from:",
+        role.org_id,
+        role.name,
+        role.description,
+        role.active,
+        role.permissions,
+        role.allowed_organizations,
     );
     display_inherit_from(&role.inherit_from);
 }
