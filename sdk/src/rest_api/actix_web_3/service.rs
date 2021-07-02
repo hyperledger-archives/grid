@@ -63,7 +63,7 @@ impl FromRequest for AcceptServiceIdParam {
                 )
                 .json(ErrorResponse::new(
                     400,
-                    "Circuit ID present, but grid is running in sawtooth mode",
+                    "Service ID present, but grid is running in sawtooth mode",
                 )),
             );
         } else if service_id.is_none() && !endpoint.is_sawtooth() {
@@ -73,7 +73,7 @@ impl FromRequest for AcceptServiceIdParam {
                 )
                 .json(ErrorResponse::new(
                     400,
-                    "Circuit ID is not present, but grid is running in splinter mode",
+                    "Service ID is not present, but grid is running in splinter mode",
                 )),
             );
         }
