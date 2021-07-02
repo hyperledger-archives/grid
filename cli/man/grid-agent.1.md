@@ -68,6 +68,8 @@ SUBCOMMANDS
 SEE ALSO
 ========
 | `grid agent create(1)`
+| `grid agent list(1)`
+| `grid agent show(1)`
 | `grid agent update(1)`
 | `grid organization(1)`
 | `grid role(1)`
