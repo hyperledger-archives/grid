@@ -528,7 +528,7 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .use_delimiter(true)
-                                .help("List of organizations allowed use of the role"),
+                                .help("List of IDs of organizations allowed use of the role"),
                         )
                         .arg(
                             Arg::with_name("inherit_from")
