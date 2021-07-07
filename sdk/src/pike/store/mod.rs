@@ -25,6 +25,7 @@
 //! [`DieselPikeStore`]: diesel/struct.DieselPikeStore.html
 //! [`Diesel`]: https://crates.io/crates/diesel
 
+mod builder;
 #[cfg(feature = "diesel")]
 pub(in crate) mod diesel;
 mod error;
@@ -33,6 +34,7 @@ use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::DieselPikeStore;
+pub use builder::AgentBuilder;
 pub use error::PikeStoreError;
 
 /// Represents a Grid Agent
