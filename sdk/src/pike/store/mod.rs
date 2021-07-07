@@ -34,7 +34,7 @@ use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::DieselPikeStore;
-pub use builder::AgentBuilder;
+pub use builder::{AgentBuilder, RoleBuilder};
 pub use error::PikeStoreError;
 
 /// Represents a Grid Agent
