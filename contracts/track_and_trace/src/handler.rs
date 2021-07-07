@@ -30,7 +30,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    pike::addressing::PIKE_NAMESPACE,
+    pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::{
         errors::BuilderError,
         schema::state::{PropertyDefinition, PropertyValue},
@@ -71,7 +71,7 @@ impl TrackAndTraceTransactionHandler {
             family_versions: vec!["1".to_string()],
             namespaces: vec![
                 TRACK_AND_TRACE_NAMESPACE.to_string(),
-                PIKE_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
                 GRID_NAMESPACE.to_string(),
             ],
         }

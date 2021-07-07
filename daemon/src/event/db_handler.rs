@@ -42,7 +42,8 @@ use grid_sdk::{
 use grid_sdk::{
     pike::{
         addressing::{
-            PIKE_AGENT_NAMESPACE, PIKE_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE, PIKE_ROLE_NAMESPACE,
+            GRID_PIKE_AGENT_NAMESPACE, GRID_PIKE_NAMESPACE, GRID_PIKE_ORGANIZATION_NAMESPACE,
+            GRID_PIKE_ROLE_NAMESPACE,
         },
         store::{
             Agent, AgentBuilder, AlternateId, DieselPikeStore, Organization, OrganizationMetadata,
@@ -513,8 +514,8 @@ fn state_change_to_db_operation(
     match state_change {
         StateChange::Set { key, value } => match &key[0..8] {
             #[cfg(feature = "pike")]
-            PIKE_NAMESPACE => match &key[0..10] {
-                PIKE_AGENT_NAMESPACE => {
+            GRID_PIKE_NAMESPACE => match &key[0..10] {
+                GRID_PIKE_AGENT_NAMESPACE => {
                     let agents: Vec<Agent> = AgentList::from_bytes(&value)
                         .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                         .agents()
@@ -550,7 +551,7 @@ fn state_change_to_db_operation(
 
                     Ok(Some(DbInsertOperation::Agents(agents)))
                 }
-                PIKE_ORGANIZATION_NAMESPACE => {
+                GRID_PIKE_ORGANIZATION_NAMESPACE => {
                     let orgs = OrganizationList::from_bytes(&value)
                         .map_err(|err| {
                             EventError(format!("Failed to parse organization list {}", err))
@@ -593,7 +594,7 @@ fn state_change_to_db_operation(
 
                     Ok(Some(DbInsertOperation::Organizations(orgs)))
                 }
-                PIKE_ROLE_NAMESPACE => {
+                GRID_PIKE_ROLE_NAMESPACE => {
                     let roles = RoleList::from_bytes(&value)
                         .map_err(|err| EventError(format!("Failed to parse role list {}", err)))?
                         .roles()
@@ -892,8 +893,8 @@ fn state_change_to_db_operation(
         },
         StateChange::Delete { key } => match &key[0..8] {
             #[cfg(feature = "pike")]
-            PIKE_NAMESPACE => match &key[0..10] {
-                PIKE_ROLE_NAMESPACE => Ok(Some(DbInsertOperation::RemoveRole(
+            GRID_PIKE_NAMESPACE => match &key[0..10] {
+                GRID_PIKE_ROLE_NAMESPACE => Ok(Some(DbInsertOperation::RemoveRole(
                     key.to_string(),
                     commit_num,
                 ))),

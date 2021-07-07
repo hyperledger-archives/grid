@@ -22,7 +22,7 @@ use std::cell::RefCell;
 use std::thread;
 
 #[cfg(feature = "pike")]
-use grid_sdk::pike::addressing::PIKE_NAMESPACE;
+use grid_sdk::pike::addressing::GRID_PIKE_NAMESPACE;
 
 cfg_if! {
     if #[cfg(feature = "schema")] {
@@ -43,7 +43,7 @@ pub use self::error::{EventError, EventIoError, EventProcessorError};
 
 const ALL_GRID_NAMESPACES: &[&str] = &[
     #[cfg(feature = "pike")]
-    PIKE_NAMESPACE,
+    GRID_PIKE_NAMESPACE,
     #[cfg(any(feature = "schema", feature = "product", feature = "location"))]
     GRID_NAMESPACE,
     #[cfg(feature = "track-and-trace")]

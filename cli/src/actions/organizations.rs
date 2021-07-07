@@ -20,7 +20,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use cylinder::Signer;
 use grid_sdk::{
-    pike::addressing::PIKE_NAMESPACE,
+    pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::pike::payload::{
         Action, CreateOrganizationAction, PikePayloadBuilder, UpdateOrganizationAction,
     },
@@ -84,8 +84,8 @@ pub fn do_create_organization(
     let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[PIKE_NAMESPACE.to_string()],
-            &[PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
         )?
         .create_batch_list();
 
@@ -113,8 +113,8 @@ pub fn do_update_organization(
     let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[PIKE_NAMESPACE.to_string()],
-            &[PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
         )?
         .create_batch_list();
 

@@ -21,7 +21,7 @@ use crate::yaml_parser::{
     parse_value_as_string, parse_value_as_vec_string,
 };
 use cylinder::Signer;
-use grid_sdk::pike::addressing::PIKE_NAMESPACE;
+use grid_sdk::pike::addressing::GRID_PIKE_NAMESPACE;
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
     SchemaUpdateAction, SchemaUpdateBuilder,
@@ -213,7 +213,7 @@ pub fn do_create_schemas(
         batch_list_builder = batch_list_builder.add_transaction(
             &payload.into_proto()?,
             &[
-                PIKE_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
                 GRID_SCHEMA_NAMESPACE.to_string(),
             ],
             &[GRID_SCHEMA_NAMESPACE.to_string()],
@@ -238,7 +238,7 @@ pub fn do_update_schemas(
         batch_list_builder = batch_list_builder.add_transaction(
             &payload.into_proto()?,
             &[
-                PIKE_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
                 GRID_SCHEMA_NAMESPACE.to_string(),
             ],
             &[GRID_SCHEMA_NAMESPACE.to_string()],

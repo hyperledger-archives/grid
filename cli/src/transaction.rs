@@ -33,8 +33,8 @@ use sawtooth_sdk::messages::transaction::TransactionHeader;
 
 use crate::CliError;
 
-const PIKE_FAMILY_NAME: &str = "pike";
-const PIKE_FAMILY_VERSION: &str = "2";
+const GRID_PIKE_FAMILY_NAME: &str = "grid_pike";
+const GRID_PIKE_FAMILY_VERSION: &str = "2";
 
 const GRID_SCHEMA_FAMILY_NAME: &str = "grid_schema";
 const GRID_SCHEMA_FAMILY_VERSION: &str = "1";
@@ -53,7 +53,7 @@ pub fn schema_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
 }
 
 pub fn pike_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
-    BatchBuilder::new(PIKE_FAMILY_NAME, PIKE_FAMILY_VERSION, signer)
+    BatchBuilder::new(GRID_PIKE_FAMILY_NAME, GRID_PIKE_FAMILY_VERSION, signer)
 }
 
 pub fn product_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
