@@ -21,7 +21,7 @@ use std::time::Duration;
 #[cfg(feature = "location")]
 use grid_sdk::location::addressing::GRID_LOCATION_NAMESPACE;
 #[cfg(feature = "pike")]
-use grid_sdk::pike::addressing::PIKE_NAMESPACE;
+use grid_sdk::pike::addressing::GRID_PIKE_NAMESPACE;
 #[cfg(feature = "product")]
 use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 #[cfg(feature = "purchase-order")]
@@ -146,16 +146,16 @@ fn make_pike_txns(
         .into_payload_builder()?
         .into_transaction_builder(signer)?
         .build(signer)?;
-    let pike_contract_txn = make_upload_contract_txn(signer, &pike_contract, PIKE_NAMESPACE)?;
+    let pike_contract_txn = make_upload_contract_txn(signer, &pike_contract, GRID_PIKE_NAMESPACE)?;
     let pike_namespace_registry_txn = CreateNamespaceRegistryActionBuilder::new()
-        .with_namespace(PIKE_NAMESPACE.into())
+        .with_namespace(GRID_PIKE_NAMESPACE.into())
         .with_owners(vec![bytes_to_hex_str(signer.public_key())])
         .into_payload_builder()?
         .into_transaction_builder(signer)?
         .build(signer)?;
 
     let pike_namespace_permissions_txn = CreateNamespaceRegistryPermissionActionBuilder::new()
-        .with_namespace(PIKE_NAMESPACE.into())
+        .with_namespace(GRID_PIKE_NAMESPACE.into())
         .with_contract_name(pike_contract.metadata.name)
         .with_read(true)
         .with_write(true)
@@ -205,7 +205,7 @@ fn make_product_txns(
         .build(signer)?;
     let product_pike_namespace_permissions_txn =
         CreateNamespaceRegistryPermissionActionBuilder::new()
-            .with_namespace(PIKE_NAMESPACE.into())
+            .with_namespace(GRID_PIKE_NAMESPACE.into())
             .with_contract_name(product_contract.metadata.name.clone())
             .with_read(true)
             .with_write(true)
@@ -266,7 +266,7 @@ fn make_location_txns(
         .build(signer)?;
     let location_pike_namespace_permissions_txn =
         CreateNamespaceRegistryPermissionActionBuilder::new()
-            .with_namespace(PIKE_NAMESPACE.into())
+            .with_namespace(GRID_PIKE_NAMESPACE.into())
             .with_contract_name(location_contract.metadata.name.clone())
             .with_read(true)
             .with_write(true)
@@ -327,7 +327,7 @@ fn make_schema_txns(
         .build(signer)?;
     let schema_pike_namespace_permissions_txn =
         CreateNamespaceRegistryPermissionActionBuilder::new()
-            .with_namespace(PIKE_NAMESPACE.into())
+            .with_namespace(GRID_PIKE_NAMESPACE.into())
             .with_contract_name(schema_contract.metadata.name)
             .with_read(true)
             .with_write(true)
@@ -385,7 +385,7 @@ fn make_purchase_order_txns(
             .build(signer)?;
     let purchase_order_pike_namespace_permissions_txn =
         CreateNamespaceRegistryPermissionActionBuilder::new()
-            .with_namespace(PIKE_NAMESPACE.into())
+            .with_namespace(GRID_PIKE_NAMESPACE.into())
             .with_contract_name(purchase_order_contract.metadata.name)
             .with_read(true)
             .with_write(true)
@@ -416,7 +416,7 @@ fn make_upload_contract_txn(
     contract: &SmartContractArchive,
     contract_prefix: &str,
 ) -> Result<Transaction, AppAuthHandlerError> {
-    let action_addresses = vec![PIKE_NAMESPACE.into(), contract_prefix.into()];
+    let action_addresses = vec![GRID_PIKE_NAMESPACE.into(), contract_prefix.into()];
     Ok(CreateContractActionBuilder::new()
         .with_name(contract.metadata.name.clone())
         .with_version(contract.metadata.version.clone())

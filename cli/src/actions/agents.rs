@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use grid_sdk::{
-    pike::addressing::PIKE_NAMESPACE,
+    pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::pike::payload::{Action, CreateAgentAction, PikePayloadBuilder, UpdateAgentAction},
     protos::IntoProto,
 };
@@ -65,8 +65,8 @@ pub fn do_create_agent(
     let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[PIKE_NAMESPACE.to_string()],
-            &[PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
         )?
         .create_batch_list();
 
@@ -94,8 +94,8 @@ pub fn do_update_agent(
     let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[PIKE_NAMESPACE.to_string()],
-            &[PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
         )?
         .create_batch_list();
 

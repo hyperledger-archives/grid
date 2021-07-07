@@ -18,7 +18,7 @@ use crate::actions::Paging;
 use crate::http::submit_batches;
 use crate::transaction::product_batch_builder;
 use cylinder::Signer;
-use grid_sdk::pike::addressing::PIKE_NAMESPACE;
+use grid_sdk::pike::addressing::GRID_PIKE_NAMESPACE;
 use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 use grid_sdk::product::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
 use grid_sdk::protocol::product::payload::{
@@ -702,7 +702,7 @@ fn submit_payloads(
         builder.add_transaction(
             &action.into_proto()?,
             &[
-                PIKE_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
                 GRID_SCHEMA_NAMESPACE.to_string(),
                 GRID_PRODUCT_NAMESPACE.to_string(),
             ],

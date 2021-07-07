@@ -21,7 +21,7 @@ use std::{
 
 use grid_sdk::{
     location::addressing::GRID_LOCATION_NAMESPACE,
-    pike::addressing::PIKE_NAMESPACE,
+    pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::{
         location::payload::{
             Action, LocationCreateAction, LocationCreateActionBuilder, LocationDeleteAction,
@@ -174,7 +174,7 @@ fn submit_payloads(
             &action.into_proto()?,
             &[
                 GRID_SCHEMA_NAMESPACE.to_string(),
-                PIKE_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
                 GRID_LOCATION_NAMESPACE.to_string(),
             ],
             &[GRID_LOCATION_NAMESPACE.to_string()],

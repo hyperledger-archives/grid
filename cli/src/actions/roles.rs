@@ -23,7 +23,7 @@ use crate::http::submit_batches;
 use crate::transaction::pike_batch_builder;
 use cylinder::Signer;
 use grid_sdk::{
-    pike::addressing::PIKE_NAMESPACE,
+    pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::pike::payload::{
         Action, CreateRoleAction, DeleteRoleAction, PikePayloadBuilder, UpdateRoleAction,
     },
@@ -152,8 +152,8 @@ pub fn do_create_role(
     let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[PIKE_NAMESPACE.to_string()],
-            &[PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
         )?
         .create_batch_list();
 
@@ -181,8 +181,8 @@ pub fn do_update_role(
     let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[PIKE_NAMESPACE.to_string()],
-            &[PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
         )?
         .create_batch_list();
 
@@ -210,8 +210,8 @@ pub fn do_delete_role(
     let batch_list = pike_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[PIKE_NAMESPACE.to_string()],
-            &[PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
+            &[GRID_PIKE_NAMESPACE.to_string()],
         )?
         .create_batch_list();
 

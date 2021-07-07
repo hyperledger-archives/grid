@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: pike
+name: grid_pike
 version: '2'
 inputs:
   - '621dee05'
