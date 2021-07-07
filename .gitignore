@@ -41,6 +41,9 @@ tests/sawtooth_sc_test/protobuf/
 **/sapling-dev-server/profile
 **/sapling-dev-server/register-login.js
 
+# Generated man pages
+/cli/packaging/man/grid*
+
 # misc
 .DS_Store
 .env.local

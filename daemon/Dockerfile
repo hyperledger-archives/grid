@@ -14,6 +14,11 @@
 
 FROM hyperledger/grid-dev:v9 as gridd-builder
 
+ENV GRID_FORCE_PANDOC=true
+
+# This is temporary until hyperledger/grid-dev updates
+RUN apt-get update && apt-get install -y -q pandoc
+
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
@@ -67,8 +72,9 @@ COPY --from=gridd-builder /commit-hash /commit-hash
 RUN apt-get update \
  && apt-get install -y -q \
     postgresql-client \
-&& apt-get install -y -q \
     libsqlite3-dev \
+    man \
+ && mandb \
  && dpkg --unpack /tmp/grid*.deb \
  && apt-get -f -y install
 
