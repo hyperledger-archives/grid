@@ -182,7 +182,7 @@ mod test {
     };
     use grid_sdk::{
         location::store::{DieselLocationStore, Location, LocationAttribute, LocationStore},
-        pike::store::{Agent, DieselPikeStore, Organization, PikeStore},
+        pike::store::{Agent, AgentBuilder, DieselPikeStore, Organization, PikeStore},
         product::store::{
             DieselProductStore, Product, ProductBuilder, ProductStore, PropertyValue,
             PropertyValueBuilder,
@@ -2879,44 +2879,50 @@ mod test {
     }
 
     fn get_agent(service_id: Option<String>) -> Vec<Agent> {
-        vec![Agent {
-            public_key: KEY1.to_string(),
-            org_id: KEY2.to_string(),
-            active: true,
-            roles: vec![],
-            metadata: vec![],
-            start_commit_num: 0,
-            end_commit_num: i64::MAX,
-            last_updated: None,
-            service_id,
-        }]
+        let mut agent = AgentBuilder::new()
+            .with_public_key(KEY1.to_string())
+            .with_org_id(KEY2.to_string())
+            .with_active(true)
+            .with_start_commit_num(0)
+            .with_end_commit_num(i64::MAX);
+
+        if let Some(service_id) = service_id {
+            agent = agent.with_service_id(service_id.to_string())
+        }
+
+        vec![agent.build().expect("Unable to build Pike Agent")]
     }
 
     #[cfg(feature = "track-and-trace")]
     fn get_agents_with_roles(service_id: Option<String>) -> Vec<Agent> {
+        let mut agent_1 = AgentBuilder::new()
+            .with_public_key(KEY1.to_string())
+            .with_org_id(KEY2.to_string())
+            .with_active(true)
+            .with_roles(vec!["OWNER".to_string()])
+            .with_start_commit_num(0)
+            .with_end_commit_num(i64::MAX);
+        if let Some(id) = &service_id {
+            agent_1 = agent_1.with_service_id(id.to_string())
+        }
+        let mut agent_2 = AgentBuilder::new()
+            .with_public_key(KEY2.to_string())
+            .with_org_id(KEY3.to_string())
+            .with_active(true)
+            .with_roles(vec!["CUSTODIAN".to_string()])
+            .with_start_commit_num(0)
+            .with_end_commit_num(i64::MAX);
+        if let Some(id) = &service_id {
+            agent_2 = agent_2.with_service_id(id.to_string())
+        }
+
         vec![
-            Agent {
-                public_key: KEY1.to_string(),
-                org_id: KEY3.to_string(),
-                active: true,
-                roles: vec!["OWNER".to_string()],
-                metadata: vec![],
-                start_commit_num: 0,
-                end_commit_num: i64::MAX,
-                service_id: service_id.clone(),
-                last_updated: None,
-            },
-            Agent {
-                public_key: KEY2.to_string(),
-                org_id: KEY3.to_string(),
-                active: true,
-                roles: vec!["CUSTODIAN".to_string()],
-                metadata: vec![],
-                start_commit_num: 0,
-                end_commit_num: i64::MAX,
-                service_id,
-                last_updated: None,
-            },
+            agent_1
+                .build()
+                .expect("Unable to build Pike Agent with roles"),
+            agent_2
+                .build()
+                .expect("Unable to build Pike Agent with roles"),
         ]
     }
 

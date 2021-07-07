@@ -40,18 +40,65 @@ pub use error::PikeStoreError;
 /// Represents a Grid Agent
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Agent {
-    pub public_key: String,
-    pub org_id: String,
-    pub active: bool,
-    pub metadata: Vec<u8>,
-    pub roles: Vec<String>,
+    public_key: String,
+    org_id: String,
+    active: bool,
+    metadata: Vec<u8>,
+    roles: Vec<String>,
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
+    start_commit_num: i64,
+    end_commit_num: i64,
 
-    pub service_id: Option<String>,
+    service_id: Option<String>,
 
-    pub last_updated: Option<i64>,
+    last_updated: Option<i64>,
+}
+
+impl Agent {
+    /// Returns the public key of the Agent
+    pub fn public_key(&self) -> &str {
+        &self.public_key
+    }
+
+    /// Returns the organization ID of the organization the Agent belongs to
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    /// Returns the `active` status of the Agent
+    pub fn active(&self) -> bool {
+        self.active
+    }
+
+    /// Returns the metadata of the Agent
+    pub fn metadata(&self) -> &[u8] {
+        &self.metadata
+    }
+
+    /// Returns the roles of the Agent
+    pub fn roles(&self) -> &[String] {
+        &self.roles
+    }
+
+    /// Returns the `start_commit_num` for this Agent
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Returns the `end_commit_num` for this Agent
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Returns the service ID for this Agent
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+
+    /// Returns the last updated timestamp for the Agent
+    pub fn last_updated(&self) -> Option<&i64> {
+        self.last_updated.as_ref()
+    }
 }
 
 /// Represents a Grid Role
