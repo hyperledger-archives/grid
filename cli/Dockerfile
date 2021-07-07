@@ -14,11 +14,14 @@
 
 FROM hyperledger/grid-dev:v5 as grid-cli-builder
 
+ENV GRID_FORCE_PANDOC=true
+
 # Install dependencies
 RUN apt-get update \
  && apt-get install -y -q \
     libxml2-dev \
- && apt-get clean \
+    pandoc \
+   && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
 # Temporary workaround until sabre is updated to focal
@@ -66,6 +69,8 @@ COPY --from=grid-cli-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=grid-cli-builder /commit-hash /commit-hash
 
 RUN apt-get update \
+ && apt-get install -y -q man \
+ && mandb \
  && dpkg --unpack /tmp/grid-cli*.deb \
  && apt-get -f -y install
 

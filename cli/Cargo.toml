@@ -101,5 +101,6 @@ maintainer = "The Hyperledger Grid Team"
 depends = "$auto, bash-completion"
 assets = [
     ["target/release/grid", "/usr/bin/grid", "755"],
+    ["packaging/man/*", "/usr/share/man/man1", "644"],
     ["packaging/ubuntu/completions/grid", "/usr/share/bash-completion/completions/grid", "644"]
 ]
