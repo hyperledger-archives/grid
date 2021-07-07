@@ -23,7 +23,10 @@ use std::fmt;
 
 #[cfg(feature = "diesel")]
 use crate::error::ConstraintViolationType;
-use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
+use crate::error::{
+    ConstraintViolationError, InternalError, InvalidArgumentError,
+    ResourceTemporarilyUnavailableError,
+};
 
 /// Represents PikeStore errors
 #[derive(Debug)]
@@ -87,5 +90,40 @@ impl From<PoolError> for PikeStoreError {
         PikeStoreError::ResourceTemporarilyUnavailableError(
             ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
         )
+    }
+}
+
+/// Represents PikeBuilder errors
+#[derive(Debug)]
+pub enum PikeBuilderError {
+    /// Returned when a required field was not set
+    MissingRequiredField(String),
+    /// Returned when an error occurs building Pike objects
+    BuildError(Box<dyn Error>),
+    /// Returned when an invalid argument is detected in the builder
+    InvalidArgumentError(InvalidArgumentError),
+}
+
+impl Error for PikeBuilderError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            PikeBuilderError::MissingRequiredField(_) => None,
+            PikeBuilderError::BuildError(err) => Some(&**err),
+            PikeBuilderError::InvalidArgumentError(err) => Some(err),
+        }
+    }
+}
+
+impl fmt::Display for PikeBuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PikeBuilderError::MissingRequiredField(ref s) => {
+                write!(f, "missing required field `{}`", s)
+            }
+            PikeBuilderError::BuildError(ref s) => {
+                write!(f, "failed to build Pike object: {}", s)
+            }
+            PikeBuilderError::InvalidArgumentError(ref s) => f.write_str(&s.to_string()),
+        }
     }
 }
