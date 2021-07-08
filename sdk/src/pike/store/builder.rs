@@ -546,11 +546,11 @@ impl AlternateIdBuilder {
         AlternateIdBuilder::default()
     }
 
-    /// Set the organization's ID
+    /// Set the unique identifier for the organization associated with the Alternate ID
     ///
     /// # Arguments
     ///
-    /// * `org_id` - The unique identifier of this organization
+    /// * `org_id` - The unique identifier of the organization the Alternate ID belongs to
     pub fn with_org_id(mut self, org_id: String) -> Self {
         self.org_id = Some(org_id);
         self
@@ -646,6 +646,115 @@ impl AlternateIdBuilder {
             org_id,
             alternate_id_type,
             alternate_id,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        })
+    }
+}
+
+/// Builder used to create organization metadata, represented as a key-value pair
+#[derive(Clone, Debug, Default)]
+pub struct OrganizationMetadataBuilder {
+    key: Option<String>,
+    value: Option<String>,
+    start_commit_num: Option<i64>,
+    end_commit_num: Option<i64>,
+    service_id: Option<String>,
+}
+
+impl OrganizationMetadataBuilder {
+    /// Creates a new organization metadata builder
+    pub fn new() -> Self {
+        OrganizationMetadataBuilder::default()
+    }
+
+    /// Set the key for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key of the organization's metadata's internal key-value pair
+    pub fn with_key(mut self, key: String) -> Self {
+        self.key = Some(key);
+        self
+    }
+
+    /// Set the value for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value of the organization's metadata's internal key-value pair
+    pub fn with_value(mut self, value: String) -> Self {
+        self.value = Some(value);
+        self
+    }
+
+    /// Set the starting commit num for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `start_commit_num` - The start commit num for the organization metadata being built
+    pub fn with_start_commit_num(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = Some(start_commit_num);
+        self
+    }
+
+    /// Set the ending commit num for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `end_commit_num` - The end commit num for the organization metadata being built
+    pub fn with_end_commit_num(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = Some(end_commit_num);
+        self
+    }
+
+    /// Set the service ID of the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` - The service ID for the organization metadata being built
+    pub fn with_service_id(mut self, service_id: String) -> Self {
+        self.service_id = Some(service_id);
+        self
+    }
+
+    pub fn build(self) -> Result<OrganizationMetadata, PikeBuilderError> {
+        let key = self
+            .key
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("key".to_string()))?;
+        let value = self
+            .value
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("value".to_string()))?;
+
+        let start_commit_num = self.start_commit_num.ok_or_else(|| {
+            PikeBuilderError::MissingRequiredField("start_commit_num".to_string())
+        })?;
+        let end_commit_num = self
+            .end_commit_num
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("end_commit_num".to_string()))?;
+
+        if start_commit_num >= end_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "start_commit_num".to_string(),
+                    "argument cannot be greater than or equal to `end_commit_num`".to_string(),
+                ),
+            ));
+        }
+        if end_commit_num <= start_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "end_commit_num".to_string(),
+                    "argument cannot be less than or equal to `start_commit_num`".to_string(),
+                ),
+            ));
+        }
+        let service_id = self.service_id;
+
+        Ok(OrganizationMetadata {
+            key,
+            value,
             start_commit_num,
             end_commit_num,
             service_id,
