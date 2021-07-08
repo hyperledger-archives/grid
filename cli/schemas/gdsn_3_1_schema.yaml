@@ -20,7 +20,7 @@
 
 - name: gs1_product
   description: GS1 product schema
-  owner: crgl
+  owner: myorg
   properties:
     - name: GDSN_3_1
       data_type: STRING
