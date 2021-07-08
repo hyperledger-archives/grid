@@ -27,6 +27,8 @@ use operations::add_commit::CommitStoreAddCommitOperation as _;
 use operations::create_db_commit_from_commit_event::CommitStoreCreateDbCommitFromCommitEventOperation as _;
 use operations::get_commit_by_commit_num::CommitStoreGetCommitByCommitNumOperation as _;
 use operations::get_current_commit_id::CommitStoreGetCurrentCommitIdOperation as _;
+#[cfg(feature = "commit-store-service-commits")]
+use operations::get_current_service_commits::CommitStoreGetCurrentSericeCommitsOperation as _;
 use operations::get_next_commit_num::CommitStoreGetNextCommitNumOperation as _;
 use operations::resolve_fork::CommitStoreResolveForkOperation as _;
 use operations::CommitStoreOperations;
@@ -70,6 +72,11 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
         CommitStoreOperations::new(&*self.connection_pool.get()?).get_current_commit_id()
     }
 
+    #[cfg(feature = "commit-store-service-commits")]
+    fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(&*self.connection_pool.get()?).get_current_service_commits()
+    }
+
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get()?).get_next_commit_num()
     }
@@ -103,6 +110,11 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
 
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get()?).get_current_commit_id()
+    }
+
+    #[cfg(feature = "commit-store-service-commits")]
+    fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(&*self.connection_pool.get()?).get_current_service_commits()
     }
 
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {

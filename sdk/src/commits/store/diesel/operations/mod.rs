@@ -16,6 +16,8 @@ pub(super) mod add_commit;
 pub(super) mod create_db_commit_from_commit_event;
 pub(super) mod get_commit_by_commit_num;
 pub(super) mod get_current_commit_id;
+#[cfg(feature = "commit-store-service-commits")]
+pub(super) mod get_current_service_commits;
 pub(super) mod get_next_commit_num;
 pub(super) mod resolve_fork;
 

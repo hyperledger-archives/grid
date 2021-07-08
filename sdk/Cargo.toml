@@ -105,6 +105,7 @@ experimental = [
     "batch-store",
     "client",
     "client-reqwest",
+    "commit-store-service-commits",
     "pike-rest-api",
     "purchase-order",
     "rest-api-resources",
@@ -126,6 +127,7 @@ backend-sawtooth = ["backend", "uuid"]
 backend-splinter = ["backend", "reqwest"]
 client = []
 client-reqwest = ["client", "reqwest"]
+commit-store-service-commits = []
 location = ["pike", "schema"]
 pike = ["cfg-if"]
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
