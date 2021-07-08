@@ -46,7 +46,7 @@ use grid_sdk::{
         },
         store::{
             Agent, AgentBuilder, AlternateId, DieselPikeStore, Organization, OrganizationMetadata,
-            PikeStore, Role,
+            PikeStore, Role, RoleBuilder,
         },
     },
     protocol::pike::state::{AgentList, OrganizationList, RoleList},
@@ -598,20 +598,23 @@ fn state_change_to_db_operation(
                         .map_err(|err| EventError(format!("Failed to parse role list {}", err)))?
                         .roles()
                         .iter()
-                        .map(|role| Role {
-                            org_id: role.org_id().to_string(),
-                            name: role.name().to_string(),
-                            description: role.description().to_string(),
-                            active: *role.active(),
-                            permissions: role.permissions().to_vec(),
-                            allowed_organizations: role.allowed_organizations().to_vec(),
-                            inherit_from: role.inherit_from().to_vec(),
-                            start_commit_num: commit_num,
-                            end_commit_num: MAX_COMMIT_NUM,
-                            service_id: service_id.cloned(),
-                            last_updated: None,
+                        .map(|role| {
+                            let mut builder = RoleBuilder::new()
+                                .with_org_id(role.org_id().to_string())
+                                .with_name(role.name().to_string())
+                                .with_description(role.description().to_string())
+                                .with_active(*role.active())
+                                .with_permissions(role.permissions().to_vec())
+                                .with_allowed_organizations(role.allowed_organizations().to_vec())
+                                .with_inherit_from(role.inherit_from().to_vec())
+                                .with_start_commit_num(commit_num)
+                                .with_end_commit_num(MAX_COMMIT_NUM);
+                            if let Some(id) = service_id {
+                                builder = builder.with_service_id(id.to_string());
+                            }
+                            builder.build().map_err(|err| EventError(err.to_string()))
                         })
-                        .collect::<Vec<Role>>();
+                        .collect::<Result<Vec<Role>, EventError>>()?;
 
                     Ok(Some(DbInsertOperation::Roles(roles)))
                 }
