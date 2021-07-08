@@ -75,6 +75,13 @@ pub trait CommitStore: Send + Sync {
     /// Gets the current commit ID from the underlying storage
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError>;
 
+    #[cfg(feature = "commit-store-service-commits")]
+    /// Gets all the current commits on services.
+    ///
+    /// This returns the latest commit values for all commits where `commit.service_id` is not
+    /// `None`.
+    fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError>;
+
     /// Gets the next commit number from the underlying storage
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError>;
 
@@ -113,6 +120,11 @@ where
 
     fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
         (**self).get_current_commit_id()
+    }
+
+    #[cfg(feature = "commit-store-service-commits")]
+    fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError> {
+        (**self).get_current_service_commits()
     }
 
     fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
