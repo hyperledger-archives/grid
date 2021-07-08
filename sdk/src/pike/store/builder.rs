@@ -528,3 +528,127 @@ impl OrganizationBuilder {
         })
     }
 }
+
+/// Builder used to create an Alternate ID
+#[derive(Clone, Debug, Default)]
+pub struct AlternateIdBuilder {
+    org_id: Option<String>,
+    alternate_id_type: Option<String>,
+    alternate_id: Option<String>,
+    start_commit_num: Option<i64>,
+    end_commit_num: Option<i64>,
+    service_id: Option<String>,
+}
+
+impl AlternateIdBuilder {
+    /// Creates a new Alternate ID builder
+    pub fn new() -> Self {
+        AlternateIdBuilder::default()
+    }
+
+    /// Set the organization's ID
+    ///
+    /// # Arguments
+    ///
+    /// * `org_id` - The unique identifier of this organization
+    pub fn with_org_id(mut self, org_id: String) -> Self {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    /// Set the type of the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `alternate_id_type` - Type of the Alternate ID being built
+    pub fn with_alternate_id_type(mut self, alternate_id_type: String) -> Self {
+        self.alternate_id_type = Some(alternate_id_type);
+        self
+    }
+
+    /// Set the unique identifier of the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `alternate_id` - Unique identifier of the Alternate ID being built
+    pub fn with_alternate_id(mut self, alternate_id: String) -> Self {
+        self.alternate_id = Some(alternate_id);
+        self
+    }
+
+    /// Set the starting commit num for the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `start_commit_num` - The start commit num for the Alternate ID being built
+    pub fn with_start_commit_num(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = Some(start_commit_num);
+        self
+    }
+
+    /// Set the ending commit num for the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `end_commit_num` - The end commit num for the Alternate ID being built
+    pub fn with_end_commit_num(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = Some(end_commit_num);
+        self
+    }
+
+    /// Set the service ID of the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` - The service ID for the Alternate ID being built
+    pub fn with_service_id(mut self, service_id: String) -> Self {
+        self.service_id = Some(service_id);
+        self
+    }
+
+    pub fn build(self) -> Result<AlternateId, PikeBuilderError> {
+        let org_id = self
+            .org_id
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("org_id".to_string()))?;
+        let alternate_id_type = self.alternate_id_type.ok_or_else(|| {
+            PikeBuilderError::MissingRequiredField("alternate_id_type".to_string())
+        })?;
+        let alternate_id = self
+            .alternate_id
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("alternate_id".to_string()))?;
+
+        let start_commit_num = self.start_commit_num.ok_or_else(|| {
+            PikeBuilderError::MissingRequiredField("start_commit_num".to_string())
+        })?;
+        let end_commit_num = self
+            .end_commit_num
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("end_commit_num".to_string()))?;
+
+        if start_commit_num >= end_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "start_commit_num".to_string(),
+                    "argument cannot be greater than or equal to `end_commit_num`".to_string(),
+                ),
+            ));
+        }
+        if end_commit_num <= start_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "end_commit_num".to_string(),
+                    "argument cannot be less than or equal to `start_commit_num`".to_string(),
+                ),
+            ));
+        }
+        let service_id = self.service_id;
+
+        Ok(AlternateId {
+            org_id,
+            alternate_id_type,
+            alternate_id,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        })
+    }
+}
