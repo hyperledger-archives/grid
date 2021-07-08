@@ -185,6 +185,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("service_id")
                         .long("service-id")
                         .takes_value(true)
+                        .global(true)
                         .help(
                             "The ID of the service the payload should be \
                          sent to; required if running on Splinter. Format \
@@ -194,6 +195,7 @@ fn run() -> Result<(), CliError> {
                 .arg(Arg::with_name("url")
                     .long("url")
                     .takes_value(true)
+                    .global(true)
                     .help("URL for the REST API")
                 )
                 .subcommand(
@@ -209,7 +211,7 @@ fn run() -> Result<(), CliError> {
                             Arg::with_name("public_key")
                                 .takes_value(true)
                                 .required(true)
-                                .help("public key"),
+                                .help("Public key and unique identifier for agents"),
                         )
                         .arg(
                             Arg::with_name("active")
@@ -270,7 +272,7 @@ fn run() -> Result<(), CliError> {
                             Arg::with_name("public_key")
                                 .takes_value(true)
                                 .required(true)
-                                .help("public key"),
+                                .help("Public key and unique identifier for agents"),
                         )
                         .arg(
                             Arg::with_name("active")
@@ -320,28 +322,18 @@ fn run() -> Result<(), CliError> {
                     )
                     .subcommand(
                         SubCommand::with_name("show")
-                            .about("Show agents specified by Public Key")
+                            .about("Show agent specified by public key")
                             .arg(
                                 Arg::with_name("public_key")
                                     .takes_value(true)
                                     .required(true)
-                                    .help("Public Key and unique identifier for agents"),
+                                    .help("Public key and unique identifier for agents"),
                             )
                             .after_help(AFTER_HELP_WITHOUT_KEY),
                     )
                     .subcommand(
                         SubCommand::with_name("list")
                             .about("List all agents for a given service")
-                            .arg(
-                                Arg::with_name("service_id")
-                                    .long("service-id")
-                                    .takes_value(true)
-                                    .help(
-                                        "The ID of the service the payload should be \
-                                    sent to; required if running on Splinter. Format \
-                                    <circuit-id>::<service-id>",
-                                    ),
-                            )
                             .arg(
                                 Arg::with_name("format")
                                     .short("F")
@@ -368,6 +360,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("service_id")
                         .long("service-id")
                         .takes_value(true)
+                        .global(true)
                         .help(
                             "The ID of the service the payload should be \
                          sent to; required if running on Splinter. Format \
@@ -377,6 +370,7 @@ fn run() -> Result<(), CliError> {
                 .arg(Arg::with_name("url")
                     .long("url")
                     .takes_value(true)
+                    .global(true)
                     .help("URL for the REST API")
                 )
                 .subcommand(
@@ -484,12 +478,13 @@ fn run() -> Result<(), CliError> {
         )
         .subcommand(
             SubCommand::with_name("role")
-                .about("Create or update a role")
+                .about("Create, update, delete, list, or show a role")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
                 .arg(
                     Arg::with_name("service_id")
                         .long("service-id")
                         .takes_value(true)
+                        .global(true)
                         .help(
                             "The ID of the service the payload should be \
                          sent to; required if running on Splinter. Format \
@@ -499,11 +494,12 @@ fn run() -> Result<(), CliError> {
                 .arg(Arg::with_name("url")
                     .long("url")
                     .takes_value(true)
+                    .global(true)
                     .help("URL for the REST API")
                 )
                 .subcommand(
                     SubCommand::with_name("create")
-                        .about("Create a Role")
+                        .about("Create a role")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
@@ -538,7 +534,7 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .use_delimiter(true)
-                                .help("List of organizations allowed use of the role"),
+                                .help("List of IDs of organizations allowed use of the role"),
                         )
                         .arg(
                             Arg::with_name("inherit_from")
@@ -577,7 +573,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("update")
-                        .about("Update a Role")
+                        .about("Update a role")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
@@ -652,7 +648,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("delete")
-                        .about("Delete a Role")
+                        .about("Delete a role")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
@@ -682,7 +678,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("show")
-                        .about("Show role specified by Org ID and Name")
+                        .about("Show role specified by org ID and name")
                         .arg(
                             Arg::with_name("org_id")
                                 .takes_value(true)
@@ -723,6 +719,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("service_id")
                         .long("service-id")
                         .takes_value(true)
+                        .global(true)
                         .help(
                             "The ID of the service the payload should be \
                          sent to; required if running on Splinter. Format \
@@ -733,6 +730,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("url")
                         .long("url")
                         .takes_value(true)
+                        .global(true)
                         .help("URL for the REST API"),
                 )
                 .subcommand(
@@ -814,6 +812,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("service_id")
                         .long("service-id")
                         .takes_value(true)
+                        .global(true)
                         .help(
                             "The ID of the service the payload should be \
                      sent to; required if running on Splinter. Format \
@@ -824,6 +823,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("url")
                         .long("url")
                         .takes_value(true)
+                        .global(true)
                         .help("URL for the REST API"),
                 )
                 .subcommand(
@@ -999,6 +999,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("service_id")
                         .long("service-id")
                         .takes_value(true)
+                        .global(true)
                         .help(
                             "The ID of the service the payload should be \
                      sent to; required if running on Splinter. Format \
@@ -1009,6 +1010,7 @@ fn run() -> Result<(), CliError> {
                     Arg::with_name("url")
                         .long("url")
                         .takes_value(true)
+                        .global(true)
                         .help("URL for the REST API"),
                 )
                 .subcommand(
@@ -1253,22 +1255,6 @@ fn run() -> Result<(), CliError> {
                             .takes_value(true)
                             .help("How long to wait for transaction to be committed"),
                     )
-                    .arg(
-                        Arg::with_name("service_id")
-                            .long("service-id")
-                            .takes_value(true)
-                            .help(
-                                "The ID of the service the payload should be \
-                                     sent to; required if running on Splinter. Format \
-                                     <circuit-id>::<service-id>",
-                            ),
-                    )
-                    .arg(
-                        Arg::with_name("url")
-                            .long("url")
-                            .takes_value(true)
-                            .help("URL for the REST API"),
-                    )
                     .after_help(AFTER_HELP_WITH_KEY),
             )
             .subcommand(
@@ -1320,22 +1306,6 @@ fn run() -> Result<(), CliError> {
                             .takes_value(true)
                             .help("How long to wait for transaction to be committed"),
                     )
-                    .arg(
-                        Arg::with_name("service_id")
-                            .long("service-id")
-                            .takes_value(true)
-                            .help(
-                                "The ID of the service the payload should be \
-                                     sent to; required if running on Splinter. Format \
-                                     <circuit-id>::<service-id>",
-                            ),
-                    )
-                    .arg(
-                        Arg::with_name("url")
-                            .long("url")
-                            .takes_value(true)
-                            .help("URL for the REST API"),
-                    )
                     .after_help(AFTER_HELP_WITH_KEY),
             )
             .subcommand(
@@ -1377,22 +1347,6 @@ fn run() -> Result<(), CliError> {
                             .default_value("human")
                             .takes_value(true),
                     )
-                    .arg(
-                        Arg::with_name("service_id")
-                            .long("service-id")
-                            .takes_value(true)
-                            .help(
-                                "The ID of the service the payload should be \
-                                     sent to; required if running on Splinter. Format \
-                                     <circuit-id>::<service-id>",
-                            ),
-                    )
-                    .arg(
-                        Arg::with_name("url")
-                            .long("url")
-                            .takes_value(true)
-                            .help("URL for the REST API"),
-                    )
                     .after_help(AFTER_HELP_WITHOUT_KEY),
             );
 
@@ -1400,6 +1354,24 @@ fn run() -> Result<(), CliError> {
             SubCommand::with_name("po")
                 .about("Create, update, list, or show Purchase Orders, Versions and Revisions")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .arg(
+                    Arg::with_name("service_id")
+                        .long("service-id")
+                        .takes_value(true)
+                        .global(true)
+                        .help(
+                            "The ID of the service the payload should be \
+                     sent to; required if running on Splinter. Format \
+                     <circuit-id>::<service-id>",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("url")
+                        .long("url")
+                        .takes_value(true)
+                        .global(true)
+                        .help("URL for the REST API"),
+                )
                 .subcommand(po_version)
                 .subcommand(
                     SubCommand::with_name("create")
@@ -1448,22 +1420,6 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
                         )
-                        .arg(
-                            Arg::with_name("service_id")
-                                .long("service-id")
-                                .takes_value(true)
-                                .help(
-                                    "The ID of the service the payload should be \
-                             sent to; required if running on Splinter. Format \
-                             <circuit-id>::<service-id>",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("url")
-                                .long("url")
-                                .takes_value(true)
-                                .help("URL for the REST API"),
-                        )
                         .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
@@ -1508,22 +1464,6 @@ fn run() -> Result<(), CliError> {
                                 .possible_values(&["human", "csv", "yaml", "json"])
                                 .default_value("human")
                                 .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("service_id")
-                                .long("service-id")
-                                .takes_value(true)
-                                .help(
-                                    "The ID of the service the payload should be \
-                             sent to; required if running on Splinter. Format \
-                             <circuit-id>::<service-id>",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("url")
-                                .long("url")
-                                .takes_value(true)
-                                .help("URL for the REST API"),
                         )
                         .after_help(AFTER_HELP_WITHOUT_KEY),
                 )
@@ -1601,22 +1541,6 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
                         )
-                        .arg(
-                            Arg::with_name("service_id")
-                                .long("service-id")
-                                .takes_value(true)
-                                .help(
-                                    "The ID of the service the payload should be \
-                             sent to; required if running on Splinter. Format \
-                             <circuit-id>::<service-id>",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("url")
-                                .long("url")
-                                .takes_value(true)
-                                .help("URL for the REST API"),
-                        )
                         .after_help(AFTER_HELP_WITH_KEY),
                 )
                 .subcommand(
@@ -1669,22 +1593,6 @@ fn run() -> Result<(), CliError> {
                                 .possible_values(&["human", "csv", "yaml", "json"])
                                 .default_value("human")
                                 .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("service_id")
-                                .long("service-id")
-                                .takes_value(true)
-                                .help(
-                                    "The ID of the service the payload should be \
-                             sent to; required if running on Splinter. Format \
-                             <circuit-id>::<service-id>",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("url")
-                                .long("url")
-                                .takes_value(true)
-                                .help("URL for the REST API"),
                         )
                         .after_help(AFTER_HELP_WITHOUT_KEY),
                 ),
