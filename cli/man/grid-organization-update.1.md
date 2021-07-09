@@ -86,6 +86,8 @@ SEE ALSO
 ========
 | `grid organization(1)`
 | `grid organization create(1)`
+| `grid organization list(1)`
+| `grid organization show(1)`
 | `grid agent(1)`
 | `grid role(1)`
 |
