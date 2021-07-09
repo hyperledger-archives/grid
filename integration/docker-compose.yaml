@@ -171,9 +171,9 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec023b83af696f65e0579200b7f066089db00fe628034c405c1a9acda1dc16a5e961 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec027e3e56bcd14d28d036fcfcde2cd2e3c83e83256dc986b5f27d65cc3ef1693cf3 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec025e503966e698583f792b5d6e6062c97640e5eb2cfc72c4c64f9d3b6a95cfac46 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec02f8ba6b25e2e18dfa1f0b1a489894cac26f8ce4f327232acb9e1f61ea705a9b5c | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done; # product
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec02fdac2d44097bf0849ee666c2da09707df9a1b7d558f12cd9c257998ffa6d5e84 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done; # schema
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec025e503966e698583f792b5d6e6062c97640e5eb2cfc72c4c64f9d3b6a95cfac46 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done; # pike
         cp /build/target/debug/gridd /usr/sbin/gridd && \
         cp /build/target/debug/grid /usr/bin/grid && \
         grid database migrate \
