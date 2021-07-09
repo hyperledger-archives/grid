@@ -16,6 +16,7 @@
  */
 
 mod error;
+pub(in crate::splinter) mod processors;
 
 use std::cell::RefCell;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};

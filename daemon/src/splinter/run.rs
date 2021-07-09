@@ -45,10 +45,12 @@ use splinter::events::Reactor;
 use crate::config::GridConfig;
 use crate::database::ConnectionPool;
 use crate::error::DaemonError;
-use crate::event::{db_handler::DatabaseEventHandler, EventHandler, EventProcessor};
+use crate::event::{db_handler::DatabaseEventHandler, EventHandler};
 use crate::rest_api;
 
-use super::{app_auth_handler, event::ScabbardEventConnectionFactory};
+use super::{
+    app_auth_handler, event::processors::EventProcessors, event::ScabbardEventConnectionFactory,
+};
 
 pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let splinter_endpoint = Endpoint::from(config.endpoint());
@@ -62,6 +64,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
 
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&splinter_endpoint.url(), reactor.igniter());
+
+    let event_processors = EventProcessors::new(scabbard_event_connection_factory);
 
     #[cfg(not(any(feature = "database-postgres", feature = "database-sqlite")))]
     return Err(DaemonError::with_message(
@@ -135,22 +139,20 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 service_id, commit.commit_id
             );
 
-            let event_connection = scabbard_event_connection_factory
-                .create_connection(service_id.circuit_id, service_id.service_id)
+            event_processors
+                .add_once(
+                    service_id.circuit_id,
+                    service_id.service_id,
+                    Some(&commit.commit_id),
+                    || vec![db_handler.cloned_box()],
+                )
                 .map_err(|err| DaemonError::from_source(Box::new(err)))?;
-
-            EventProcessor::start(
-                event_connection,
-                Some(&commit.commit_id),
-                vec![db_handler.cloned_box()],
-            )
-            .map_err(|err| DaemonError::from_source(Box::new(err)))?;
         }
     }
 
     app_auth_handler::run(
         splinter_endpoint.url(),
-        scabbard_event_connection_factory,
+        event_processors,
         db_handler,
         reactor.igniter(),
         scabbard_admin_key.to_string(),
