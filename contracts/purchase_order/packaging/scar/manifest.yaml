@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: grid_purchase_order
-version: '1'
+version: '2'
 inputs:
   - '621dee05'
   - '621dee06'
