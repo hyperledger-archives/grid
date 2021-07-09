@@ -32,26 +32,26 @@ pub struct RoleSlice {
 
 impl From<Role> for RoleSlice {
     fn from(role: Role) -> Self {
-        let permissions = role.permissions.into_iter().map(String::from).collect();
+        let permissions = role.permissions().iter().map(String::from).collect();
 
         let allowed_organizations = role
-            .allowed_organizations
-            .into_iter()
+            .allowed_organizations()
+            .iter()
             .map(String::from)
             .collect();
 
-        let inherit_from = role.inherit_from.into_iter().map(String::from).collect();
+        let inherit_from = role.inherit_from().iter().map(String::from).collect();
 
         Self {
-            org_id: role.org_id.clone(),
-            name: role.name.clone(),
-            description: role.description.clone(),
-            active: role.active,
+            org_id: role.org_id().to_string(),
+            name: role.name().to_string(),
+            description: role.description().to_string(),
+            active: role.active(),
             permissions,
             allowed_organizations,
             inherit_from,
-            service_id: role.service_id,
-            last_updated: role.last_updated,
+            service_id: role.service_id().map(ToOwned::to_owned),
+            last_updated: role.last_updated().map(ToOwned::to_owned),
         }
     }
 }

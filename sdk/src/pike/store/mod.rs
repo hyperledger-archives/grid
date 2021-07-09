@@ -34,7 +34,7 @@ use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::DieselPikeStore;
-pub use builder::AgentBuilder;
+pub use builder::{AgentBuilder, RoleBuilder};
 pub use error::PikeStoreError;
 
 /// Represents a Grid Agent
@@ -104,17 +104,74 @@ impl Agent {
 /// Represents a Grid Role
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Role {
-    pub name: String,
-    pub org_id: String,
-    pub description: String,
-    pub active: bool,
-    pub permissions: Vec<String>,
-    pub allowed_organizations: Vec<String>,
-    pub inherit_from: Vec<String>,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
-    pub last_updated: Option<i64>,
+    name: String,
+    org_id: String,
+    description: String,
+    active: bool,
+    permissions: Vec<String>,
+    allowed_organizations: Vec<String>,
+    inherit_from: Vec<String>,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+    last_updated: Option<i64>,
+}
+
+impl Role {
+    /// Return the name of this role
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Return the ID of the organization that created this role
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    /// Return the description of this role
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    /// Return the `active` status of this role
+    pub fn active(&self) -> bool {
+        self.active
+    }
+
+    /// Return the permissions assigned to this role
+    pub fn permissions(&self) -> &[String] {
+        &self.permissions
+    }
+
+    /// Return a list of organizations that are allowed to use this role
+    pub fn allowed_organizations(&self) -> &[String] {
+        &self.allowed_organizations
+    }
+
+    /// Return a list of roles this role is able to inherit permissions from
+    pub fn inherit_from(&self) -> &[String] {
+        &self.inherit_from
+    }
+
+    /// Return the `start_commit_num` for this roole
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Return the `end_commit_num` for this role
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Return the service ID for this role
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+
+    /// Return the last updated timestamp for this role
+    pub fn last_updated(&self) -> Option<&i64> {
+        self.last_updated.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
