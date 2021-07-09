@@ -45,9 +45,9 @@ impl TryFrom<Agent> for AgentSlice {
     type Error = ErrorResponse;
 
     fn try_from(agent: Agent) -> Result<Self, Self::Error> {
-        let metadata = if !agent.metadata.is_empty() {
+        let metadata = if !agent.metadata().is_empty() {
             JsonValue::from_str(
-                &String::from_utf8(agent.metadata.clone())
+                &String::from_utf8(agent.metadata().to_vec())
                     .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?,
             )
             .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?
@@ -56,13 +56,13 @@ impl TryFrom<Agent> for AgentSlice {
         };
 
         Ok(Self {
-            public_key: agent.public_key.clone(),
-            org_id: agent.org_id.clone(),
-            active: agent.active,
-            roles: agent.roles.clone(),
+            public_key: agent.public_key().to_string(),
+            org_id: agent.org_id().to_string(),
+            active: agent.active(),
+            roles: agent.roles().to_vec(),
             metadata,
-            service_id: agent.service_id,
-            last_updated: agent.last_updated,
+            service_id: agent.service_id().map(ToOwned::to_owned),
+            last_updated: agent.last_updated().map(ToOwned::to_owned),
         })
     }
 }

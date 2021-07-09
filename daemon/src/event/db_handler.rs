@@ -45,8 +45,8 @@ use grid_sdk::{
             PIKE_AGENT_NAMESPACE, PIKE_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE, PIKE_ROLE_NAMESPACE,
         },
         store::{
-            Agent, AlternateId, DieselPikeStore, Organization, OrganizationMetadata, PikeStore,
-            Role,
+            Agent, AgentBuilder, AlternateId, DieselPikeStore, Organization, OrganizationMetadata,
+            PikeStore, Role,
         },
     },
     protocol::pike::state::{AgentList, OrganizationList, RoleList},
@@ -515,30 +515,38 @@ fn state_change_to_db_operation(
             #[cfg(feature = "pike")]
             PIKE_NAMESPACE => match &key[0..10] {
                 PIKE_AGENT_NAMESPACE => {
-                    let agents = AgentList::from_bytes(&value)
+                    let agents: Vec<Agent> = AgentList::from_bytes(&value)
                         .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                         .agents()
                         .iter()
-                        .map(|agent| Agent {
-                            public_key: agent.public_key().to_string(),
-                            org_id: agent.org_id().to_string(),
-                            active: *agent.active(),
-                            metadata: json!(agent.metadata().iter().fold(
-                                HashMap::new(),
-                                |mut acc, md| {
-                                    acc.insert(md.key().to_string(), md.value().to_string());
-                                    acc
-                                }
-                            ))
-                            .to_string()
-                            .into_bytes(),
-                            roles: agent.roles().to_vec(),
-                            start_commit_num: commit_num,
-                            end_commit_num: MAX_COMMIT_NUM,
-                            service_id: service_id.cloned(),
-                            last_updated: None,
+                        .map(|agent| {
+                            let mut builder = AgentBuilder::new()
+                                .with_public_key(agent.public_key().to_string())
+                                .with_org_id(agent.org_id().to_string())
+                                .with_active(*agent.active())
+                                .with_metadata(
+                                    json!(agent.metadata().iter().fold(
+                                        HashMap::new(),
+                                        |mut acc, md| {
+                                            acc.insert(
+                                                md.key().to_string(),
+                                                md.value().to_string(),
+                                            );
+                                            acc
+                                        }
+                                    ))
+                                    .to_string()
+                                    .into_bytes(),
+                                )
+                                .with_roles(agent.roles().to_vec())
+                                .with_start_commit_num(commit_num)
+                                .with_end_commit_num(MAX_COMMIT_NUM);
+                            if let Some(service_id) = service_id {
+                                builder = builder.with_service_id(service_id.to_string());
+                            }
+                            builder.build().map_err(|err| EventError(err.to_string()))
                         })
-                        .collect::<Vec<Agent>>();
+                        .collect::<Result<Vec<Agent>, EventError>>()?;
 
                     Ok(Some(DbInsertOperation::Agents(agents)))
                 }
