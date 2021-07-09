@@ -45,8 +45,8 @@ use grid_sdk::{
             PIKE_AGENT_NAMESPACE, PIKE_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE, PIKE_ROLE_NAMESPACE,
         },
         store::{
-            Agent, AgentBuilder, AlternateId, DieselPikeStore, Organization, OrganizationMetadata,
-            PikeStore, Role, RoleBuilder,
+            Agent, AgentBuilder, AlternateId, DieselPikeStore, Organization, OrganizationBuilder,
+            OrganizationMetadata, PikeStore, Role, RoleBuilder,
         },
     },
     protocol::pike::state::{AgentList, OrganizationList, RoleList},
@@ -557,11 +557,8 @@ fn state_change_to_db_operation(
                         })?
                         .organizations()
                         .iter()
-                        .map(|org| Organization {
-                            org_id: org.org_id().to_string(),
-                            name: org.name().to_string(),
-                            locations: org.locations().to_vec(),
-                            alternate_ids: org
+                        .map(|org| {
+                            let alt_ids = org
                                 .alternate_ids()
                                 .iter()
                                 .map(|a| AlternateId {
@@ -572,8 +569,8 @@ fn state_change_to_db_operation(
                                     end_commit_num: MAX_COMMIT_NUM,
                                     service_id: service_id.cloned(),
                                 })
-                                .collect(),
-                            metadata: org
+                                .collect();
+                            let metadata = org
                                 .metadata()
                                 .iter()
                                 .map(|md| OrganizationMetadata {
@@ -583,13 +580,21 @@ fn state_change_to_db_operation(
                                     end_commit_num: MAX_COMMIT_NUM,
                                     service_id: service_id.cloned(),
                                 })
-                                .collect(),
-                            start_commit_num: commit_num,
-                            end_commit_num: MAX_COMMIT_NUM,
-                            service_id: service_id.cloned(),
-                            last_updated: None,
+                                .collect();
+                            let mut builder = OrganizationBuilder::new()
+                                .with_org_id(org.org_id().to_string())
+                                .with_name(org.name().to_string())
+                                .with_locations(org.locations().to_vec())
+                                .with_alternate_ids(alt_ids)
+                                .with_metadata(metadata)
+                                .with_start_commit_num(commit_num)
+                                .with_end_commit_num(MAX_COMMIT_NUM);
+                            if let Some(id) = service_id {
+                                builder = builder.with_service_id(id.to_string());
+                            }
+                            builder.build().map_err(|err| EventError(err.to_string()))
                         })
-                        .collect::<Vec<Organization>>();
+                        .collect::<Result<Vec<Organization>, EventError>>()?;
 
                     Ok(Some(DbInsertOperation::Organizations(orgs)))
                 }

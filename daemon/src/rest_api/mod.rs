@@ -182,7 +182,9 @@ mod test {
     };
     use grid_sdk::{
         location::store::{DieselLocationStore, Location, LocationAttribute, LocationStore},
-        pike::store::{Agent, AgentBuilder, DieselPikeStore, Organization, PikeStore},
+        pike::store::{
+            Agent, AgentBuilder, DieselPikeStore, Organization, OrganizationBuilder, PikeStore,
+        },
         product::store::{
             DieselProductStore, Product, ProductBuilder, ProductStore, PropertyValue,
             PropertyValueBuilder,
@@ -2935,44 +2937,40 @@ mod test {
     }
 
     fn get_organization(service_id: Option<String>) -> Vec<Organization> {
-        vec![Organization {
-            org_id: KEY2.to_string(),
-            name: ORG_NAME_1.to_string(),
-            locations: vec![ADDRESS_1.to_string()],
-            alternate_ids: vec![],
-            metadata: vec![],
-            start_commit_num: 1,
-            end_commit_num: i64::MAX,
-            service_id: service_id.clone(),
-            last_updated: None,
-        }]
+        let org = {
+            let mut builder = OrganizationBuilder::new()
+                .with_org_id(KEY2.to_string())
+                .with_name(ORG_NAME_1.to_string())
+                .with_locations(vec![ADDRESS_1.to_string()])
+                .with_start_commit_num(1)
+                .with_end_commit_num(i64::MAX);
+            if let Some(id) = service_id {
+                builder = builder.with_service_id(id.to_string());
+            }
+            builder.build().expect("Unable to build organization")
+        };
+
+        vec![org]
     }
 
     fn get_updated_organization() -> Vec<Organization> {
-        vec![
-            Organization {
-                org_id: KEY3.to_string(),
-                name: ORG_NAME_2.to_string(),
-                locations: vec![ADDRESS_2.to_string()],
-                alternate_ids: vec![],
-                metadata: vec![],
-                start_commit_num: 2,
-                end_commit_num: 4,
-                service_id: None,
-                last_updated: None,
-            },
-            Organization {
-                org_id: KEY3.to_string(),
-                name: ORG_NAME_2.to_string(),
-                locations: vec![UPDATED_ADDRESS_2.to_string()],
-                alternate_ids: vec![],
-                metadata: vec![],
-                start_commit_num: 4,
-                end_commit_num: i64::MAX,
-                service_id: None,
-                last_updated: None,
-            },
-        ]
+        let org_1 = OrganizationBuilder::new()
+            .with_org_id(KEY3.to_string())
+            .with_name(ORG_NAME_2.to_string())
+            .with_locations(vec![ADDRESS_2.to_string()])
+            .with_start_commit_num(2)
+            .with_end_commit_num(4)
+            .build()
+            .expect("Unable to build organization");
+        let org_2 = OrganizationBuilder::new()
+            .with_org_id(KEY3.to_string())
+            .with_name(ORG_NAME_2.to_string())
+            .with_locations(vec![UPDATED_ADDRESS_2.to_string()])
+            .with_start_commit_num(4)
+            .with_end_commit_num(i64::MAX)
+            .build()
+            .expect("Unable to build organization");
+        vec![org_1, org_2]
     }
 
     fn populate_organization_table(
