@@ -191,15 +191,62 @@ impl RoleList {
 /// Represents a Grid Organization
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Organization {
-    pub org_id: String,
-    pub name: String,
-    pub locations: Vec<String>,
-    pub alternate_ids: Vec<AlternateId>,
-    pub metadata: Vec<OrganizationMetadata>,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
-    pub last_updated: Option<i64>,
+    org_id: String,
+    name: String,
+    locations: Vec<String>,
+    alternate_ids: Vec<AlternateId>,
+    metadata: Vec<OrganizationMetadata>,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+    last_updated: Option<i64>,
+}
+
+impl Organization {
+    /// Return the unique identifier of the organization
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    /// Return the name of the organization
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Return the locations of the organization
+    pub fn locations(&self) -> &[String] {
+        &self.locations
+    }
+
+    /// Return the Alternate IDs of the organization
+    pub fn alternate_ids(&self) -> &[AlternateId] {
+        &self.alternate_ids
+    }
+
+    /// Return the metadata of the organization
+    pub fn metadata(&self) -> &[OrganizationMetadata] {
+        &self.metadata
+    }
+
+    /// Return the start commit num of the organization
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Return the end commit num of the organization
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Return the service ID of the organization
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+
+    /// Return the last updated timestamp of the organization
+    pub fn last_updated(&self) -> Option<&i64> {
+        self.last_updated.as_ref()
+    }
 }
 
 /// Represents a Grid Alternate ID

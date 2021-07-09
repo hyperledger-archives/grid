@@ -23,11 +23,11 @@ pub struct AlternateIdSlice {
     pub id: String,
 }
 
-impl From<AlternateId> for AlternateIdSlice {
-    fn from(id: AlternateId) -> Self {
+impl From<&AlternateId> for AlternateIdSlice {
+    fn from(id: &AlternateId) -> Self {
         Self {
-            id_type: id.alternate_id_type,
-            id: id.alternate_id,
+            id_type: id.alternate_id_type.to_string(),
+            id: id.alternate_id.to_string(),
         }
     }
 }
@@ -64,35 +64,31 @@ pub struct OrganizationListSlice {
 impl From<Organization> for OrganizationSlice {
     fn from(organization: Organization) -> Self {
         Self {
-            org_id: organization.org_id.clone(),
-            name: organization.name.clone(),
-            locations: organization
-                .locations
-                .into_iter()
-                .map(String::from)
-                .collect(),
+            org_id: organization.org_id().to_string(),
+            name: organization.name().to_string(),
+            locations: organization.locations().iter().map(String::from).collect(),
             alternate_ids: organization
-                .alternate_ids
-                .into_iter()
+                .alternate_ids()
+                .iter()
                 .map(AlternateIdSlice::from)
                 .collect(),
             metadata: organization
-                .metadata
-                .into_iter()
+                .metadata()
+                .iter()
                 .map(OrganizationMetadataSlice::from)
                 .collect(),
-            service_id: organization.service_id,
-            last_updated: organization.last_updated,
+            service_id: organization.service_id().map(ToOwned::to_owned),
+            last_updated: organization.last_updated().map(ToOwned::to_owned),
         }
     }
 }
 
-impl From<OrganizationMetadata> for OrganizationMetadataSlice {
-    fn from(metadata: OrganizationMetadata) -> Self {
+impl From<&OrganizationMetadata> for OrganizationMetadataSlice {
+    fn from(metadata: &OrganizationMetadata) -> Self {
         Self {
             key: metadata.key.clone(),
             value: metadata.value.clone(),
-            service_id: metadata.service_id,
+            service_id: metadata.service_id.clone(),
         }
     }
 }
