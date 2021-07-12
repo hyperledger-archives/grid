@@ -276,6 +276,11 @@ impl AlternateId {
         &self.alternate_id
     }
 
+    /// Return the start commit num of the Alternate ID
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
     /// Return the end commit num of the Alternate ID
     pub fn end_commit_num(&self) -> &i64 {
         &self.end_commit_num
@@ -313,11 +318,38 @@ impl AgentList {
 /// Represents a Grid Organization metadata key-value pair
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct OrganizationMetadata {
-    pub key: String,
-    pub value: String,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
+    key: String,
+    value: String,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl OrganizationMetadata {
+    /// Return the key of the metadata's internal key-value pair
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    /// Return the value of the metadata's internal key-value pair
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+
+    /// Return the start commit num of the metadata
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Return the end commit num of the metadata
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Return the service ID associated with the metadata
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
 }
 
 pub trait PikeStore: Send + Sync {
