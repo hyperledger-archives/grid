@@ -16,6 +16,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use std::convert::TryFrom;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::process;
 use std::sync::{
@@ -25,6 +27,10 @@ use std::sync::{
 
 use cylinder::load_key;
 use grid_sdk::backend::SplinterBackendClient;
+use grid_sdk::commits::store::Commit;
+#[cfg(feature = "scabbard-event-restart")]
+use grid_sdk::commits::{CommitStore, DieselCommitStore};
+use grid_sdk::error::InvalidStateError;
 #[cfg(feature = "rest-api")]
 use grid_sdk::rest_api::actix_web_3::Endpoint;
 #[cfg(feature = "integration")]
@@ -36,7 +42,7 @@ use splinter::events::Reactor;
 use crate::config::GridConfig;
 use crate::database::ConnectionPool;
 use crate::error::DaemonError;
-use crate::event::{db_handler::DatabaseEventHandler, EventHandler};
+use crate::event::{db_handler::DatabaseEventHandler, EventHandler, EventProcessor};
 use crate::rest_api;
 
 use super::{app_auth_handler, event::ScabbardEventConnectionFactory};
@@ -59,7 +65,11 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     ));
 
     #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
-    let (store_state, db_handler): (StoreState, Box<dyn EventHandler + Sync + 'static>) = {
+    let (store_state, db_handler, previous_commits): (
+        _,
+        Box<dyn EventHandler + Sync + 'static>,
+        Vec<Commit>,
+    ) = {
         let connection_uri = config
             .database_url()
             .parse()
@@ -71,9 +81,25 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+
+                #[cfg(feature = "scabbard-event-restart")]
+                {
+                    let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+                    let commits = commit_store
+                        .get_current_service_commits()
+                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+
+                    (
+                        StoreState::with_pg_pool(connection_pool.pool.clone()),
+                        Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
+                        commits,
+                    )
+                }
+                #[cfg(not(feature = "scabbard-event-restart"))]
                 (
                     StoreState::with_pg_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
+                    vec![],
                 )
             }
             #[cfg(feature = "database-sqlite")]
@@ -81,13 +107,61 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+
+                #[cfg(feature = "scabbard-event-restart")]
+                {
+                    let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+                    let commits = commit_store
+                        .get_current_service_commits()
+                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+
+                    (
+                        StoreState::with_sqlite_pool(connection_pool.pool.clone()),
+                        Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
+                        commits,
+                    )
+                }
+
+                #[cfg(not(feature = "scabbard-event-restart"))]
                 (
                     StoreState::with_sqlite_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
+                    vec![],
                 )
             }
         }
     };
+
+    for commit in previous_commits {
+        if let Some(service_id) = commit.service_id {
+            let service_id = match ServiceId::try_from(service_id.deref()) {
+                Ok(service_id) => service_id,
+                Err(_) => {
+                    warn!(
+                        "\"{}\" does not conform to the Splinter service id format; skipping",
+                        service_id
+                    );
+                    continue;
+                }
+            };
+
+            debug!(
+                "Reconnecting event processing on service {} (from {})",
+                service_id, commit.commit_id
+            );
+
+            let event_connection = scabbard_event_connection_factory
+                .create_connection(service_id.circuit_id, service_id.service_id)
+                .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+
+            EventProcessor::start(
+                event_connection,
+                Some(&commit.commit_id),
+                vec![db_handler.cloned_box()],
+            )
+            .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+        }
+    }
 
     app_auth_handler::run(
         splinter_endpoint.url(),
@@ -149,4 +223,35 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     }
 
     Ok(())
+}
+
+struct ServiceId<'a> {
+    circuit_id: &'a str,
+    service_id: &'a str,
+}
+
+impl<'a> TryFrom<&'a str> for ServiceId<'a> {
+    type Error = InvalidStateError;
+
+    fn try_from(s: &'a str) -> Result<Self, Self::Error> {
+        let mut splits = s.split("::");
+
+        match (splits.next(), splits.next()) {
+            (Some(circuit_id), Some(service_id)) => Ok(ServiceId {
+                circuit_id,
+                service_id,
+            }),
+            (Some(_), None) => Err(InvalidStateError::with_message(
+                "Service ID must include {circuit_id}::{service_id}".into(),
+            )),
+            // The first value can never be None, when using split
+            (None, _) => unreachable!(),
+        }
+    }
+}
+
+impl<'a> std::fmt::Display for ServiceId<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}::{}", self.circuit_id, self.service_id)
+    }
 }

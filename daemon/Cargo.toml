@@ -88,6 +88,7 @@ experimental = [
     # The following features are experimental:
     "integration",
     "purchase-order",
+    "scabbard-event-restart",
     "track-and-trace",
 ]
 
@@ -114,6 +115,7 @@ sawtooth-support = [
     "grid-sdk/sawtooth-compat",
     "rest-api"
 ]
+scabbard-event-restart = ["grid-sdk/commit-store-service-commits"]
 schema = ["grid-sdk/rest-api-endpoint-schema", "grid-sdk/schema", "pike"]
 splinter-support = [
   "cylinder/key-load",
