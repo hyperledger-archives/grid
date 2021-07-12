@@ -228,6 +228,7 @@ services:
     hostname: scabbard-cli-alpha
     volumes:
       - gridd-alpha:/root/.splinter/keys
+      - contracts-shared:/usr/share/scar
     command: tail -f /dev/null
 
   splinterd-alpha:
@@ -356,6 +357,7 @@ services:
     hostname: scabbard-cli-beta
     volumes:
       - gridd-beta:/root/.splinter/keys
+      - contracts-shared:/usr/share/scar
     command: tail -f /dev/null
 
   splinterd-beta:
