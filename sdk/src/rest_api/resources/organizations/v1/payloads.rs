@@ -26,8 +26,8 @@ pub struct AlternateIdSlice {
 impl From<&AlternateId> for AlternateIdSlice {
     fn from(id: &AlternateId) -> Self {
         Self {
-            id_type: id.alternate_id_type.to_string(),
-            id: id.alternate_id.to_string(),
+            id_type: id.alternate_id_type().to_string(),
+            id: id.alternate_id().to_string(),
         }
     }
 }
