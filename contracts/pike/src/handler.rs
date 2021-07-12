@@ -30,7 +30,7 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    pike::addressing::PIKE_NAMESPACE,
+    pike::addressing::GRID_PIKE_NAMESPACE,
     pike::permissions::PermissionChecker,
     protocol::pike::state::{AlternateIdIndexEntryBuilder, RoleBuilder},
     protos::{
@@ -46,8 +46,8 @@ use grid_sdk::{
 use crate::permissions::{permission_to_perm_string, Permission};
 use crate::state::PikeState;
 
-const PIKE_FAMILY_NAME: &str = "pike";
-const PIKE_FAMILY_VERSION: &str = "2";
+const GRID_PIKE_FAMILY_NAME: &str = "grid_pike";
+const GRID_PIKE_FAMILY_VERSION: &str = "2";
 
 pub struct PikeTransactionHandler {
     family_name: String,
@@ -59,9 +59,9 @@ impl PikeTransactionHandler {
     #[allow(clippy::new_without_default)]
     pub fn new() -> PikeTransactionHandler {
         PikeTransactionHandler {
-            family_name: PIKE_FAMILY_NAME.to_string(),
-            family_versions: vec![PIKE_FAMILY_VERSION.to_string()],
-            namespaces: vec![PIKE_NAMESPACE.to_string()],
+            family_name: GRID_PIKE_FAMILY_NAME.to_string(),
+            family_versions: vec![GRID_PIKE_FAMILY_VERSION.to_string()],
+            namespaces: vec![GRID_PIKE_NAMESPACE.to_string()],
         }
     }
 }

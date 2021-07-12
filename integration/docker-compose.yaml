@@ -53,10 +53,10 @@ services:
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        sabre cr --create pike --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre cr --create grid_pike --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre upload --filename /tmp/pike.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee05 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm 621dee05 pike --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee05 grid_pike --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= pike contract is loaded =========---------'
         tail -f /dev/null
       "
@@ -173,7 +173,7 @@ services:
         done
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec023b83af696f65e0579200b7f066089db00fe628034c405c1a9acda1dc16a5e961 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec027e3e56bcd14d28d036fcfcde2cd2e3c83e83256dc986b5f27d65cc3ef1693cf3 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec02bb0b4ad88592b206787ba6a3adef17774763b03ce516281dcafe538254553219 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state/00ec025e503966e698583f792b5d6e6062c97640e5eb2cfc72c4c64f9d3b6a95cfac46 | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         cp /build/target/debug/gridd /usr/sbin/gridd && \
         cp /build/target/debug/grid /usr/bin/grid && \
         grid database migrate \
