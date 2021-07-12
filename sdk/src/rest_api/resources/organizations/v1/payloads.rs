@@ -86,9 +86,9 @@ impl From<Organization> for OrganizationSlice {
 impl From<&OrganizationMetadata> for OrganizationMetadataSlice {
     fn from(metadata: &OrganizationMetadata) -> Self {
         Self {
-            key: metadata.key.clone(),
-            value: metadata.value.clone(),
-            service_id: metadata.service_id.clone(),
+            key: metadata.key().to_string(),
+            value: metadata.value().to_string(),
+            service_id: metadata.service_id().map(ToOwned::to_owned),
         }
     }
 }

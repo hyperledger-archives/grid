@@ -46,7 +46,8 @@ use grid_sdk::{
         },
         store::{
             Agent, AgentBuilder, AlternateId, AlternateIdBuilder, DieselPikeStore, Organization,
-            OrganizationBuilder, OrganizationMetadata, PikeStore, Role, RoleBuilder,
+            OrganizationBuilder, OrganizationMetadata, OrganizationMetadataBuilder, PikeStore,
+            Role, RoleBuilder,
         },
     },
     protocol::pike::state::{AgentList, OrganizationList, RoleList},
@@ -577,14 +578,18 @@ fn state_change_to_db_operation(
                             let metadata = org
                                 .metadata()
                                 .iter()
-                                .map(|md| OrganizationMetadata {
-                                    key: md.key().to_string(),
-                                    value: md.value().to_string(),
-                                    start_commit_num: commit_num,
-                                    end_commit_num: MAX_COMMIT_NUM,
-                                    service_id: service_id.cloned(),
+                                .map(|md| {
+                                    let mut builder = OrganizationMetadataBuilder::new()
+                                        .with_key(md.key().to_string())
+                                        .with_value(md.value().to_string())
+                                        .with_start_commit_num(commit_num)
+                                        .with_end_commit_num(MAX_COMMIT_NUM);
+                                    if let Some(id) = service_id {
+                                        builder = builder.with_service_id(id.to_string());
+                                    }
+                                    builder.build().map_err(|err| EventError(err.to_string()))
                                 })
-                                .collect();
+                                .collect::<Result<Vec<OrganizationMetadata>, EventError>>()?;
                             let mut builder = OrganizationBuilder::new()
                                 .with_org_id(org.org_id().to_string())
                                 .with_name(org.name().to_string())
