@@ -34,7 +34,9 @@ use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::DieselPikeStore;
-pub use builder::{AgentBuilder, RoleBuilder};
+pub use builder::{
+    AgentBuilder, AlternateIdBuilder, OrganizationBuilder, OrganizationMetadataBuilder, RoleBuilder,
+};
 pub use error::PikeStoreError;
 
 /// Represents a Grid Agent
@@ -189,26 +191,105 @@ impl RoleList {
 /// Represents a Grid Organization
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Organization {
-    pub org_id: String,
-    pub name: String,
-    pub locations: Vec<String>,
-    pub alternate_ids: Vec<AlternateId>,
-    pub metadata: Vec<OrganizationMetadata>,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
-    pub last_updated: Option<i64>,
+    org_id: String,
+    name: String,
+    locations: Vec<String>,
+    alternate_ids: Vec<AlternateId>,
+    metadata: Vec<OrganizationMetadata>,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+    last_updated: Option<i64>,
+}
+
+impl Organization {
+    /// Return the unique identifier of the organization
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    /// Return the name of the organization
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Return the locations of the organization
+    pub fn locations(&self) -> &[String] {
+        &self.locations
+    }
+
+    /// Return the Alternate IDs of the organization
+    pub fn alternate_ids(&self) -> &[AlternateId] {
+        &self.alternate_ids
+    }
+
+    /// Return the metadata of the organization
+    pub fn metadata(&self) -> &[OrganizationMetadata] {
+        &self.metadata
+    }
+
+    /// Return the start commit num of the organization
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Return the end commit num of the organization
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Return the service ID of the organization
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+
+    /// Return the last updated timestamp of the organization
+    pub fn last_updated(&self) -> Option<&i64> {
+        self.last_updated.as_ref()
+    }
 }
 
 /// Represents a Grid Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct AlternateId {
-    pub org_id: String,
-    pub alternate_id_type: String,
-    pub alternate_id: String,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
+    org_id: String,
+    alternate_id_type: String,
+    alternate_id: String,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl AlternateId {
+    /// Return the organization ID associated with the Alternate ID
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    /// Return the type of this Alternate ID
+    pub fn alternate_id_type(&self) -> &str {
+        &self.alternate_id_type
+    }
+
+    /// Return the unique identifier of the Alternate ID
+    pub fn alternate_id(&self) -> &str {
+        &self.alternate_id
+    }
+
+    /// Return the start commit num of the Alternate ID
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Return the end commit num of the Alternate ID
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Return the service ID associated with the Alternate ID
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
 }
 
 pub struct OrganizationList {
@@ -237,11 +318,38 @@ impl AgentList {
 /// Represents a Grid Organization metadata key-value pair
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct OrganizationMetadata {
-    pub key: String,
-    pub value: String,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
+    key: String,
+    value: String,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl OrganizationMetadata {
+    /// Return the key of the metadata's internal key-value pair
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    /// Return the value of the metadata's internal key-value pair
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+
+    /// Return the start commit num of the metadata
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Return the end commit num of the metadata
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Return the service ID associated with the metadata
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
 }
 
 pub trait PikeStore: Send + Sync {

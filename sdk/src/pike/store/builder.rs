@@ -15,7 +15,7 @@
 use crate::error::InvalidArgumentError;
 
 use super::error::PikeBuilderError;
-use super::{Agent, Role};
+use super::{Agent, AlternateId, Organization, OrganizationMetadata, Role};
 
 /// Builder used to create a Pike Agent
 #[derive(Clone, Debug, Default)]
@@ -365,6 +365,399 @@ impl RoleBuilder {
             end_commit_num,
             service_id,
             last_updated,
+        })
+    }
+}
+
+/// Builder used to create a Pike organization
+#[derive(Clone, Debug, Default)]
+pub struct OrganizationBuilder {
+    org_id: Option<String>,
+    name: Option<String>,
+    locations: Option<Vec<String>>,
+    alternate_ids: Option<Vec<AlternateId>>,
+    metadata: Option<Vec<OrganizationMetadata>>,
+    start_commit_num: Option<i64>,
+    end_commit_num: Option<i64>,
+    service_id: Option<String>,
+    last_updated: Option<i64>,
+}
+
+impl OrganizationBuilder {
+    /// Creates a new organization builder
+    pub fn new() -> Self {
+        OrganizationBuilder::default()
+    }
+
+    /// Set the organization's ID
+    ///
+    /// # Arguments
+    ///
+    /// * `org_id` - The unique identifier of this organization
+    pub fn with_org_id(mut self, org_id: String) -> Self {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    /// Set the name of the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Name of the organization being built
+    pub fn with_name(mut self, name: String) -> Self {
+        self.name = Some(name);
+        self
+    }
+
+    /// Set the locations of the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `locations` - The locations of the organization being built
+    pub fn with_locations(mut self, locations: Vec<String>) -> Self {
+        self.locations = Some(locations);
+        self
+    }
+
+    /// Set the alternate IDs for the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `alternate_ids` - List of alternate IDs belonging to the organization being built
+    pub fn with_alternate_ids(mut self, alternate_ids: Vec<AlternateId>) -> Self {
+        self.alternate_ids = Some(alternate_ids);
+        self
+    }
+
+    /// Set the metadata of the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `metadata` - The metadata belonging to the organization being built
+    pub fn with_metadata(mut self, metadata: Vec<OrganizationMetadata>) -> Self {
+        self.metadata = Some(metadata);
+        self
+    }
+
+    /// Set the starting commit num for the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `start_commit_num` - The start commit num for the organization being built
+    pub fn with_start_commit_num(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = Some(start_commit_num);
+        self
+    }
+
+    /// Set the ending commit num for the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `end_commit_num` - The end commit num for the organization being built
+    pub fn with_end_commit_num(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = Some(end_commit_num);
+        self
+    }
+
+    /// Set the service ID of the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` - The service ID for the organization being built
+    pub fn with_service_id(mut self, service_id: String) -> Self {
+        self.service_id = Some(service_id);
+        self
+    }
+
+    /// Set the last updated timestamp for the organization
+    ///
+    /// # Arguments
+    ///
+    /// * `last_updated` - The timestamp the organization being built was last updated
+    pub fn with_last_updated(mut self, last_updated: i64) -> Self {
+        self.last_updated = Some(last_updated);
+        self
+    }
+
+    pub fn build(self) -> Result<Organization, PikeBuilderError> {
+        let org_id = self
+            .org_id
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("org_id".to_string()))?;
+        let name = self
+            .name
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("name".to_string()))?;
+        let locations = self.locations.unwrap_or_default();
+        let alternate_ids = self.alternate_ids.unwrap_or_default();
+        let metadata = self.metadata.unwrap_or_default();
+        let start_commit_num = self.start_commit_num.ok_or_else(|| {
+            PikeBuilderError::MissingRequiredField("start_commit_num".to_string())
+        })?;
+        let end_commit_num = self
+            .end_commit_num
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("end_commit_num".to_string()))?;
+
+        if start_commit_num >= end_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "start_commit_num".to_string(),
+                    "argument cannot be greater than or equal to `end_commit_num`".to_string(),
+                ),
+            ));
+        }
+        if end_commit_num <= start_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "end_commit_num".to_string(),
+                    "argument cannot be less than or equal to `start_commit_num`".to_string(),
+                ),
+            ));
+        }
+        let service_id = self.service_id;
+        let last_updated = self.last_updated;
+
+        Ok(Organization {
+            org_id,
+            name,
+            locations,
+            alternate_ids,
+            metadata,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+            last_updated,
+        })
+    }
+}
+
+/// Builder used to create an Alternate ID
+#[derive(Clone, Debug, Default)]
+pub struct AlternateIdBuilder {
+    org_id: Option<String>,
+    alternate_id_type: Option<String>,
+    alternate_id: Option<String>,
+    start_commit_num: Option<i64>,
+    end_commit_num: Option<i64>,
+    service_id: Option<String>,
+}
+
+impl AlternateIdBuilder {
+    /// Creates a new Alternate ID builder
+    pub fn new() -> Self {
+        AlternateIdBuilder::default()
+    }
+
+    /// Set the unique identifier for the organization associated with the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `org_id` - The unique identifier of the organization the Alternate ID belongs to
+    pub fn with_org_id(mut self, org_id: String) -> Self {
+        self.org_id = Some(org_id);
+        self
+    }
+
+    /// Set the type of the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `alternate_id_type` - Type of the Alternate ID being built
+    pub fn with_alternate_id_type(mut self, alternate_id_type: String) -> Self {
+        self.alternate_id_type = Some(alternate_id_type);
+        self
+    }
+
+    /// Set the unique identifier of the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `alternate_id` - Unique identifier of the Alternate ID being built
+    pub fn with_alternate_id(mut self, alternate_id: String) -> Self {
+        self.alternate_id = Some(alternate_id);
+        self
+    }
+
+    /// Set the starting commit num for the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `start_commit_num` - The start commit num for the Alternate ID being built
+    pub fn with_start_commit_num(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = Some(start_commit_num);
+        self
+    }
+
+    /// Set the ending commit num for the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `end_commit_num` - The end commit num for the Alternate ID being built
+    pub fn with_end_commit_num(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = Some(end_commit_num);
+        self
+    }
+
+    /// Set the service ID of the Alternate ID
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` - The service ID for the Alternate ID being built
+    pub fn with_service_id(mut self, service_id: String) -> Self {
+        self.service_id = Some(service_id);
+        self
+    }
+
+    pub fn build(self) -> Result<AlternateId, PikeBuilderError> {
+        let org_id = self
+            .org_id
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("org_id".to_string()))?;
+        let alternate_id_type = self.alternate_id_type.ok_or_else(|| {
+            PikeBuilderError::MissingRequiredField("alternate_id_type".to_string())
+        })?;
+        let alternate_id = self
+            .alternate_id
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("alternate_id".to_string()))?;
+
+        let start_commit_num = self.start_commit_num.ok_or_else(|| {
+            PikeBuilderError::MissingRequiredField("start_commit_num".to_string())
+        })?;
+        let end_commit_num = self
+            .end_commit_num
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("end_commit_num".to_string()))?;
+
+        if start_commit_num >= end_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "start_commit_num".to_string(),
+                    "argument cannot be greater than or equal to `end_commit_num`".to_string(),
+                ),
+            ));
+        }
+        if end_commit_num <= start_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "end_commit_num".to_string(),
+                    "argument cannot be less than or equal to `start_commit_num`".to_string(),
+                ),
+            ));
+        }
+        let service_id = self.service_id;
+
+        Ok(AlternateId {
+            org_id,
+            alternate_id_type,
+            alternate_id,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        })
+    }
+}
+
+/// Builder used to create organization metadata, represented as a key-value pair
+#[derive(Clone, Debug, Default)]
+pub struct OrganizationMetadataBuilder {
+    key: Option<String>,
+    value: Option<String>,
+    start_commit_num: Option<i64>,
+    end_commit_num: Option<i64>,
+    service_id: Option<String>,
+}
+
+impl OrganizationMetadataBuilder {
+    /// Creates a new organization metadata builder
+    pub fn new() -> Self {
+        OrganizationMetadataBuilder::default()
+    }
+
+    /// Set the key for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key of the organization's metadata's internal key-value pair
+    pub fn with_key(mut self, key: String) -> Self {
+        self.key = Some(key);
+        self
+    }
+
+    /// Set the value for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value of the organization's metadata's internal key-value pair
+    pub fn with_value(mut self, value: String) -> Self {
+        self.value = Some(value);
+        self
+    }
+
+    /// Set the starting commit num for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `start_commit_num` - The start commit num for the organization metadata being built
+    pub fn with_start_commit_num(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = Some(start_commit_num);
+        self
+    }
+
+    /// Set the ending commit num for the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `end_commit_num` - The end commit num for the organization metadata being built
+    pub fn with_end_commit_num(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = Some(end_commit_num);
+        self
+    }
+
+    /// Set the service ID of the organization metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` - The service ID for the organization metadata being built
+    pub fn with_service_id(mut self, service_id: String) -> Self {
+        self.service_id = Some(service_id);
+        self
+    }
+
+    pub fn build(self) -> Result<OrganizationMetadata, PikeBuilderError> {
+        let key = self
+            .key
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("key".to_string()))?;
+        let value = self
+            .value
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("value".to_string()))?;
+
+        let start_commit_num = self.start_commit_num.ok_or_else(|| {
+            PikeBuilderError::MissingRequiredField("start_commit_num".to_string())
+        })?;
+        let end_commit_num = self
+            .end_commit_num
+            .ok_or_else(|| PikeBuilderError::MissingRequiredField("end_commit_num".to_string()))?;
+
+        if start_commit_num >= end_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "start_commit_num".to_string(),
+                    "argument cannot be greater than or equal to `end_commit_num`".to_string(),
+                ),
+            ));
+        }
+        if end_commit_num <= start_commit_num {
+            return Err(PikeBuilderError::InvalidArgumentError(
+                InvalidArgumentError::new(
+                    "end_commit_num".to_string(),
+                    "argument cannot be less than or equal to `start_commit_num`".to_string(),
+                ),
+            ));
+        }
+        let service_id = self.service_id;
+
+        Ok(OrganizationMetadata {
+            key,
+            value,
+            start_commit_num,
+            end_commit_num,
+            service_id,
         })
     }
 }
