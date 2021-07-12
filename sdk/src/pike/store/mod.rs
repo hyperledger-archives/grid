@@ -252,12 +252,39 @@ impl Organization {
 /// Represents a Grid Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct AlternateId {
-    pub org_id: String,
-    pub alternate_id_type: String,
-    pub alternate_id: String,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
+    org_id: String,
+    alternate_id_type: String,
+    alternate_id: String,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl AlternateId {
+    /// Return the organization ID associated with the Alternate ID
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    /// Return the type of this Alternate ID
+    pub fn alternate_id_type(&self) -> &str {
+        &self.alternate_id_type
+    }
+
+    /// Return the unique identifier of the Alternate ID
+    pub fn alternate_id(&self) -> &str {
+        &self.alternate_id
+    }
+
+    /// Return the end commit num of the Alternate ID
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Return the service ID associated with the Alternate ID
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
 }
 
 pub struct OrganizationList {

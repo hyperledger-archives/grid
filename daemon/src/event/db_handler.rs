@@ -45,8 +45,8 @@ use grid_sdk::{
             PIKE_AGENT_NAMESPACE, PIKE_NAMESPACE, PIKE_ORGANIZATION_NAMESPACE, PIKE_ROLE_NAMESPACE,
         },
         store::{
-            Agent, AgentBuilder, AlternateId, DieselPikeStore, Organization, OrganizationBuilder,
-            OrganizationMetadata, PikeStore, Role, RoleBuilder,
+            Agent, AgentBuilder, AlternateId, AlternateIdBuilder, DieselPikeStore, Organization,
+            OrganizationBuilder, OrganizationMetadata, PikeStore, Role, RoleBuilder,
         },
     },
     protocol::pike::state::{AgentList, OrganizationList, RoleList},
@@ -561,15 +561,19 @@ fn state_change_to_db_operation(
                             let alt_ids = org
                                 .alternate_ids()
                                 .iter()
-                                .map(|a| AlternateId {
-                                    org_id: org.org_id().to_string(),
-                                    alternate_id_type: a.id_type().to_string(),
-                                    alternate_id: a.id().to_string(),
-                                    start_commit_num: commit_num,
-                                    end_commit_num: MAX_COMMIT_NUM,
-                                    service_id: service_id.cloned(),
+                                .map(|a| {
+                                    let mut builder = AlternateIdBuilder::new()
+                                        .with_org_id(org.org_id().to_string())
+                                        .with_alternate_id_type(a.id_type().to_string())
+                                        .with_alternate_id(a.id().to_string())
+                                        .with_start_commit_num(commit_num)
+                                        .with_end_commit_num(MAX_COMMIT_NUM);
+                                    if let Some(id) = service_id {
+                                        builder = builder.with_service_id(id.to_string());
+                                    }
+                                    builder.build().map_err(|err| EventError(err.to_string()))
                                 })
-                                .collect();
+                                .collect::<Result<Vec<AlternateId>, EventError>>()?;
                             let metadata = org
                                 .metadata()
                                 .iter()
