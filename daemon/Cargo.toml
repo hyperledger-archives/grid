@@ -115,7 +115,7 @@ sawtooth-support = [
     "grid-sdk/sawtooth-compat",
     "rest-api"
 ]
-scabbard-event-restart = ["grid-sdk/commit-store-service-commits"]
+scabbard-event-restart = []
 schema = ["grid-sdk/rest-api-endpoint-schema", "grid-sdk/schema", "pike"]
 splinter-support = [
   "cylinder/key-load",
