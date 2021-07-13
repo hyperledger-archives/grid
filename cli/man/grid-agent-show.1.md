@@ -20,7 +20,8 @@ DESCRIPTION
 ===========
 
 Show the complete details of a specific agent. This command requires the
-`PUBLIC_KEY` argument to specify the unique identifier for the agent that is to be retrieved.
+`PUBLIC_KEY` argument to specify the unique identifier for the agent that is to
+be retrieved.
 
 ARGS
 ====
