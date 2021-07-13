@@ -33,6 +33,9 @@ use sawtooth_sdk::messages::transaction::TransactionHeader;
 
 use crate::CliError;
 
+const GRID_LOCATION_FAMILY_NAME: &str = "grid_location";
+const GRID_LOCATION_FAMILY_VERSION: &str = "2";
+
 const GRID_PIKE_FAMILY_NAME: &str = "grid_pike";
 const GRID_PIKE_FAMILY_VERSION: &str = "2";
 
@@ -65,7 +68,11 @@ pub fn product_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
 }
 
 pub fn location_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
-    BatchBuilder::new("grid_location", "2", signer)
+    BatchBuilder::new(
+        GRID_LOCATION_FAMILY_NAME,
+        GRID_LOCATION_FAMILY_VERSION,
+        signer,
+    )
 }
 
 #[derive(Clone)]
