@@ -42,43 +42,12 @@ pub(in crate::commits) trait CommitStoreGetCurrentSericeCommitsOperation {
     fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError>;
 }
 
-impl<'a> CommitStoreGetCurrentSericeCommitsOperation
-    for CommitStoreOperations<'a, SqliteConnection>
+impl<'a, C> CommitStoreGetCurrentSericeCommitsOperation for CommitStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+    i64: diesel::deserialize::FromSql<diesel::sql_types::BigInt, C::Backend>,
+    String: diesel::deserialize::FromSql<diesel::sql_types::Text, C::Backend>,
 {
-    fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError> {
-        // A raw query is required, as diesel does not support this style of query as of its 1.4.x
-        // release branch.
-        sql_query(
-            r#"
-            SELECT commit_id, MAX (commit_num) as current_commit_number, service_id
-            FROM commits
-            GROUP BY service_id
-        "#,
-        )
-        .load::<CurrentCommit>(self.conn)
-        .map(|values| {
-            values
-                .into_iter()
-                .filter_map(
-                    |CurrentCommit {
-                         commit_id,
-                         commit_num,
-                         service_id,
-                     }| {
-                        service_id.map(|service_id| Commit {
-                            commit_id,
-                            commit_num,
-                            service_id: Some(service_id),
-                        })
-                    },
-                )
-                .collect::<Vec<_>>()
-        })
-        .map_err(|err| CommitStoreError::InternalError(InternalError::from_source(Box::new(err))))
-    }
-}
-
-impl<'a> CommitStoreGetCurrentSericeCommitsOperation for CommitStoreOperations<'a, PgConnection> {
     fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError> {
         // A raw query is required, as diesel does not support this style of query as of its 1.4.x
         // release branch.
