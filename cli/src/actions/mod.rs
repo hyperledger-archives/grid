@@ -56,11 +56,18 @@ pub struct ListSlice<T> {
 
 #[cfg(feature = "admin-keygen")]
 pub mod admin;
+#[cfg(feature = "pike")]
 pub mod agents;
+#[cfg(feature = "database")]
 pub mod database;
 pub mod keygen;
+#[cfg(feature = "location")]
 pub mod locations;
+#[cfg(feature = "pike")]
 pub mod organizations;
+#[cfg(feature = "product")]
 pub mod products;
+#[cfg(feature = "pike")]
 pub mod roles;
+#[cfg(feature = "schema")]
 pub mod schemas;

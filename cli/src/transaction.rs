@@ -33,16 +33,24 @@ use sawtooth_sdk::messages::transaction::TransactionHeader;
 
 use crate::CliError;
 
+#[cfg(feature = "location")]
 const GRID_LOCATION_FAMILY_NAME: &str = "grid_location";
+#[cfg(feature = "location")]
 const GRID_LOCATION_FAMILY_VERSION: &str = "2";
 
+#[cfg(feature = "pike")]
 const GRID_PIKE_FAMILY_NAME: &str = "grid_pike";
+#[cfg(feature = "pike")]
 const GRID_PIKE_FAMILY_VERSION: &str = "2";
 
+#[cfg(feature = "schema")]
 const GRID_SCHEMA_FAMILY_NAME: &str = "grid_schema";
+#[cfg(feature = "schema")]
 const GRID_SCHEMA_FAMILY_VERSION: &str = "2";
 
+#[cfg(feature = "product")]
 const GRID_PRODUCT_FAMILY_NAME: &str = "grid_product";
+#[cfg(feature = "product")]
 const GRID_PRODUCT_FAMILY_VERSION: &str = "2";
 
 const SABRE_FAMILY_NAME: &str = "sabre";
@@ -51,14 +59,17 @@ const SABRE_NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
 const SABRE_CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 const SABRE_CONTRACT_PREFIX: &str = "00ec02";
 
+#[cfg(feature = "schema")]
 pub fn schema_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
     BatchBuilder::new(GRID_SCHEMA_FAMILY_NAME, GRID_SCHEMA_FAMILY_VERSION, signer)
 }
 
+#[cfg(feature = "pike")]
 pub fn pike_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
     BatchBuilder::new(GRID_PIKE_FAMILY_NAME, GRID_PIKE_FAMILY_VERSION, signer)
 }
 
+#[cfg(feature = "product")]
 pub fn product_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
     BatchBuilder::new(
         GRID_PRODUCT_FAMILY_NAME,
@@ -67,6 +78,7 @@ pub fn product_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
     )
 }
 
+#[cfg(feature = "location")]
 pub fn location_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
     BatchBuilder::new(
         GRID_LOCATION_FAMILY_NAME,

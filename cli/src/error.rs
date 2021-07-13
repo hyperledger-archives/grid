@@ -20,9 +20,22 @@ use std::io;
 #[derive(Debug)]
 pub enum CliError {
     /// A general error encountered by a subcommand.
+    #[cfg(any(
+        feature = "location",
+        feature = "pike",
+        feature = "product",
+        feature = "schema",
+        feature = "database",
+    ))]
     ActionError(String),
     LoggingInitializationError(Box<flexi_logger::FlexiLoggerError>),
     InvalidYamlError(String),
+    #[cfg(any(
+        feature = "location",
+        feature = "pike",
+        feature = "product",
+        feature = "schema",
+    ))]
     PayloadError(String),
     UserError(String),
     SigningError(signing::Error),
@@ -31,15 +44,34 @@ pub enum CliError {
     ReqwestError(reqwest::Error),
     GridProtoError(protos::ProtoConversionError),
     SabreProtoError(sabre_sdk::protos::ProtoConversionError),
+    #[cfg(any(
+        feature = "location",
+        feature = "pike",
+        feature = "product",
+        feature = "schema",
+    ))]
     DaemonError(String),
 }
 
 impl StdError for CliError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "schema",
+                feature = "database",
+            ))]
             CliError::ActionError(_) => None,
             CliError::LoggingInitializationError(err) => Some(err),
             CliError::InvalidYamlError(_) => None,
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "schema",
+            ))]
             CliError::PayloadError(_) => None,
             CliError::UserError(_) => None,
             CliError::IoError(err) => Some(err),
@@ -48,6 +80,12 @@ impl StdError for CliError {
             CliError::ReqwestError(err) => Some(err),
             CliError::GridProtoError(err) => Some(err),
             CliError::SabreProtoError(err) => Some(err),
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "schema",
+            ))]
             CliError::DaemonError(_) => None,
         }
     }
@@ -56,9 +94,22 @@ impl StdError for CliError {
 impl std::fmt::Display for CliError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "schema",
+                feature = "database",
+            ))]
             CliError::ActionError(ref err) => write!(f, "Subcommand encountered an error: {}", err),
             CliError::UserError(ref err) => write!(f, "Error: {}", err),
             CliError::InvalidYamlError(ref err) => write!(f, "InvalidYamlError: {}", err),
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "schema",
+            ))]
             CliError::PayloadError(ref err) => write!(f, "PayloadError: {}", err),
             CliError::IoError(ref err) => write!(f, "IoError: {}", err),
             CliError::SigningError(ref err) => write!(f, "SigningError: {}", err),
@@ -69,6 +120,12 @@ impl std::fmt::Display for CliError {
             CliError::ReqwestError(ref err) => write!(f, "{}", err),
             CliError::GridProtoError(ref err) => write!(f, "Grid Proto Error: {}", err),
             CliError::SabreProtoError(ref err) => write!(f, "Sabre Proto Error: {}", err),
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "schema",
+            ))]
             CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
         }
     }
