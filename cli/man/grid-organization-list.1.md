@@ -26,7 +26,8 @@ FLAGS
 =====
 
 `-F`, `--format`
-: Specifies the output format of the list. Possible values for formatting are `human` and `csv`. Defaults to `human`.
+: Specifies the output format of the list. Possible values for formatting are
+  `human` and `csv`. Defaults to `human`.
 
 `-h`, `--help`
 : Prints help information
@@ -41,7 +42,8 @@ FLAGS
 : Prints version information
 
 `-v`
-: Increases verbosity (the opposite of `-q`). Specify multiple times for more output
+: Increases verbosity (the opposite of `-q`). Specify multiple times for more
+  output
 
 OPTIONS
 =======

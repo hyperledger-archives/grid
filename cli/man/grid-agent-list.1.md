@@ -26,13 +26,15 @@ FLAGS
 =====
 
 `-F`, `--format`
-: Specifies the output format of the list. Possible values for formatting are `human` and `csv`. Defaults to `human`.
+: Specifies the output format of the list. Possible values for formatting are
+  `human` and `csv`. Defaults to `human`.
 
 `-h`, `--help`
 : Prints help information
 
 `--line-per-role`
-: Displays agent information for each role on it's own line. Useful when filtering by role.
+: Displays agent information for each role on it's own line. Useful when
+  filtering by role.
 
 `-q`, `--quiet`
 : Do not display output
@@ -41,7 +43,8 @@ FLAGS
 : Prints version information
 
 `-v`
-: Increases verbosity (the opposite of `-q`). Specify multiple times for more output
+: Increases verbosity (the opposite of `-q`). Specify multiple times for more
+  output
 
 OPTIONS
 =======
@@ -49,7 +52,7 @@ OPTIONS
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
   Splinter. Format <circuit-id>::<service-id>.
-  
+
 `--url`
 : URL for the REST API
 
