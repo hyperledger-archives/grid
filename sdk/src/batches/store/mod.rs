@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod builder;
 #[cfg(feature = "diesel")]
 pub(in crate) mod diesel;
 mod error;
@@ -23,6 +24,7 @@ use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::DieselBatchStore;
+pub use builder::{BatchBuilder, TransactionBuilder, TransactionReceiptBuilder};
 pub use error::BatchStoreError;
 
 #[derive(Clone, Debug, PartialEq)]
