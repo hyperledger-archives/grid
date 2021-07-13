@@ -131,6 +131,15 @@ pub fn display_inherit_from(inherited: &[GridInheritFrom]) {
     });
 }
 
+/**
+ * Create a new role
+ *
+ * url - Url for the REST API
+ * signer - Signer for the agent submitting the transaction
+ * wait - Time in seconds to wait for commit
+ * create_role - Action to create a role
+ * service_id - ID of the service to delete a role from
+ */
 pub fn do_create_role(
     url: &str,
     signer: Box<dyn Signer>,
@@ -160,6 +169,15 @@ pub fn do_create_role(
     submit_batches(url, wait, &batch_list, service_id.as_deref())
 }
 
+/**
+ * Update an existing role
+ *
+ * url - Url for the REST API
+ * signer - Signer for the agent submitting the transaction
+ * wait - Time in seconds to wait for commit
+ * update_role - Action to update a role
+ * service_id - ID of the service to delete a role from
+ */
 pub fn do_update_role(
     url: &str,
     signer: Box<dyn Signer>,
@@ -189,6 +207,15 @@ pub fn do_update_role(
     submit_batches(url, wait, &batch_list, service_id.as_deref())
 }
 
+/**
+ * Delete an existing role
+ *
+ * url - Url for the REST API
+ * signer - Signer for the agent submitting the transaction
+ * wait - Time in seconds to wait for commit
+ * delete_role - Action to delete a role
+ * service_id - ID of the service to delete a role from
+ */
 pub fn do_delete_role(
     url: &str,
     signer: Box<dyn Signer>,
@@ -222,8 +249,9 @@ pub fn do_delete_role(
  * Print a single role in state
  *
  * url - Url for the REST API
- * org_id - org ID for the role
- * name - role name
+ * org_id - Org ID for the role
+ * name - Role name
+ * service_id - ID of the service to show the role from
  */
 pub fn do_show_role(
     url: &str,
@@ -248,6 +276,13 @@ pub fn do_show_role(
     Ok(())
 }
 
+/**
+ * Print all roles in state for an organization
+ *
+ * url - Url for the REST API
+ * org_id - Org ID for the roles
+ * service_id - ID of the service to list roles from
+ */
 pub fn do_list_roles(url: &str, org_id: &str, service_id: Option<String>) -> Result<(), CliError> {
     let client = Client::new();
     let mut final_url = format!("{}/role/{}", url, org_id);
