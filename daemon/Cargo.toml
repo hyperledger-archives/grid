@@ -68,6 +68,7 @@ default = [
     "database-sqlite",
     "event",
     "pike",
+    "product",
     "rest-api",
     "sawtooth-support",
     "schema",
@@ -79,7 +80,6 @@ stable = [
     "default",
     # The following features are stable:
     "location",
-    "product",
 ]
 
 experimental = [
