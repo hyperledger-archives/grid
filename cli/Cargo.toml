@@ -55,6 +55,7 @@ default = [
     "database",
     "pike",
     "postgres",
+    "product",
     "schema",
     "sqlite",
 ]
@@ -64,7 +65,6 @@ stable = [
     "default",
     # The following features are stable:
     "location",
-    "product",
 ]
 
 experimental = [
