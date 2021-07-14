@@ -70,6 +70,7 @@ default = [
     "pike",
     "rest-api",
     "sawtooth-support",
+    "schema",
     "splinter-support",
 ]
 
@@ -79,7 +80,6 @@ stable = [
     # The following features are stable:
     "location",
     "product",
-    "schema",
 ]
 
 experimental = [
