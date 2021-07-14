@@ -67,6 +67,7 @@ default = [
     "database-postgres",
     "database-sqlite",
     "event",
+    "location",
     "pike",
     "product",
     "rest-api",
@@ -79,7 +80,6 @@ stable = [
     # The stable feature extends default:
     "default",
     # The following features are stable:
-    "location",
 ]
 
 experimental = [
