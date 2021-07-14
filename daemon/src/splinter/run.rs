@@ -81,18 +81,16 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                {
-                    let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
-                    let commits = commit_store
-                        .get_current_service_commits()
-                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+                let commits = commit_store
+                    .get_current_service_commits()
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                    (
-                        StoreState::with_pg_pool(connection_pool.pool.clone()),
-                        Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
-                        commits,
-                    )
-                }
+                (
+                    StoreState::with_pg_pool(connection_pool.pool.clone()),
+                    Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
+                    commits,
+                )
             }
             #[cfg(feature = "database-sqlite")]
             ConnectionUri::Sqlite(_) => {
@@ -100,18 +98,16 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                {
-                    let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
-                    let commits = commit_store
-                        .get_current_service_commits()
-                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+                let commits = commit_store
+                    .get_current_service_commits()
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                    (
-                        StoreState::with_sqlite_pool(connection_pool.pool.clone()),
-                        Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
-                        commits,
-                    )
-                }
+                (
+                    StoreState::with_sqlite_pool(connection_pool.pool.clone()),
+                    Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
+                    commits,
+                )
             }
         }
     };
