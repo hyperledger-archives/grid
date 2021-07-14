@@ -62,7 +62,7 @@ ci:
     just ci-test-ui
     just ci-lint
     just ci-test
-    ci-test-integration
+    just ci-test-integration
 
 ci-build-ui-test-deps:
     #!/usr/bin/env sh
