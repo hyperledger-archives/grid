@@ -53,6 +53,7 @@ whoami = "1"
 default = [
     "sawtooth",
     "database",
+    "location",
     "pike",
     "postgres",
     "product",
@@ -64,7 +65,6 @@ stable = [
     # The stable feature extends default:
     "default",
     # The following features are stable:
-    "location",
 ]
 
 experimental = [
