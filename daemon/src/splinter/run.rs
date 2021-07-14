@@ -28,7 +28,6 @@ use std::sync::{
 use cylinder::load_key;
 use grid_sdk::backend::SplinterBackendClient;
 use grid_sdk::commits::store::Commit;
-#[cfg(feature = "scabbard-event-restart")]
 use grid_sdk::commits::{CommitStore, DieselCommitStore};
 use grid_sdk::error::InvalidStateError;
 #[cfg(feature = "rest-api")]
@@ -82,24 +81,15 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                #[cfg(feature = "scabbard-event-restart")]
-                {
-                    let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
-                    let commits = commit_store
-                        .get_current_service_commits()
-                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+                let commits = commit_store
+                    .get_current_service_commits()
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                    (
-                        StoreState::with_pg_pool(connection_pool.pool.clone()),
-                        Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
-                        commits,
-                    )
-                }
-                #[cfg(not(feature = "scabbard-event-restart"))]
                 (
                     StoreState::with_pg_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
-                    vec![],
+                    commits,
                 )
             }
             #[cfg(feature = "database-sqlite")]
@@ -108,25 +98,15 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                #[cfg(feature = "scabbard-event-restart")]
-                {
-                    let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
-                    let commits = commit_store
-                        .get_current_service_commits()
-                        .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+                let commits = commit_store
+                    .get_current_service_commits()
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-                    (
-                        StoreState::with_sqlite_pool(connection_pool.pool.clone()),
-                        Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
-                        commits,
-                    )
-                }
-
-                #[cfg(not(feature = "scabbard-event-restart"))]
                 (
                     StoreState::with_sqlite_pool(connection_pool.pool.clone()),
                     Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
-                    vec![],
+                    commits,
                 )
             }
         }
