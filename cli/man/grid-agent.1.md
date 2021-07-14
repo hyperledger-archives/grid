@@ -62,6 +62,12 @@ SUBCOMMANDS
 `help`
 : Prints this message or the help of the given subcommand(s)
 
+`list`
+: List all agents for a given service
+
+`show`
+: Show agent specified by public key
+
 `update`
 : Update an agent
 

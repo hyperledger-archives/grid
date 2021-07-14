@@ -48,7 +48,7 @@ SUBCOMMANDS
 : Provides commands for creating, updating, and deleting locations.
 
 `organization`
-: Update or create an organizations.
+: Create, update, list, or show organizations.
 
 `po`
 : Create, update, list, or show purchase orders.
@@ -113,20 +113,16 @@ Many `grid` subcommands accept the following environment variables:
 
 SEE ALSO
 ========
-| `grid-location-create(1)`
-| `grid-location-update(1)`
-| `grid-location-delete(1)`
-| `grid-location-show(1)`
-| `grid-location-list(1)`
-|
-| `grid-po-list(1)`
-|
-| `grid-product-create(1)`
-| `grid-product-update(1)`
-| `grid-product-delete(1)`
-| `grid-product-show(1)`
-| `grid-product-list(1)`
-|
-| `grid(1)`
+
+| `grid admin(1)`
+| `grid agent(1)`
+| `grid database(1)`
+| `grid keygen(1)`
+| `grid location(1)`
+| `grid organization(1)`
+| `grid po(1)`
+| `grid product(1)`
+| `grid role(1)`
+| `grid schema(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.2/

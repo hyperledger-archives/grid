@@ -19,56 +19,108 @@ extern crate log;
 
 mod actions;
 mod error;
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+))]
 mod http;
 #[cfg(feature = "sawtooth")]
 mod sawtooth;
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+))]
 mod signing;
 #[cfg(feature = "splinter")]
 mod splinter;
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+))]
 mod transaction;
+#[cfg(feature = "schema")]
 mod yaml_parser;
 
-use std::{collections::HashMap, env, fs::File, io::prelude::*, path::PathBuf};
+use std::path::PathBuf;
 
+use std::env;
+#[cfg(any(feature = "location", feature = "product",))]
+use std::{collections::HashMap, fs::File, io::prelude::*};
+
+#[cfg(any(feature = "pike", feature = "schema",))]
 use clap::ArgMatches;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
-use grid_sdk::protocol::{
-    location::payload::{
-        LocationCreateActionBuilder, LocationDeleteActionBuilder, LocationNamespace,
-        LocationUpdateActionBuilder,
-    },
-    pike::{
-        payload::{
-            CreateAgentActionBuilder, CreateOrganizationActionBuilder, CreateRoleActionBuilder,
-            DeleteRoleActionBuilder, UpdateAgentActionBuilder, UpdateOrganizationActionBuilder,
-            UpdateRoleActionBuilder,
-        },
-        state::{AlternateId, AlternateIdBuilder, KeyValueEntry, KeyValueEntryBuilder},
-    },
-    product::{
-        payload::{
-            ProductCreateActionBuilder, ProductDeleteActionBuilder, ProductUpdateActionBuilder,
-        },
-        state::ProductNamespace,
-    },
-    schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder},
+#[cfg(feature = "location")]
+use grid_sdk::protocol::location::payload::{
+    LocationCreateActionBuilder, LocationDeleteActionBuilder, LocationNamespace,
+    LocationUpdateActionBuilder,
 };
+#[cfg(feature = "pike")]
+use grid_sdk::protocol::pike::{
+    payload::{
+        CreateAgentActionBuilder, CreateOrganizationActionBuilder, CreateRoleActionBuilder,
+        DeleteRoleActionBuilder, UpdateAgentActionBuilder, UpdateOrganizationActionBuilder,
+        UpdateRoleActionBuilder,
+    },
+    state::{AlternateId, AlternateIdBuilder, KeyValueEntry, KeyValueEntryBuilder},
+};
+#[cfg(feature = "product")]
+use grid_sdk::protocol::product::{
+    payload::{ProductCreateActionBuilder, ProductDeleteActionBuilder, ProductUpdateActionBuilder},
+    state::ProductNamespace,
+};
+#[cfg(any(feature = "location", feature = "product",))]
+use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder};
+
 use log::Record;
 
 use crate::error::CliError;
 
-use actions::{
-    agents, database, keygen, locations, organizations as orgs, products, roles, schemas,
-};
-
 #[cfg(feature = "admin-keygen")]
 use actions::admin;
+#[cfg(feature = "database")]
+use actions::database;
+use actions::keygen;
+#[cfg(feature = "location")]
+use actions::locations;
+#[cfg(feature = "product")]
+use actions::products;
+#[cfg(feature = "schema")]
+use actions::schemas;
+#[cfg(feature = "pike")]
+use actions::{agents, organizations as orgs, roles};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+))]
 const GRID_DAEMON_KEY: &str = "GRID_DAEMON_KEY";
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
 const GRID_DAEMON_ENDPOINT: &str = "GRID_DAEMON_ENDPOINT";
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
 const GRID_SERVICE_ID: &str = "GRID_SERVICE_ID";
 
 const SYSTEM_KEY_PATH: &str = "/etc/grid/keys";
@@ -1663,6 +1715,7 @@ fn run() -> Result<(), CliError> {
             }
             _ => unreachable!(),
         },
+        #[cfg(feature = "pike")]
         ("agent", Some(m)) => {
             let url = m
                 .value_of("url")
@@ -1761,6 +1814,7 @@ fn run() -> Result<(), CliError> {
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
+        #[cfg(feature = "pike")]
         ("organization", Some(m)) => {
             let url = m
                 .value_of("url")
@@ -1832,6 +1886,7 @@ fn run() -> Result<(), CliError> {
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
+        #[cfg(feature = "pike")]
         ("role", Some(m)) => {
             let url = m
                 .value_of("url")
@@ -1963,6 +2018,7 @@ fn run() -> Result<(), CliError> {
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
+        #[cfg(feature = "schema")]
         ("schema", Some(m)) => {
             let url = m
                 .value_of("url")
@@ -2019,6 +2075,7 @@ fn run() -> Result<(), CliError> {
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
+        #[cfg(feature = "database")]
         ("database", Some(m)) => match m.subcommand() {
             ("migrate", Some(m)) => database::run_migrations(
                 m.value_of("connect")
@@ -2055,6 +2112,7 @@ fn run() -> Result<(), CliError> {
 
             keygen::generate_keys(key_name, conflict_strategy, key_dir)?
         }
+        #[cfg(feature = "product")]
         ("product", Some(m)) => {
             let url = m
                 .value_of("url")
@@ -2213,6 +2271,7 @@ fn run() -> Result<(), CliError> {
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
+        #[cfg(feature = "location")]
         ("location", Some(m)) => {
             let url = m
                 .value_of("url")
@@ -2441,6 +2500,7 @@ fn run() -> Result<(), CliError> {
     Ok(())
 }
 
+#[cfg(feature = "pike")]
 fn parse_alternate_ids(matches: &ArgMatches) -> Result<Vec<AlternateId>, CliError> {
     let ids = matches
         .values_of("alternate_ids")
@@ -2474,6 +2534,7 @@ fn parse_alternate_ids(matches: &ArgMatches) -> Result<Vec<AlternateId>, CliErro
     Ok(alternate_ids)
 }
 
+#[cfg(feature = "pike")]
 fn parse_metadata(matches: &ArgMatches) -> Result<Vec<KeyValueEntry>, CliError> {
     let metadata = matches
         .values_of("metadata")
@@ -2504,6 +2565,7 @@ fn parse_metadata(matches: &ArgMatches) -> Result<Vec<KeyValueEntry>, CliError> 
     Ok(key_value_entries)
 }
 
+#[cfg(any(feature = "location", feature = "product",))]
 fn parse_properties(
     url: &str,
     namespace: &str,

@@ -62,6 +62,12 @@ SUBCOMMANDS
 `help`
 : Prints this message or the help of the given subcommand(s).
 
+`list`
+: List organizations
+
+`show`
+: Show an organization specified by ID
+
 `update`
 : Update an organization.
 
