@@ -21,10 +21,7 @@ use std::fmt;
 
 #[cfg(feature = "diesel")]
 use crate::error::ConstraintViolationType;
-use crate::error::{
-    ConstraintViolationError, InternalError, InvalidArgumentError,
-    ResourceTemporarilyUnavailableError,
-};
+use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
 
 /// Represents BatchStore errors
 #[derive(Debug)]
@@ -88,39 +85,5 @@ impl From<PoolError> for BatchStoreError {
         BatchStoreError::ResourceTemporarilyUnavailableError(
             ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
         )
-    }
-}
-
-#[derive(Debug)]
-pub enum BatchBuilderError {
-    /// Returned when a required field was not set
-    MissingRequiredField(String),
-    /// Returned when an error occurs building Pike objects
-    BuildError(Box<dyn Error>),
-    /// Returned when an invalid argument is detected in the builder
-    InvalidArgumentError(InvalidArgumentError),
-}
-
-impl Error for BatchBuilderError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            BatchBuilderError::MissingRequiredField(_) => None,
-            BatchBuilderError::BuildError(err) => Some(&**err),
-            BatchBuilderError::InvalidArgumentError(err) => Some(err),
-        }
-    }
-}
-
-impl fmt::Display for BatchBuilderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            BatchBuilderError::MissingRequiredField(ref s) => {
-                write!(f, "missing required field `{}`", s)
-            }
-            BatchBuilderError::BuildError(ref s) => {
-                write!(f, "failed to build Batch object: {}", s)
-            }
-            BatchBuilderError::InvalidArgumentError(ref s) => f.write_str(&s.to_string()),
-        }
     }
 }

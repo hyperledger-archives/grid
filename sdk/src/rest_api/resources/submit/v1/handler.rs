@@ -25,10 +25,7 @@ use sabre_sdk::{
 };
 use sawtooth_sdk::messages::{batch, transaction};
 
-use crate::batches::store::{
-    Batch as DbBatch, BatchBuilder as DbBatchBuilder, BatchStore, BatchStoreError,
-    Transaction as DbTransaction, TransactionBuilder,
-};
+use crate::batches::store::{Batch as DbBatch, BatchStore, BatchStoreError};
 use crate::protos::IntoBytes;
 use crate::rest_api::resources::error::ErrorResponse;
 
@@ -60,24 +57,22 @@ pub async fn submit_batches(
     let mut ids = Vec::new();
 
     for db_batch in db_batches {
-        let id = db_batch.header_signature();
+        let id = db_batch.header_signature.clone();
 
-        batch_store
-            .add_batch(db_batch.clone())
-            .map_err(|err| match err {
-                BatchStoreError::ConstraintViolationError(err) => {
-                    ErrorResponse::new(400, &format!("{}", err))
-                }
-                BatchStoreError::ResourceTemporarilyUnavailableError(_) => {
-                    ErrorResponse::new(503, "Service unavailable")
-                }
-                err => {
-                    error!("{}", err);
-                    ErrorResponse::internal_error(Box::new(err))
-                }
-            })?;
+        batch_store.add_batch(db_batch).map_err(|err| match err {
+            BatchStoreError::ConstraintViolationError(err) => {
+                ErrorResponse::new(400, &format!("{}", err))
+            }
+            BatchStoreError::ResourceTemporarilyUnavailableError(_) => {
+                ErrorResponse::new(503, "Service unavailable")
+            }
+            err => {
+                error!("{}", err);
+                ErrorResponse::internal_error(Box::new(err))
+            }
+        })?;
 
-        ids.push(id.to_string());
+        ids.push(id);
     }
 
     Ok(SubmitBatchResponse::new(ids))
@@ -248,47 +243,19 @@ fn batches_into_bytes(
             ErrorResponse::internal_error(Box::new(err))
         })?;
 
-        let mut txns = Vec::new();
-
+        let mut db_batch = DbBatch::new(header_signature, public_key, trace, &bytes, service_id);
         transactions.iter().for_each(|t| {
-            let txn = build_transaction(t);
-
-            txns.push(txn);
+            db_batch.add_transaction(
+                t.get_header_signature(),
+                SABRE_FAMILY_NAME,
+                SABRE_FAMILY_VERSION,
+            );
         });
-
-        let mut db_batch_builder = DbBatchBuilder::new()
-            .with_header_signature(header_signature)
-            .with_signer_public_key(public_key)
-            .with_trace(trace)
-            .with_serialized_batch(&*bytes);
-
-        if let Some(service_id) = service_id {
-            db_batch_builder = db_batch_builder.with_service_id(service_id.to_string());
-        }
-
-        let db_batch = db_batch_builder.build().map_err(|err| {
-            error!("{}", err);
-            ErrorResponse::internal_error(Box::new(err))
-        })?;
 
         batches.push(db_batch);
     }
 
     Ok(batches)
-}
-
-fn build_transaction(txn: &transaction::Transaction) -> Result<DbTransaction, ErrorResponse> {
-    let db_txn = TransactionBuilder::new()
-        .with_header_signature(txn.get_header_signature().to_string())
-        .with_family_name(SABRE_FAMILY_NAME.to_string())
-        .with_family_version(SABRE_FAMILY_VERSION.to_string())
-        .build()
-        .map_err(|err| {
-            error!("{}", err);
-            ErrorResponse::internal_error(Box::new(err))
-        })?;
-
-    Ok(db_txn)
 }
 
 /// Creates a nonce appropriate for a TransactionHeader

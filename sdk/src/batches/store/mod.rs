@@ -12,38 +12,61 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod builder;
 #[cfg(feature = "diesel")]
 pub(in crate) mod diesel;
 mod error;
 
 use chrono::NaiveDateTime;
 
+use crate::hex;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::DieselBatchStore;
-pub use builder::{BatchBuilder, TransactionBuilder, TransactionReceiptBuilder};
 pub use error::BatchStoreError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Batch {
-    header_signature: String,
-    data_change_id: Option<String>,
-    signer_public_key: String,
-    trace: bool,
-    serialized_batch: String,
-    submitted: bool,
-    submission_error: Option<String>,
-    submission_error_message: Option<String>,
-    dlt_status: Option<String>,
-    claim_expires: Option<NaiveDateTime>,
-    created: Option<NaiveDateTime>,
-    service_id: Option<String>,
-    transactions: Vec<Transaction>,
+    pub header_signature: String,
+    pub data_change_id: Option<String>,
+    pub signer_public_key: String,
+    pub trace: bool,
+    pub serialized_batch: String,
+    pub submitted: bool,
+    pub submission_error: Option<String>,
+    pub submission_error_message: Option<String>,
+    pub dlt_status: Option<String>,
+    pub claim_expires: Option<NaiveDateTime>,
+    pub created: Option<NaiveDateTime>,
+    pub service_id: Option<String>,
+    pub transactions: Vec<Transaction>,
 }
 
 impl Batch {
+    pub fn new(
+        header_signature: String,
+        signer_public_key: String,
+        trace: bool,
+        serialized_batch: &[u8],
+        service_id: Option<String>,
+    ) -> Self {
+        Self {
+            header_signature,
+            data_change_id: None,
+            signer_public_key,
+            trace,
+            serialized_batch: hex::to_hex(serialized_batch),
+            submitted: false,
+            submission_error: None,
+            submission_error_message: None,
+            dlt_status: None,
+            claim_expires: None,
+            created: None,
+            service_id,
+            transactions: vec![],
+        }
+    }
+
     pub fn add_transaction(
         &mut self,
         header_signature: &str,
@@ -58,71 +81,6 @@ impl Batch {
             signer_public_key: self.signer_public_key.clone(),
         });
     }
-
-    /// Returns the header signature of the batch
-    pub fn header_signature(&self) -> &str {
-        &self.header_signature
-    }
-
-    /// Returns the data change ID of the batch
-    pub fn data_change_id(&self) -> Option<&str> {
-        self.data_change_id.as_deref()
-    }
-
-    /// Returns the public key of the signer of the batch
-    pub fn signer_public_key(&self) -> &str {
-        &self.signer_public_key
-    }
-
-    /// Returns the trace value of the batch
-    pub fn trace(&self) -> bool {
-        self.trace
-    }
-
-    /// Returns the serialized batch data
-    pub fn serialized_batch(&self) -> &str {
-        &self.serialized_batch
-    }
-
-    /// Returns the submission status of the batch
-    pub fn submitted(&self) -> bool {
-        self.submitted
-    }
-
-    /// Returns the error status of the batch
-    pub fn submission_error(&self) -> Option<&str> {
-        self.submission_error.as_deref()
-    }
-
-    /// Returns the message of an error in submission of the batch
-    pub fn submission_error_message(&self) -> Option<&str> {
-        self.submission_error_message.as_deref()
-    }
-
-    /// Returns the dlt status of the batch
-    pub fn dlt_status(&self) -> Option<&str> {
-        self.dlt_status.as_deref()
-    }
-
-    /// Returns the expiration time remaining on the batch
-    pub fn claim_expires(&self) -> Option<&NaiveDateTime> {
-        self.claim_expires.as_ref()
-    }
-
-    /// Returns the created date/time of the batch
-    pub fn created(&self) -> Option<&NaiveDateTime> {
-        self.created.as_ref()
-    }
-
-    /// Returns the Splinter service ID of the batch
-    pub fn service_id(&self) -> Option<&str> {
-        self.service_id.as_deref()
-    }
-
-    /// Returns the transactions in the batch
-    pub fn transactions(&self) -> &[Transaction] {
-        &self.transactions
-    }
 }
 
 /// Data needed to submit a batch
@@ -133,105 +91,24 @@ pub struct BatchSubmitInfo {
     pub service_id: Option<String>,
 }
 
-impl BatchSubmitInfo {
-    /// Returns the header signature of the batch info
-    pub fn header_signature(&self) -> &str {
-        &self.header_signature
-    }
-
-    /// Returns the serialized batch data
-    pub fn serialized_batch(&self) -> &str {
-        &self.serialized_batch
-    }
-
-    /// Returns the Splinter service ID of the batch
-    pub fn service_id(&self) -> Option<&str> {
-        self.service_id.as_deref()
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transaction {
-    header_signature: String,
-    batch_id: String,
-    family_name: String,
-    family_version: String,
-    signer_public_key: String,
-}
-
-impl Transaction {
-    /// Returns the header signature of the transaction
-    pub fn header_signature(&self) -> &str {
-        &self.header_signature
-    }
-
-    /// Returns the ID of the batch the transaction is in
-    pub fn batch_id(&self) -> &str {
-        &self.batch_id
-    }
-
-    /// Returns the family name of the transaction
-    pub fn family_name(&self) -> &str {
-        &self.family_name
-    }
-
-    // Returns the family version of the transaction
-    pub fn family_version(&self) -> &str {
-        &self.family_version
-    }
-
-    /// Returns the public key of the signer of the  transaction
-    pub fn signer_public_key(&self) -> &str {
-        &self.signer_public_key
-    }
+    pub header_signature: String,
+    pub batch_id: String,
+    pub family_name: String,
+    pub family_version: String,
+    pub signer_public_key: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransactionReceipt {
-    transaction_id: String,
-    result_valid: bool,
-    error_message: Option<String>,
-    error_data: Option<String>,
-    serialized_receipt: String,
-    external_status: Option<String>,
-    external_error_message: Option<String>,
-}
-
-impl TransactionReceipt {
-    /// Returns the ID of the transaction
-    pub fn transaction_id(&self) -> &str {
-        &self.transaction_id
-    }
-
-    /// Returns the result validity of the transaction submission
-    pub fn result_valid(&self) -> bool {
-        self.result_valid
-    }
-
-    /// Returns the error message for the transaction
-    pub fn error_message(&self) -> Option<&str> {
-        self.error_message.as_deref()
-    }
-
-    /// Returns the error data for the transaction
-    pub fn error_data(&self) -> Option<&str> {
-        self.error_data.as_deref()
-    }
-
-    /// Returns the serialized receipt for the transaction
-    pub fn serialized_receipt(&self) -> &str {
-        &self.serialized_receipt
-    }
-
-    /// Returns the external status of the transaction
-    pub fn external_status(&self) -> Option<&str> {
-        self.external_status.as_deref()
-    }
-
-    /// Returns the external error message of the transaction
-    pub fn external_error_message(&self) -> Option<&str> {
-        self.external_error_message.as_deref()
-    }
+    pub transaction_id: String,
+    pub result_valid: bool,
+    pub error_message: Option<String>,
+    pub error_data: Option<String>,
+    pub serialized_receipt: String,
+    pub external_status: Option<String>,
+    pub external_error_message: Option<String>,
 }
 
 #[derive(Clone, Debug)]
