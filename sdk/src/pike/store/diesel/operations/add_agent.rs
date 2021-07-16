@@ -114,7 +114,6 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::pg::PgCo
                         .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
                         .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
                         .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
-                        .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
                         .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -266,7 +265,6 @@ impl<'a> PikeStoreAddAgentOperation for PikeStoreOperations<'a, diesel::sqlite::
                         .and(pike_agent_role_assoc::org_id.eq(&agent.org_id))
                         .and(pike_agent_role_assoc::org_id.eq(&role.org_id))
                         .and(pike_agent_role_assoc::role_name.eq(&role.role_name))
-                        .and(pike_agent_role_assoc::service_id.eq(&role.service_id))
                         .and(pike_agent_role_assoc::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
