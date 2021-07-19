@@ -16,11 +16,12 @@
 import React, {useEffect} from 'react'
 import PropTypes from 'prop-types';
 import Icon from '@material-ui/core/Icon';
+import CircularProgress from '@material-ui/core/CircularProgress';
 import { useTable, useFilters, usePagination } from 'react-table';
 import { Input } from './Input';
 import './Table.scss';
 
-export function Table({ columns, data, filterTypes, filters, actions }) {
+export function Table({ columns, data, filterTypes, filters, actions, loading }) {
   const {
     getTableProps,
     getTableBodyProps,
@@ -80,7 +81,7 @@ export function Table({ columns, data, filterTypes, filters, actions }) {
 
   return (
     <>
-      <Pagination />
+      {loading ? <CircularProgress className="loading" size="1.5rem" color="inherit" /> : <Pagination />}
       <div className="table-wrapper">
         <table {...getTableProps()}>
           <thead>
@@ -136,7 +137,7 @@ export function Table({ columns, data, filterTypes, filters, actions }) {
           </tbody>
         </table>
       </div>
-      <Pagination />
+      {!loading && <Pagination />}
     </>
   )
 }
@@ -151,11 +152,13 @@ Table.propTypes = {
       action: PropTypes.func,
       icon: PropTypes.string,
     })
-  )
+  ),
+  loading: PropTypes.bool
 }
 
 Table.defaultProps = {
   filterTypes: {},
   filters: [],
-  actions: []
+  actions: [],
+  loading: false
 }

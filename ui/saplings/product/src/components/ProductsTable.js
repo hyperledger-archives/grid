@@ -28,6 +28,7 @@ import './ProductsTable.scss';
 
 function ProductsTable() {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const { selectedService, selectedCircuit } = useServiceState();
   const [filterInputState, setFilterInputState] = useState({
     type: 'product name',
@@ -64,12 +65,14 @@ function ProductsTable() {
     const getProducts = async () => {
       if (selectedService !== 'none') {
         try {
+          setLoading(true);
           const productList = await listProducts(selectedService);
           productList.map(p => productXMLToJSON(p))
           setProducts(productList.map(p => ({
             product: p,
             data: productXMLToJSON(p)
           })));
+          setLoading(false);
         } catch (e) {
           console.error(`Error listing products: ${e}`);
         }
@@ -267,7 +270,7 @@ function ProductsTable() {
         </div>
       </div>
       <div className="table">
-        <Table columns={columns} data={data} filterTypes={filterTypes} filters={filters} actions={[{action: downloadXMLGDSN3_1, icon: 'code'}]} />
+        <Table columns={columns} data={data} filterTypes={filterTypes} filters={filters} actions={[{action: downloadXMLGDSN3_1, icon: 'code'}]} loading={loading} />
       </div>
     </div>
   );
