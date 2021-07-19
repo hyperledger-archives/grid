@@ -53,7 +53,7 @@ function ProductsTable() {
     const productJSON = [];
     const xmlProperty = _.find(product.properties, ['name', 'GDSN_3_1']).string_value;
     try {
-      productJSON.push(parser.parse(xmlProperty, {ignoreAttributes: false}, false));
+      productJSON.push(parser.parse(xmlProperty, {ignoreAttributes: false, ignoreNameSpace: true, trimValues: false}, false));
     } catch (err) {
       console.error(err);
     }
@@ -127,19 +127,6 @@ function ProductsTable() {
       const j2x = new Parser({format: true, ignoreAttributes: false});
       let xml = {
         gridTradeItems: {
-          "@_xmlns:ns0": "urn:gs1:gdsn:food_and_beverage_ingredient:xsd:3",
-          "@_xmlns:ns10": "urn:gs1:gdsn:trade_item_hierarchy:xsd:3",
-          "@_xmlns:ns11": "urn:gs1:gdsn:trade_item_lifespan:xsd:3",
-          "@_xmlns:ns12": "urn:gs1:gdsn:trade_item_measurements:xsd:3",
-          "@_xmlns:ns13": "urn:gs1:gdsn:trade_item_temperature_information:xsd:3",
-          "@_xmlns:ns2": "urn:gs1:gdsn:consumer_instructions:xsd:3",
-          "@_xmlns:ns3": "urn:gs1:gdsn:food_and_beverage_preparation_serving:xsd:3",
-          "@_xmlns:ns4": "urn:gs1:gdsn:marketing_information:xsd:3",
-          "@_xmlns:ns5": "urn:gs1:gdsn:nutritional_information:xsd:3",
-          "@_xmlns:ns6": "urn:gs1:gdsn:packaging_marking:xsd:3",
-          "@_xmlns:ns7": "urn:gs1:gdsn:place_of_item_activity:xsd:3",
-          "@_xmlns:ns8": "urn:gs1:gdsn:referenced_file_detail_information:xsd:3",
-          "@_xmlns:ns9": "urn:gs1:gdsn:trade_item_description:xsd:3",
           "@_xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
           "@_xsi:noNamespaceSchemaLocation": "gridTradeItems.xsd",
           ...t
@@ -162,7 +149,7 @@ function ProductsTable() {
   }
 
   const accessProductImage = row => {
-    const ns = row.data[0].tradeItem.tradeItemInformation.extension["ns8:referencedFileDetailInformationModule"];
+    const ns = row.data[0].tradeItem.tradeItemInformation.extension.referencedFileDetailInformationModule;
     if (ns) {
       const img = _.find(ns, (r) => r.referencedFileTypeCode === "PRODUCT_IMAGE")
       if (img) {
@@ -173,8 +160,8 @@ function ProductsTable() {
   }
 
   const accessProductName = row => {
-    if (row.data[0].tradeItem.tradeItemInformation.extension["ns9:tradeItemDescriptionModule"]) {
-      return row.data[0].tradeItem.tradeItemInformation.extension["ns9:tradeItemDescriptionModule"].tradeItemDescriptionInformation.regulatedProductName["#text"];
+    if (row.data[0].tradeItem.tradeItemInformation.extension.tradeItemDescriptionModule) {
+      return row.data[0].tradeItem.tradeItemInformation.extension.tradeItemDescriptionModule.tradeItemDescriptionInformation.regulatedProductName["#text"];
     }
     return undefined;
   }
