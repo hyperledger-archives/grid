@@ -263,7 +263,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file")
+                                .help("Base name or path for private signing key file")
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -324,7 +324,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file")
+                                .help("Base name or path for private signing key file")
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -424,7 +424,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file")
+                                .help("Base name or path for private signing key file")
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -479,7 +479,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file")
+                                .help("Base name or path for private signing key file")
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -605,7 +605,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file")
+                                .help("Base name or path for private signing key file")
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -680,7 +680,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file")
+                                .help("Base name or path for private signing key file")
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -710,7 +710,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file")
+                                .help("Base name or path for private signing key file")
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -791,7 +791,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -815,7 +815,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -919,7 +919,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -972,7 +972,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -1002,7 +1002,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -1106,7 +1106,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -1157,7 +1157,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -1187,7 +1187,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -1291,7 +1291,7 @@ fn run() -> Result<(), CliError> {
                             .long("key")
                             .short("k")
                             .takes_value(true)
-                            .help("Base name for private signing key file"),
+                            .help("Base name or path for private signing key file"),
                     )
                     .arg(
                         Arg::with_name("wait")
@@ -1342,7 +1342,7 @@ fn run() -> Result<(), CliError> {
                             .long("key")
                             .short("k")
                             .takes_value(true)
-                            .help("Base name for private signing key file"),
+                            .help("Base name or path for private signing key file"),
                     )
                     .arg(
                         Arg::with_name("wait")
@@ -1456,7 +1456,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
@@ -1577,7 +1577,7 @@ fn run() -> Result<(), CliError> {
                                 .long("key")
                                 .short("k")
                                 .takes_value(true)
-                                .help("Base name for private signing key file"),
+                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
