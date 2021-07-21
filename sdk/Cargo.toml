@@ -105,6 +105,7 @@ experimental = [
     "batch-store",
     "client",
     "client-reqwest",
+    "cylinder-jwt-support",
     "pike-rest-api",
     "purchase-order",
     "rest-api-resources",
@@ -126,6 +127,7 @@ backend-sawtooth = ["backend", "uuid"]
 backend-splinter = ["backend", "reqwest"]
 client = []
 client-reqwest = ["client", "reqwest"]
+cylinder-jwt-support = ["cylinder/jwt"]
 location = ["pike", "schema"]
 pike = ["cfg-if"]
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
