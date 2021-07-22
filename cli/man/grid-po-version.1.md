@@ -87,5 +87,6 @@ SEE ALSO
 | `grid-po-version-create(1)`
 | `grid-po-version-list(1)`
 | `grid-po-version-update(1)`
+| `grid-po-revision(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.1/
