@@ -42,7 +42,7 @@ Many subcommands utilize the following options:
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
-  Splinter. Format <circuit-id>::<service-id>.
+  Splinter. Format: `<circuit-id>::<service-id>`.
 
 `--url`
 : URL for the REST API.
