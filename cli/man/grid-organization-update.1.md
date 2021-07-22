@@ -44,7 +44,7 @@ OPTIONS
 
 `--alternate-ids`
 : Alternate IDs for organization in a comma-separated list. 
-  Format: <id_type>:<id>.
+  Format: `<id_type>:<id>`.
 
 `-k`, `--key`
 : Base name or path to a private signing key file.
@@ -54,11 +54,11 @@ OPTIONS
 
 `--metadata`
 : Key-value pairs in a comma-separated list.
-  Format: <key>=<value>.
+  Format: `<key>=<value>`.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
-  Splinter. Format <circuit-id>::<service-id>.
+  Splinter. Format: `<circuit-id>::<service-id>`.
 
 `--url`
 : URL for the REST API.
