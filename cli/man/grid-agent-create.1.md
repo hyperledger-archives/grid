@@ -59,7 +59,7 @@ OPTIONS
 : base name or path to a private signing key file
 
 `--metadata`
-: Key-value pairs (format: <key>=<value>) in a comma-separated list
+: Key-value pairs (format: `<key>=<value>`) in a comma-separated list
 
 `--role`
 : Roles assigned to the agent. Multiple roles can be assigned in a 
@@ -67,7 +67,7 @@ OPTIONS
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
-  Splinter. Format <circuit-id>::<service-id>.
+  Splinter. Format: `<circuit-id>::<service-id>`.
 
 `--url`
 : URL for the REST API
