@@ -421,6 +421,14 @@
 
 * Update Product sapling to handle pagination returned when listing resources
 
+* Update products table in Product sapling to have a loading indicator when
+  fetching data
+
+* Remove element namespaces from GDSN XML parsing in Product UI. These
+  namespaces were previously hardcoded to work with example data, but not all
+  GDSN data has the same namespace for the same attribute. Files downloaded from
+  the UI will no longer include the original namespace.
+
 ### Griddle
 
 * Add Docker compose file to run `griddle` with a Sawtooth backend
