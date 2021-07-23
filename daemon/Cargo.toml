@@ -86,11 +86,13 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "cylinder-jwt-support",
     "integration",
     "purchase-order",
     "track-and-trace",
 ]
 
+cylinder-jwt-support = ["cylinder/jwt", "grid-sdk/cylinder-jwt-support"]
 event = ["database"]
 database = []
 database-postgres = ["grid-sdk/postgres"]
