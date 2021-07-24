@@ -41,9 +41,24 @@ __grid()
 
   GRID_OPTS="
     --version
+    agent
     help
     database
     keygen
+    location
+    organization
+    product
+    role
+    schema
+  "
+
+  GRID_AGENT_OPTS="
+    $GLOBAL_OPTS
+    create
+    help
+    list
+    show
+    update
   "
 
   GRID_DATABASE_OPTS="
@@ -67,7 +82,84 @@ __grid()
     --key_dir
   "
 
+  GRID_LOCATION_OPTS="
+    $GLOBAL_OPTS
+    create
+    delete
+    help
+    list
+    show
+    update
+  "
+
+  GRID_ORGANIZATION_OPTS="
+    $GLOBAL_OPTS
+    create
+    help
+    list
+    show
+    update
+  "
+
+  GRID_PRODUCT_OPTS="
+    $GLOBAL_OPTS
+    create
+    delete
+    help
+    list
+    show
+    update
+  "
+
+  GRID_ROLE_OPTS="
+    $GLOBAL_OPTS
+    create
+    delete
+    help
+    list
+    show
+    update
+  "
+
+  GRID_SCHEMA_OPTS="
+    $GLOBAL_OPTS
+    create
+    list
+    show
+    update
+  "
+
+  GRID_SPLINTER_OPTS="
+   --service-id
+   --url
+  "
+
   case "${subcommand}" in
+    agent)
+      case "${prev}" in
+        create)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --active --inactive --key --metadata --role --wait" -- ${cur}))
+          ;;
+
+        list)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --format --line-per-role" -- ${cur}))
+          ;;
+
+        show)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        update)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --active --inactive --key --metadata --role --wait" -- ${cur}))
+          ;;
+
+        *)
+          COMPREPLY=($(compgen -W "$GRID_AGENT_OPTS" -- ${cur}))
+          ;;
+
+      esac
+      ;;
+
     database)
       case "${prev}" in
         migrate)
@@ -88,6 +180,144 @@ __grid()
     keygen)
       COMPREPLY=($(compgen -W "$GRID_KEYGEN_OPTS" -- ${cur}))
       ;;
+
+    location)
+      case "${prev}" in
+        create)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --file --key --namespace --owner --property --wait" -- ${cur}))
+          ;;
+
+        delete)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --key --namespace --wait" -- ${cur}))
+          ;;
+
+        list)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        show)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        update)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --file --key --namespace --property --wait" -- ${cur}))
+          ;;
+
+        *)
+          COMPREPLY=($(compgen -W "$GRID_LOCATION_OPTS" -- ${cur}))
+          ;;
+
+        esac
+        ;;
+
+    organization)
+      case "${prev}" in
+        create)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --alternate-ids --key --metadata --wait" -- ${cur}))
+          ;;
+
+        list)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --alternate-ids --format" -- ${cur}))
+          ;;
+
+        show)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        update)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --alternate-ids --key --locations --metadata --wait" -- ${cur}))
+          ;;
+
+
+        *)
+          COMPREPLY=($(compgen -W "$GRID_ORGANIZATION_OPTS" -- ${cur}))
+          ;;
+
+        esac
+        ;;
+
+    product)
+      case "${prev}" in
+        create)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --file --key --owner --namespace --property --wait" -- ${cur}))
+          ;;
+
+        delete)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --key --namespace --wait" -- ${cur}))
+          ;;
+
+        list)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        show)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        update)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --file --key --namespace --property --wait" -- ${cur}))
+          ;;
+
+        *)
+          COMPREPLY=($(compgen -W "$GRID_PRODUCT_OPTS" -- ${cur}))
+          ;;
+
+        esac
+        ;;
+
+    role)
+      case "${prev}" in
+        create)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --active --inactive --allowed-orgs --description --inherit-from --key --permissions --wait" -- ${cur}))
+          ;;
+
+        delete)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --key --wait" -- ${cur}))
+          ;;
+
+        list)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        show)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        update)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --active --inactive --allowed-orgs --description --inherit-from --key --permissions --wait" -- ${cur}))
+          ;;
+
+        *)
+          COMPREPLY=($(compgen -W "$GRID_ROLE_OPTS" -- ${cur}))
+          ;;
+
+        esac
+        ;;
+
+    schema)
+      case "${prev}" in
+        create)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --key --wait" -- ${cur}))
+          ;;
+
+        list)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        show)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS" -- ${cur}))
+          ;;
+
+        update)
+          COMPREPLY=($(compgen -W "$GLOBAL_OPTS $GRID_SPLINTER_OPTS --key --wait" -- ${cur}))
+          ;;
+
+        *)
+          COMPREPLY=($(compgen -W "$GRID_SCHEMA_OPTS" -- ${cur}))
+          ;;
+
+        esac
+        ;;
 
     *)
       COMPREPLY=($(compgen -W "$GRID_OPTS" -- ${cur}))
