@@ -471,6 +471,220 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
+  # Purchase Order
+  /purchase-order:
+    get:
+      tags:
+        - Purchase Order
+      summary: Lists all purchase orders
+      operationId: list_purchase_orders
+      parameters:
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON list of the
+            requested purchase orders.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderList"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /purchase-order/{uuid}:
+    get:
+      tags:
+        - Purchase Order
+      summary: Fetches a single purchase order with the given UUID
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of the PO to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the purchase order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /purchase-order/{uuid}/versions:
+    get:
+      tags:
+        - Purchase Order
+      summary: Lists all purchase order versions for a purchase order
+      operationId: list_purchase_order_versions
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of the PO to fetch versions for
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the purchase order versions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderVersionList"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /purchase-order/{uuid}/versions/{version_id}:
+    get:
+      tags:
+        - Purchase Order
+      summary: Fetches a single purchase order version with the given ID
+      operationId: get_purchase_order_version
+      parameters:
+        - name: version_id
+          in: path
+          description: ID of the version to fetch
+          required: true
+          schema:
+            type: string
+        - name: uuid
+          in: path
+          description: ID of the PO to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the purchase order version.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderVersionList"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /purchase-order/{uuid}/versions/{version_id}/revisions:
+    get:
+      tags:
+        - Purchase Order
+      summary: Lists all purchase order revisions for a purchase order version
+      operationId: list_purchase_order_version_revisions
+      parameters:
+        - name: version_id
+          in: path
+          description: ID of the version to fetch
+          required: true
+          schema:
+            type: string
+        - name: uuid
+          in: path
+          description: ID of the PO to fetch versions for
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the purchase order version revisions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderRevisionList"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /purchase-order/{uuid}/versions/{version_id}/revisions/{revision_id}:
+    get:
+      tags:
+        - Purchase Order
+      summary: |
+        Fetches a single purchase order version revision with the given revision
+        ID
+      operationId: get_purchase_order_revision
+      parameters:
+        - name: revision_id
+          in: path
+          description: ID of the revision to fetch
+          required: true
+          schema:
+            type: number
+        - name: version_id
+          in: path
+          description: ID of the version to fetch
+          required: true
+          schema:
+            type: string
+        - name: uuid
+          in: path
+          description: ID of the PO to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the purchase order version.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderRevision"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
 
   # Schema
   /schema:
@@ -797,6 +1011,89 @@ components:
           $ref: "#/components/schemas/ServiceID"
         last_updated:
           $ref: "#/components/schemas/Timestamp"
+
+    # Purchase Order models
+    PurchaseOrder:
+      type: object
+      properties:
+        uuid:
+          type: string
+          example: 0099474000005
+        workflow_status:
+          type: string
+          example: ACCEPTED
+        accepted_version_id:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        version_ids:
+          type: array
+          items:
+            type: string
+        is_closed:
+          type: boolean
+          example: false
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    PurchaseOrderList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrder"
+        paging:
+          $ref: "#/components/schemas/Paging"
+    PurchaseOrderVersion:
+      properties:
+        version_id:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        workflow_status:
+          type: string
+          example: ISSUED
+        is_draft:
+          type: boolean
+          example: true
+        current_revision_id:
+          type: string
+          example: daae9b58726f4c9364b6cae2fa7c9c24
+        revisions:
+          type: array
+          items:
+            type: string
+            example: daae9b58726f4c9364b6cae2fa7c9c24
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    PurchaseOrderVersionList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderVersion"
+        paging:
+          $ref: "#/components/schemas/Paging"
+    PurchaseOrderRevision:
+      properties:
+        revision_id:
+          type: string
+          example: daae9b58726f4c9364b6cae2fa7c9c24
+        submitter:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+        order_xml_v3_4:
+          type: string
+          example: "<xml content>"
+        service_id:
+          $ref: "#/components/schemas/ServiceID"
+    PurchaseOrderRevisionList:
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderRevision"
+        paging:
+          $ref: "#/components/schemas/Paging"
 
     # Schema models
     SchemaList:
