@@ -124,6 +124,7 @@ const GRID_DAEMON_ENDPOINT: &str = "GRID_DAEMON_ENDPOINT";
 const GRID_SERVICE_ID: &str = "GRID_SERVICE_ID";
 
 const SYSTEM_KEY_PATH: &str = "/etc/grid/keys";
+const DEFAULT_SYSTEM_KEY_NAME: &str = "gridd";
 
 #[cfg(any(
     feature = "location",
@@ -2084,10 +2085,13 @@ fn run() -> Result<(), CliError> {
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         ("keygen", Some(m)) => {
-            let key_name = m
-                .value_of("key_name")
-                .map(String::from)
-                .unwrap_or_else(whoami::username);
+            let key_name = m.value_of("key_name").map(String::from).unwrap_or_else(|| {
+                if m.is_present("system") {
+                    DEFAULT_SYSTEM_KEY_NAME.to_string()
+                } else {
+                    whoami::username()
+                }
+            });
 
             let key_dir = if let Some(dir) = m.value_of("key_dir") {
                 PathBuf::from(dir)
