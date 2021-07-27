@@ -136,7 +136,7 @@ pub fn create_key_pair(
         if public_key_path.exists() {
             info!("Overwriting public key file: {}", public_key_path.display());
         } else {
-            info!("writing public key file: {}", public_key_path.display());
+            info!("Writing public key file: {}", public_key_path.display());
         }
 
         let public_key_file = OpenOptions::new()
