@@ -67,9 +67,7 @@ impl<'a> TrackAndTraceStoreListReportersOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(model.into_iter().map(Reporter::from).collect())
     }
@@ -111,9 +109,7 @@ impl<'a> TrackAndTraceStoreListReportersOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(model.into_iter().map(Reporter::from).collect())
     }

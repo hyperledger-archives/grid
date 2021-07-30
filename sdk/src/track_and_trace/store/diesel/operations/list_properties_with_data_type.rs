@@ -83,9 +83,7 @@ impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(models
             .into_iter()
@@ -142,9 +140,7 @@ impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(models
             .into_iter()
