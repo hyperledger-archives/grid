@@ -153,7 +153,7 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
             } else {
                 attrs.push(LocationAttribute::from((
                     attr,
-                    Self::get_attributes(&conn, children)?,
+                    Self::get_attributes(conn, children)?,
                 )));
             }
         }
@@ -271,7 +271,7 @@ impl<'a> LocationStoreListLocationsOperation<diesel::sqlite::SqliteConnection>
             } else {
                 attrs.push(LocationAttribute::from((
                     attr,
-                    Self::get_attributes(&conn, children)?,
+                    Self::get_attributes(conn, children)?,
                 )));
             }
         }

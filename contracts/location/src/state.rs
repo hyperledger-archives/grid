@@ -69,7 +69,7 @@ impl<'a> LocationState<'a> {
     }
 
     pub fn set_location(&self, location: Location) -> Result<(), ApplyError> {
-        let address = compute_gs1_location_address(&location.location_id());
+        let address = compute_gs1_location_address(location.location_id());
         let mut locations = match self.context.get_state_entry(&address)? {
             Some(packed) => match LocationList::from_bytes(packed.as_slice()) {
                 Ok(location_list) => location_list.locations().to_vec(),
@@ -120,7 +120,7 @@ impl<'a> LocationState<'a> {
     }
 
     pub fn remove_location(&self, location_id: &str) -> Result<(), ApplyError> {
-        let address = compute_gs1_location_address(&location_id);
+        let address = compute_gs1_location_address(location_id);
         let locations = match self.context.get_state_entry(&address)? {
             Some(packed) => match LocationList::from_bytes(packed.as_slice()) {
                 Ok(location_list) => location_list.locations().to_vec(),

@@ -84,10 +84,10 @@ impl<'a> PermissionChecker<'a> {
                     .collect();
 
                 Ok(self.check_roles_for_permission(
-                    &permission,
+                    permission,
                     &agent_roles,
-                    &record_owner,
-                    &agent.org_id(),
+                    record_owner,
+                    agent.org_id(),
                 ))
             }
             None => Err(PermissionCheckerError::InvalidPublicKey(format!(
@@ -128,10 +128,10 @@ impl<'a> PermissionChecker<'a> {
                     .collect();
 
                 self.check_roles_for_permission(
-                    &permission,
+                    permission,
                     &inheriting_roles,
-                    &record_owner,
-                    &agent_org_id,
+                    record_owner,
+                    agent_org_id,
                 )
             }
         })

@@ -517,7 +517,7 @@ fn state_change_to_db_operation(
             #[cfg(feature = "pike")]
             GRID_PIKE_NAMESPACE => match &key[0..10] {
                 GRID_PIKE_AGENT_NAMESPACE => {
-                    let agents: Vec<Agent> = AgentList::from_bytes(&value)
+                    let agents: Vec<Agent> = AgentList::from_bytes(value)
                         .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                         .agents()
                         .iter()
@@ -553,7 +553,7 @@ fn state_change_to_db_operation(
                     Ok(Some(DbInsertOperation::Agents(agents)))
                 }
                 GRID_PIKE_ORGANIZATION_NAMESPACE => {
-                    let orgs = OrganizationList::from_bytes(&value)
+                    let orgs = OrganizationList::from_bytes(value)
                         .map_err(|err| {
                             EventError(format!("Failed to parse organization list {}", err))
                         })?
@@ -609,7 +609,7 @@ fn state_change_to_db_operation(
                     Ok(Some(DbInsertOperation::Organizations(orgs)))
                 }
                 GRID_PIKE_ROLE_NAMESPACE => {
-                    let roles = RoleList::from_bytes(&value)
+                    let roles = RoleList::from_bytes(value)
                         .map_err(|err| EventError(format!("Failed to parse role list {}", err)))?
                         .roles()
                         .iter()
@@ -640,7 +640,7 @@ fn state_change_to_db_operation(
             },
             #[cfg(feature = "schema")]
             GRID_SCHEMA_NAMESPACE => {
-                let schemas = SchemaList::from_bytes(&value)
+                let schemas = SchemaList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
                     .schemas()
                     .iter()
@@ -665,7 +665,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPERTY_NAMESPACE if &key[66..] == "0000" => {
-                let properties = PropertyList::from_bytes(&value)
+                let properties = PropertyList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse property list {}", err)))?
                     .properties()
                     .iter()
@@ -714,7 +714,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPERTY_NAMESPACE => {
-                let property_pages = PropertyPageList::from_bytes(&value)
+                let property_pages = PropertyPageList::from_bytes(value)
                     .map_err(|err| {
                         EventError(format!("Failed to parse property page list {}", err))
                     })?
@@ -744,7 +744,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPOSAL_NAMESPACE => {
-                let proposals = ProposalList::from_bytes(&value)
+                let proposals = ProposalList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
                     .proposals()
                     .iter()
@@ -768,7 +768,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_RECORD_NAMESPACE => {
-                let record_list = RecordList::from_bytes(&value)
+                let record_list = RecordList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse record list {}", err)))?
                     .records()
                     .to_vec();
@@ -837,7 +837,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "location")]
             GRID_LOCATION_NAMESPACE => {
-                let locations = LocationList::from_bytes(&value)
+                let locations = LocationList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse location list {}", err)))?
                     .locations()
                     .iter()
@@ -850,7 +850,7 @@ fn state_change_to_db_operation(
                             commit_num,
                             service_id,
                             location.location_id(),
-                            &key,
+                            key,
                             location.properties(),
                         ),
                         start_commit_num: commit_num,
@@ -864,7 +864,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "product")]
             GRID_PRODUCT_NAMESPACE => {
-                let products = ProductList::from_bytes(&value)
+                let products = ProductList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
                     .products()
                     .iter()
@@ -883,7 +883,7 @@ fn state_change_to_db_operation(
                                     commit_num,
                                     service_id,
                                     product.product_id(),
-                                    &key,
+                                    key,
                                     product.properties(),
                                 )
                                 .map_err(|err| EventError(format!("{}", err)))?,
