@@ -1758,7 +1758,7 @@ fn run() -> Result<(), CliError> {
                                 .map(String::from)
                                 .collect::<Vec<String>>(),
                         )
-                        .with_metadata(parse_metadata(&m)?)
+                        .with_metadata(parse_metadata(m)?)
                         .build()
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -1795,7 +1795,7 @@ fn run() -> Result<(), CliError> {
                                 .map(String::from)
                                 .collect::<Vec<String>>(),
                         )
-                        .with_metadata(parse_metadata(&m)?)
+                        .with_metadata(parse_metadata(m)?)
                         .build()
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -1840,8 +1840,8 @@ fn run() -> Result<(), CliError> {
                     let create_org = CreateOrganizationActionBuilder::new()
                         .with_org_id(m.value_of("org_id").unwrap().into())
                         .with_name(m.value_of("name").unwrap().into())
-                        .with_alternate_ids(parse_alternate_ids(&m)?)
-                        .with_metadata(parse_metadata(&m)?)
+                        .with_alternate_ids(parse_alternate_ids(m)?)
+                        .with_metadata(parse_metadata(m)?)
                         .build()
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -1866,8 +1866,8 @@ fn run() -> Result<(), CliError> {
                                 .map(String::from)
                                 .collect::<Vec<String>>(),
                         )
-                        .with_alternate_ids(parse_alternate_ids(&m)?)
-                        .with_metadata(parse_metadata(&m)?)
+                        .with_alternate_ids(parse_alternate_ids(m)?)
+                        .with_metadata(parse_metadata(m)?)
                         .build()
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -2168,7 +2168,7 @@ fn run() -> Result<(), CliError> {
                         &url,
                         m.value_of("product_namespace").unwrap_or("gs1_product"),
                         service_id.as_deref(),
-                        &m,
+                        m,
                     )?;
 
                     let action = ProductCreateActionBuilder::new()
@@ -2223,7 +2223,7 @@ fn run() -> Result<(), CliError> {
                         &url,
                         m.value_of("product_namespace").unwrap_or("gs1_product"),
                         service_id.as_deref(),
-                        &m,
+                        m,
                     )?;
 
                     let action = ProductUpdateActionBuilder::new()
@@ -2332,7 +2332,7 @@ fn run() -> Result<(), CliError> {
                         &url,
                         m.value_of("location_namespace").unwrap_or("gs1_location"),
                         service_id.as_deref(),
-                        &m,
+                        m,
                     )?;
 
                     let action = LocationCreateActionBuilder::new()
@@ -2399,7 +2399,7 @@ fn run() -> Result<(), CliError> {
                         &url,
                         m.value_of("location_namespace").unwrap_or("gs1_location"),
                         service_id.as_deref(),
-                        &m,
+                        m,
                     )?;
 
                     let action = LocationUpdateActionBuilder::new()

@@ -180,7 +180,7 @@ pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGds
                                 "gtin".len(),
                             )))?;
                             writer.write_event(Event::Text(BytesText::from_plain(
-                                &current_gtin.as_bytes(),
+                                current_gtin.as_bytes(),
                             )))?;
                             writer.write_event(Event::End(BytesEnd::owned(b"gtin".to_vec())))?;
                         }

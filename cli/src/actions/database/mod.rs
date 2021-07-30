@@ -31,7 +31,7 @@ use self::sqlite::sqlite_migrations;
 #[allow(unused_variables)]
 pub fn run_migrations(database_url: &str) -> Result<(), CliError> {
     #[cfg(any(feature = "postgres", feature = "sqlite"))]
-    match ConnectionUri::from_str(&database_url).map_err(CliError::ActionError)? {
+    match ConnectionUri::from_str(database_url).map_err(CliError::ActionError)? {
         #[cfg(feature = "postgres")]
         ConnectionUri::Postgres(database_url) => {
             let connection = PgConnection::establish(&database_url).map_err(|err| {

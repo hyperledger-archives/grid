@@ -83,7 +83,7 @@ pub fn setup_grid(
     ))]
     let version = env!("CARGO_PKG_VERSION");
 
-    let signer = new_signer(&scabbard_admin_key)?;
+    let signer = new_signer(scabbard_admin_key)?;
 
     // The node with the first key in the list of scabbard admins is responsible for setting up xo
     let public_key = bytes_to_hex_str(signer.public_key());
@@ -101,27 +101,27 @@ pub fn setup_grid(
 
     // Make Pike transactions
     #[cfg(feature = "pike")]
-    make_pike_txns(&mut txns, &version, &signer)?;
+    make_pike_txns(&mut txns, version, &signer)?;
 
     // Make schema transactions
     #[cfg(feature = "schema")]
-    make_schema_txns(&mut txns, &version, &signer)?;
+    make_schema_txns(&mut txns, version, &signer)?;
 
     // Make Product transactions
     #[cfg(feature = "product")]
-    make_product_txns(&mut txns, &version, &signer)?;
+    make_product_txns(&mut txns, version, &signer)?;
 
     // Make Location transactions
     #[cfg(feature = "location")]
-    make_location_txns(&mut txns, &version, &signer)?;
+    make_location_txns(&mut txns, version, &signer)?;
 
     // Make Purchase Order transactions
     #[cfg(feature = "purchase-order")]
-    make_purchase_order_txns(&mut txns, &version, &signer)?;
+    make_purchase_order_txns(&mut txns, version, &signer)?;
 
     let batch = BatchBuilder::new().with_transactions(txns).build(&signer)?;
 
-    ScabbardClient::new(&splinterd_url)
+    ScabbardClient::new(splinterd_url)
         .submit(
             &ServiceId::new(circuit_id, service_id),
             vec![batch],
@@ -139,7 +139,7 @@ fn make_pike_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let pike_contract =
-        SmartContractArchive::from_scar_file("grid-pike", &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file("grid-pike", version, &default_scar_path())?;
     let pike_contract_registry_txn = CreateContractRegistryActionBuilder::new()
         .with_name(String::from(&pike_contract.metadata.name))
         .with_owners(vec![bytes_to_hex_str(signer.public_key())])
@@ -180,7 +180,7 @@ fn make_product_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let product_contract =
-        SmartContractArchive::from_scar_file("grid-product", &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file("grid-product", version, &default_scar_path())?;
     let product_contract_registry_txn = CreateContractRegistryActionBuilder::new()
         .with_name(String::from(&product_contract.metadata.name))
         .with_owners(vec![bytes_to_hex_str(signer.public_key())])
@@ -241,7 +241,7 @@ fn make_location_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let location_contract =
-        SmartContractArchive::from_scar_file("grid-location", &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file("grid-location", version, &default_scar_path())?;
     let location_contract_registry_txn = CreateContractRegistryActionBuilder::new()
         .with_name(String::from(&location_contract.metadata.name))
         .with_owners(vec![bytes_to_hex_str(signer.public_key())])
@@ -302,7 +302,7 @@ fn make_schema_txns(
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
     let schema_contract =
-        SmartContractArchive::from_scar_file("grid-schema", &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file("grid-schema", version, &default_scar_path())?;
     let schema_contract_registry_txn = CreateContractRegistryActionBuilder::new()
         .with_name(String::from(&schema_contract.metadata.name))
         .with_owners(vec![bytes_to_hex_str(signer.public_key())])
@@ -352,11 +352,8 @@ fn make_purchase_order_txns(
     version: &str,
     signer: &TransactSigner,
 ) -> Result<(), AppAuthHandlerError> {
-    let purchase_order_contract = SmartContractArchive::from_scar_file(
-        "grid-purchase-order",
-        &version,
-        &default_scar_path(),
-    )?;
+    let purchase_order_contract =
+        SmartContractArchive::from_scar_file("grid-purchase-order", version, &default_scar_path())?;
     let purchase_order_contract_registry_txn = CreateContractRegistryActionBuilder::new()
         .with_name(String::from(&purchase_order_contract.metadata.name))
         .with_owners(vec![bytes_to_hex_str(signer.public_key())])
