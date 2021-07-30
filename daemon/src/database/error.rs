@@ -36,6 +36,7 @@ impl fmt::Display for ConnectionError {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum DatabaseError {
     ConnectionError {
