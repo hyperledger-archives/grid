@@ -346,7 +346,7 @@ fn parse_property_slice(
     updates.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
     let property_info = PropertySlice::from_model(
-        &property,
+        property,
         &active_reporters,
         &data_type.clone().unwrap_or_else(|| "Unknown".to_string()),
         &updates,
@@ -370,7 +370,7 @@ fn parse_reported_values(
         None
     };
 
-    PropertyValueSlice::from_model(&reported_value, struct_values)
+    PropertyValueSlice::from_model(reported_value, struct_values)
 }
 
 fn parse_struct_values(
@@ -386,13 +386,13 @@ fn parse_struct_values(
                 parse_struct_values(record_id, &struct_value.struct_values, service_id)?;
             inner_values.push(StructPropertyValue::from_model(
                 &struct_value.property_name,
-                &struct_value,
+                struct_value,
                 Some(inner_struct_values),
             )?);
         } else {
             inner_values.push(StructPropertyValue::from_model(
                 &struct_value.property_name,
-                &struct_value,
+                struct_value,
                 None,
             )?);
         }

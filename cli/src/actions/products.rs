@@ -423,14 +423,14 @@ pub fn create_product_payloads_from_xml(
     path: &str,
     owner: &str,
 ) -> Result<Vec<ProductCreateAction>, CliError> {
-    let trade_items = get_trade_items_from_xml(&path)?;
+    let trade_items = get_trade_items_from_xml(path)?;
 
     let mut payloads = Vec::new();
 
     for trade_item in trade_items {
         payloads.push(
             trade_item
-                .into_create_payload(&owner)
+                .into_create_payload(owner)
                 .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
         );
     }
@@ -459,7 +459,7 @@ pub fn create_product_payloads_from_yaml(
 }
 
 pub fn update_product_payloads_from_xml(path: &str) -> Result<Vec<ProductUpdateAction>, CliError> {
-    let trade_items = get_trade_items_from_xml(&path)?;
+    let trade_items = get_trade_items_from_xml(path)?;
 
     let mut payloads = Vec::new();
 

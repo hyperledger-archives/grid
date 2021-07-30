@@ -74,7 +74,7 @@ impl<'a> LocationStoreGetLocationOperation<diesel::pg::PgConnection>
                     LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
+            let roots = Self::get_root_attributes(&*self.conn, location_id, service_id)?;
 
             let attrs = Self::get_attributes(&*self.conn, roots)?;
 
@@ -135,7 +135,7 @@ impl<'a> LocationStoreGetLocationOperation<diesel::pg::PgConnection>
             } else {
                 attrs.push(LocationAttribute::from((
                     attr,
-                    Self::get_attributes(&conn, children)?,
+                    Self::get_attributes(conn, children)?,
                 )));
             }
         }
@@ -177,7 +177,7 @@ impl<'a> LocationStoreGetLocationOperation<diesel::sqlite::SqliteConnection>
                     LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
+            let roots = Self::get_root_attributes(&*self.conn, location_id, service_id)?;
 
             let attrs = Self::get_attributes(&*self.conn, roots)?;
 
@@ -238,7 +238,7 @@ impl<'a> LocationStoreGetLocationOperation<diesel::sqlite::SqliteConnection>
             } else {
                 attrs.push(LocationAttribute::from((
                     attr,
-                    Self::get_attributes(&conn, children)?,
+                    Self::get_attributes(conn, children)?,
                 )));
             }
         }

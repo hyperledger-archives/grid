@@ -85,8 +85,8 @@ impl<'a>
             let rv: ReportedValueReporterToAgentMetadataModel = model;
             let roots = Self::get_root_rvs(
                 &*self.conn,
-                &record_id,
-                &property_name,
+                record_id,
+                property_name,
                 rv.reported_value_end_commit_num,
                 service_id,
             )?;
@@ -216,8 +216,8 @@ impl<'a>
             let rv: ReportedValueReporterToAgentMetadataModel = model;
             let roots = Self::get_root_rvs(
                 &*self.conn,
-                &record_id,
-                &property_name,
+                record_id,
+                property_name,
                 rv.reported_value_end_commit_num,
                 service_id,
             )?;
