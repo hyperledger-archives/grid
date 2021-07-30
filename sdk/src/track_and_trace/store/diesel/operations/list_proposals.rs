@@ -64,9 +64,7 @@ impl<'a> TrackAndTraceStoreListProposalsOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(models.into_iter().map(Proposal::from).collect())
     }
@@ -106,9 +104,7 @@ impl<'a> TrackAndTraceStoreListProposalsOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(models.into_iter().map(Proposal::from).collect())
     }
