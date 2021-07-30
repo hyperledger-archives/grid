@@ -54,8 +54,6 @@ pub struct ListSlice<T> {
     pub paging: Paging,
 }
 
-#[cfg(feature = "admin-keygen")]
-pub mod admin;
 #[cfg(feature = "pike")]
 pub mod agents;
 #[cfg(feature = "database")]
