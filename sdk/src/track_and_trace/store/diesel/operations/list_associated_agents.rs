@@ -65,9 +65,7 @@ impl<'a> TrackAndTraceStoreListAssociatedAgentsOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(models.into_iter().map(AssociatedAgent::from).collect())
     }
@@ -107,9 +105,7 @@ impl<'a> TrackAndTraceStoreListAssociatedAgentsOperation
                 TrackAndTraceStoreError::NotFoundError(
                     "Could not get all records from storage".to_string(),
                 )
-            })?
-            .into_iter()
-            .collect();
+            })?;
 
         Ok(models.into_iter().map(AssociatedAgent::from).collect())
     }

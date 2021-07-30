@@ -27,11 +27,6 @@ use super::Client;
 #[cfg(feature = "purchase-order")]
 use super::{PurchaseOrder, PurchaseOrderRevision, PurchaseOrderVersion};
 
-#[derive(Deserialize)]
-struct ServerError {
-    pub message: String,
-}
-
 pub struct ReqwestClient {
     pub url: String,
 }

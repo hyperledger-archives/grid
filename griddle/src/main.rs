@@ -60,7 +60,7 @@ fn griddle_store_state(_db_url: &str) -> Result<StoreState, Error> {
 #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
 fn griddle_store_state(db_url: &str) -> Result<StoreState, Error> {
     let connection_url =
-        ConnectionUri::from_str(&db_url).map_err(|err| Error::from_message(&format!("{}", err)))?;
+        ConnectionUri::from_str(db_url).map_err(|err| Error::from_message(&format!("{}", err)))?;
 
     Ok(match connection_url {
         #[cfg(feature = "database-postgres")]

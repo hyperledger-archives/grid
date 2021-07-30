@@ -76,7 +76,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn set_role(&self, role: Role) -> Result<(), ApplyError> {
-        let address = compute_role_address(&role.name(), &role.org_id());
+        let address = compute_role_address(role.name(), role.org_id());
         let mut roles = match self.context.get_state_entry(&address)? {
             Some(packed) => match RoleList::from_bytes(packed.as_slice()) {
                 Ok(role_list) => role_list.roles().to_vec(),
@@ -127,7 +127,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn remove_role(&mut self, name: &str, org_id: &str) -> Result<(), ApplyError> {
-        let address = compute_role_address(&name, &org_id);
+        let address = compute_role_address(name, org_id);
         let roles = match self.context.get_state_entry(&address)? {
             Some(packed) => match RoleList::from_bytes(packed.as_slice()) {
                 Ok(role_list) => role_list.roles().to_vec(),
@@ -408,7 +408,7 @@ impl<'a> PikeState<'a> {
     }
 
     pub fn remove_alternate_id_index(&mut self, id_type: &str, id: &str) -> Result<(), ApplyError> {
-        let address = compute_alternate_id_index_entry_address(&id_type, &id);
+        let address = compute_alternate_id_index_entry_address(id_type, id);
         let entries = match self.context.get_state_entry(&address)? {
             Some(packed) => match AlternateIdIndexEntryList::from_bytes(packed.as_slice()) {
                 Ok(entry_list) => entry_list.entries().to_vec(),
