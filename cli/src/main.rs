@@ -82,8 +82,6 @@ use log::Record;
 
 use crate::error::CliError;
 
-#[cfg(feature = "admin-keygen")]
-use actions::admin;
 #[cfg(feature = "database")]
 use actions::database;
 use actions::keygen;
@@ -188,43 +186,6 @@ fn run() -> Result<(), CliError> {
         )
 
     );
-
-    #[cfg(feature = "admin-keygen")]
-    {
-        use clap::{Arg, SubCommand};
-
-        app = app.subcommand(
-            SubCommand::with_name("admin")
-                .about("Administrative commands for gridd")
-                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
-                .subcommand(
-                    SubCommand::with_name("keygen")
-                        .about("Generates keys for gridd to use to sign transactions and batches.")
-                        .arg(
-                            Arg::with_name("directory")
-                                .long("dir")
-                                .short("d")
-                                .takes_value(true)
-                                .help(
-                                    "Specify the directory for the key files; \
-                                     defaults to /etc/grid/keys",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("force")
-                                .long("force")
-                                .conflicts_with("skip")
-                                .help("Overwrite files if they exist"),
-                        )
-                        .arg(
-                            Arg::with_name("skip")
-                                .long("skip")
-                                .conflicts_with("force")
-                                .help("Check if files exist; generate if missing"),
-                        ),
-                ),
-        );
-    }
 
     #[cfg(feature = "pike")]
     {
@@ -1701,21 +1662,6 @@ fn run() -> Result<(), CliError> {
         .start()?;
 
     match matches.subcommand() {
-        #[cfg(feature = "admin-keygen")]
-        ("admin", Some(m)) => match m.subcommand() {
-            ("keygen", Some(m)) => {
-                let conflict_strategy = if m.is_present("force") {
-                    admin::ConflictStrategy::Force
-                } else if m.is_present("skip") {
-                    admin::ConflictStrategy::Skip
-                } else {
-                    admin::ConflictStrategy::Error
-                };
-
-                admin::do_keygen(m.value_of("directory"), conflict_strategy)?;
-            }
-            _ => unreachable!(),
-        },
         #[cfg(feature = "pike")]
         ("agent", Some(m)) => {
             let url = m
