@@ -56,6 +56,7 @@ impl ParseBytes<AdminEvent> for AdminEvent {
     }
 }
 
+#[cfg(not(feature = "cylinder-jwt-support"))]
 pub fn run(
     splinterd_url: String,
     event_processors: EventProcessors,
@@ -68,7 +69,7 @@ pub fn run(
     let node_id = get_node_id(splinterd_url.clone())?;
 
     let ws_handler = Arc::new(Mutex::new(handler));
-    let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
+    let mut ws = WebSocketClient::new(&registration_route, "", move |_ctx, event| {
         let handler = {
             match ws_handler.lock() {
                 Ok(handler) => handler.cloned_box(),
@@ -116,6 +117,70 @@ pub fn run(
     igniter.start_ws(&ws).map_err(AppAuthHandlerError::from)
 }
 
+#[cfg(feature = "cylinder-jwt-support")]
+pub fn run(
+    splinterd_url: String,
+    event_processors: EventProcessors,
+    handler: Box<dyn EventHandler>,
+    igniter: Igniter,
+    scabbard_admin_key: String,
+    authorization: String,
+) -> Result<(), AppAuthHandlerError> {
+    let registration_route = format!("{}/ws/admin/register/grid", &splinterd_url);
+
+    let node_id = get_node_id(splinterd_url.clone(), &authorization)?;
+
+    let ws_handler = Arc::new(Mutex::new(handler));
+    let ws_auth = authorization.clone();
+    let mut ws = WebSocketClient::new(&registration_route, &authorization, move |_ctx, event| {
+        let handler = {
+            match ws_handler.lock() {
+                Ok(handler) => handler.cloned_box(),
+                Err(err) => {
+                    warn!("Attempting to recover from a poisoned lock in event handler",);
+                    err.into_inner().cloned_box()
+                }
+            }
+        };
+
+        if let Err(err) = process_admin_event(
+            event,
+            event_processors.clone(),
+            handler,
+            &node_id,
+            &scabbard_admin_key,
+            &splinterd_url,
+            &ws_auth,
+        ) {
+            error!("Failed to process admin event: {}", err);
+        }
+        WsResponse::Empty
+    });
+
+    ws.set_reconnect(RECONNECT);
+    ws.set_reconnect_limit(RECONNECT_LIMIT);
+    ws.set_timeout(CONNECTION_TIMEOUT);
+
+    ws.on_error(move |err, ctx| {
+        error!("An error occured while listening for admin events {}", err);
+        match err {
+            WebSocketError::ParserError { .. } => {
+                debug!("Protocol error, closing connection");
+                Ok(())
+            }
+            WebSocketError::ReconnectError(_) => {
+                debug!("Failed to reconnect. Closing WebSocket.");
+                Ok(())
+            }
+            _ => {
+                debug!("Attempting to restart connection");
+                ctx.start_ws()
+            }
+        }
+    });
+    igniter.start_ws(&ws).map_err(AppAuthHandlerError::from)
+}
+
 fn process_admin_event(
     event: AdminEvent,
     event_processors: EventProcessors,
@@ -123,6 +188,7 @@ fn process_admin_event(
     node_id: &str,
     scabbard_admin_key: &str,
     splinterd_url: &str,
+    #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
 ) -> Result<(), AppAuthHandlerError> {
     debug!("Received the event at {}", event.timestamp);
     match event.admin_event {
@@ -162,10 +228,22 @@ fn process_admin_event(
                     })
                 })?;
 
+            #[cfg(not(feature = "cylinder-jwt-support"))]
             event_processors
                 .add_once(&msg_proposal.circuit_id, &service.service_id, None, || {
                     vec![handler.cloned_box()]
                 })
+                .map_err(|err| AppAuthHandlerError::from_source(Box::new(err)))?;
+
+            #[cfg(feature = "cylinder-jwt-support")]
+            event_processors
+                .add_once(
+                    &msg_proposal.circuit_id,
+                    &service.service_id,
+                    None,
+                    authorization,
+                    || vec![handler.cloned_box()],
+                )
                 .map_err(|err| AppAuthHandlerError::from_source(Box::new(err)))?;
 
             setup_grid(
@@ -174,6 +252,8 @@ fn process_admin_event(
                 splinterd_url,
                 &service.service_id,
                 &msg_proposal.circuit_id,
+                #[cfg(feature = "cylinder-jwt-support")]
+                authorization,
             )?;
             Ok(())
         }
