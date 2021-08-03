@@ -116,9 +116,16 @@ services:
       "
 
   generate-registry:
-    image: splintercommunity/splinter-cli:0.4
+    image: splintercommunity/splinter-cli:0.5
     volumes:
       - registry:/registry
+      - gridd-alpha:/gridd_alpha/keys
+      - gridd-beta:/gridd_beta/keys
+      - gridd-gamma:/gridd_gamma/keys
+    depends_on:
+      - gridd-alpha
+      - gridd-beta
+      - gridd-gamma
     command: |
       bash -c "
         if [ ! -f /registry/registry.yaml ]
@@ -128,17 +135,17 @@ services:
           splinter admin keygen beta -d /registry
           splinter admin keygen gamma -d /registry
           # check if splinterd-alpha is available
-          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 200 ]] ; do
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 401 ]] ; do
              >&2 echo \"splinterd is unavailable - sleeping\"
              sleep 1
           done
           # check if splinterd-beta is available
-          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 200 ]] ; do
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 401 ]] ; do
              >&2 echo \"splinterd is unavailable - sleeping\"
              sleep 1
           done
           # check if splinterd-gamma is available
-          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-gamma:8085/status) -ne 200 ]] ; do
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-gamma:8085/status) -ne 401 ]] ; do
              >&2 echo \"splinterd is unavailable - sleeping\"
              sleep 1
           done
@@ -146,16 +153,19 @@ services:
           splinter registry build \
             http://splinterd-alpha:8085 \
             --file /registry/registry.yaml \
+            --key /gridd_alpha/keys/gridd.priv \
             --key-file /registry/alpha.pub \
             --metadata organization='Alpha'
           splinter registry build \
             http://splinterd-beta:8085 \
             --file /registry/registry.yaml \
+            --key /gridd_beta/keys/gridd.priv \
             --key-file /registry/beta.pub \
             --metadata organization='Beta'
           splinter registry build \
             http://splinterd-gamma:8085 \
             --file /registry/registry.yaml \
+            --key /gridd_gamma/keys/gridd.priv \
             --key-file /registry/gamma.pub \
             --metadata organization='Gamma'
         fi
@@ -222,7 +232,7 @@ services:
       "
 
   scabbard-cli-alpha:
-    image: splintercommunity/scabbard-cli:0.4
+    image: splintercommunity/scabbard-cli:0.5
     container_name: scabbard-cli-alpha
     hostname: scabbard-cli-alpha
     volumes:
@@ -231,7 +241,7 @@ services:
     command: tail -f /dev/null
 
   splinterd-alpha:
-    image: splintercommunity/splinterd:0.4
+    image: splintercommunity/splinterd:0.5
     container_name: splinterd-alpha
     hostname: splinterd-alpha
     expose:
@@ -244,8 +254,19 @@ services:
       - contracts-shared:/usr/share/scar
       - registry:/registry
       - templates-shared:/usr/share/splinter/circuit-templates
+      - gridd-alpha:/etc/grid/keys
+    depends_on:
+      - gridd-alpha
     entrypoint: |
       bash -c "
+        while [ ! -f /etc/grid/keys/gridd.pub ] ; do
+          >&2 echo \"Grid key file is unavailable - sleeping\"
+          sleep 1
+        done && \
+        if [ ! -s /etc/splinter/allow_keys ]
+        then
+          echo $$(cat /etc/grid/keys/gridd.pub) >> /etc/splinter/allow_keys
+        fi && \
         until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
@@ -257,17 +278,15 @@ services:
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
         --registries http://registry-server:80/registry.yaml \
-        --rest-api-endpoint 0.0.0.0:8085 \
+        --rest-api-endpoint http://0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-alpha:8044 \
         --node-id alpha-node-000 \
-        --service-endpoint tcp://0.0.0.0:8043 \
-        --storage yaml \
         --tls-client-cert /etc/splinter/certs/client.crt \
         --tls-client-key /etc/splinter/certs/private/client.key \
         --tls-server-cert /etc/splinter/certs/server.crt \
         --tls-server-key /etc/splinter/certs/private/server.key \
-        --enable-biome \
+        --enable-biome-credentials \
         --database postgres://admin:admin@splinter-db-alpha:5432/splinter \
         --tls-insecure
       "
@@ -350,7 +369,7 @@ services:
       "
 
   scabbard-cli-beta:
-    image: splintercommunity/scabbard-cli:0.4
+    image: splintercommunity/scabbard-cli:0.5
     container_name: scabbard-cli-beta
     hostname: scabbard-cli-beta
     volumes:
@@ -359,7 +378,7 @@ services:
     command: tail -f /dev/null
 
   splinterd-beta:
-    image: splintercommunity/splinterd:0.4
+    image: splintercommunity/splinterd:0.5
     container_name: splinterd-beta
     hostname: splinterd-beta
     expose:
@@ -371,8 +390,19 @@ services:
       - contracts-shared:/usr/share/scar
       - registry:/registry
       - templates-shared:/usr/share/splinter/circuit-templates
+      - gridd-beta:/etc/grid/keys
+    depends_on:
+      - gridd-beta
     entrypoint: |
       bash -c "
+        while [ ! -f /etc/grid/keys/gridd.pub ] ; do
+          >&2 echo \"Grid key file is unavailable - sleeping\"
+          sleep 1
+        done && \
+        if [ ! -s /etc/splinter/allow_keys ]
+        then
+          echo $$(cat /etc/grid/keys/gridd.pub) >> /etc/splinter/allow_keys
+        fi && \
         until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
@@ -384,17 +414,15 @@ services:
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
         --registries http://registry-server:80/registry.yaml \
-        --rest-api-endpoint 0.0.0.0:8085 \
+        --rest-api-endpoint http://0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-beta:8044 \
         --node-id beta-node-000 \
-        --service-endpoint tcp://0.0.0.0:8043 \
-        --storage yaml \
         --tls-client-cert /etc/splinter/certs/client.crt \
         --tls-client-key /etc/splinter/certs/private/client.key \
         --tls-server-cert /etc/splinter/certs/server.crt \
         --tls-server-key /etc/splinter/certs/private/server.key \
-        --enable-biome \
+        --enable-biome-credentials \
         --database postgres://admin:admin@splinter-db-beta:5432/splinter \
         --tls-insecure
       "
@@ -477,7 +505,7 @@ services:
       "
 
   splinterd-gamma:
-    image: splintercommunity/splinterd:0.4
+    image: splintercommunity/splinterd:0.5
     container_name: splinterd-gamma
     hostname: splinterd-gamma
     expose:
@@ -489,8 +517,19 @@ services:
       - contracts-shared:/usr/share/scar
       - registry:/registry
       - templates-shared:/usr/share/splinter/circuit-templates
+      - gridd-gamma:/etc/grid/keys
+    depends_on:
+      - gridd-gamma
     entrypoint: |
       bash -c "
+        while [ ! -f /etc/grid/keys/gridd.pub ] ; do
+          >&2 echo \"Grid key file is unavailable - sleeping\"
+          sleep 1
+        done && \
+        if [ ! -s /etc/splinter/allow_keys ]
+        then
+          echo $$(cat /etc/grid/keys/gridd.pub) >> /etc/splinter/allow_keys
+        fi && \
         until PGPASSWORD=admin psql -h splinter-db-gamma -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
@@ -502,17 +541,15 @@ services:
         splinter database migrate -C postgres://admin:admin@splinter-db-gamma:5432/splinter && \
         splinterd -vv \
         --registries http://registry-server:80/registry.yaml \
-        --rest-api-endpoint 0.0.0.0:8085 \
+        --rest-api-endpoint http://0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-gamma:8044 \
         --node-id gamma-node-000 \
-        --service-endpoint tcp://0.0.0.0:8043 \
-        --storage yaml \
         --tls-client-cert /etc/splinter/certs/client.crt \
         --tls-client-key /etc/splinter/certs/private/client.key \
         --tls-server-cert /etc/splinter/certs/server.crt \
         --tls-server-key /etc/splinter/certs/private/server.key \
-        --enable-biome \
+        --enable-biome-credentials \
         --database postgres://admin:admin@splinter-db-gamma:5432/splinter \
         --tls-insecure
       "
