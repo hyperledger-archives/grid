@@ -26,7 +26,7 @@ const PIKE_AGENT_NAMESPACE: &str = "00";
 
 pub fn get_track_and_trace_prefix() -> String {
     let mut sha = Sha512::new();
-    sha.input_str(&FAMILY_NAME);
+    sha.input_str(FAMILY_NAME);
     sha.result_str()[..6].to_string()
 }
 

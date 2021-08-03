@@ -232,7 +232,7 @@ fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
 fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let reactor = Reactor::new();
 
-    let scabbard_admin_key = load_scabbard_admin_key(&config.admin_key_dir())
+    let scabbard_admin_key = load_scabbard_admin_key(config.admin_key_dir())
         .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
 
     let scabbard_event_connection_factory =

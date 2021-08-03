@@ -486,7 +486,7 @@ fn state_change_to_db_operation(
         StateChange::Set { key, value } => match &key[0..8] {
             #[cfg(feature = "pike")]
             PIKE_AGENT => {
-                let agents = AgentList::from_bytes(&value)
+                let agents = AgentList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                     .agents()
                     .iter()
@@ -514,7 +514,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "pike")]
             PIKE_ORG => {
-                let orgs = OrganizationList::from_bytes(&value)
+                let orgs = OrganizationList::from_bytes(value)
                     .map_err(|err| {
                         EventError(format!("Failed to parse organization list {}", err))
                     })?
@@ -543,7 +543,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "schema")]
             GRID_SCHEMA => {
-                let schemas = SchemaList::from_bytes(&value)
+                let schemas = SchemaList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
                     .schemas()
                     .iter()
@@ -567,7 +567,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPERTY if &key[66..] == "0000" => {
-                let properties = PropertyList::from_bytes(&value)
+                let properties = PropertyList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse property list {}", err)))?
                     .properties()
                     .iter()
@@ -616,7 +616,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPERTY => {
-                let property_pages = PropertyPageList::from_bytes(&value)
+                let property_pages = PropertyPageList::from_bytes(value)
                     .map_err(|err| {
                         EventError(format!("Failed to parse property page list {}", err))
                     })?
@@ -646,7 +646,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_PROPOSAL => {
-                let proposals = ProposalList::from_bytes(&value)
+                let proposals = ProposalList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
                     .proposals()
                     .iter()
@@ -670,7 +670,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "track-and-trace")]
             TRACK_AND_TRACE_RECORD => {
-                let record_list = RecordList::from_bytes(&value)
+                let record_list = RecordList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse record list {}", err)))?
                     .records()
                     .to_vec();
@@ -739,7 +739,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "location")]
             GRID_LOCATION => {
-                let locations = LocationList::from_bytes(&value)
+                let locations = LocationList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse location list {}", err)))?
                     .locations()
                     .iter()
@@ -752,7 +752,7 @@ fn state_change_to_db_operation(
                             commit_num,
                             service_id,
                             location.location_id(),
-                            &key,
+                            key,
                             location.properties(),
                         ),
                         start_commit_num: commit_num,
@@ -765,7 +765,7 @@ fn state_change_to_db_operation(
             }
             #[cfg(feature = "product")]
             GRID_PRODUCT => {
-                let products = ProductList::from_bytes(&value)
+                let products = ProductList::from_bytes(value)
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
                     .products()
                     .iter()
@@ -781,7 +781,7 @@ fn state_change_to_db_operation(
                             commit_num,
                             service_id,
                             product.product_id(),
-                            &key,
+                            key,
                             product.properties(),
                         ),
                     })

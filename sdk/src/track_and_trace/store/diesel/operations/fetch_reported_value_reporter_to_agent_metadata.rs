@@ -90,8 +90,8 @@ impl<'a>
 
         let roots = Self::get_root_rvs(
             &*self.conn,
-            &record_id,
-            &property_name,
+            record_id,
+            property_name,
             commit_height,
             service_id,
         )?;
@@ -230,8 +230,8 @@ impl<'a>
 
         let roots = Self::get_root_rvs(
             &*self.conn,
-            &record_id,
-            &property_name,
+            record_id,
+            property_name,
             commit_height,
             service_id,
         )?;
