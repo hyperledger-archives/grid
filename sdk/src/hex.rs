@@ -18,6 +18,7 @@ use std::fmt::{self, Write};
 use serde::de;
 use serde::{Deserializer, Serializer};
 
+#[allow(dead_code)]
 /// Converts a byte array into a hex string
 ///
 /// # Arguments
@@ -58,6 +59,7 @@ pub fn parse_hex(hex: &str) -> Result<Vec<u8>, HexError> {
     Ok(res)
 }
 
+#[allow(dead_code)]
 /// Serializes a byte array as a hex string
 ///
 /// # Arguments
