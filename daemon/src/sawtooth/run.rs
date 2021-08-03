@@ -105,7 +105,7 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     };
 
     #[cfg(feature = "integration")]
-    let key_state = KeyState::new(&config.key_file_name());
+    let key_state = KeyState::new(config.key_file_name());
 
     #[cfg(feature = "rest-api")]
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(

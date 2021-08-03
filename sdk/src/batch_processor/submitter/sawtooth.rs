@@ -39,7 +39,7 @@ pub struct SawtoothConnection {
 
 impl SawtoothConnection {
     pub fn new(validator_address: &str) -> SawtoothConnection {
-        let zmq_connection = ZmqMessageConnection::new(&validator_address);
+        let zmq_connection = ZmqMessageConnection::new(validator_address);
         let (sender, receiver) = zmq_connection.create();
         SawtoothConnection { sender, receiver }
     }
