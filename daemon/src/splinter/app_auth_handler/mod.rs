@@ -20,6 +20,7 @@ mod node;
 mod sabre;
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use splinter::{
     admin::messages::AdminServiceEvent,
@@ -58,7 +59,7 @@ impl ParseBytes<AdminEvent> for AdminEvent {
 pub fn run(
     splinterd_url: String,
     event_processors: EventProcessors,
-    handler: Box<dyn EventHandler + Sync>,
+    handler: Box<dyn EventHandler>,
     igniter: Igniter,
     scabbard_admin_key: String,
 ) -> Result<(), AppAuthHandlerError> {
@@ -66,11 +67,22 @@ pub fn run(
 
     let node_id = get_node_id(splinterd_url.clone())?;
 
+    let ws_handler = Arc::new(Mutex::new(handler));
     let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
+        let handler = {
+            match ws_handler.lock() {
+                Ok(handler) => handler.cloned_box(),
+                Err(err) => {
+                    warn!("Attempting to recover from a poisoned lock in event handler",);
+                    err.into_inner().cloned_box()
+                }
+            }
+        };
+
         if let Err(err) = process_admin_event(
             event,
             event_processors.clone(),
-            handler.cloned_box(),
+            handler,
             &node_id,
             &scabbard_admin_key,
             &splinterd_url,
