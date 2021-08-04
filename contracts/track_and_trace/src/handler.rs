@@ -430,7 +430,7 @@ impl TrackAndTraceTransactionHandler {
             }
         };
 
-        match state.get_agent(&receiving_agent)? {
+        match state.get_agent(receiving_agent)? {
             Some(agent) => agent,
             None => {
                 return Err(ApplyError::InvalidTransaction(format!(
@@ -440,7 +440,7 @@ impl TrackAndTraceTransactionHandler {
             }
         };
 
-        let mut proposals = match state.get_proposal_list(&record_id, &receiving_agent)? {
+        let mut proposals = match state.get_proposal_list(record_id, receiving_agent)? {
             Some(proposals) => proposals.proposals().to_vec(),
             None => vec![],
         };
@@ -461,7 +461,7 @@ impl TrackAndTraceTransactionHandler {
             }
         }
 
-        let proposal_record = match state.get_record(&record_id)? {
+        let proposal_record = match state.get_record(record_id)? {
             Some(record) => record,
             None => {
                 return Err(ApplyError::InvalidTransaction(format!(
@@ -557,7 +557,7 @@ impl TrackAndTraceTransactionHandler {
             .build()
             .map_err(|err| map_builder_error_to_apply_error(err, "ProposalList"))?;
 
-        state.set_proposal_list(&record_id, &receiving_agent, proposal_list)?;
+        state.set_proposal_list(record_id, receiving_agent, proposal_list)?;
 
         Ok(())
     }
@@ -870,7 +870,7 @@ impl TrackAndTraceTransactionHandler {
             .build()
             .map_err(|err| map_builder_error_to_apply_error(err, "ProposalList"))?;
 
-        state.set_proposal_list(&record_id, &receiving_agent, proposal_list)?;
+        state.set_proposal_list(record_id, receiving_agent, proposal_list)?;
 
         Ok(())
     }

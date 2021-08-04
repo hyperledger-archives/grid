@@ -160,7 +160,7 @@ fn process_admin_event(
             setup_grid(
                 scabbard_admin_key,
                 proposed_admin_pubkeys,
-                &splinterd_url,
+                splinterd_url,
                 &service.service_id,
                 &msg_proposal.circuit_id,
             )?;

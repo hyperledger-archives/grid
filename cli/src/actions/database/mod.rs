@@ -26,7 +26,7 @@ use crate::error::CliError;
 use self::sqlite::sqlite_migrations;
 
 pub fn run_migrations(database_url: &str) -> Result<(), CliError> {
-    match ConnectionUri::from_str(&database_url).map_err(CliError::ActionError)? {
+    match ConnectionUri::from_str(database_url).map_err(CliError::ActionError)? {
         ConnectionUri::Postgres(database_url) => {
             let connection = PgConnection::establish(&database_url).map_err(|err| {
                 CliError::ActionError(format!(

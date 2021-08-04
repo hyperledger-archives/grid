@@ -114,13 +114,13 @@ impl TransactionHandler for LocationTransactionHandler {
 
         match payload.action() {
             Action::LocationCreate(payload) => {
-                create_location(&payload, &mut state, signer, &perm_checker)?
+                create_location(payload, &mut state, signer, &perm_checker)?
             }
             Action::LocationUpdate(payload) => {
-                update_location(&payload, &mut state, signer, &perm_checker)?
+                update_location(payload, &mut state, signer, &perm_checker)?
             }
             Action::LocationDelete(payload) => {
-                delete_location(&payload, &mut state, signer, &perm_checker)?
+                delete_location(payload, &mut state, signer, &perm_checker)?
             }
         }
         Ok(())
@@ -134,7 +134,7 @@ fn create_location(
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     // 1) validate gln (gs1 only)
-    if payload.namespace() == &LocationNamespace::GS1 && !is_gln_13_valid(&payload.location_id()) {
+    if payload.namespace() == &LocationNamespace::GS1 && !is_gln_13_valid(payload.location_id()) {
         return Err(ApplyError::InvalidTransaction(format!(
             "Invalid GLN: {}",
             payload.location_id()
@@ -142,7 +142,7 @@ fn create_location(
     }
 
     // 2) check if location already exists
-    if state.get_location(&payload.location_id())?.is_some() {
+    if state.get_location(payload.location_id())?.is_some() {
         return Err(ApplyError::InvalidTransaction(format!(
             "A location with GLN {} already exists",
             payload.location_id()
@@ -268,7 +268,7 @@ fn update_location(
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     // 1) check if location already exists
-    let location = if let Some(location) = state.get_location(&payload.location_id())? {
+    let location = if let Some(location) = state.get_location(payload.location_id())? {
         location
     } else {
         return Err(ApplyError::InvalidTransaction(format!(
@@ -379,7 +379,7 @@ fn delete_location(
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     // 1) check if location already exists
-    let location = if let Some(location) = state.get_location(&payload.location_id())? {
+    let location = if let Some(location) = state.get_location(payload.location_id())? {
         location
     } else {
         return Err(ApplyError::InvalidTransaction(format!(

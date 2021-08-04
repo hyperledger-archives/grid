@@ -317,7 +317,7 @@ fn get_state_changes(events: &[SawtoothEvent]) -> Result<Vec<StateChange>, Event
         .iter()
         .filter(|event| event.get_event_type() == STATE_CHANGE_EVENT_TYPE)
         .map(|event| {
-            get_sawtooth_state_changes_from_sawtooth_event(&event)
+            get_sawtooth_state_changes_from_sawtooth_event(event)
                 .and_then(sawtooth_state_changes_into_native_state_changes)
         })
         .collect::<Result<Vec<_>, _>>()?

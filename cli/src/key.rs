@@ -95,5 +95,5 @@ pub fn load_signing_key(name: Option<String>) -> Result<Secp256k1PrivateKey, Cli
         }
     };
 
-    Ok(Secp256k1PrivateKey::from_hex(&key_str)?)
+    Ok(Secp256k1PrivateKey::from_hex(key_str)?)
 }

@@ -221,7 +221,7 @@ pub fn make_location_attribute_models(
             let vals = attr.struct_values.as_ref().unwrap();
             if !vals.is_empty() {
                 attrs.append(&mut make_location_attribute_models(
-                    &vals,
+                    vals,
                     Some(attr.property_name.to_string()),
                 ));
             }

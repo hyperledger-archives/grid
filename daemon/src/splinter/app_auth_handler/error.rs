@@ -29,6 +29,7 @@ use transact::{
     protocol::{batch::BatchBuildError, transaction::TransactionBuildError},
 };
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum AppAuthHandlerError {
     WebSocketError(events::WebSocketError),

@@ -17,6 +17,7 @@ use sawtooth_sdk::signing;
 use std::error::Error as StdError;
 use std::io;
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum CliError {
     /// A general error encountered by a subcommand.

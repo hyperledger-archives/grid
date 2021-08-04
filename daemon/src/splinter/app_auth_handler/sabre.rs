@@ -70,7 +70,7 @@ pub fn setup_grid(
 ) -> Result<(), AppAuthHandlerError> {
     let version = env!("CARGO_PKG_VERSION");
 
-    let signer = new_signer(&scabbard_admin_key)?;
+    let signer = new_signer(scabbard_admin_key)?;
 
     // The node with the first key in the list of scabbard admins is responsible for setting up xo
     let public_key = bytes_to_hex_str(signer.public_key());
@@ -85,7 +85,7 @@ pub fn setup_grid(
     // Make Pike transactions
     #[cfg(feature = "pike")]
     let pike_contract =
-        SmartContractArchive::from_scar_file(PIKE_CONTRACT_NAME, &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file(PIKE_CONTRACT_NAME, version, &default_scar_path())?;
     #[cfg(feature = "pike")]
     let pike_contract_registry_txn =
         make_contract_registry_txn(&signer, &pike_contract.metadata.name)?;
@@ -99,11 +99,8 @@ pub fn setup_grid(
 
     // Make Product transactions
     #[cfg(feature = "product")]
-    let product_contract = SmartContractArchive::from_scar_file(
-        PRODUCT_CONTRACT_NAME,
-        &version,
-        &default_scar_path(),
-    )?;
+    let product_contract =
+        SmartContractArchive::from_scar_file(PRODUCT_CONTRACT_NAME, version, &default_scar_path())?;
     #[cfg(feature = "product")]
     let product_contract_registry_txn =
         make_contract_registry_txn(&signer, &product_contract.metadata.name)?;
@@ -126,7 +123,7 @@ pub fn setup_grid(
     #[cfg(feature = "location")]
     let location_contract = SmartContractArchive::from_scar_file(
         LOCATION_CONTRACT_NAME,
-        &version,
+        version,
         &default_scar_path(),
     )?;
     #[cfg(feature = "location")]
@@ -150,7 +147,7 @@ pub fn setup_grid(
     // Make schema transactions
     #[cfg(feature = "schema")]
     let schema_contract =
-        SmartContractArchive::from_scar_file(SCHEMA_CONTRACT_NAME, &version, &default_scar_path())?;
+        SmartContractArchive::from_scar_file(SCHEMA_CONTRACT_NAME, version, &default_scar_path())?;
     #[cfg(feature = "schema")]
     let schema_contract_registry_txn =
         make_contract_registry_txn(&signer, &schema_contract.metadata.name)?;
@@ -211,7 +208,7 @@ pub fn setup_grid(
     ];
     let batch = BatchBuilder::new().with_transactions(txns).build(&signer)?;
 
-    ScabbardClient::new(&splinterd_url)
+    ScabbardClient::new(splinterd_url)
         .submit(
             &ServiceId::new(circuit_id, service_id),
             vec![batch],
