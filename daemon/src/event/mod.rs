@@ -164,6 +164,12 @@ pub trait EventHandler: Send {
     fn cloned_box(&self) -> Box<dyn EventHandler>;
 }
 
+impl Clone for Box<dyn EventHandler> {
+    fn clone(&self) -> Self {
+        self.cloned_box()
+    }
+}
+
 #[macro_export]
 macro_rules! event_handlers {
     [$($handler:expr),*] => {
