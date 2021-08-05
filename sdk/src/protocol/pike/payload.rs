@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Pike transaction payloads
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -23,7 +25,7 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
-/// Native implementation for PikePayload_Action
+/// The Pike payload's action envelope
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     CreateAgent(CreateAgentAction),
@@ -37,7 +39,7 @@ pub enum Action {
     DeleteRole(DeleteRoleAction),
 }
 
-/// Native implementation for CreateAgentAction
+/// Native representation of the "create agent" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreateAgentAction {
     org_id: String,
@@ -138,6 +140,8 @@ impl IntoBytes for CreateAgentAction {
 impl IntoProto<protos::pike_payload::CreateAgentAction> for CreateAgentAction {}
 impl IntoNative<CreateAgentAction> for protos::pike_payload::CreateAgentAction {}
 
+/// Returned if any required fields in a `CreateAgentAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum CreateAgentActionBuildError {
     MissingField(String),
@@ -165,7 +169,7 @@ impl std::fmt::Display for CreateAgentActionBuildError {
     }
 }
 
-/// Builder used to create a CreateAgentAction
+/// Builder to create a "create agent" action
 #[derive(Default, Clone)]
 pub struct CreateAgentActionBuilder {
     pub org_id: Option<String>,
@@ -228,7 +232,7 @@ impl CreateAgentActionBuilder {
     }
 }
 
-/// Native implementation for UpdateAgentAction
+/// Native representation of the "update agent" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdateAgentAction {
     org_id: String,
@@ -329,6 +333,8 @@ impl IntoBytes for UpdateAgentAction {
 impl IntoProto<protos::pike_payload::UpdateAgentAction> for UpdateAgentAction {}
 impl IntoNative<UpdateAgentAction> for protos::pike_payload::UpdateAgentAction {}
 
+/// Returned if any required fields in an `UpdateAgentAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum UpdateAgentActionBuildError {
     MissingField(String),
@@ -356,7 +362,7 @@ impl std::fmt::Display for UpdateAgentActionBuildError {
     }
 }
 
-/// Builder used to create a UpdateAgentAction
+/// Builder used to create an "update agent" action
 #[derive(Default, Clone)]
 pub struct UpdateAgentActionBuilder {
     pub org_id: Option<String>,
@@ -419,7 +425,7 @@ impl UpdateAgentActionBuilder {
     }
 }
 
-/// Native implementation for DeleteAgentAction
+/// Native representation of the "delete agent" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeleteAgentAction {
     org_id: String,
@@ -485,7 +491,7 @@ impl IntoBytes for DeleteAgentAction {
 impl IntoProto<protos::pike_payload::DeleteAgentAction> for DeleteAgentAction {}
 impl IntoNative<DeleteAgentAction> for protos::pike_payload::DeleteAgentAction {}
 
-/// Native implementation for CreateOrganizationAction
+/// Native representation of the "create organization" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreateOrganizationAction {
     org_id: String,
@@ -590,6 +596,8 @@ impl IntoBytes for CreateOrganizationAction {
 impl IntoProto<protos::pike_payload::CreateOrganizationAction> for CreateOrganizationAction {}
 impl IntoNative<CreateOrganizationAction> for protos::pike_payload::CreateOrganizationAction {}
 
+/// Returned if any required fields in a `CreateOrganizationAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum CreateOrganizationActionBuildError {
     MissingField(String),
@@ -619,7 +627,7 @@ impl std::fmt::Display for CreateOrganizationActionBuildError {
     }
 }
 
-/// Builder used to create a CreateOrganizationAction
+/// Builder used to create a "create organization" action
 #[derive(Default, Clone)]
 pub struct CreateOrganizationActionBuilder {
     pub org_id: Option<String>,
@@ -683,7 +691,7 @@ impl CreateOrganizationActionBuilder {
     }
 }
 
-/// Native implementation for UpdateOrganizationAction
+/// Native representation of the "update organization" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdateOrganizationAction {
     org_id: String,
@@ -795,6 +803,8 @@ impl IntoBytes for UpdateOrganizationAction {
 impl IntoProto<protos::pike_payload::UpdateOrganizationAction> for UpdateOrganizationAction {}
 impl IntoNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrganizationAction {}
 
+/// Returned if any required fields in a `UpdateOrganizationAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum UpdateOrganizationActionBuildError {
     MissingField(String),
@@ -824,7 +834,7 @@ impl std::fmt::Display for UpdateOrganizationActionBuildError {
     }
 }
 
-/// Builder used to create a UpdateOrganizationAction
+/// Builder used to create an "update organization" action
 #[derive(Default, Clone)]
 pub struct UpdateOrganizationActionBuilder {
     pub org_id: Option<String>,
@@ -895,7 +905,7 @@ impl UpdateOrganizationActionBuilder {
     }
 }
 
-/// Native implementation for DeleteOrganizationAction
+/// Native representation of the "delete organization" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeleteOrganizationAction {
     id: String,
@@ -956,6 +966,8 @@ impl IntoBytes for DeleteOrganizationAction {
 impl IntoProto<protos::pike_payload::DeleteOrganizationAction> for DeleteOrganizationAction {}
 impl IntoNative<DeleteOrganizationAction> for protos::pike_payload::DeleteOrganizationAction {}
 
+/// Returned if any required fields in a `DeleteOrganizationAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum DeleteOrganizationActionBuildError {
     MissingField(String),
@@ -985,7 +997,7 @@ impl std::fmt::Display for DeleteOrganizationActionBuildError {
     }
 }
 
-/// Builder used to create a DeleteOrganizationAction
+/// Builder used to create a "delete organization" action
 #[derive(Default, Clone)]
 pub struct DeleteOrganizationActionBuilder {
     pub id: Option<String>,
@@ -1010,7 +1022,7 @@ impl DeleteOrganizationActionBuilder {
     }
 }
 
-/// Native implementation for CreateRoleAction
+/// Native representation of the "create role" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreateRoleAction {
     org_id: String,
@@ -1115,6 +1127,8 @@ impl IntoBytes for CreateRoleAction {
 impl IntoProto<protos::pike_payload::CreateRoleAction> for CreateRoleAction {}
 impl IntoNative<CreateRoleAction> for protos::pike_payload::CreateRoleAction {}
 
+/// Returned if any required fields in a `CreateRoleAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum CreateRoleActionBuildError {
     MissingField(String),
@@ -1142,7 +1156,7 @@ impl std::fmt::Display for CreateRoleActionBuildError {
     }
 }
 
-/// Builder used to create a CreateRoleAction
+/// Builder used to create a "create role" action
 #[derive(Default, Clone)]
 pub struct CreateRoleActionBuilder {
     pub org_id: Option<String>,
@@ -1232,7 +1246,7 @@ impl CreateRoleActionBuilder {
     }
 }
 
-/// Native implementation for UpdateRoleAction
+/// Native representation of the "update role" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdateRoleAction {
     org_id: String,
@@ -1337,6 +1351,8 @@ impl IntoBytes for UpdateRoleAction {
 impl IntoProto<protos::pike_payload::UpdateRoleAction> for UpdateRoleAction {}
 impl IntoNative<UpdateRoleAction> for protos::pike_payload::UpdateRoleAction {}
 
+/// Returned if any required fields in an `UpdateRoleAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum UpdateRoleActionBuildError {
     MissingField(String),
@@ -1364,7 +1380,7 @@ impl std::fmt::Display for UpdateRoleActionBuildError {
     }
 }
 
-/// Builder used to create a UpdateRoleAction
+/// Builder used to create a "update role" action
 #[derive(Default, Clone)]
 pub struct UpdateRoleActionBuilder {
     pub org_id: Option<String>,
@@ -1454,7 +1470,7 @@ impl UpdateRoleActionBuilder {
     }
 }
 
-/// Native implementation for DeleteRoleAction
+/// Native representation of the "delete role" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeleteRoleAction {
     org_id: String,
@@ -1520,6 +1536,8 @@ impl IntoBytes for DeleteRoleAction {
 impl IntoProto<protos::pike_payload::DeleteRoleAction> for DeleteRoleAction {}
 impl IntoNative<DeleteRoleAction> for protos::pike_payload::DeleteRoleAction {}
 
+/// Returned if any required fields in a `DeleteRoleAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum DeleteRoleActionBuildError {
     MissingField(String),
@@ -1547,7 +1565,7 @@ impl std::fmt::Display for DeleteRoleActionBuildError {
     }
 }
 
-/// Builder used to create a DeleteRoleAction
+/// Builder used to create a "delete role" action
 #[derive(Default, Clone)]
 pub struct DeleteRoleActionBuilder {
     pub org_id: Option<String>,
@@ -1582,7 +1600,7 @@ impl DeleteRoleActionBuilder {
     }
 }
 
-/// Native implementation for PikePayload
+/// Native representation of a Pike transaction payload
 #[derive(Debug, Clone, PartialEq)]
 pub struct PikePayload {
     action: Action,
@@ -1725,6 +1743,8 @@ impl IntoBytes for PikePayload {
 impl IntoProto<protos::pike_payload::PikePayload> for PikePayload {}
 impl IntoNative<PikePayload> for protos::pike_payload::PikePayload {}
 
+/// Returned if any required fields in a `PikePayload` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum PikePayloadBuildError {
     MissingField(String),
@@ -1752,7 +1772,7 @@ impl std::fmt::Display for PikePayloadBuildError {
     }
 }
 
-/// Builder used to create a PikePayload
+/// Builder used to create a Pike transaction payload
 #[derive(Default, Clone)]
 pub struct PikePayloadBuilder {
     pub action: Option<Action>,
@@ -1794,7 +1814,7 @@ mod tests {
     use crate::protocol::pike::state::KeyValueEntryBuilder;
 
     #[test]
-    // check that a create_agent action is built correctly
+    /// Validate that a `CreateAgentAction` is built correctly
     fn check_create_agent_action() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1821,7 +1841,8 @@ mod tests {
     }
 
     #[test]
-    // check that a create_agent can be converted to bytes and back
+    /// Validate that a `CreateAgentAction` may be converted into bytes and back into its
+    /// native representation
     fn check_create_agent_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1846,7 +1867,7 @@ mod tests {
     }
 
     #[test]
-    // check that a update_agent action is built correctly
+    /// Validate that an `UpdateAgentAction` is built correctly
     fn check_update_agent_action() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1873,7 +1894,8 @@ mod tests {
     }
 
     #[test]
-    // check that a update_agent can be converted to bytes and back
+    /// Validate that an `UpdateAgentAction` may be correctly converted to bytes and back to its
+    /// native representation
     fn check_update_agent_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1898,7 +1920,7 @@ mod tests {
     }
 
     #[test]
-    // check that a create_organization is built correctly
+    /// Validate that a `CreateOrganizationAction` is built correctly
     fn check_create_organization_builder() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1921,7 +1943,8 @@ mod tests {
     }
 
     #[test]
-    // check that a create_organization can be converted to bytes and back
+    /// Validate that a `CreateAgentAction` may be correctly converted into bytes and back to its
+    /// native representation
     fn check_create_organization_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1944,7 +1967,7 @@ mod tests {
     }
 
     #[test]
-    // check that a update_organization is built correctly
+    /// Validate that an `UpdateOrganizationAction` is built correctly
     fn check_update_organization_builder() {
         let builder = UpdateOrganizationActionBuilder::new();
         let update_organization = builder
@@ -1960,7 +1983,8 @@ mod tests {
     }
 
     #[test]
-    // check that a update_organization can be converted to bytes and back
+    /// Validate that an `UpdateOrganizationAction` may be correctly converted into bytes and back
+    /// to its native representation
     fn check_update_organization_bytes() {
         let builder = UpdateOrganizationActionBuilder::new();
         let original = builder
@@ -1976,7 +2000,7 @@ mod tests {
     }
 
     #[test]
-    // check that a pike payload with create_agent is built correctly
+    /// Validate that a `PikePayload` is built correctly with a `CreateAgentAction`
     fn check_pike_create_agent_payload() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -2011,7 +2035,7 @@ mod tests {
     }
 
     #[test]
-    // check that a pike payload with update_agent is built correctly
+    /// Validate that a `PikePayload` is built correctly with an `UpdateAgentAction`
     fn check_pike_update_agent_payload() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -2047,7 +2071,7 @@ mod tests {
     }
 
     #[test]
-    // check that a pike payload with create_org is built correctly
+    /// Validate that a `PikePayload` is built correctly with a `CreateOrganizationAction`
     fn check_pike_create_organization_payload() {
         let builder = CreateOrganizationActionBuilder::new();
         let action = builder
@@ -2072,7 +2096,7 @@ mod tests {
     }
 
     #[test]
-    // check that a pike payload with update_org is built correctly
+    /// Validate that a `PikePayload` is built correctly with a `UpdateOrganizationAction`
     fn check_pike_update_organiztion_payload() {
         let builder = UpdateOrganizationActionBuilder::new();
         let action = builder
@@ -2098,7 +2122,8 @@ mod tests {
     }
 
     #[test]
-    // check that a pike payload can be converted to bytes and back
+    /// Validate that a `PikePayload` may be correctly converted into bytes and back to its
+    /// native representation.
     fn check_pike_payload_bytes() {
         let builder = UpdateOrganizationActionBuilder::new();
         let action = builder

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Pike state
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -22,7 +24,10 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
-/// Native implementation for KeyValueEntry
+/// Native representation of a `KeyValueEntry`
+///
+/// A `KeyValueEntry` organizes additional data, `metadata`, for state objects. Any data,
+/// represented as a `String`, may be stored within a `KeyValueEntry`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyValueEntry {
     key: String,
@@ -88,6 +93,8 @@ impl IntoBytes for KeyValueEntry {
 impl IntoProto<protos::pike_state::KeyValueEntry> for KeyValueEntry {}
 impl IntoNative<KeyValueEntry> for protos::pike_state::KeyValueEntry {}
 
+/// Returned if any required fields in a `KeyValueEntry` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum KeyValueEntryBuildError {
     MissingField(String),
@@ -115,7 +122,7 @@ impl std::fmt::Display for KeyValueEntryBuildError {
     }
 }
 
-/// Builder used to create a KeyValueEntry
+/// Builder used to create a `KeyValueEntry`
 #[derive(Default, Clone)]
 pub struct KeyValueEntryBuilder {
     pub key: Option<String>,
@@ -150,7 +157,10 @@ impl KeyValueEntryBuilder {
     }
 }
 
-/// Native implementation of Role
+/// Native representation of a `Role`
+///
+/// A `Role` defines the permissions that are able to be assigned to an `Organization`'s `Agent`.
+/// This allows agents to perform actions defined within their role.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Role {
     org_id: String,
@@ -246,6 +256,8 @@ impl IntoBytes for Role {
 impl IntoProto<protos::pike_state::Role> for Role {}
 impl IntoNative<Role> for protos::pike_state::Role {}
 
+/// Returned if any required fields in a `Role` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum RoleBuildError {
     MissingField(String),
@@ -273,7 +285,7 @@ impl std::fmt::Display for RoleBuildError {
     }
 }
 
-/// Builder used to create a Role
+/// Builder used to create a `Role`
 #[derive(Default, Clone)]
 pub struct RoleBuilder {
     org_id: Option<String>,
@@ -354,7 +366,7 @@ impl RoleBuilder {
     }
 }
 
-/// Native implementation of RoleList
+/// Native representation of a list of `Role`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct RoleList {
     roles: Vec<Role>,
@@ -424,6 +436,8 @@ impl IntoBytes for RoleList {
 impl IntoProto<protos::pike_state::RoleList> for RoleList {}
 impl IntoNative<RoleList> for protos::pike_state::RoleList {}
 
+/// Returned if any required fields in a `RoleList` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum RoleListBuildError {
     MissingField(String),
@@ -451,7 +465,7 @@ impl std::fmt::Display for RoleListBuildError {
     }
 }
 
-/// Builder used to create a RoleList
+/// Builder used to create a `RoleList`
 #[derive(Default, Clone)]
 pub struct RoleListBuilder {
     pub roles: Vec<Role>,
@@ -482,7 +496,10 @@ impl RoleListBuilder {
     }
 }
 
-/// Native implementation of AlternateIdIndexEntry
+/// Native representation of the state object `AlternateIdIndexEntry`
+///
+/// The `AlternateIdIndexEntry` serves as an index to fetch an `Organization` from an externally
+/// known ID and ensures the alternate ID is unique to the owning organization.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlternateIdIndexEntry {
     id_type: String,
@@ -555,6 +572,8 @@ impl IntoBytes for AlternateIdIndexEntry {
 impl IntoProto<protos::pike_state::AlternateIdIndexEntry> for AlternateIdIndexEntry {}
 impl IntoNative<AlternateIdIndexEntry> for protos::pike_state::AlternateIdIndexEntry {}
 
+/// Returned if any required fields in an `AlternateIdIndexEntry` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum AlternateIdIndexEntryBuildError {
     MissingField(String),
@@ -584,7 +603,7 @@ impl std::fmt::Display for AlternateIdIndexEntryBuildError {
     }
 }
 
-/// Builder used to create an AlternateIdIndexEntry
+/// Builder used to create an `AlternateIdIndexEntry`
 #[derive(Default, Clone)]
 pub struct AlternateIdIndexEntryBuilder {
     pub id_type: Option<String>,
@@ -638,7 +657,7 @@ impl AlternateIdIndexEntryBuilder {
     }
 }
 
-/// Native implementation of AlternateIdIndexEntryList
+/// Native representation of a list of `AlternateIdIndexEntry`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlternateIdIndexEntryList {
     entries: Vec<AlternateIdIndexEntry>,
@@ -710,6 +729,8 @@ impl IntoBytes for AlternateIdIndexEntryList {
 impl IntoProto<protos::pike_state::AlternateIdIndexEntryList> for AlternateIdIndexEntryList {}
 impl IntoNative<AlternateIdIndexEntryList> for protos::pike_state::AlternateIdIndexEntryList {}
 
+/// Returned if any required fields in an `AlternateIdIndexEntryList` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum AlternateIdIndexEntryListBuildError {
     MissingField(String),
@@ -739,7 +760,7 @@ impl std::fmt::Display for AlternateIdIndexEntryListBuildError {
     }
 }
 
-/// Builder used to create an AlternateIdIndexEntryList
+/// Builder used to create an `AlternateIdIndexEntryList`
 #[derive(Default, Clone)]
 pub struct AlternateIdIndexEntryListBuilder {
     pub entries: Vec<AlternateIdIndexEntry>,
@@ -773,7 +794,10 @@ impl AlternateIdIndexEntryListBuilder {
     }
 }
 
-/// Native implementation of AlternateId
+/// Native representation of the state object `AlternateId`
+///
+/// An `AlternateId` is a separate identifier from the `Organization`'s unique identifier, `org_id`.
+/// This enables certain smart contracts to identify an `Organization` within its own context.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlternateId {
     id_type: String,
@@ -837,6 +861,8 @@ impl IntoBytes for AlternateId {
 impl IntoProto<protos::pike_state::AlternateId> for AlternateId {}
 impl IntoNative<AlternateId> for protos::pike_state::AlternateId {}
 
+/// Returned if any required fields in an `AlternateId` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum AlternateIdBuildError {
     MissingField(String),
@@ -864,7 +890,7 @@ impl std::fmt::Display for AlternateIdBuildError {
     }
 }
 
-/// Builder used to create an AlternateId
+/// Builder used to create an `AlternateId`
 #[derive(Default, Clone)]
 pub struct AlternateIdBuilder {
     pub id_type: Option<String>,
@@ -899,7 +925,10 @@ impl AlternateIdBuilder {
     }
 }
 
-/// Native implementation of Agent
+/// Native representation of the state object `Agent`
+///
+/// An `Agent` is essentially a cryptographic public key which has a relationship, defined by the
+/// agent's `Role`s, with an `Organization`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Agent {
     org_id: String,
@@ -993,6 +1022,8 @@ impl IntoBytes for Agent {
 impl IntoProto<protos::pike_state::Agent> for Agent {}
 impl IntoNative<Agent> for protos::pike_state::Agent {}
 
+/// Returned if any required fields in an `Agent` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum AgentBuildError {
     MissingField(String),
@@ -1020,7 +1051,7 @@ impl std::fmt::Display for AgentBuildError {
     }
 }
 
-/// Builder used to create an Agent
+/// Builder used to create an `Agent`
 #[derive(Default, Clone)]
 pub struct AgentBuilder {
     pub org_id: Option<String>,
@@ -1083,7 +1114,7 @@ impl AgentBuilder {
     }
 }
 
-/// Native implementation of AgentList
+/// Native representation of a list of `Agent`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentList {
     agents: Vec<Agent>,
@@ -1152,6 +1183,8 @@ impl IntoBytes for AgentList {
 impl IntoProto<protos::pike_state::AgentList> for AgentList {}
 impl IntoNative<AgentList> for protos::pike_state::AgentList {}
 
+/// Returned if any required fields in an `AgentList` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum AgentListBuildError {
     MissingField(String),
@@ -1179,7 +1212,7 @@ impl std::fmt::Display for AgentListBuildError {
     }
 }
 
-/// Builder used to create an AgentList
+/// Builder used to create an `AgentList`
 #[derive(Default, Clone)]
 pub struct AgentListBuilder {
     pub agents: Vec<Agent>,
@@ -1210,7 +1243,10 @@ impl AgentListBuilder {
     }
 }
 
-/// Native implementation for Organization
+/// Native representation of the state object `Organization`
+///
+/// `Organization`s provide a top-level identity to associate the lower-level objects to across
+/// smart contracts.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Organization {
     org_id: String,
@@ -1318,6 +1354,8 @@ impl IntoBytes for Organization {
 impl IntoProto<protos::pike_state::Organization> for Organization {}
 impl IntoNative<Organization> for protos::pike_state::Organization {}
 
+/// Returned if any required fields in an `Organization` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum OrganizationBuildError {
     MissingField(String),
@@ -1345,7 +1383,7 @@ impl std::fmt::Display for OrganizationBuildError {
     }
 }
 
-/// Builder used to create an Organization
+/// Builder used to create an `Organization`
 #[derive(Default, Clone)]
 pub struct OrganizationBuilder {
     pub org_id: Option<String>,
@@ -1410,7 +1448,7 @@ impl OrganizationBuilder {
     }
 }
 
-/// Native implementation of OrganizationList
+/// Native representation of a list of `Organization`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrganizationList {
     organizations: Vec<Organization>,
@@ -1481,6 +1519,8 @@ impl IntoBytes for OrganizationList {
 impl IntoProto<protos::pike_state::OrganizationList> for OrganizationList {}
 impl IntoNative<OrganizationList> for protos::pike_state::OrganizationList {}
 
+/// Returned if any required fields in an `OrganizationList` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum OrganizationListBuildError {
     MissingField(String),
@@ -1508,7 +1548,7 @@ impl std::fmt::Display for OrganizationListBuildError {
     }
 }
 
-/// Builder used to create an OrganizationList
+/// Builder used to create an `OrganizationList`
 #[derive(Default, Clone)]
 pub struct OrganizationListBuilder {
     pub organizations: Vec<Organization>,
@@ -1547,7 +1587,7 @@ mod tests {
     use super::*;
 
     #[test]
-    // check that a KeyValueEntry is built correctly
+    /// Validate that a `KeyValueEntry` is built correctly
     fn check_key_value_entry_builder() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1561,7 +1601,8 @@ mod tests {
     }
 
     #[test]
-    // check that a KeyValueEntry can be converted to bytes and back
+    /// Validate that a `KeyValueEntry` may be correctly converted into bytes and back to its
+    /// native representation
     fn check_key_value_entry_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let original = builder
@@ -1576,7 +1617,7 @@ mod tests {
     }
 
     #[test]
-    // check that a Agent is built correctly
+    /// Validate that an `Agent` is built correctly
     fn check_agent_builder() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1603,7 +1644,8 @@ mod tests {
     }
 
     #[test]
-    // check that a Agent can be converted to bytes and back
+    /// Validate that an `Agent` may be correctly converted into bytes and back to its native
+    /// representation
     fn check_agent_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1628,7 +1670,7 @@ mod tests {
     }
 
     #[test]
-    // check that a AgentList is built correctly
+    /// Validate that an `AgentList` is built correctly
     fn check_agent_list_builder() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1654,7 +1696,8 @@ mod tests {
     }
 
     #[test]
-    // check that a AgentList can be converted to bytes and back
+    /// Validate that an `AgentList` may be converted into bytes and back to its native
+    /// representation
     fn check_agent_list_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1682,7 +1725,7 @@ mod tests {
     }
 
     #[test]
-    // check that a Organization is built correctly
+    /// Validate that an `Organization` is built correctly
     fn check_organization_builder() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1707,7 +1750,8 @@ mod tests {
     }
 
     #[test]
-    // check that a Organization can be converted to bytes and back
+    /// Validate that an `Organization` may be correctly converted into bytes and back to its
+    /// native representation
     fn check_organization_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1731,7 +1775,7 @@ mod tests {
     }
 
     #[test]
-    // check that a OrganizationList is built correctly
+    /// Validate that an `OrganizationList` is built correctly
     fn check_organization_lists_builder() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
@@ -1759,7 +1803,8 @@ mod tests {
     }
 
     #[test]
-    // check that a OrganizationList can be converted to bytes and back
+    /// Validate that an `OrganizationList` may be correctly converted into bytes and back to its
+    /// native representation
     fn check_organization_list_bytes() {
         let builder = KeyValueEntryBuilder::new();
         let key_value = builder
