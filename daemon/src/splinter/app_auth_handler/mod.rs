@@ -20,16 +20,17 @@ mod node;
 mod sabre;
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use splinter::{
     admin::messages::AdminServiceEvent,
     events::{Igniter, ParseBytes, ParseError, WebSocketClient, WebSocketError, WsResponse},
 };
 
-use crate::event::{EventHandler, EventProcessor};
+use crate::event::EventHandler;
 use crate::splinter::{
     app_auth_handler::{error::AppAuthHandlerError, node::get_node_id, sabre::setup_grid},
-    event::ScabbardEventConnectionFactory,
+    event::processors::EventProcessors,
 };
 
 /// default value if the client should attempt to reconnet if ws connection is lost
@@ -57,8 +58,8 @@ impl ParseBytes<AdminEvent> for AdminEvent {
 
 pub fn run(
     splinterd_url: String,
-    event_connection_factory: ScabbardEventConnectionFactory,
-    handler: Box<dyn EventHandler + Sync>,
+    event_processors: EventProcessors,
+    handler: Box<dyn EventHandler>,
     igniter: Igniter,
     scabbard_admin_key: String,
 ) -> Result<(), AppAuthHandlerError> {
@@ -66,11 +67,22 @@ pub fn run(
 
     let node_id = get_node_id(splinterd_url.clone())?;
 
+    let ws_handler = Arc::new(Mutex::new(handler));
     let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
+        let handler = {
+            match ws_handler.lock() {
+                Ok(handler) => handler.cloned_box(),
+                Err(err) => {
+                    warn!("Attempting to recover from a poisoned lock in event handler",);
+                    err.into_inner().cloned_box()
+                }
+            }
+        };
+
         if let Err(err) = process_admin_event(
             event,
-            &event_connection_factory,
-            handler.cloned_box(),
+            event_processors.clone(),
+            handler,
             &node_id,
             &scabbard_admin_key,
             &splinterd_url,
@@ -106,7 +118,7 @@ pub fn run(
 
 fn process_admin_event(
     event: AdminEvent,
-    event_connection_factory: &ScabbardEventConnectionFactory,
+    event_processors: EventProcessors,
     handler: Box<dyn EventHandler>,
     node_id: &str,
     scabbard_admin_key: &str,
@@ -150,10 +162,10 @@ fn process_admin_event(
                     })
                 })?;
 
-            let event_connection = event_connection_factory
-                .create_connection(&msg_proposal.circuit_id, &service.service_id)?;
-
-            EventProcessor::start(event_connection, None, vec![handler])
+            event_processors
+                .add_once(&msg_proposal.circuit_id, &service.service_id, None, || {
+                    vec![handler.cloned_box()]
+                })
                 .map_err(|err| AppAuthHandlerError::from_source(Box::new(err)))?;
 
             setup_grid(
