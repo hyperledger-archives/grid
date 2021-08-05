@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides error definitions encountered when building an object
+
 #[derive(Debug)]
 pub enum BuilderError {
     MissingField(String),
