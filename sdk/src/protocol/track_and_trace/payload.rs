@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Track and Trace transaction payloads
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -27,6 +29,7 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
+/// Native representation of a "create record" action
 #[derive(Debug, Clone, PartialEq)]
 pub struct CreateRecordAction {
     record_id: String,
@@ -46,6 +49,7 @@ impl CreateRecordAction {
     }
 }
 
+/// Builder used to create a "create record" action
 #[derive(Default, Debug)]
 pub struct CreateRecordActionBuilder {
     record_id: Option<String>,
@@ -148,6 +152,7 @@ impl IntoBytes for CreateRecordAction {
 impl IntoProto<track_and_trace_payload::CreateRecordAction> for CreateRecordAction {}
 impl IntoNative<CreateRecordAction> for track_and_trace_payload::CreateRecordAction {}
 
+/// Native representation of a "finalize record" action
 #[derive(Debug, Clone, PartialEq)]
 pub struct FinalizeRecordAction {
     record_id: String,
@@ -159,6 +164,7 @@ impl FinalizeRecordAction {
     }
 }
 
+/// Builder used to create a "finalize record" action
 #[derive(Default, Debug)]
 pub struct FinalizeRecordActionBuilder {
     record_id: Option<String>,
@@ -223,6 +229,7 @@ impl IntoBytes for FinalizeRecordAction {
 impl IntoProto<track_and_trace_payload::FinalizeRecordAction> for FinalizeRecordAction {}
 impl IntoNative<FinalizeRecordAction> for track_and_trace_payload::FinalizeRecordAction {}
 
+/// Native representation of an "update properties" action
 #[derive(Debug, Clone, PartialEq)]
 pub struct UpdatePropertiesAction {
     record_id: String,
@@ -238,6 +245,7 @@ impl UpdatePropertiesAction {
     }
 }
 
+/// Builder used to create an "update properties" action
 #[derive(Default, Debug)]
 pub struct UpdatePropertiesActionBuilder {
     record_id: Option<String>,
@@ -328,6 +336,7 @@ impl IntoBytes for UpdatePropertiesAction {
 impl IntoProto<track_and_trace_payload::UpdatePropertiesAction> for UpdatePropertiesAction {}
 impl IntoNative<UpdatePropertiesAction> for track_and_trace_payload::UpdatePropertiesAction {}
 
+/// Native representation of the "create proposal" action
 #[derive(Debug, Clone, PartialEq)]
 pub struct CreateProposalAction {
     record_id: String,
@@ -355,6 +364,7 @@ impl CreateProposalAction {
     }
 }
 
+/// Builder used to create a "create proposal" action
 #[derive(Default, Debug)]
 pub struct CreateProposalActionBuilder {
     record_id: Option<String>,
@@ -470,6 +480,10 @@ impl IntoBytes for CreateProposalAction {
 impl IntoProto<track_and_trace_payload::CreateProposalAction> for CreateProposalAction {}
 impl IntoNative<CreateProposalAction> for track_and_trace_payload::CreateProposalAction {}
 
+/// Native representation of a `Response`
+///
+/// Returned by an agent in response to a proposal for some `Record`. This reponse is then recorded
+/// in the `Proposal`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Response {
     Accept,
@@ -508,6 +522,7 @@ impl FromNative<Response> for track_and_trace_payload::AnswerProposalAction_Resp
 impl IntoProto<track_and_trace_payload::AnswerProposalAction_Response> for Response {}
 impl IntoNative<Response> for track_and_trace_payload::AnswerProposalAction_Response {}
 
+/// Native representation of an "answer proposal" action
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnswerProposalAction {
     record_id: String,
@@ -531,6 +546,7 @@ impl AnswerProposalAction {
     }
 }
 
+/// Builder used to create an "answer proposal" action
 #[derive(Default, Debug)]
 pub struct AnswerProposalActionBuilder {
     record_id: Option<String>,
@@ -631,6 +647,7 @@ impl IntoBytes for AnswerProposalAction {
 impl IntoProto<track_and_trace_payload::AnswerProposalAction> for AnswerProposalAction {}
 impl IntoNative<AnswerProposalAction> for track_and_trace_payload::AnswerProposalAction {}
 
+/// Native representation of a "revoke reporter" action
 #[derive(Debug, Clone, PartialEq)]
 pub struct RevokeReporterAction {
     record_id: String,
@@ -650,6 +667,7 @@ impl RevokeReporterAction {
     }
 }
 
+/// Builder used to create a "revoke reporter" action
 #[derive(Default, Debug)]
 pub struct RevokeReporterActionBuilder {
     record_id: Option<String>,
@@ -744,6 +762,7 @@ impl IntoBytes for RevokeReporterAction {
 impl IntoProto<track_and_trace_payload::RevokeReporterAction> for RevokeReporterAction {}
 impl IntoNative<RevokeReporterAction> for track_and_trace_payload::RevokeReporterAction {}
 
+/// The Track and Trace payload action envelope
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     CreateRecord(CreateRecordAction),
@@ -754,6 +773,7 @@ pub enum Action {
     RevokeReporter(RevokeReporterAction),
 }
 
+/// Native representation of a Track and Trace payload
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackAndTracePayload {
     action: Action,
@@ -769,6 +789,7 @@ impl TrackAndTracePayload {
     }
 }
 
+/// Builder used to create a Track and Trace payload
 #[derive(Default, Debug)]
 pub struct TrackAndTracePayloadBuilder {
     action: Option<Action>,
@@ -915,6 +936,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a "create record" action is built correctly
     fn test_create_record_builder() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -936,6 +958,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a "create record" action may be converted into bytes and back to its native
+    /// representation successfully
     fn test_create_record_bytes() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -955,6 +979,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a "finalize record" action is built correctly
     fn test_finalize_record_action_builder() {
         let action = FinalizeRecordActionBuilder::new()
             .with_record_id("32".into())
@@ -965,6 +990,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a "finalize record" action may be converted into bytes and back to its native
+    /// representation successfully
     fn test_finalize_record_action_bytes() {
         let action = FinalizeRecordActionBuilder::new()
             .with_record_id("32".into())
@@ -975,6 +1002,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate an "update properties" action is built correctly
     fn test_update_properties_action() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -994,6 +1022,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate an "update properties" action may be converted into bytes and back to its native
+    /// representation successfully
     fn test_update_properties_action_bytes() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1012,6 +1042,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a "create proposal" action is built correctly
     fn test_create_proposal_action_builder() {
         let action = CreateProposalActionBuilder::new()
             .with_record_id("32".into())
@@ -1030,6 +1061,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a "create proposal" action may be converted into bytes and back to its native
+    /// representation successfully
     fn test_create_proposal_action_bytes() {
         let action = CreateProposalActionBuilder::new()
             .with_record_id("32".into())
@@ -1044,6 +1077,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate an "answer proposal" action is built correctly
     fn test_answer_proposal_action_builder() {
         let action = AnswerProposalActionBuilder::new()
             .with_record_id("32".into())
@@ -1060,6 +1094,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate an "answer proposal" action may be converted into bytes and back to its native
+    /// representation successfully
     fn test_answer_proposal_action_bytes() {
         let action = AnswerProposalActionBuilder::new()
             .with_record_id("32".into())
@@ -1073,6 +1109,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a "revoke reporter" action is built correctly
     fn test_revoke_reporter_action_builder() {
         let action = RevokeReporterActionBuilder::new()
             .with_record_id("32".into())
@@ -1087,6 +1124,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate that a "revoke reporter" action may be converted into bytes and back to its native
+    /// representation successfully
     fn test_revoke_reporter_action_bytes() {
         let action = RevokeReporterActionBuilder::new()
             .with_record_id("32".into())
@@ -1099,6 +1138,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate that a Track and Trace payload is built correctly
     fn test_payload_builder() {
         let action = RevokeReporterActionBuilder::new()
             .with_record_id("32".into())
@@ -1118,6 +1158,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate that a Track and Trace payload may be converted into bytes and back to its native
+    /// representation successfully
     fn test_payload_bytes() {
         let action = RevokeReporterActionBuilder::new()
             .with_record_id("32".into())

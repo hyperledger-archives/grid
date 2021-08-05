@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Track and Trace state
+
 use super::errors::BuilderError;
 use crate::protocol::schema::state::{PropertyDefinition, PropertyValue};
 use crate::protos::track_and_trace_state;
@@ -21,6 +23,11 @@ use crate::protos::{
 use protobuf::Message;
 use protobuf::RepeatedField;
 
+/// Native representation of a `Reporter`
+///
+/// Contains a cryptographic public key, associated with an agent, of the agent authorized to
+/// report updates to a `Property`. A flag indicator, `authorized`, determines whether the reporter
+/// is still authorized to report updates.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Reporter {
     public_key: String,
@@ -46,6 +53,7 @@ impl Reporter {
     }
 }
 
+/// Builder used to create a `Reporter`
 #[derive(Default, Clone)]
 pub struct ReporterBuilder {
     public_key: Option<String>,
@@ -131,6 +139,9 @@ impl IntoBytes for Reporter {
 impl IntoProto<track_and_trace_state::Property_Reporter> for Reporter {}
 impl IntoNative<Reporter> for track_and_trace_state::Property_Reporter {}
 
+/// Native representation of a `Property`
+///
+/// Contains historical data pertaining to a particular data field of a tracked object.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Property {
     name: String,
@@ -172,6 +183,7 @@ impl Property {
     }
 }
 
+/// Builder used to create a `Property`
 #[derive(Default, Debug)]
 pub struct PropertyBuilder {
     name: Option<String>,
@@ -300,6 +312,7 @@ impl IntoBytes for Property {
 impl IntoProto<track_and_trace_state::Property> for Property {}
 impl IntoNative<Property> for track_and_trace_state::Property {}
 
+/// Native representation of a list of `Property` objects
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyList {
     properties: Vec<Property>,
@@ -315,6 +328,7 @@ impl PropertyList {
     }
 }
 
+/// Builder used to create a list of `Property` objects
 #[derive(Default, Clone)]
 pub struct PropertyListBuilder {
     properties: Option<Vec<Property>>,
@@ -390,6 +404,9 @@ impl IntoBytes for PropertyList {
 impl IntoProto<track_and_trace_state::PropertyList> for PropertyList {}
 impl IntoNative<PropertyList> for track_and_trace_state::PropertyList {}
 
+/// Native representation of a reported property value
+///
+/// Contains an updated `Property` value as reported by an authorized agent.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReportedValue {
     reporter_index: u32,
@@ -415,6 +432,7 @@ impl ReportedValue {
     }
 }
 
+/// Builder used to create a `ReportedValue`
 #[derive(Default, Debug)]
 pub struct ReportedValueBuilder {
     reporter_index: Option<u32>,
@@ -504,6 +522,11 @@ impl IntoBytes for ReportedValue {
 impl IntoProto<track_and_trace_state::PropertyPage_ReportedValue> for ReportedValue {}
 impl IntoNative<ReportedValue> for track_and_trace_state::PropertyPage_ReportedValue {}
 
+/// Native representation of a `PropertyPage`
+///
+/// Treated by the Track and Trace transaction processer as a ring buffer to hold all historical
+/// reported values for the corresponding `Property`. Once the reserved namespaces for property
+/// pages are filled, the next update will overwrite the oldest page within the namespace.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyPage {
     name: String,
@@ -530,6 +553,7 @@ impl PropertyPage {
     }
 }
 
+/// Builder used to create a `PropertyPage`
 #[derive(Default, Debug)]
 pub struct PropertyPageBuilder {
     name: Option<String>,
@@ -634,6 +658,7 @@ impl IntoBytes for PropertyPage {
 impl IntoProto<track_and_trace_state::PropertyPage> for PropertyPage {}
 impl IntoNative<PropertyPage> for track_and_trace_state::PropertyPage {}
 
+/// Native representation of a list of `PropertyPage`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyPageList {
     property_pages: Vec<PropertyPage>,
@@ -649,6 +674,7 @@ impl PropertyPageList {
     }
 }
 
+/// Builder used to create a list of `PropertyPage`s
 #[derive(Default, Debug)]
 pub struct PropertyPageListBuilder {
     property_pages: Option<Vec<PropertyPage>>,
@@ -727,6 +753,7 @@ impl IntoBytes for PropertyPageList {
 impl IntoProto<track_and_trace_state::PropertyPageList> for PropertyPageList {}
 impl IntoNative<PropertyPageList> for track_and_trace_state::PropertyPageList {}
 
+/// Possible `Role` values
 #[derive(Debug, Clone, PartialEq)]
 pub enum Role {
     Owner,
@@ -765,6 +792,7 @@ impl FromNative<Role> for track_and_trace_state::Proposal_Role {
 impl IntoProto<track_and_trace_state::Proposal_Role> for Role {}
 impl IntoNative<Role> for track_and_trace_state::Proposal_Role {}
 
+/// Possible `Proposal` statuses
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {
     Open,
@@ -806,6 +834,10 @@ impl FromNative<Status> for track_and_trace_state::Proposal_Status {
 impl IntoProto<track_and_trace_state::Proposal_Status> for Status {}
 impl IntoNative<Status> for track_and_trace_state::Proposal_Status {}
 
+/// Native representation of a `Proposal`
+///
+/// A `Proposal` contains an offer from the owner or custodian of a `Record` to authorize another
+/// agent a role, either owner, custodian, or reporter for the associated `Record`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Proposal {
     record_id: String,
@@ -856,6 +888,7 @@ impl Proposal {
     }
 }
 
+/// Builder used to create a `Proposal`
 #[derive(Default, Debug)]
 pub struct ProposalBuilder {
     record_id: Option<String>,
@@ -1001,6 +1034,7 @@ impl IntoBytes for Proposal {
 impl IntoProto<track_and_trace_state::Proposal> for Proposal {}
 impl IntoNative<Proposal> for track_and_trace_state::Proposal {}
 
+/// Native representation of a list of `Proposal`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProposalList {
     proposals: Vec<Proposal>,
@@ -1016,6 +1050,7 @@ impl ProposalList {
     }
 }
 
+/// Builder used to create a list of `Proposal`s
 #[derive(Default, Debug)]
 pub struct ProposalListBuilder {
     proposals: Option<Vec<Proposal>>,
@@ -1093,6 +1128,10 @@ impl IntoBytes for ProposalList {
 impl IntoProto<track_and_trace_state::ProposalList> for ProposalList {}
 impl IntoNative<ProposalList> for track_and_trace_state::ProposalList {}
 
+/// Native representation of an `AssociatedAgent`
+///
+/// This struct represents a cryptographic public key that identifies an agent associated with
+/// a `Record`
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssociatedAgent {
     agent_id: String,
@@ -1114,6 +1153,7 @@ impl AssociatedAgent {
     }
 }
 
+/// Builder used to create an `AssociatedAgent`
 #[derive(Default, Debug)]
 pub struct AssociatedAgentBuilder {
     agent_id: Option<String>,
@@ -1193,6 +1233,9 @@ impl IntoBytes for AssociatedAgent {
 impl IntoProto<track_and_trace_state::Record_AssociatedAgent> for AssociatedAgent {}
 impl IntoNative<AssociatedAgent> for track_and_trace_state::Record_AssociatedAgent {}
 
+/// Native representation of a `Record`
+///
+/// A record represents the goods being tracked
 #[derive(Debug, Clone, PartialEq)]
 pub struct Record {
     record_id: String,
@@ -1228,6 +1271,7 @@ impl Record {
     }
 }
 
+/// Builder used to create a `Record`
 #[derive(Default, Debug)]
 pub struct RecordBuilder {
     record_id: Option<String>,
@@ -1367,6 +1411,7 @@ impl IntoBytes for Record {
 impl IntoProto<track_and_trace_state::Record> for Record {}
 impl IntoNative<Record> for track_and_trace_state::Record {}
 
+/// Native representation of a list of `Record`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordList {
     records: Vec<Record>,
@@ -1382,6 +1427,7 @@ impl RecordList {
     }
 }
 
+/// Builder used to create a list of `Record`s
 #[derive(Default, Debug)]
 pub struct RecordListBuilder {
     records: Option<Vec<Record>>,
@@ -1474,6 +1520,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Reporter` is built correctly
     fn test_reporter_builder() {
         let builder = ReporterBuilder::new();
         let reporter = builder
@@ -1489,6 +1536,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Reporter` is built correctly and may be correctly converted back into a builder
     fn test_reporter_into_builder() {
         let reporter = ReporterBuilder::new()
             .with_public_key("1234".to_string())
@@ -1505,6 +1553,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Reporter` may be converted into bytes and back to its native representation
+    /// successfully
     fn test_reporter_bytes() {
         let builder = ReporterBuilder::new();
         let original = builder
@@ -1518,6 +1568,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Property` is built correctly
     fn test_property_builder() {
         let property_definition = PropertyDefinitionBuilder::new()
             .with_name("i dunno".into())
@@ -1553,6 +1604,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Property` is built and may be converted back into a builder
     fn test_property_into_builder() {
         let property_definition = PropertyDefinitionBuilder::new()
             .with_name("i dunno".into())
@@ -1590,6 +1642,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Property` may be converted into bytes and back to its native representation
+    /// successfully
     fn test_property_bytes() {
         let property_definition = PropertyDefinitionBuilder::new()
             .with_name("i dunno".into())
@@ -1620,6 +1674,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertList` is built correctly
     fn test_property_list_builder() {
         let property_definition = PropertyDefinitionBuilder::new()
             .with_name("i dunno".into())
@@ -1655,6 +1710,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyList` is built and may be converted back into a builder
     fn test_property_list_into_builder() {
         let property_definition = PropertyDefinitionBuilder::new()
             .with_name("i dunno".into())
@@ -1692,6 +1748,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyList` may be converted into bytes and back to its native represenation
+    /// successfully
     fn test_property_list_bytes() {
         let property_definition = PropertyDefinitionBuilder::new()
             .with_name("i dunno".into())
@@ -1727,6 +1785,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyPage` is built correctly
     fn test_property_page() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1758,6 +1817,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyPage` is built and may be converted back to a builder
     fn test_property_page_into_builder() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1788,6 +1848,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyPage` may be converted into bytes and back to its native representation
+    /// successfully
     fn test_property_page_bytes() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1814,6 +1876,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyPageList` is built correctly
     fn test_property_page_list() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1848,6 +1911,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyPageList` is built and may be converted back into a builder
     fn test_property_page_list_into_builder() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1881,6 +1945,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `PropertyPageList` may be converted into bytes and back to its native
+    /// representation successfully
     fn test_property_page_list_bytes() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1912,6 +1978,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Proposal` is built correctly
     fn test_proposal_builder() {
         let proposal = ProposalBuilder::new()
             .with_record_id("egg1234".into())
@@ -1936,6 +2003,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Proposal` is built and may be converted back to its builder
     fn test_proposal_into_builder() {
         let proposal = ProposalBuilder::new()
             .with_record_id("egg1234".into())
@@ -1962,6 +2030,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Proposal` may be converted into bytes and back to its native representation
+    /// successfully
     fn test_proposal_bytes() {
         let proposal = ProposalBuilder::new()
             .with_record_id("egg1234".into())
@@ -1979,6 +2049,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `ProposalList` is built correctly
     fn test_proposal_list() {
         let proposal = ProposalBuilder::new()
             .with_record_id("egg1234".into())
@@ -2001,6 +2072,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `ProposalList` is built and may be converted back to its builder
     fn test_proposal_list_into_builder() {
         let proposal = ProposalBuilder::new()
             .with_record_id("egg1234".into())
@@ -2025,6 +2097,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `ProposalList` may be converted into bytes and back to its native representation
+    /// successfully
     fn test_proposal_list_bytes() {
         let proposal = ProposalBuilder::new()
             .with_record_id("egg1234".into())
@@ -2047,6 +2121,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Record` is built successfully
     fn test_record_builder() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -2071,6 +2146,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Record` is built and may be converted back to a builder
     fn test_record_into_builder() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -2097,6 +2173,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `Record` may be converted into bytes and back to its native representation
+    /// successfully
     fn test_record_bytes() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -2117,6 +2195,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `RecordList` is built correctly
     fn test_record_list() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -2142,6 +2221,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `RecordList` is built and may be converted back to its builder
     fn test_record_list_into_builder() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -2169,6 +2249,8 @@ mod tests {
     }
 
     #[test]
+    /// Validate a `RecordList` may be converted into bytes and back to its native representation
+    /// successfully
     fn test_record_list_bytes() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -2194,6 +2276,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate an `AssociatedAgent` is built and may be converted back to a builder
     fn test_associated_agent_into_builder() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
