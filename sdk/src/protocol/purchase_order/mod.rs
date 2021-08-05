@@ -12,5 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for the Purchase Order smart contract.
+//!
+//! These structs are used to represent Purchase Order transaction payloads and state.
+
 pub mod payload;
 pub mod state;
