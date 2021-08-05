@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Schema state
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -22,7 +24,9 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
-/// Native implementation of DataType enum
+/// Native representation of a `DataType`
+///
+/// `DataType`s are used in a schema to define a data field's type
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
     Bytes,
@@ -72,6 +76,9 @@ impl FromNative<DataType> for protos::schema_state::PropertyDefinition_DataType 
 impl IntoProto<protos::schema_state::PropertyDefinition_DataType> for DataType {}
 impl IntoNative<DataType> for protos::schema_state::PropertyDefinition_DataType {}
 
+/// Native representation of the `LatLong` schema data type
+///
+/// A `LatLong` object is comprised of a latitude, longitude pair represented as signed integers
 #[derive(Debug, Clone, PartialEq)]
 pub struct LatLong {
     latitude: i64,
@@ -109,6 +116,8 @@ impl FromNative<LatLong> for protos::schema_state::LatLong {
 impl IntoProto<protos::schema_state::LatLong> for LatLong {}
 impl IntoNative<LatLong> for protos::schema_state::LatLong {}
 
+/// Returned if any required fields in a `LatLong` struct are invalid when being converted from the
+/// corresponding builder
 #[derive(Debug)]
 pub enum LatLongBuildError {
     InvalidLatitude(i64),
@@ -136,7 +145,7 @@ impl std::fmt::Display for LatLongBuildError {
     }
 }
 
-/// Builder used to create a LatLong
+/// Builder used to create a `LatLong`
 #[derive(Default, Clone, PartialEq)]
 pub struct LatLongBuilder {
     pub latitude: i64,
@@ -171,7 +180,9 @@ impl LatLongBuilder {
     }
 }
 
-/// Native implementation of PropertyDefinition
+/// Native implementation of `PropertyDefinition`
+///
+/// This defines a field in a schema
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyDefinition {
     name: String,
@@ -282,6 +293,8 @@ impl IntoBytes for PropertyDefinition {
 impl IntoProto<protos::schema_state::PropertyDefinition> for PropertyDefinition {}
 impl IntoNative<PropertyDefinition> for protos::schema_state::PropertyDefinition {}
 
+/// Returned if any required fields in a `PropertyDefinition` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum PropertyDefinitionBuildError {
     MissingField(String),
@@ -313,7 +326,7 @@ impl std::fmt::Display for PropertyDefinitionBuildError {
     }
 }
 
-/// Builder used to create a PropertyDefinition
+/// Builder used to create a `PropertyDefinition`
 #[derive(Default, Clone, PartialEq)]
 pub struct PropertyDefinitionBuilder {
     pub name: Option<String>,
@@ -432,7 +445,9 @@ impl PropertyDefinitionBuilder {
     }
 }
 
-/// Native implementation of Schema
+/// Native representation of a `Schema`
+///
+/// A schema provides the definition for a property across smart contracts
 #[derive(Debug, Clone, PartialEq)]
 pub struct Schema {
     name: String,
@@ -518,6 +533,8 @@ impl IntoBytes for Schema {
 impl IntoProto<protos::schema_state::Schema> for Schema {}
 impl IntoNative<Schema> for protos::schema_state::Schema {}
 
+/// Returned if any required fields in a `Schema` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum SchemaBuildError {
     MissingField(String),
@@ -545,7 +562,7 @@ impl std::fmt::Display for SchemaBuildError {
     }
 }
 
-/// Builder used to create a Schema
+/// Builder used to create a `Schema`
 #[derive(Default, Clone)]
 pub struct SchemaBuilder {
     pub name: Option<String>,
@@ -608,7 +625,7 @@ impl SchemaBuilder {
     }
 }
 
-/// Native implementation of SchemaList
+/// Native representation of a list of `Schema`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct SchemaList {
     schemas: Vec<Schema>,
@@ -679,6 +696,8 @@ impl IntoBytes for SchemaList {
 impl IntoProto<protos::schema_state::SchemaList> for SchemaList {}
 impl IntoNative<SchemaList> for protos::schema_state::SchemaList {}
 
+/// Returned if any required fields in a `SchemaList` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum SchemaListBuildError {
     MissingField(String),
@@ -706,7 +725,7 @@ impl std::fmt::Display for SchemaListBuildError {
     }
 }
 
-/// Builder used to create a SchemaList
+/// Builder used to create a list of `Schema`s
 #[derive(Default, Clone)]
 pub struct SchemaListBuilder {
     pub schemas: Vec<Schema>,
@@ -737,7 +756,9 @@ impl SchemaListBuilder {
     }
 }
 
-/// Native implementation of PropertyValue
+/// Native implementation of `PropertyValue`
+///
+/// This provides the value as defined by the corresponding `PropertyDefinition`
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyValue {
     name: String,
@@ -864,6 +885,8 @@ impl IntoBytes for PropertyValue {
 impl IntoProto<protos::schema_state::PropertyValue> for PropertyValue {}
 impl IntoNative<PropertyValue> for protos::schema_state::PropertyValue {}
 
+/// Returned if any required fields in a `PropertyValue` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum PropertyValueBuildError {
     MissingField(String),
@@ -891,7 +914,7 @@ impl std::fmt::Display for PropertyValueBuildError {
     }
 }
 
-/// Builder used to create a PropertyValue
+/// Builder used to create a `PropertyValue`
 #[derive(Default, Clone)]
 pub struct PropertyValueBuilder {
     pub name: Option<String>,
@@ -1072,7 +1095,7 @@ mod tests {
     use super::*;
 
     #[test]
-    // check that a property definition with a string data type is built correctly
+    /// Validate that a `PropertyDefinition` with a `String` data type is built correctly
     fn check_property_definition_builder_string() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -1088,7 +1111,7 @@ mod tests {
     }
 
     #[test]
-    // check that a property definition with a enum data type is built correctly
+    /// Validate that a `PropertyDefinition` with an `Enum` data type is built correctly
     fn check_property_definition_builder_enum() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -1113,7 +1136,7 @@ mod tests {
     }
 
     #[test]
-    // check that a property definitionwith a struct data type is built correctly
+    /// Validate that a `PropertyDefinition` with a `Struct` data type is built correctly
     fn check_property_definition_builder_struct() {
         let builder = PropertyDefinitionBuilder::new();
         let struct_string = builder
@@ -1144,7 +1167,8 @@ mod tests {
     }
 
     #[test]
-    // check that a property definition can be converted to bytes and back
+    /// Validate that a `PropertyDefinition` with a `String` data type may be converted to bytes
+    /// and back to its native representation successfully
     fn check_property_definition_bytes() {
         let builder = PropertyDefinitionBuilder::new();
         let original = builder
@@ -1161,7 +1185,8 @@ mod tests {
     }
 
     #[test]
-    // check that a schema with a enum property is built correctly
+    /// Validate that a `Schema`, containing a `PropertyDefinition` with an `Enum` data type is
+    /// built correctly
     fn check_schema_builder() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -1192,7 +1217,8 @@ mod tests {
     }
 
     #[test]
-    // check that a schema can be converted to bytes and back
+    /// Validate that a `Schema`, containing a `PropertyDefinition` with an `Enum` data type may
+    /// be converted to bytes and back to its native representation successfully
     fn check_schema_bytes() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -1223,7 +1249,7 @@ mod tests {
     }
 
     #[test]
-    // check that a property value with a string data type is built correctly
+    /// Validate that a `PropertyValue` with a `String` data type is built correctly
     fn check_property_value_builder_string() {
         let builder = PropertyValueBuilder::new();
         let property_value = builder
@@ -1239,7 +1265,7 @@ mod tests {
     }
 
     #[test]
-    // check that a property value with a struct data type is built correctly
+    /// Validate that a `PropertyValue` with a `Struct` data type is built correctly
     fn check_property_value_builder_struct() {
         let builder = PropertyValueBuilder::new();
         let string_value = builder
@@ -1263,7 +1289,7 @@ mod tests {
     }
 
     #[test]
-    // check that a property value with a lat_long data type is built correctly
+    /// Validate that a `PropertyValue` with a `LatLong` data type is built correctly
     fn check_property_value_builder_lat_long() {
         let lat_long = LatLong {
             latitude: 44977753,
@@ -1283,7 +1309,8 @@ mod tests {
     }
 
     #[test]
-    // check that a property value can be converted to bytes and back
+    /// Validate that a `PropertyValue` with a `String` data type may be converted into bytes and
+    /// back to its native representation successfully
     fn check_property_value_bytes() {
         let builder = PropertyValueBuilder::new();
         let original = builder
