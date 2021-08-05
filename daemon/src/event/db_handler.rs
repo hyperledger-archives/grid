@@ -202,6 +202,7 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                         "Commit {} at height {} is duplicate no action taken",
                         &commit.commit_id, commit.commit_num
                     );
+                    return Ok(());
                 }
                 Ok(None) => {
                     info!("Received new commit {}", commit.commit_id);
