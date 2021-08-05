@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Purchase Order transaction payloads
+
 use protobuf::Message;
 
 use crate::protocol::errors::BuilderError;
@@ -20,6 +22,7 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
+/// The Purchase Order payload's action envelope
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     CreatePo(CreatePurchaseOrderPayload),
@@ -28,6 +31,7 @@ pub enum Action {
     UpdateVersion(UpdateVersionPayload),
 }
 
+/// Native representation of a Purchase Order payload
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderPayload {
     action: Action,
@@ -152,6 +156,7 @@ impl IntoBytes for PurchaseOrderPayload {
 impl IntoProto<purchase_order_payload::PurchaseOrderPayload> for PurchaseOrderPayload {}
 impl IntoNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderPayload {}
 
+/// Builder used to create a Purchase Order payload
 #[derive(Default, Clone)]
 pub struct PurchaseOrderPayloadBuilder {
     action: Option<Action>,
@@ -211,6 +216,7 @@ impl PurchaseOrderPayloadBuilder {
     }
 }
 
+/// Native representation of the "create purchase order" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreatePurchaseOrderPayload {
     uuid: String,
@@ -275,6 +281,7 @@ impl IntoBytes for CreatePurchaseOrderPayload {
 impl IntoProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePurchaseOrderPayload {}
 impl IntoNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePurchaseOrderPayload {}
 
+/// Builder used to create the "create agent" payload
 #[derive(Default, Debug)]
 pub struct CreatePurchaseOrderPayloadBuilder {
     uuid: Option<String>,
@@ -309,6 +316,7 @@ impl CreatePurchaseOrderPayloadBuilder {
     }
 }
 
+/// Native representation of the "update purchase order" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdatePurchaseOrderPayload {
     workflow_status: String,
@@ -380,6 +388,7 @@ impl IntoBytes for UpdatePurchaseOrderPayload {
 impl IntoProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePurchaseOrderPayload {}
 impl IntoNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePurchaseOrderPayload {}
 
+/// Builder used to create the "update purchase order" payload
 #[derive(Default, Debug)]
 pub struct UpdatePurchaseOrderPayloadBuilder {
     workflow_status: Option<String>,
@@ -428,6 +437,7 @@ impl UpdatePurchaseOrderPayloadBuilder {
     }
 }
 
+/// Native representation of the revision made in a "create" or "update" version payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct PayloadRevision {
     revision_id: String,
@@ -506,6 +516,7 @@ impl IntoBytes for PayloadRevision {
 impl IntoProto<purchase_order_payload::PayloadRevision> for PayloadRevision {}
 impl IntoNative<PayloadRevision> for purchase_order_payload::PayloadRevision {}
 
+/// Builder used to create the revision object made in a "create" or "update" version payload
 #[derive(Default, Debug)]
 pub struct PayloadRevisionBuilder {
     revision_id: Option<String>,
@@ -565,6 +576,7 @@ impl PayloadRevisionBuilder {
     }
 }
 
+/// Native representation of the "create version" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreateVersionPayload {
     version_id: String,
@@ -636,6 +648,7 @@ impl IntoBytes for CreateVersionPayload {
 impl IntoProto<purchase_order_payload::CreateVersionPayload> for CreateVersionPayload {}
 impl IntoNative<CreateVersionPayload> for purchase_order_payload::CreateVersionPayload {}
 
+/// Builder used to create a "create version" payload
 #[derive(Default, Debug)]
 pub struct CreateVersionPayloadBuilder {
     version_id: Option<String>,
@@ -684,6 +697,7 @@ impl CreateVersionPayloadBuilder {
     }
 }
 
+/// Native representation of the "update version" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdateVersionPayload {
     version_id: String,
@@ -769,6 +783,7 @@ impl IntoBytes for UpdateVersionPayload {
 impl IntoProto<purchase_order_payload::UpdateVersionPayload> for UpdateVersionPayload {}
 impl IntoNative<UpdateVersionPayload> for purchase_order_payload::UpdateVersionPayload {}
 
+/// Builder used to create the "update version" payload
 #[derive(Default, Debug)]
 pub struct UpdateVersionPayloadBuilder {
     version_id: Option<String>,
