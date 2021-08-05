@@ -12,5 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for the Pike smart contract.
+//!
+//! These structs are used to represent Pike transaction payloads and state.
+
 pub mod payload;
 pub mod state;
