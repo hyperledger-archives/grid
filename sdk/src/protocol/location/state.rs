@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Location state
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -25,6 +27,9 @@ use crate::protos::{
 
 use crate::protocol::schema::state::PropertyValue;
 
+/// Possible Location namespaces
+///
+/// The namespace determines the schema used to define a Location's properties
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LocationNamespace {
     Gs1,
@@ -62,6 +67,10 @@ impl FromNative<LocationNamespace> for protos::location_state::Location_Location
 impl IntoProto<protos::location_state::Location_LocationNamespace> for LocationNamespace {}
 impl IntoNative<LocationNamespace> for protos::location_state::Location_LocationNamespace {}
 
+/// Native representation of a `Location`
+///
+/// A `Location` represents an arbitrary list of properties. The properties defined in the
+/// `Location` are determined by the `Location`'s `namespace`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Location {
     location_id: String,
@@ -148,6 +157,8 @@ impl IntoBytes for Location {
 impl IntoProto<protos::location_state::Location> for Location {}
 impl IntoNative<Location> for protos::location_state::Location {}
 
+/// Returned if any required fields in a `Location` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum LocationBuildError {
     MissingField(String),
@@ -179,6 +190,7 @@ impl std::fmt::Display for LocationBuildError {
     }
 }
 
+/// Builder used to create a `Location`
 #[derive(Default, Clone, PartialEq)]
 pub struct LocationBuilder {
     pub location_id: Option<String>,
@@ -238,6 +250,7 @@ impl LocationBuilder {
     }
 }
 
+/// Native representation of a list of `Location`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocationList {
     locations: Vec<Location>,
@@ -314,6 +327,7 @@ impl IntoBytes for LocationList {
 impl IntoProto<protos::location_state::LocationList> for LocationList {}
 impl IntoNative<LocationList> for protos::location_state::LocationList {}
 
+/// Builder used to create a `LocationList`
 #[derive(Default, Clone)]
 pub struct LocationListBuilder {
     pub locations: Option<Vec<Location>>,
