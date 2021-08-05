@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Product transaction payloads
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -26,7 +28,7 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
-/// Native implementation for ProductPayload_Action
+/// The Product payload's action envelope
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     ProductCreate(ProductCreateAction),
@@ -34,7 +36,7 @@ pub enum Action {
     ProductDelete(ProductDeleteAction),
 }
 
-// Rust native implementation for ProductPayload
+/// Native representation of a Product transaction payload
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProductPayload {
     action: Action,
@@ -129,6 +131,8 @@ impl IntoBytes for ProductPayload {
 impl IntoProto<protos::product_payload::ProductPayload> for ProductPayload {}
 impl IntoNative<ProductPayload> for protos::product_payload::ProductPayload {}
 
+/// Returned if any required fields in a `ProductPayload` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum ProductPayloadBuildError {
     MissingField(String),
@@ -156,7 +160,7 @@ impl std::fmt::Display for ProductPayloadBuildError {
     }
 }
 
-/// Builder used to create a ProductPayload
+/// Builder used to create a `ProductPayload`
 #[derive(Default, Clone)]
 pub struct ProductPayloadBuilder {
     action: Option<Action>,
@@ -186,7 +190,7 @@ impl ProductPayloadBuilder {
     }
 }
 
-/// Native implementation for ProductCreateAction
+/// Native representation of the "create product" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductCreateAction {
     product_namespace: ProductNamespace,
@@ -277,6 +281,7 @@ impl IntoBytes for ProductCreateAction {
 impl IntoProto<protos::product_payload::ProductCreateAction> for ProductCreateAction {}
 impl IntoNative<ProductCreateAction> for protos::product_payload::ProductCreateAction {}
 
+/// Builder used to create a "create product" action payload
 #[derive(Default, Debug)]
 pub struct ProductCreateActionBuilder {
     product_namespace: Option<ProductNamespace>,
@@ -327,6 +332,7 @@ impl ProductCreateActionBuilder {
     }
 }
 
+/// Native representation of an "update product" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductUpdateAction {
     product_namespace: ProductNamespace,
@@ -334,7 +340,6 @@ pub struct ProductUpdateAction {
     properties: Vec<PropertyValue>,
 }
 
-/// Native implementation for ProductUpdateAction
 impl ProductUpdateAction {
     pub fn product_namespace(&self) -> &ProductNamespace {
         &self.product_namespace
@@ -412,7 +417,7 @@ impl IntoBytes for ProductUpdateAction {
 impl IntoProto<protos::product_payload::ProductUpdateAction> for ProductUpdateAction {}
 impl IntoNative<ProductUpdateAction> for protos::product_payload::ProductUpdateAction {}
 
-/// Builder used to create a ProductUpdateAction
+/// Builder used to create an "update product" action
 #[derive(Default, Clone)]
 pub struct ProductUpdateActionBuilder {
     product_namespace: Option<ProductNamespace>,
@@ -467,13 +472,13 @@ impl ProductUpdateActionBuilder {
     }
 }
 
+/// Native representation of the "delete product" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductDeleteAction {
     product_namespace: ProductNamespace,
     product_id: String,
 }
 
-/// Native implementation for ProductDeleteAction
 impl ProductDeleteAction {
     pub fn product_namespace(&self) -> &ProductNamespace {
         &self.product_namespace
@@ -531,7 +536,7 @@ impl IntoBytes for ProductDeleteAction {
 impl IntoProto<protos::product_payload::ProductDeleteAction> for ProductDeleteAction {}
 impl IntoNative<ProductDeleteAction> for protos::product_payload::ProductDeleteAction {}
 
-/// Builder used to create a ProductDeleteAction
+/// Builder used to create a "delete product" action
 #[derive(Default, Clone)]
 pub struct ProductDeleteActionBuilder {
     product_namespace: Option<ProductNamespace>,
@@ -576,7 +581,7 @@ mod tests {
     use std::fmt::Debug;
 
     #[test]
-    // Test that a product create action can be built correctly
+    /// Validate that a `ProductCreateAction` is built correctly
     fn test_product_create_builder() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
@@ -601,7 +606,8 @@ mod tests {
     }
 
     #[test]
-    // Test that a product create action can be converted to bytes and back
+    /// Validate that a `ProductCreateAction` may be correctly converted into bytes and back
+    /// to its native representation
     fn test_product_create_into_bytes() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
@@ -615,7 +621,7 @@ mod tests {
     }
 
     #[test]
-    // Test that a product update action can be built correctly
+    /// Validate that a `ProductUpdateAction` is built correctly
     fn test_product_update_builder() {
         let action = ProductUpdateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
@@ -638,7 +644,8 @@ mod tests {
     }
 
     #[test]
-    // Test that a product update action can be converted to bytes and back
+    /// Validate that an `ProductUpdateAction` may be correctly converted into bytes and back
+    /// to its native representation
     fn test_product_update_into_bytes() {
         let action = ProductUpdateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
@@ -651,7 +658,7 @@ mod tests {
     }
 
     #[test]
-    // Test that a product delete action can be built correctly
+    /// Validate that an `ProductDeleteAction` may be built correctly
     fn test_product_delete_builder() {
         let action = ProductDeleteActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
@@ -664,7 +671,8 @@ mod tests {
     }
 
     #[test]
-    // Test that a product delete action can be converted to bytes and back
+    /// Validate that a `ProductDeleteAction` may be correctly converted into bytes and back
+    /// to its native representation
     fn test_product_delete_into_bytes() {
         let action = ProductDeleteActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
@@ -676,7 +684,7 @@ mod tests {
     }
 
     #[test]
-    // Test that a product payload can be built correctly
+    /// Validate that a `ProductPayload` is built correctly with a `ProductCreateAction`
     fn test_product_payload_builder() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
@@ -697,7 +705,8 @@ mod tests {
     }
 
     #[test]
-    // Test that a product payload can be converted to bytes and back
+    /// Validate that a `ProductPayload` with a `ProductCreateAction` may be correctly converted
+    /// into bytes and back to its native representation
     fn test_product_payload_bytes() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
