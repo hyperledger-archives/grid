@@ -41,10 +41,35 @@ use splinter::events::Reactor;
 use crate::config::GridConfig;
 use crate::database::ConnectionPool;
 use crate::error::DaemonError;
-use crate::event::{db_handler::DatabaseEventHandler, EventHandler, EventProcessor};
+use crate::event::{db_handler::DatabaseEventHandler, CommitEvent, EventError, EventHandler};
 use crate::rest_api;
 
-use super::{app_auth_handler, event::ScabbardEventConnectionFactory};
+use super::{
+    app_auth_handler, event::processors::EventProcessors, event::ScabbardEventConnectionFactory,
+};
+
+enum EventCmd {
+    Event(CommitEvent),
+    Exit,
+}
+
+struct ChannelEventHandler {
+    sender: std::sync::mpsc::Sender<EventCmd>,
+}
+
+impl EventHandler for ChannelEventHandler {
+    fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
+        self.sender
+            .send(EventCmd::Event(event.clone()))
+            .map_err(|_| EventError("Unable to send event due to closed channel".into()))
+    }
+
+    fn cloned_box(&self) -> Box<dyn EventHandler> {
+        Box::new(ChannelEventHandler {
+            sender: self.sender.clone(),
+        })
+    }
+}
 
 pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let splinter_endpoint = Endpoint::from(config.endpoint());
@@ -58,17 +83,15 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&splinter_endpoint.url(), reactor.igniter());
 
+    let event_processors = EventProcessors::new(scabbard_event_connection_factory);
+
     #[cfg(not(any(feature = "database-postgres", feature = "database-sqlite")))]
     return Err(DaemonError::with_message(
         "A database backend is required to be active. Supported backends are postgreSQL and SQLite",
     ));
 
     #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
-    let (store_state, db_handler, previous_commits): (
-        _,
-        Box<dyn EventHandler + Sync + 'static>,
-        Vec<Commit>,
-    ) = {
+    let (store_state, db_handler, previous_commits): (_, Box<dyn EventHandler>, Vec<Commit>) = {
         let connection_uri = config
             .database_url()
             .parse()
@@ -112,6 +135,26 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         }
     };
 
+    let (event_tx, event_rx) = std::sync::mpsc::channel();
+    let chan_event_handler: Box<dyn EventHandler> = Box::new(ChannelEventHandler {
+        sender: event_tx.clone(),
+    });
+
+    let db_event_handler_join_handler = std::thread::Builder::new()
+        .name("db-event-handler-splinter".into())
+        .spawn(move || loop {
+            match event_rx.recv() {
+                Ok(EventCmd::Event(evt)) => {
+                    if let Err(err) = db_handler.handle_event(&evt) {
+                        error!("{}", err.to_string());
+                    }
+                }
+                Ok(EventCmd::Exit) => break,
+                Err(_) => break,
+            }
+        })
+        .map_err(|_| DaemonError::with_message("Unable to spawn db handler thread"))?;
+
     for commit in previous_commits {
         if let Some(service_id) = commit.service_id {
             let service_id = match ServiceId::try_from(service_id.deref()) {
@@ -130,23 +173,21 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 service_id, commit.commit_id
             );
 
-            let event_connection = scabbard_event_connection_factory
-                .create_connection(service_id.circuit_id, service_id.service_id)
+            event_processors
+                .add_once(
+                    service_id.circuit_id,
+                    service_id.service_id,
+                    Some(&commit.commit_id),
+                    || vec![chan_event_handler.cloned_box()],
+                )
                 .map_err(|err| DaemonError::from_source(Box::new(err)))?;
-
-            EventProcessor::start(
-                event_connection,
-                Some(&commit.commit_id),
-                vec![db_handler.cloned_box()],
-            )
-            .map_err(|err| DaemonError::from_source(Box::new(err)))?;
         }
     }
 
     app_auth_handler::run(
         splinter_endpoint.url(),
-        scabbard_event_connection_factory,
-        db_handler,
+        event_processors,
+        chan_event_handler,
         reactor.igniter(),
         scabbard_admin_key,
     )
@@ -189,6 +230,12 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
 
         #[cfg(feature = "rest-api")]
         rest_api_shutdown_handle.shutdown();
+        if let Err(err) = event_tx.send(EventCmd::Exit) {
+            error!(
+                "Unable to signal shutdown to the DB event handler thread: {}",
+                err
+            );
+        }
     })
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
@@ -197,6 +244,10 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         .join()
         .map_err(|_| DaemonError::with_message("Unable to cleanly join the REST API thread"))
         .and_then(|res| res.map_err(|err| DaemonError::from_source(Box::new(err))))?;
+
+    if db_event_handler_join_handler.join().is_err() {
+        error!("Unable to cleanly join the DB event handler thread");
+    }
 
     if let Err(err) = reactor.wait_for_shutdown() {
         error!("Unable to shutdown splinter event reactor: {}", err);
