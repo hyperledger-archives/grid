@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,8 @@ use crate::location::store::LocationStore;
 use crate::pike::store::PikeStore;
 #[cfg(feature = "product")]
 use crate::product::store::ProductStore;
+#[cfg(feature = "purchase-order")]
+use crate::purchase_order::store::PurchaseOrderStore;
 #[cfg(feature = "schema")]
 use crate::schema::store::SchemaStore;
 #[cfg(feature = "track-and-trace")]
@@ -40,24 +42,38 @@ use crate::track_and_trace::store::TrackAndTraceStore;
 /// An abstract factory for creating Grid stores backed by the same storage
 pub trait StoreFactory {
     /// Get a new `CommitStore`
-    fn get_grid_commit_store(&self) -> Box<dyn CommitStore>;
+    fn get_grid_commit_store<'a>(&'a self) -> Box<dyn CommitStore + 'a>;
     /// Get a new `PikeStore`
     #[cfg(feature = "pike")]
-    fn get_grid_pike_store(&self) -> Box<dyn PikeStore>;
+    fn get_grid_pike_store<'a>(&'a self) -> Box<dyn PikeStore + 'a>;
     /// Get a new `LocationStore`
     #[cfg(feature = "location")]
-    fn get_grid_location_store(&self) -> Box<dyn LocationStore>;
+    fn get_grid_location_store<'a>(&'a self) -> Box<dyn LocationStore + 'a>;
     /// Get a new `ProductStore`
     #[cfg(feature = "product")]
-    fn get_grid_product_store(&self) -> Box<dyn ProductStore>;
+    fn get_grid_product_store<'a>(&'a self) -> Box<dyn ProductStore + 'a>;
     /// Get a new `SchemaStore`
     #[cfg(feature = "schema")]
-    fn get_grid_schema_store(&self) -> Box<dyn SchemaStore>;
+    fn get_grid_schema_store<'a>(&'a self) -> Box<dyn SchemaStore + 'a>;
     /// Get a new `TrackAndTraceStore`
     #[cfg(feature = "track-and-trace")]
-    fn get_grid_track_and_trace_store(&self) -> Box<dyn TrackAndTraceStore>;
+    fn get_grid_track_and_trace_store<'a>(&'a self) -> Box<dyn TrackAndTraceStore + 'a>;
     #[cfg(feature = "batch-store")]
-    fn get_batch_store(&self) -> Box<dyn BatchStore>;
+    fn get_batch_store<'a>(&'a self) -> Box<dyn BatchStore + 'a>;
+    #[cfg(feature = "purchase-order")]
+    fn get_grid_purchase_order_store<'a>(&'a self) -> Box<dyn PurchaseOrderStore + 'a>;
+}
+
+pub trait TransactionalStoreFactory: StoreFactory + Send + Sync {
+    fn begin_transaction<'a>(&self) -> Result<Box<dyn InContextStoreFactory<'a>>, InternalError>;
+
+    fn clone_box(&self) -> Box<dyn TransactionalStoreFactory>;
+}
+
+pub trait InContextStoreFactory<'a>: StoreFactory {
+    fn commit(&self) -> Result<(), InternalError>;
+
+    fn rollback(&self) -> Result<(), InternalError>;
 }
 
 /// Creates a `StoreFactory` backed by the given connection
@@ -68,7 +84,7 @@ pub trait StoreFactory {
 ///   created by the resulting factory
 pub fn create_store_factory(
     connection_uri: &ConnectionUri,
-) -> Result<Box<dyn StoreFactory>, InternalError> {
+) -> Result<Box<dyn TransactionalStoreFactory>, InternalError> {
     // disable clippy warning caused for some combinations of features
     // this warning is intended to reduce "needless complexity" but
     // adding blocks for every combination has the opposite effect
