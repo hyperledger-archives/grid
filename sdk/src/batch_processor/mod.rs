@@ -29,6 +29,8 @@ use crate::batches::store::BatchStore;
 use crate::error::InternalError;
 use crate::hex;
 
+use crate::store::TransactionalStoreFactory;
+
 use submitter::{BatchSubmitter, BatchSubmitterError, SubmitBatches};
 
 const DEFAULT_PACEMAKER_INTERVAL: u64 = 10;
@@ -90,14 +92,17 @@ pub struct BatchProcessorBuilder {
     pacemaker_interval: u64,
     claim_limit: i64,
     secs_claim_is_valid: i64,
-    store: Arc<dyn BatchStore>,
+    store_factory: Box<dyn TransactionalStoreFactory>,
     submitter: Arc<dyn BatchSubmitter>,
 }
 
 impl BatchProcessorBuilder {
-    pub fn new(store: Arc<dyn BatchStore>, submitter: Arc<dyn BatchSubmitter>) -> Self {
+    pub fn new(
+        store_factory: Box<dyn TransactionalStoreFactory>,
+        submitter: Arc<dyn BatchSubmitter>,
+    ) -> Self {
         Self {
-            store,
+            store_factory,
             pacemaker_interval: DEFAULT_PACEMAKER_INTERVAL,
             claim_limit: DEFAULT_CLAIM_LIMIT,
             secs_claim_is_valid: DEFAULT_SECS_CLAIM_IS_VALID,
@@ -122,8 +127,7 @@ impl BatchProcessorBuilder {
 
     pub fn start(self) -> Result<BatchProcessor, InternalError> {
         let (sender, recv) = channel();
-
-        let store = self.store.clone();
+        let store_factory = self.store_factory.clone_box();
         let submitter = self.submitter.clone();
         let claim_limit = self.claim_limit;
         let secs_claim_is_valid = self.secs_claim_is_valid;
@@ -131,6 +135,8 @@ impl BatchProcessorBuilder {
         let join_handle = thread::Builder::new()
             .name("Batch Submitter".into())
             .spawn(move || loop {
+                let txn = store_factory.begin_transaction().unwrap();
+                let store = txn.get_batch_store();
                 match recv.recv() {
                     Ok(BatchProcessorMessage::Shutdown) => break,
                     Ok(BatchProcessorMessage::WakeUp) => {

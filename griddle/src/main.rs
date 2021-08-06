@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -193,7 +193,7 @@ async fn run() -> Result<(), Error> {
 
     let batch_submitter = batch_submitter(Endpoint::from(connect.as_ref()));
     let batch_processor =
-        BatchProcessorBuilder::new(store_state.batch_store.clone(), batch_submitter);
+        BatchProcessorBuilder::new(store_state.store_factory.clone_box(), batch_submitter);
 
     batch_processor
         .start()
