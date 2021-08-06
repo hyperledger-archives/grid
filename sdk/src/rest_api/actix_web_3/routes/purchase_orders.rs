@@ -29,27 +29,26 @@ pub struct QueryOrgId {
 
 #[get("/purchase-order")]
 pub async fn list_purchase_orders(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     query_org_id: web::Query<QueryOrgId>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_purchase_order_store();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             let org_id = query_org_id.into_inner().org_id;
             let service_id = query_service_id.into_inner().service_id;
             match v1::list_purchase_orders(
-                state.purchase_order_store.clone(),
-                org_id.clone(),
+                store,
+                org_id,
                 service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -63,21 +62,20 @@ pub async fn list_purchase_orders(
 
 #[get("/purchase-order/{uuid}")]
 pub async fn get_purchase_order(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     uuid: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_purchase_order_store();
     match version {
         ProtocolVersion::V1 => {
             match v1::get_purchase_order(
-                state.purchase_order_store.clone(),
+                store,
                 uuid.into_inner(),
                 query_service_id.into_inner().service_id.as_deref(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -91,7 +89,7 @@ pub async fn get_purchase_order(
 
 #[get("/purchase-order/{uuid}/versions")]
 pub async fn list_purchase_order_versions(
-    _state: web::Data<StoreState>,
+    _store_state: web::Data<StoreState>,
     _uuid: web::Path<String>,
     _query: web::Query<QueryServiceId>,
     version: ProtocolVersion,
@@ -104,7 +102,7 @@ pub async fn list_purchase_order_versions(
 
 #[get("/purchase-order/{uuid}/versions/{version_id}")]
 pub async fn get_purchase_order_version(
-    _state: web::Data<StoreState>,
+    _store_state: web::Data<StoreState>,
     _uuid: web::Path<String>,
     _version_id: web::Path<String>,
     _query: web::Query<QueryServiceId>,
@@ -118,7 +116,7 @@ pub async fn get_purchase_order_version(
 
 #[get("/purchase-order/{uuid}/versions/{version_id}/revisions")]
 pub async fn list_purchase_order_version_revisions(
-    _state: web::Data<StoreState>,
+    _store_state: web::Data<StoreState>,
     _uuid: web::Path<String>,
     _version_id: web::Path<String>,
     _query: web::Query<QueryServiceId>,
@@ -132,7 +130,7 @@ pub async fn list_purchase_order_version_revisions(
 
 #[get("/purchase-order/{uuid}/versions/{version_id}/revisions/{revision_number}")]
 pub async fn get_purchase_order_version_revision(
-    _state: web::Data<StoreState>,
+    _store_state: web::Data<StoreState>,
     _uuid: web::Path<String>,
     _version_id: web::Path<String>,
     _revision_number: web::Path<u64>,

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use crate::{
     location::store::{LocationStore, LocationStoreError},
@@ -22,8 +21,8 @@ use crate::{
 
 use super::payloads::{LocationListSlice, LocationSlice};
 
-pub async fn list_locations(
-    store: Arc<dyn LocationStore>,
+pub fn list_locations<'a>(
+    store: Box<dyn LocationStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -61,8 +60,8 @@ pub async fn list_locations(
     Ok(LocationListSlice { data, paging })
 }
 
-pub async fn get_location(
-    store: Arc<dyn LocationStore>,
+pub fn get_location<'a>(
+    store: Box<dyn LocationStore + 'a>,
     location_id: String,
     service_id: Option<&str>,
 ) -> Result<LocationSlice, ErrorResponse> {

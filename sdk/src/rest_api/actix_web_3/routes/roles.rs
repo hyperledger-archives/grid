@@ -23,24 +23,23 @@ use crate::rest_api::{
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[get("/role/{org_id}/{name}")]
-pub async fn get_role(
-    state: web::Data<StoreState>,
+pub fn get_role(
+    store_state: web::Data<StoreState>,
     path_variables: web::Path<(String, String)>,
     query: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_pike_store();
     match version {
         ProtocolVersion::V1 => {
             let (org_id, name) = path_variables.into_inner();
             match v1::get_role(
-                state.pike_store.clone(),
+                store,
                 org_id,
                 name,
                 query.into_inner().service_id.as_deref(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -54,27 +53,26 @@ pub async fn get_role(
 
 #[get("/role/{org_id}")]
 pub async fn list_roles_for_organization(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     org_id: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_pike_store();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             let service_id = query_service_id.into_inner().service_id;
             let org_id = org_id.into_inner();
             match v1::list_roles_for_organization(
-                state.pike_store.clone(),
+                store,
                 org_id,
                 service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use crate::{
     pike::store::{PikeStore, PikeStoreError},
@@ -22,8 +21,8 @@ use crate::{
 
 use super::payloads::{RoleListSlice, RoleSlice};
 
-pub async fn list_roles_for_organization(
-    store: Arc<dyn PikeStore>,
+pub fn list_roles_for_organization<'a>(
+    store: Box<dyn PikeStore + 'a>,
     org_id: String,
     service_id: Option<&str>,
     offset: u64,
@@ -53,8 +52,8 @@ pub async fn list_roles_for_organization(
     Ok(RoleListSlice { data, paging })
 }
 
-pub async fn get_role(
-    store: Arc<dyn PikeStore>,
+pub fn get_role<'a>(
+    store: Box<dyn PikeStore + 'a>,
     org_id: String,
     name: String,
     service_id: Option<&str>,

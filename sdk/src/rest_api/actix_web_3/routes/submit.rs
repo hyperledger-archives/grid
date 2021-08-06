@@ -29,15 +29,10 @@ async fn submit(
     key_state: web::Data<KeyState>,
     version: ProtocolVersion,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_batch_store();
     match version {
         ProtocolVersion::V1(payload) => {
-            match submit_batches(
-                &key_state.key_file_name,
-                store_state.batch_store.clone(),
-                payload,
-            )
-            .await
-            {
+            match submit_batches(&key_state.key_file_name, store, payload) {
                 Ok(res) => HttpResponse::Accepted().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())

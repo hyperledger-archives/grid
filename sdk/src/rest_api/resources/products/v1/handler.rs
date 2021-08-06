@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use crate::{
     product::store::{ProductStore, ProductStoreError},
@@ -22,8 +21,8 @@ use crate::{
 
 use super::payloads::{ProductListSlice, ProductSlice};
 
-pub async fn list_products(
-    store: Arc<dyn ProductStore>,
+pub fn list_products<'a>(
+    store: Box<dyn ProductStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -56,8 +55,8 @@ pub async fn list_products(
     Ok(ProductListSlice { data, paging })
 }
 
-pub async fn get_product(
-    store: Arc<dyn ProductStore>,
+pub fn get_product<'a>(
+    store: Box<dyn ProductStore + 'a>,
     product_id: String,
     service_id: Option<&str>,
 ) -> Result<ProductSlice, ErrorResponse> {

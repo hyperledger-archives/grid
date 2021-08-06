@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
@@ -27,8 +26,8 @@ use super::payloads::{
     PropertySlice, PropertyValueSlice, RecordListSlice, RecordSlice, StructPropertyValue,
 };
 
-pub async fn list_records(
-    store: Arc<dyn TrackAndTraceStore>,
+pub fn list_records<'a>(
+    store: Box<dyn TrackAndTraceStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -144,8 +143,8 @@ pub async fn list_records(
     Ok(RecordListSlice { data, paging })
 }
 
-pub async fn get_record(
-    store: Arc<dyn TrackAndTraceStore>,
+pub fn get_record<'a>(
+    store: Box<dyn TrackAndTraceStore + 'a>,
     record_id: String,
     service_id: Option<&str>,
 ) -> Result<RecordSlice, ErrorResponse> {
@@ -230,8 +229,8 @@ pub async fn get_record(
     ))
 }
 
-pub async fn get_record_property(
-    store: Arc<dyn TrackAndTraceStore>,
+pub fn get_record_property<'a>(
+    store: Box<dyn TrackAndTraceStore + 'a>,
     record_id: String,
     property_name: String,
     service_id: Option<&str>,
@@ -257,8 +256,9 @@ pub async fn get_record_property(
     parse_property_slice(&store, &property, &data_type, service_id)
 }
 
-fn parse_property_slice(
-    store: &Arc<dyn TrackAndTraceStore>,
+#[allow(clippy::borrowed_box)]
+fn parse_property_slice<'a>(
+    store: &Box<dyn TrackAndTraceStore + 'a>,
     property: &Property,
     data_type: &Option<String>,
     service_id: Option<&str>,

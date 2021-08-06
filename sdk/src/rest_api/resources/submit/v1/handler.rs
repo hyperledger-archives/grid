@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Instant;
 
 use crypto::digest::Digest;
@@ -37,9 +36,9 @@ const SABRE_NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
 const SABRE_CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 const SABRE_CONTRACT_PREFIX: &str = "00ec02";
 
-pub async fn submit_batches(
+pub fn submit_batches<'a>(
     key_file_name: &str,
-    batch_store: Arc<dyn BatchStore>,
+    store: Box<dyn BatchStore + 'a>,
     request: SubmitBatchRequest,
 ) -> Result<SubmitBatchResponse, ErrorResponse> {
     let private_key = load_key(key_file_name, &[PathBuf::from("/etc/grid/keys")])
@@ -59,7 +58,7 @@ pub async fn submit_batches(
     for db_batch in db_batches {
         let id = db_batch.header_signature.clone();
 
-        batch_store.add_batch(db_batch).map_err(|err| match err {
+        store.add_batch(db_batch).map_err(|err| match err {
             BatchStoreError::ConstraintViolationError(err) => {
                 ErrorResponse::new(400, &format!("{}", err))
             }

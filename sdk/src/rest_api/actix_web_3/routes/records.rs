@@ -24,21 +24,20 @@ use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[get("/record/{record_id}")]
 pub async fn get_record(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     record_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_track_and_trace_store();
     match version {
         ProtocolVersion::V1 => {
             match v1::get_record(
-                state.tnt_store.clone(),
+                store,
                 record_id.into_inner(),
                 query.into_inner().service_id.as_deref(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -52,24 +51,23 @@ pub async fn get_record(
 
 #[get("/record")]
 pub async fn list_records(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_track_and_trace_store();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             let service_id = query_service_id.into_inner().service_id;
             match v1::list_records(
-                state.tnt_store.clone(),
+                store,
                 service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -83,23 +81,22 @@ pub async fn list_records(
 
 #[get("/record/{record_id}/property/{property_name}")]
 pub async fn get_record_property_name(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     path_variables: web::Path<(String, String)>,
     query: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_track_and_trace_store();
     match version {
         ProtocolVersion::V1 => {
             let (record_id, property_name) = path_variables.into_inner();
             match v1::get_record_property(
-                state.tnt_store.clone(),
+                store,
                 record_id,
                 property_name,
                 query.into_inner().service_id.as_deref(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
