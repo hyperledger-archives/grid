@@ -70,10 +70,13 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let store_factory = create_store_factory(&connection_uri)
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let event_handler = DatabaseEventHandler::new(store_factory);
                 let evt_processor = EventProcessor::start(
                     sawtooth_connection,
                     current_commit.as_deref(),
-                    event_handlers![DatabaseEventHandler::from_pg_pool(connection_pool.clone())],
+                    event_handlers![event_handler],
                 )
                 .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
@@ -87,12 +90,13 @@ pub fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let store_factory = create_store_factory(&connection_uri)
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let event_handler = DatabaseEventHandler::new(store_factory);
                 let evt_processor = EventProcessor::start(
                     sawtooth_connection,
                     current_commit.as_deref(),
-                    event_handlers![DatabaseEventHandler::from_sqlite_pool(
-                        connection_pool.clone()
-                    )],
+                    event_handlers![event_handler],
                 )
                 .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 

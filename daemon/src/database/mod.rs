@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Cargill Incorporated
+ * Copyright 2019-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,15 +50,6 @@ impl<C: diesel::Connection> ConnectionPool<C> {
                 }
             })?,
         })
-    }
-
-    pub fn get(&self) -> Result<PooledConnection<ConnectionManager<C>>, DatabaseError> {
-        self.pool
-            .get()
-            .map_err(|err| DatabaseError::ConnectionError {
-                context: "Failed to get Connection from connection pool".to_string(),
-                source: Box::new(err),
-            })
     }
 }
 

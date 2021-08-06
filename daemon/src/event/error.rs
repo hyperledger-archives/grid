@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Cargill Incorporated
+ * Copyright 2019-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 
 use std::error::Error;
 use std::fmt;
+
+use grid_sdk::error::InternalError;
 
 use grid_sdk::commits::store::CommitStoreError;
 #[cfg(feature = "location")]
@@ -49,6 +51,12 @@ impl Error for EventError {}
 impl fmt::Display for EventError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Event Error: {}", self.0)
+    }
+}
+
+impl From<InternalError> for EventError {
+    fn from(err: InternalError) -> Self {
+        EventError(format!("{}", err))
     }
 }
 
