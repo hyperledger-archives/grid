@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ mod error;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselSchemaStore;
+pub use self::diesel::{DieselConnectionSchemaStore, DieselSchemaStore};
 pub use error::SchemaStoreError;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,7 +65,7 @@ impl SchemaList {
     }
 }
 
-pub trait SchemaStore: Send + Sync {
+pub trait SchemaStore {
     /// Adds a new schema to underlying storage
     ///
     /// # Arguments

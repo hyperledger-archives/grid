@@ -17,7 +17,7 @@ pub(in crate) mod diesel;
 mod error;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselCommitStore;
+pub use self::diesel::{DieselCommitStore, DieselConnectionCommitStore};
 pub use error::CommitStoreError;
 
 /// Represents a Grid commit
@@ -56,7 +56,7 @@ pub struct CommitEvent {
     pub state_changes: Vec<StateChange>,
 }
 
-pub trait CommitStore: Send + Sync {
+pub trait CommitStore {
     /// Adds an commit to the underlying storage
     ///
     /// # Arguments

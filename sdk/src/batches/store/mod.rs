@@ -22,7 +22,7 @@ use crate::hex;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselBatchStore;
+pub use self::diesel::{DieselBatchStore, DieselConnectionBatchStore};
 pub use error::BatchStoreError;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -123,7 +123,7 @@ impl BatchList {
     }
 }
 
-pub trait BatchStore: Send + Sync {
+pub trait BatchStore {
     /// Adds a batch to the underlying storage
     ///
     /// # Arguments

@@ -19,7 +19,7 @@ mod error;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselPurchaseOrderStore;
+pub use self::diesel::{DieselConnectionPurchaseOrderStore, DieselPurchaseOrderStore};
 pub use error::PurchaseOrderStoreError;
 
 /// Represents a list of Grid Purchase Orders
@@ -92,7 +92,7 @@ pub struct PurchaseOrderAlternateId {
     pub service_id: Option<String>,
 }
 
-pub trait PurchaseOrderStore: Send + Sync {
+pub trait PurchaseOrderStore {
     /// Adds a purchase order to the underlying storage
     ///
     /// # Arguments
