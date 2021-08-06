@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ pub mod error;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselProductStore;
+pub use self::diesel::{DieselConnectionProductStore, DieselProductStore};
 pub use error::{ProductBuilderError, ProductStoreError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -509,7 +509,7 @@ pub struct LatLongValue {
     pub longitude: i64,
 }
 
-pub trait ProductStore: Send + Sync {
+pub trait ProductStore {
     /// Adds a product to the underlying storage
     ///
     /// # Arguments
