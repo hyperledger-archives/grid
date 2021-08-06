@@ -24,21 +24,20 @@ use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[get("/product/{id}")]
 pub async fn get_product(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     product_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_product_store();
     match version {
         ProtocolVersion::V1 => {
             match v1::get_product(
-                state.product_store.clone(),
+                store,
                 product_id.into_inner(),
                 query.into_inner().service_id.as_deref(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -52,24 +51,23 @@ pub async fn get_product(
 
 #[get("/product")]
 pub async fn list_products(
-    state: web::Data<StoreState>,
+    store_state: web::Data<StoreState>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_product_store();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             let service_id = query_service_id.into_inner().service_id;
             match v1::list_products(
-                state.product_store.clone(),
+                store,
                 service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),
-            )
-            .await
-            {
+            ) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
