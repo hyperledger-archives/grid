@@ -191,3 +191,45 @@ pub trait BatchStore: Send + Sync {
     ///  * `id` - The id of the batch to update
     fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError>;
 }
+
+impl<BS> BatchStore for Box<BS>
+where
+    BS: BatchStore + ?Sized,
+{
+    fn add_batch(&self, batch: Batch) -> Result<(), BatchStoreError> {
+        (**self).add_batch(batch)
+    }
+
+    fn get_batch(&self, id: &str) -> Result<Option<Batch>, BatchStoreError> {
+        (**self).get_batch(id)
+    }
+
+    fn list_batches(&self, offset: i64, limit: i64) -> Result<BatchList, BatchStoreError> {
+        (**self).list_batches(offset, limit)
+    }
+
+    fn get_unclaimed_batches(
+        &self,
+        limit: i64,
+        secs_claim_is_valid: i64,
+    ) -> Result<Vec<BatchSubmitInfo>, BatchStoreError> {
+        (**self).get_unclaimed_batches(limit, secs_claim_is_valid)
+    }
+
+    fn change_batch_to_submitted(&self, id: &str) -> Result<(), BatchStoreError> {
+        (**self).change_batch_to_submitted(id)
+    }
+
+    fn update_submission_error_info(
+        &self,
+        id: &str,
+        error: &str,
+        error_message: &str,
+    ) -> Result<(), BatchStoreError> {
+        (**self).update_submission_error_info(id, error, error_message)
+    }
+
+    fn relinquish_claim(&self, id: &str) -> Result<(), BatchStoreError> {
+        (**self).relinquish_claim(id)
+    }
+}

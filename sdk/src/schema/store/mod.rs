@@ -136,3 +136,53 @@ pub trait SchemaStore: Send + Sync {
         service_id: Option<&str>,
     ) -> Result<Option<PropertyDefinition>, SchemaStoreError>;
 }
+
+impl<SS> SchemaStore for Box<SS>
+where
+    SS: SchemaStore + ?Sized,
+{
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
+        (**self).add_schema(schema)
+    }
+
+    fn get_schema(
+        &self,
+        name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Schema>, SchemaStoreError> {
+        (**self).get_schema(name, service_id)
+    }
+
+    fn list_schemas(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<SchemaList, SchemaStoreError> {
+        (**self).list_schemas(service_id, offset, limit)
+    }
+
+    fn list_property_definitions(
+        &self,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        (**self).list_property_definitions(service_id)
+    }
+
+    fn list_property_definitions_with_schema_name(
+        &self,
+        schema_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        (**self).list_property_definitions_with_schema_name(schema_name, service_id)
+    }
+
+    fn get_property_definition_by_name(
+        &self,
+        schema_name: &str,
+        definition_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
+        (**self).get_property_definition_by_name(schema_name, definition_name, service_id)
+    }
+}

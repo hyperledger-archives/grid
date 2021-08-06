@@ -569,3 +569,46 @@ pub trait ProductStore: Send + Sync {
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError>;
 }
+
+impl<PS> ProductStore for Box<PS>
+where
+    PS: ProductStore + ?Sized,
+{
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
+        (**self).add_product(product)
+    }
+
+    fn get_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Product>, ProductStoreError> {
+        (**self).get_product(product_id, service_id)
+    }
+
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
+        (**self).list_products(service_id, offset, limit)
+    }
+
+    fn update_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        (**self).update_product(product_id, service_id, current_commit_num)
+    }
+
+    fn delete_product(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        (**self).delete_product(address, current_commit_num)
+    }
+}
