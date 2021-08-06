@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ pub mod models;
 mod operations;
 pub(in crate) mod schema;
 
+use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::diesel::models::{
@@ -155,6 +156,100 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .delete_location(address, current_commit_num)
+    }
+}
+
+pub struct DieselConnectionLocationStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    connection: &'a C,
+}
+
+impl<'a, C> DieselConnectionLocationStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    pub fn new(connection: &'a C) -> Self {
+        DieselConnectionLocationStore { connection }
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl<'a> LocationStore for DieselConnectionLocationStore<'a, diesel::pg::PgConnection> {
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        let attributes = make_location_attribute_models(&location.attributes, None);
+        let current_commit_num = location.start_commit_num;
+        LocationStoreOperations::new(self.connection).add_location(
+            location.into(),
+            attributes,
+            current_commit_num,
+        )
+    }
+
+    fn get_location(
+        &self,
+        location_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Location>, LocationStoreError> {
+        LocationStoreOperations::new(self.connection).get_location(location_id, service_id)
+    }
+
+    fn list_locations(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError> {
+        LocationStoreOperations::new(self.connection).list_locations(service_id, offset, limit)
+    }
+
+    fn delete_location(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), LocationStoreError> {
+        LocationStoreOperations::new(self.connection).delete_location(address, current_commit_num)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl<'a> LocationStore for DieselConnectionLocationStore<'a, diesel::sqlite::SqliteConnection> {
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        let attributes = make_location_attribute_models(&location.attributes, None);
+        let current_commit_num = location.start_commit_num;
+        LocationStoreOperations::new(self.connection).add_location(
+            location.into(),
+            attributes,
+            current_commit_num,
+        )
+    }
+
+    fn get_location(
+        &self,
+        location_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Location>, LocationStoreError> {
+        LocationStoreOperations::new(self.connection).get_location(location_id, service_id)
+    }
+
+    fn list_locations(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<LocationList, LocationStoreError> {
+        LocationStoreOperations::new(self.connection).list_locations(service_id, offset, limit)
+    }
+
+    fn delete_location(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), LocationStoreError> {
+        LocationStoreOperations::new(self.connection).delete_location(address, current_commit_num)
     }
 }
 
