@@ -18,6 +18,7 @@ pub(in crate::commits) mod models;
 mod operations;
 pub(in crate) mod schema;
 
+use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{Commit, CommitEvent, CommitStore, CommitStoreError};
@@ -124,6 +125,98 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
     ) -> Result<Option<Commit>, CommitStoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get()?)
             .create_db_commit_from_commit_event(event)
+    }
+}
+
+pub struct DieselConnectionCommitStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    connection: &'a C,
+}
+
+impl<'a, C> DieselConnectionCommitStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    pub fn new(connection: &'a C) -> Self {
+        DieselConnectionCommitStore { connection }
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl<'a> CommitStore for DieselConnectionCommitStore<'a, diesel::pg::PgConnection> {
+    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
+        CommitStoreOperations::new(self.connection).add_commit(commit.into())
+    }
+
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+        CommitStoreOperations::new(self.connection).resolve_fork(commit_num)
+    }
+
+    fn get_commit_by_commit_num(
+        &self,
+        commit_num: i64,
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_commit_by_commit_num(commit_num)
+    }
+
+    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_current_commit_id()
+    }
+
+    fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_current_service_commits()
+    }
+
+    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_next_commit_num()
+    }
+
+    fn create_db_commit_from_commit_event(
+        &self,
+        event: &CommitEvent,
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).create_db_commit_from_commit_event(event)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl<'a> CommitStore for DieselConnectionCommitStore<'a, diesel::sqlite::SqliteConnection> {
+    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
+        CommitStoreOperations::new(self.connection).add_commit(commit.into())
+    }
+
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+        CommitStoreOperations::new(self.connection).resolve_fork(commit_num)
+    }
+
+    fn get_commit_by_commit_num(
+        &self,
+        commit_num: i64,
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_commit_by_commit_num(commit_num)
+    }
+
+    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_current_commit_id()
+    }
+
+    fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_current_service_commits()
+    }
+
+    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).get_next_commit_num()
+    }
+
+    fn create_db_commit_from_commit_event(
+        &self,
+        event: &CommitEvent,
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(self.connection).create_db_commit_from_commit_event(event)
     }
 }
 

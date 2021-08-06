@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ use operations::{
     list_schemas::ListSchemasOperation, SchemaStoreOperations,
 };
 
+use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{PropertyDefinition, Schema, SchemaList, SchemaStore, SchemaStoreError};
@@ -199,6 +200,130 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .get_property_definition_by_name(schema_name, definition_name, service_id)
+    }
+}
+
+pub struct DieselConnectionSchemaStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    connection: &'a C,
+}
+
+impl<'a, C> DieselConnectionSchemaStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    pub fn new(connection: &'a C) -> Self {
+        DieselConnectionSchemaStore { connection }
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl<'a> SchemaStore for DieselConnectionSchemaStore<'a, diesel::pg::PgConnection> {
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).add_schema(schema)
+    }
+
+    fn get_schema(
+        &self,
+        name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Schema>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).get_schema(name, service_id)
+    }
+
+    fn list_schemas(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<SchemaList, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).list_schemas(service_id, offset, limit)
+    }
+
+    fn list_property_definitions(
+        &self,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).list_property_definitions(service_id)
+    }
+
+    fn list_property_definitions_with_schema_name(
+        &self,
+        schema_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection)
+            .list_property_definitions_with_schema_name(schema_name, service_id)
+    }
+
+    fn get_property_definition_by_name(
+        &self,
+        schema_name: &str,
+        definition_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).get_property_definition_by_name(
+            schema_name,
+            definition_name,
+            service_id,
+        )
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl<'a> SchemaStore for DieselConnectionSchemaStore<'a, diesel::sqlite::SqliteConnection> {
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).add_schema(schema)
+    }
+
+    fn get_schema(
+        &self,
+        name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Schema>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).get_schema(name, service_id)
+    }
+
+    fn list_schemas(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<SchemaList, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).list_schemas(service_id, offset, limit)
+    }
+
+    fn list_property_definitions(
+        &self,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).list_property_definitions(service_id)
+    }
+
+    fn list_property_definitions_with_schema_name(
+        &self,
+        schema_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection)
+            .list_property_definitions_with_schema_name(schema_name, service_id)
+    }
+
+    fn get_property_definition_by_name(
+        &self,
+        schema_name: &str,
+        definition_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(self.connection).get_property_definition_by_name(
+            schema_name,
+            definition_name,
+            service_id,
+        )
     }
 }
 

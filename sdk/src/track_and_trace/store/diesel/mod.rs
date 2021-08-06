@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ pub mod models;
 mod operations;
 pub(in crate) mod schema;
 
+use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::diesel::models::{
@@ -453,6 +454,294 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
             )
         })?)
         .list_reporters(record_id, property_name, service_id)
+    }
+}
+
+pub struct DieselConnectionTrackAndTraceStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    connection: &'a C,
+}
+
+impl<'a, C> DieselConnectionTrackAndTraceStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    pub fn new(connection: &'a C) -> Self {
+        DieselConnectionTrackAndTraceStore { connection }
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl<'a> TrackAndTraceStore for DieselConnectionTrackAndTraceStore<'a, diesel::pg::PgConnection> {
+    fn add_associated_agents(
+        &self,
+        agents: Vec<AssociatedAgent>,
+    ) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_associated_agents(agents.iter().map(|a| a.clone().into()).collect())
+    }
+
+    fn add_properties(&self, properties: Vec<Property>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_properties(properties.into_iter().map(|p| p.into()).collect())
+    }
+
+    fn add_proposals(&self, proposals: Vec<Proposal>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_proposals(proposals.into_iter().map(|p| p.into()).collect())
+    }
+
+    fn add_records(&self, records: Vec<Record>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_records(records.into_iter().map(|r| r.into()).collect())
+    }
+
+    fn add_reported_values(
+        &self,
+        values: Vec<ReportedValue>,
+    ) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_reported_values(make_reported_value_models(&values, None))
+    }
+
+    fn add_reporters(&self, reporters: Vec<Reporter>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_reporters(reporters.into_iter().map(|r| r.into()).collect())
+    }
+
+    fn get_property_with_data_type(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).get_property_with_data_type(
+            record_id,
+            property_name,
+            service_id,
+        )
+    }
+
+    fn get_record(
+        &self,
+        record_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Record>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).get_record(record_id, service_id)
+    }
+
+    fn get_reported_value_reporter_to_agent_metadata(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        commit_height: Option<i64>,
+        service_id: Option<&str>,
+    ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .get_reported_value_reporter_to_agent_metadata(
+                record_id,
+                property_name,
+                commit_height,
+                service_id,
+            )
+    }
+
+    fn list_associated_agents(
+        &self,
+        record_ids: &[String],
+        service_id: Option<&str>,
+    ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .list_associated_agents(record_ids, service_id)
+    }
+
+    fn list_properties_with_data_type(
+        &self,
+        record_ids: &[String],
+        service_id: Option<&str>,
+    ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .list_properties_with_data_type(record_ids, service_id)
+    }
+
+    fn list_proposals(
+        &self,
+        record_ids: &[String],
+        service_id: Option<&str>,
+    ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).list_proposals(record_ids, service_id)
+    }
+
+    fn list_records(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).list_records(service_id, offset, limit)
+    }
+
+    fn list_reported_value_reporter_to_agent_metadata(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .list_reported_value_reporter_to_agent_metadata(record_id, property_name, service_id)
+    }
+
+    fn list_reporters(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).list_reporters(
+            record_id,
+            property_name,
+            service_id,
+        )
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStore
+    for DieselConnectionTrackAndTraceStore<'a, diesel::sqlite::SqliteConnection>
+{
+    fn add_associated_agents(
+        &self,
+        agents: Vec<AssociatedAgent>,
+    ) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_associated_agents(agents.iter().map(|a| a.clone().into()).collect())
+    }
+
+    fn add_properties(&self, properties: Vec<Property>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_properties(properties.into_iter().map(|p| p.into()).collect())
+    }
+
+    fn add_proposals(&self, proposals: Vec<Proposal>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_proposals(proposals.into_iter().map(|p| p.into()).collect())
+    }
+
+    fn add_records(&self, records: Vec<Record>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_records(records.into_iter().map(|r| r.into()).collect())
+    }
+
+    fn add_reported_values(
+        &self,
+        values: Vec<ReportedValue>,
+    ) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_reported_values(make_reported_value_models(&values, None))
+    }
+
+    fn add_reporters(&self, reporters: Vec<Reporter>) -> Result<(), TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .add_reporters(reporters.into_iter().map(|r| r.into()).collect())
+    }
+
+    fn get_property_with_data_type(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).get_property_with_data_type(
+            record_id,
+            property_name,
+            service_id,
+        )
+    }
+
+    fn get_record(
+        &self,
+        record_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Record>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).get_record(record_id, service_id)
+    }
+
+    fn get_reported_value_reporter_to_agent_metadata(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        commit_height: Option<i64>,
+        service_id: Option<&str>,
+    ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .get_reported_value_reporter_to_agent_metadata(
+                record_id,
+                property_name,
+                commit_height,
+                service_id,
+            )
+    }
+
+    fn list_associated_agents(
+        &self,
+        record_ids: &[String],
+        service_id: Option<&str>,
+    ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .list_associated_agents(record_ids, service_id)
+    }
+
+    fn list_properties_with_data_type(
+        &self,
+        record_ids: &[String],
+        service_id: Option<&str>,
+    ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .list_properties_with_data_type(record_ids, service_id)
+    }
+
+    fn list_proposals(
+        &self,
+        record_ids: &[String],
+        service_id: Option<&str>,
+    ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).list_proposals(record_ids, service_id)
+    }
+
+    fn list_records(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RecordList, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).list_records(service_id, offset, limit)
+    }
+
+    fn list_reported_value_reporter_to_agent_metadata(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection)
+            .list_reported_value_reporter_to_agent_metadata(record_id, property_name, service_id)
+    }
+
+    fn list_reporters(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
+        TrackAndTraceStoreOperations::new(self.connection).list_reporters(
+            record_id,
+            property_name,
+            service_id,
+        )
     }
 }
 

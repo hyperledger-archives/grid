@@ -25,6 +25,7 @@ pub mod models;
 mod operations;
 pub(in crate) mod schema;
 
+use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{
@@ -346,5 +347,201 @@ impl PikeStore for DieselPikeStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .delete_role(address, current_commit_num)
+    }
+}
+
+pub struct DieselConnectionPikeStore<'a, C: diesel::Connection + 'static>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    connection: &'a C,
+}
+
+impl<'a, C> DieselConnectionPikeStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    pub fn new(connection: &'a C) -> Self {
+        DieselConnectionPikeStore { connection }
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl<'a> PikeStore for DieselConnectionPikeStore<'a, diesel::pg::PgConnection> {
+    fn add_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection)
+            .add_agent(agent.clone().into(), make_role_association_models(&agent))
+    }
+
+    fn add_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection).add_role(
+            role.clone().into(),
+            make_inherit_from_models(&role),
+            make_permissions_models(&role),
+            make_allowed_orgs_models(&role),
+        )
+    }
+
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).list_agents(service_id, offset, limit)
+    }
+
+    fn list_roles_for_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RoleList, PikeStoreError> {
+        PikeStoreOperations::new(self.connection)
+            .list_roles_for_organization(org_id, service_id, offset, limit)
+    }
+
+    fn get_agent(
+        &self,
+        pub_key: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Agent>, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).get_agent(pub_key, service_id)
+    }
+
+    fn get_role(
+        &self,
+        name: &str,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Role>, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).get_role(name, org_id, service_id)
+    }
+
+    fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection)
+            .update_agent(agent.clone().into(), make_role_association_models(&agent))
+    }
+
+    fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection).add_organization(
+            org.clone().into(),
+            make_location_association_models(&org),
+            make_alternate_id_models(&org),
+            make_org_metadata_models(&org),
+        )
+    }
+
+    fn list_organizations(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).list_organizations(service_id, offset, limit)
+    }
+
+    fn get_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Organization>, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).get_organization(org_id, service_id)
+    }
+
+    fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection).delete_role(address, current_commit_num)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl<'a> PikeStore for DieselConnectionPikeStore<'a, diesel::sqlite::SqliteConnection> {
+    fn add_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection)
+            .add_agent(agent.clone().into(), make_role_association_models(&agent))
+    }
+
+    fn add_role(&self, role: Role) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection).add_role(
+            role.clone().into(),
+            make_inherit_from_models(&role),
+            make_permissions_models(&role),
+            make_allowed_orgs_models(&role),
+        )
+    }
+
+    fn list_agents(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<AgentList, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).list_agents(service_id, offset, limit)
+    }
+
+    fn list_roles_for_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<RoleList, PikeStoreError> {
+        PikeStoreOperations::new(self.connection)
+            .list_roles_for_organization(org_id, service_id, offset, limit)
+    }
+
+    fn get_agent(
+        &self,
+        pub_key: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Agent>, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).get_agent(pub_key, service_id)
+    }
+
+    fn get_role(
+        &self,
+        name: &str,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Role>, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).get_role(name, org_id, service_id)
+    }
+
+    fn update_agent(&self, agent: Agent) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection)
+            .update_agent(agent.clone().into(), make_role_association_models(&agent))
+    }
+
+    fn add_organization(&self, org: Organization) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection).add_organization(
+            org.clone().into(),
+            make_location_association_models(&org),
+            make_alternate_id_models(&org),
+            make_org_metadata_models(&org),
+        )
+    }
+
+    fn list_organizations(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<OrganizationList, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).list_organizations(service_id, offset, limit)
+    }
+
+    fn get_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Organization>, PikeStoreError> {
+        PikeStoreOperations::new(self.connection).get_organization(org_id, service_id)
+    }
+
+    fn delete_role(&self, address: &str, current_commit_num: i64) -> Result<(), PikeStoreError> {
+        PikeStoreOperations::new(self.connection).delete_role(address, current_commit_num)
     }
 }
