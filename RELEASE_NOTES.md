@@ -1,5 +1,28 @@
 # Release Notes
 
+## Changes in Grid 0.2.2
+
+### Highlights
+
+* Fixes a bug that was causing duplicate events to propagate to the Grid
+  database. If gridd was shut down and started back up, another websocket
+  connection would be created between Splinter and Grid, but the original
+  websocket would also reconnect. State delta functionality would then put a new
+  record in the database for each event it received simultaneously, leading to
+  multiple identical records in the database. This release fixes that bug by
+  serializing the processing of events and ensuring that we only have one
+  event processor per service.
+
+### gridd
+
+* Add an early return in the event handler after we detect a duplicate commit,
+  so that we stop processing the event after that point.
+
+* Serialize splinter commit event processing.
+
+* Add an EventProcessors collection, which ensures that only a single event
+  processor on a given circuit/service connection is only created once.
+
 ## Changes in Grid 0.2
 
 ### Highlights
