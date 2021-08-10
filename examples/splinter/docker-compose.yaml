@@ -214,7 +214,6 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
         grid -vv keygen --system --skip && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-alpha/grid &&
@@ -343,7 +342,6 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
         grid -vv keygen --system --skip && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-beta/grid &&
@@ -471,7 +469,6 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
         grid -vv keygen --system --skip && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-gamma/grid &&

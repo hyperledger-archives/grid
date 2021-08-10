@@ -83,14 +83,13 @@ sqlite = [
     "diesel/sqlite",
 ]
 
-admin-keygen = []
 location = ["pike", "schema"]
 pike = []
 product = ["pike", "schema"]
 purchase-order = []
 sawtooth = []
 schema = ["pike"]
-splinter = ["admin-keygen"]
+splinter = []
 
 [package.metadata.deb]
 maintainer = "The Hyperledger Grid Team"
