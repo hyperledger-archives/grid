@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
@@ -22,8 +21,8 @@ use crate::{
 
 use super::payloads::{SchemaListSlice, SchemaSlice};
 
-pub async fn list_schemas(
-    store: Arc<dyn SchemaStore>,
+pub fn list_schemas<'a>(
+    store: Box<dyn SchemaStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -56,8 +55,8 @@ pub async fn list_schemas(
     Ok(SchemaListSlice { data, paging })
 }
 
-pub async fn get_schema(
-    store: Arc<dyn SchemaStore>,
+pub fn get_schema<'a>(
+    store: Box<dyn SchemaStore + 'a>,
     name: String,
     service_id: Option<&str>,
 ) -> Result<SchemaSlice, ErrorResponse> {

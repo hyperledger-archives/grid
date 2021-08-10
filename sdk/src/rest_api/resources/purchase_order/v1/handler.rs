@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use crate::{
     purchase_order::store::{PurchaseOrderStore, PurchaseOrderStoreError},
@@ -22,8 +21,8 @@ use crate::{
 
 use super::payloads::{PurchaseOrderListSlice, PurchaseOrderSlice};
 
-pub async fn list_purchase_orders(
-    store: Arc<dyn PurchaseOrderStore>,
+pub fn list_purchase_orders<'a>(
+    store: Box<dyn PurchaseOrderStore + 'a>,
     org_id: Option<String>,
     service_id: Option<&str>,
     offset: u64,
@@ -61,8 +60,8 @@ pub async fn list_purchase_orders(
     Ok(PurchaseOrderListSlice { data, paging })
 }
 
-pub async fn get_purchase_order(
-    store: Arc<dyn PurchaseOrderStore>,
+pub fn get_purchase_order<'a>(
+    store: Box<dyn PurchaseOrderStore + 'a>,
     uuid: String,
     service_id: Option<&str>,
 ) -> Result<PurchaseOrderSlice, ErrorResponse> {

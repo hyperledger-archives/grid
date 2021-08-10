@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ mod error;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselLocationStore;
+pub use self::diesel::{DieselConnectionLocationStore, DieselLocationStore};
 pub use error::LocationStoreError;
 
 /// Represents a Grid Location
@@ -75,7 +75,7 @@ pub struct LatLong;
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct LatLongValue(pub i64, pub i64);
 
-pub trait LocationStore: Send + Sync {
+pub trait LocationStore {
     /// Adds a location to the underlying storage
     ///
     /// # Arguments

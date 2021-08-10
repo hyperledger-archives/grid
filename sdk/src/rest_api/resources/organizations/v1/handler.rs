@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 use crate::{
     pike::store::{PikeStore, PikeStoreError},
@@ -22,8 +21,8 @@ use crate::{
 
 use super::payloads::{OrganizationListSlice, OrganizationSlice};
 
-pub async fn list_organizations(
-    store: Arc<dyn PikeStore>,
+pub fn list_organizations<'a>(
+    store: Box<dyn PikeStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -56,8 +55,8 @@ pub async fn list_organizations(
     Ok(OrganizationListSlice { data, paging })
 }
 
-pub async fn get_organization(
-    store: Arc<dyn PikeStore>,
+pub fn get_organization<'a>(
+    store: Box<dyn PikeStore + 'a>,
     org_id: String,
     service_id: Option<&str>,
 ) -> Result<OrganizationSlice, ErrorResponse> {

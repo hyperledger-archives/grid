@@ -33,7 +33,7 @@ mod error;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselPikeStore;
+pub use self::diesel::{DieselConnectionPikeStore, DieselPikeStore};
 pub use builder::{
     AgentBuilder, AlternateIdBuilder, OrganizationBuilder, OrganizationMetadataBuilder, RoleBuilder,
 };
@@ -352,7 +352,7 @@ impl OrganizationMetadata {
     }
 }
 
-pub trait PikeStore: Send + Sync {
+pub trait PikeStore {
     /// Adds an agent to the underlying storage
     ///
     /// # Arguments

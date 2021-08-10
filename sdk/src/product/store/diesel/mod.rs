@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ use operations::{
     update_product::UpdateProductOperation, ProductStoreOperations,
 };
 
+use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{Product, ProductList, ProductStore, ProductStoreError};
@@ -168,5 +169,113 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
             )
         })?)
         .delete_product(address, current_commit_num)
+    }
+}
+
+pub struct DieselConnectionProductStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    connection: &'a C,
+}
+
+impl<'a, C> DieselConnectionProductStore<'a, C>
+where
+    C: diesel::Connection<TransactionManager = AnsiTransactionManager> + 'static,
+    C::Backend: diesel::backend::UsesAnsiSavepointSyntax,
+{
+    pub fn new(connection: &'a C) -> Self {
+        DieselConnectionProductStore { connection }
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl<'a> ProductStore for DieselConnectionProductStore<'a, diesel::pg::PgConnection> {
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
+        ProductStoreOperations::new(self.connection).add_product(product)
+    }
+
+    fn get_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Product>, ProductStoreError> {
+        ProductStoreOperations::new(self.connection).get_product(product_id, service_id)
+    }
+
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
+        ProductStoreOperations::new(self.connection).list_products(service_id, offset, limit)
+    }
+
+    fn update_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        ProductStoreOperations::new(self.connection).update_product(
+            product_id,
+            service_id,
+            current_commit_num,
+        )
+    }
+
+    fn delete_product(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        ProductStoreOperations::new(self.connection).delete_product(address, current_commit_num)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl<'a> ProductStore for DieselConnectionProductStore<'a, diesel::sqlite::SqliteConnection> {
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
+        ProductStoreOperations::new(self.connection).add_product(product)
+    }
+
+    fn get_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Product>, ProductStoreError> {
+        ProductStoreOperations::new(self.connection).get_product(product_id, service_id)
+    }
+
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
+        ProductStoreOperations::new(self.connection).list_products(service_id, offset, limit)
+    }
+
+    fn update_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        ProductStoreOperations::new(self.connection).update_product(
+            product_id,
+            service_id,
+            current_commit_num,
+        )
+    }
+
+    fn delete_product(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        ProductStoreOperations::new(self.connection).delete_product(address, current_commit_num)
     }
 }

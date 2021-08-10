@@ -39,7 +39,7 @@ use grid_sdk::rest_api::actix_web_3::Endpoint;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_3::KeyState;
 use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
-use grid_sdk::store::ConnectionUri;
+use grid_sdk::store::{create_store_factory, ConnectionUri};
 use splinter::events::Reactor;
 
 use crate::config::GridConfig;
@@ -108,6 +108,9 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let store_factory = create_store_factory(&connection_uri)
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let event_handler = DatabaseEventHandler::new(store_factory);
 
                 let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
                 let commits = commit_store
@@ -115,8 +118,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
                 (
-                    StoreState::with_pg_pool(connection_pool.pool.clone()),
-                    Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
+                    StoreState::with_pg_pool(connection_pool.pool),
+                    Box::new(event_handler),
                     commits,
                 )
             }
@@ -125,6 +128,9 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                 let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
                     ConnectionPool::new(config.database_url())
                         .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let store_factory = create_store_factory(&connection_uri)
+                    .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+                let event_handler = DatabaseEventHandler::new(store_factory);
 
                 let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
                 let commits = commit_store
@@ -132,8 +138,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
                 (
-                    StoreState::with_sqlite_pool(connection_pool.pool.clone()),
-                    Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
+                    StoreState::with_sqlite_pool(connection_pool.pool),
+                    Box::new(event_handler),
                     commits,
                 )
             }

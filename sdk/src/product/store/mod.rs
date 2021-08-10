@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2021 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ pub mod error;
 use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
-pub use self::diesel::DieselProductStore;
+pub use self::diesel::{DieselConnectionProductStore, DieselProductStore};
 pub use error::{ProductBuilderError, ProductStoreError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -509,7 +509,7 @@ pub struct LatLongValue {
     pub longitude: i64,
 }
 
-pub trait ProductStore: Send + Sync {
+pub trait ProductStore {
     /// Adds a product to the underlying storage
     ///
     /// # Arguments
@@ -568,4 +568,47 @@ pub trait ProductStore: Send + Sync {
         address: &str,
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError>;
+}
+
+impl<PS> ProductStore for Box<PS>
+where
+    PS: ProductStore + ?Sized,
+{
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
+        (**self).add_product(product)
+    }
+
+    fn get_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Product>, ProductStoreError> {
+        (**self).get_product(product_id, service_id)
+    }
+
+    fn list_products(
+        &self,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<ProductList, ProductStoreError> {
+        (**self).list_products(service_id, offset, limit)
+    }
+
+    fn update_product(
+        &self,
+        product_id: &str,
+        service_id: Option<&str>,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        (**self).update_product(product_id, service_id, current_commit_num)
+    }
+
+    fn delete_product(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), ProductStoreError> {
+        (**self).delete_product(address, current_commit_num)
+    }
 }

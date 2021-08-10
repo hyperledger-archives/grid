@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Cargill Incorporated
+ * Copyright 2019-2021 Cargill Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  * -----------------------------------------------------------------------------
  */
 
-use diesel::Connection;
-use grid_sdk::commits::{store::CommitEvent as DbCommitEvent, CommitStore, DieselCommitStore};
 #[cfg(any(feature = "location", feature = "product"))]
 use grid_sdk::protocol::schema::state::PropertyValue;
 #[cfg(any(
@@ -26,14 +24,15 @@ use grid_sdk::protocol::schema::state::PropertyValue;
     feature = "location"
 ))]
 use grid_sdk::protos::FromBytes;
+use grid_sdk::{
+    commits::{store::CommitEvent as DbCommitEvent, CommitStore},
+    store::TransactionalStoreFactory,
+};
 #[cfg(feature = "location")]
 use grid_sdk::{
     location::{
         addressing::GRID_LOCATION_NAMESPACE,
-        store::{
-            DieselLocationStore, LatLongValue as LocationLatLongValue, Location, LocationAttribute,
-            LocationStore,
-        },
+        store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute, LocationStore},
     },
     protocol::location::state::LocationList,
 };
@@ -46,7 +45,7 @@ use grid_sdk::{
             GRID_PIKE_ROLE_NAMESPACE,
         },
         store::{
-            Agent, AgentBuilder, AlternateId, AlternateIdBuilder, DieselPikeStore, Organization,
+            Agent, AgentBuilder, AlternateId, AlternateIdBuilder, Organization,
             OrganizationBuilder, OrganizationMetadata, OrganizationMetadataBuilder, PikeStore,
             Role, RoleBuilder,
         },
@@ -58,8 +57,8 @@ use grid_sdk::{
     product::{
         addressing::GRID_PRODUCT_NAMESPACE,
         store::{
-            DieselProductStore, LatLongValue as ProductLatLongValue, Product, ProductBuilder,
-            ProductStore, PropertyValue as ProductPropertyValue,
+            LatLongValue as ProductLatLongValue, Product, ProductBuilder, ProductStore,
+            PropertyValue as ProductPropertyValue,
             PropertyValueBuilder as ProductPropertyValueBuilder,
         },
     },
@@ -77,8 +76,8 @@ use grid_sdk::{
             TRACK_AND_TRACE_RECORD_NAMESPACE,
         },
         store::{
-            AssociatedAgent, DieselTrackAndTraceStore, LatLongValue as TntLatLongValue, Property,
-            Proposal, Record, ReportedValue as StoreReportedValue, Reporter, TrackAndTraceStore,
+            AssociatedAgent, LatLongValue as TntLatLongValue, Property, Proposal, Record,
+            ReportedValue as StoreReportedValue, Reporter, TrackAndTraceStore,
         },
     },
 };
@@ -87,16 +86,12 @@ use grid_sdk::{
     protocol::schema::state::{PropertyDefinition, SchemaList},
     schema::{
         addressing::GRID_SCHEMA_NAMESPACE,
-        store::{
-            DieselSchemaStore, PropertyDefinition as StorePropertyDefinition, Schema, SchemaStore,
-        },
+        store::{PropertyDefinition as StorePropertyDefinition, Schema, SchemaStore},
     },
 };
 #[cfg(feature = "pike")]
 use std::collections::HashMap;
 use std::i64;
-
-use crate::database::ConnectionPool;
 
 use super::{CommitEvent, EventError, EventHandler, StateChange, IGNORED_NAMESPACES};
 
@@ -108,75 +103,42 @@ use super::{CommitEvent, EventError, EventHandler, StateChange, IGNORED_NAMESPAC
 ))]
 pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 
-pub struct DatabaseEventHandler<C: diesel::Connection + 'static> {
-    connection_pool: ConnectionPool<C>,
-    commit_store: DieselCommitStore<C>,
-    #[cfg(feature = "pike")]
-    pike_store: DieselPikeStore<C>,
-    #[cfg(feature = "location")]
-    location_store: DieselLocationStore<C>,
-    #[cfg(feature = "product")]
-    product_store: DieselProductStore<C>,
-    #[cfg(feature = "schema")]
-    schema_store: DieselSchemaStore<C>,
-    #[cfg(feature = "track-and-trace")]
-    tnt_store: DieselTrackAndTraceStore<C>,
+pub struct DatabaseEventHandler {
+    store_factory: Box<dyn TransactionalStoreFactory>,
 }
 
-#[cfg(feature = "database-postgres")]
-impl DatabaseEventHandler<diesel::pg::PgConnection> {
-    pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> Self {
-        let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "pike")]
-        let pike_store = DieselPikeStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "location")]
-        let location_store = DieselLocationStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "product")]
-        let product_store = DieselProductStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "schema")]
-        let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "track-and-trace")]
-        let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
+impl Clone for DatabaseEventHandler {
+    fn clone(&self) -> Self {
+        let store_factory = self.store_factory.clone_box();
 
-        Self {
-            connection_pool,
-            commit_store,
-            #[cfg(feature = "pike")]
-            pike_store,
-            #[cfg(feature = "location")]
-            location_store,
-            #[cfg(feature = "product")]
-            product_store,
-            #[cfg(feature = "schema")]
-            schema_store,
-            #[cfg(feature = "track-and-trace")]
-            tnt_store,
-        }
+        Self { store_factory }
     }
 }
 
-#[cfg(feature = "database-postgres")]
-impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
+impl DatabaseEventHandler {
+    pub fn new(store_factory: Box<dyn TransactionalStoreFactory>) -> Self {
+        Self { store_factory }
+    }
+}
+
+impl EventHandler for DatabaseEventHandler {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
         debug!("Received commit event: {}", event);
 
-        let conn = self
-            .connection_pool
-            .get()
-            .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
+        let txn = self
+            .store_factory
+            .begin_transaction()
+            .map_err(|err| EventError(format!("Unable to start database transaction: {}", err)))?;
 
-        conn.build_transaction().run::<_, EventError, _>(|| {
-            let commit = if let Some(commit) = self
-                .commit_store
+        let try_handle_event = || {
+            let commit = txn
+                .get_grid_commit_store()
                 .create_db_commit_from_commit_event(&DbCommitEvent::from(event))
                 .map_err(|err| EventError(format!("{}", err)))?
-            {
-                commit
-            } else {
-                return Err(EventError(
-                    "Commit could not be constructed from event data".to_string(),
-                ));
-            };
+                .ok_or_else(|| {
+                    EventError("Commit could not be constructed from event data".into())
+                })?;
+
             let db_ops = create_db_operations_from_state_changes(
                 &event.state_changes,
                 commit.commit_num,
@@ -184,32 +146,30 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
             )?;
 
             trace!("The following operations will be performed: {:#?}", db_ops);
-
-            match self
-                .commit_store
-                .get_commit_by_commit_num(commit.commit_num)
+            match txn
+                .get_grid_commit_store()
+                .get_commit_by_commit_num(commit.commit_num)?
             {
-                Ok(Some(ref b)) if b.commit_id != commit.commit_id => {
-                    self.commit_store.resolve_fork(commit.commit_num)?;
+                Some(ref b) if b.commit_id != commit.commit_id => {
+                    txn.get_grid_commit_store()
+                        .resolve_fork(commit.commit_num)?;
                     info!(
                         "Fork detected. Replaced {} at height {}, with commit {}.",
                         &b.commit_id, &b.commit_num, &commit.commit_id
                     );
-                    self.commit_store.add_commit(commit)?;
+                    txn.get_grid_commit_store().add_commit(commit)?;
                 }
-                Ok(Some(_)) => {
+                Some(_) => {
                     info!(
                         "Commit {} at height {} is duplicate no action taken",
                         &commit.commit_id, commit.commit_num
                     );
-                    return Ok(());
+
+                    return Ok(false);
                 }
-                Ok(None) => {
+                None => {
                     info!("Received new commit {}", commit.commit_id);
-                    self.commit_store.add_commit(commit)?;
-                }
-                Err(err) => {
-                    return Err(EventError::from(err));
+                    txn.get_grid_commit_store().add_commit(commit)?;
                 }
             }
 
@@ -220,276 +180,108 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                         debug!("Inserting {} agent(s)", agents.len());
                         agents
                             .into_iter()
-                            .try_for_each(|agent| self.pike_store.add_agent(agent))?;
+                            .try_for_each(|agent| txn.get_grid_pike_store().add_agent(agent))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Organizations(orgs) => {
                         debug!("Inserting {} organization(s)", orgs.len());
                         orgs.into_iter()
-                            .try_for_each(|org| self.pike_store.add_organization(org))?;
+                            .try_for_each(|org| txn.get_grid_pike_store().add_organization(org))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::Roles(roles) => {
                         debug!("Inserting {} role(s)", roles.len());
                         roles
                             .into_iter()
-                            .try_for_each(|role| self.pike_store.add_role(role))?;
+                            .try_for_each(|role| txn.get_grid_pike_store().add_role(role))?;
                     }
                     #[cfg(feature = "pike")]
                     DbInsertOperation::RemoveRole(ref address, current_commit_num) => {
                         debug!("Removing role at address {}", address);
-                        self.pike_store.delete_role(address, current_commit_num)?;
+                        txn.get_grid_pike_store()
+                            .delete_role(address, current_commit_num)?;
                     }
                     #[cfg(feature = "schema")]
                     DbInsertOperation::GridSchemas(schemas) => {
                         debug!("Inserting {} schemas", schemas.len());
-                        schemas
-                            .into_iter()
-                            .try_for_each(|schema| self.schema_store.add_schema(schema))?;
+                        schemas.into_iter().try_for_each(|schema| {
+                            txn.get_grid_schema_store().add_schema(schema)
+                        })?;
                     }
                     #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Properties(properties, reporters) => {
                         debug!("Inserting {} properties", properties.len());
-                        self.tnt_store.add_properties(properties)?;
+                        txn.get_grid_track_and_trace_store()
+                            .add_properties(properties)?;
                         debug!("Inserting {} reporters", reporters.len());
-                        self.tnt_store.add_reporters(reporters)?;
+                        txn.get_grid_track_and_trace_store()
+                            .add_reporters(reporters)?;
                     }
                     #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::ReportedValues(reported_values) => {
                         debug!("Inserting {} reported values", reported_values.len());
-                        self.tnt_store.add_reported_values(reported_values)?;
+                        txn.get_grid_track_and_trace_store()
+                            .add_reported_values(reported_values)?;
                     }
                     #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Proposals(proposals) => {
                         debug!("Inserting {} proposals", proposals.len());
-                        self.tnt_store.add_proposals(proposals)?;
+                        txn.get_grid_track_and_trace_store()
+                            .add_proposals(proposals)?;
                     }
                     #[cfg(feature = "track-and-trace")]
                     DbInsertOperation::Records(records, associated_agents) => {
                         debug!("Inserting {} records", records.len());
-                        self.tnt_store.add_records(records)?;
+                        txn.get_grid_track_and_trace_store().add_records(records)?;
                         debug!("Inserting {} associated agents", associated_agents.len());
-                        self.tnt_store.add_associated_agents(associated_agents)?;
+                        txn.get_grid_track_and_trace_store()
+                            .add_associated_agents(associated_agents)?;
                     }
                     #[cfg(feature = "location")]
                     DbInsertOperation::Locations(locations) => {
                         debug!("Inserting {} locations", locations.len());
-                        locations
-                            .into_iter()
-                            .try_for_each(|location| self.location_store.add_location(location))?;
+                        locations.into_iter().try_for_each(|location| {
+                            txn.get_grid_location_store().add_location(location)
+                        })?;
                     }
                     #[cfg(feature = "location")]
                     DbInsertOperation::RemoveLocation(ref address, current_commit_num) => {
-                        self.location_store
+                        txn.get_grid_location_store()
                             .delete_location(address, current_commit_num)?;
                     }
                     #[cfg(feature = "product")]
                     DbInsertOperation::Products(products) => {
                         debug!("Inserting {} products", products.len());
-                        products
-                            .into_iter()
-                            .try_for_each(|product| self.product_store.add_product(product))?;
+                        products.into_iter().try_for_each(|product| {
+                            txn.get_grid_product_store().add_product(product)
+                        })?;
                     }
                     #[cfg(feature = "product")]
                     DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
-                        self.product_store
+                        txn.get_grid_product_store()
                             .delete_product(address, current_commit_num)?;
                     }
                 };
             }
+            Ok(true) as Result<_, EventError>
+        };
 
-            Ok(())
-        })
-    }
-
-    fn cloned_box(&self) -> Box<dyn EventHandler> {
-        Box::new(Self::from_pg_pool(self.connection_pool.clone()))
-    }
-}
-
-#[cfg(feature = "database-sqlite")]
-impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
-    pub fn from_sqlite_pool(
-        connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
-    ) -> Self {
-        let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "pike")]
-        let pike_store = DieselPikeStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "location")]
-        let location_store = DieselLocationStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "product")]
-        let product_store = DieselProductStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "schema")]
-        let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
-        #[cfg(feature = "track-and-trace")]
-        let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
-
-        Self {
-            connection_pool,
-            commit_store,
-            #[cfg(feature = "pike")]
-            pike_store,
-            #[cfg(feature = "location")]
-            location_store,
-            #[cfg(feature = "product")]
-            product_store,
-            #[cfg(feature = "schema")]
-            schema_store,
-            #[cfg(feature = "track-and-trace")]
-            tnt_store,
+        match try_handle_event() {
+            Ok(true) => txn.commit().map_err(|err| EventError(err.to_string()))?,
+            Ok(false) => txn.rollback().map_err(|err| EventError(err.to_string()))?,
+            Err(err) => {
+                if let Err(e) = txn.rollback() {
+                    error!("Rollback failed: {}", e);
+                }
+                return Err(err);
+            }
         }
-    }
-}
 
-#[cfg(feature = "database-sqlite")]
-impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
-    fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
-        debug!("Received commit event: {}", event);
-
-        let conn = self
-            .connection_pool
-            .get()
-            .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
-
-        conn.transaction::<_, EventError, _>(|| {
-            let commit = if let Some(commit) = self
-                .commit_store
-                .create_db_commit_from_commit_event(&DbCommitEvent::from(event))
-                .map_err(|err| EventError(format!("{}", err)))?
-            {
-                commit
-            } else {
-                return Err(EventError(
-                    "Commit could not be constructed from event data".to_string(),
-                ));
-            };
-            let db_ops = create_db_operations_from_state_changes(
-                &event.state_changes,
-                commit.commit_num,
-                commit.service_id.as_ref(),
-            )?;
-
-            trace!("The following operations will be performed: {:#?}", db_ops);
-
-            match self
-                .commit_store
-                .get_commit_by_commit_num(commit.commit_num)
-            {
-                Ok(Some(ref b)) if b.commit_id != commit.commit_id => {
-                    self.commit_store.resolve_fork(commit.commit_num)?;
-                    info!(
-                        "Fork detected. Replaced {} at height {}, with commit {}.",
-                        &b.commit_id, &b.commit_num, &commit.commit_id
-                    );
-                    self.commit_store.add_commit(commit)?;
-                }
-                Ok(Some(_)) => {
-                    info!(
-                        "Commit {} at height {} is duplicate no action taken",
-                        &commit.commit_id, commit.commit_num
-                    );
-                }
-                Ok(None) => {
-                    info!("Received new commit {}", commit.commit_id);
-                    self.commit_store.add_commit(commit)?;
-                }
-                Err(err) => {
-                    return Err(EventError::from(err));
-                }
-            }
-
-            for op in db_ops {
-                match op {
-                    #[cfg(feature = "pike")]
-                    DbInsertOperation::Agents(agents) => {
-                        debug!("Inserting {} agent(s)", agents.len());
-                        agents
-                            .into_iter()
-                            .try_for_each(|agent| self.pike_store.add_agent(agent))?;
-                    }
-                    #[cfg(feature = "pike")]
-                    DbInsertOperation::Organizations(orgs) => {
-                        debug!("Inserting {} organization(s)", orgs.len());
-                        orgs.into_iter()
-                            .try_for_each(|org| self.pike_store.add_organization(org))?;
-                    }
-                    #[cfg(feature = "pike")]
-                    DbInsertOperation::Roles(roles) => {
-                        debug!("Inserting {} role(s)", roles.len());
-                        roles
-                            .into_iter()
-                            .try_for_each(|role| self.pike_store.add_role(role))?;
-                    }
-                    #[cfg(feature = "pike")]
-                    DbInsertOperation::RemoveRole(ref address, current_commit_num) => {
-                        debug!("Removing role at address {}", &address);
-                        self.pike_store.delete_role(address, current_commit_num)?;
-                    }
-
-                    #[cfg(feature = "schema")]
-                    DbInsertOperation::GridSchemas(schemas) => {
-                        debug!("Inserting {} schemas", schemas.len());
-                        schemas
-                            .into_iter()
-                            .try_for_each(|schema| self.schema_store.add_schema(schema))?;
-                    }
-                    #[cfg(feature = "track-and-trace")]
-                    DbInsertOperation::Properties(properties, reporters) => {
-                        debug!("Inserting {} properties", properties.len());
-                        self.tnt_store.add_properties(properties)?;
-                        debug!("Inserting {} reporters", reporters.len());
-                        self.tnt_store.add_reporters(reporters)?;
-                    }
-                    #[cfg(feature = "track-and-trace")]
-                    DbInsertOperation::ReportedValues(reported_values) => {
-                        debug!("Inserting {} reported values", reported_values.len());
-                        self.tnt_store.add_reported_values(reported_values)?;
-                    }
-                    #[cfg(feature = "track-and-trace")]
-                    DbInsertOperation::Proposals(proposals) => {
-                        debug!("Inserting {} proposals", proposals.len());
-                        self.tnt_store.add_proposals(proposals)?;
-                    }
-                    #[cfg(feature = "track-and-trace")]
-                    DbInsertOperation::Records(records, associated_agents) => {
-                        debug!("Inserting {} records", records.len());
-                        self.tnt_store.add_records(records)?;
-                        debug!("Inserting {} associated agents", associated_agents.len());
-                        self.tnt_store.add_associated_agents(associated_agents)?;
-                    }
-                    #[cfg(feature = "location")]
-                    DbInsertOperation::Locations(locations) => {
-                        debug!("Inserting {} locations", locations.len());
-                        locations
-                            .into_iter()
-                            .try_for_each(|location| self.location_store.add_location(location))?;
-                    }
-                    #[cfg(feature = "location")]
-                    DbInsertOperation::RemoveLocation(ref address, current_commit_num) => {
-                        self.location_store
-                            .delete_location(address, current_commit_num)?;
-                    }
-                    #[cfg(feature = "product")]
-                    DbInsertOperation::Products(products) => {
-                        debug!("Inserting {} products", products.len());
-                        products
-                            .into_iter()
-                            .try_for_each(|product| self.product_store.add_product(product))?;
-                    }
-                    #[cfg(feature = "product")]
-                    DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
-                        self.product_store
-                            .delete_product(address, current_commit_num)?;
-                    }
-                };
-            }
-
-            Ok(())
-        })
+        Ok(())
     }
 
     fn cloned_box(&self) -> Box<dyn EventHandler> {
-        Box::new(Self::from_sqlite_pool(self.connection_pool.clone()))
+        Box::new(Self::new(self.store_factory.clone_box()))
     }
 }
 
