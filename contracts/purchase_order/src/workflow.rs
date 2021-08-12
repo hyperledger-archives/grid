@@ -20,7 +20,7 @@ use grid_sdk::workflow::{
 pub fn get_workflow(name: &str) -> Option<Workflow> {
     match name {
         "built-in:system-of-record:v1" => Some(system_of_record_workflow()),
-        "build-in:collaborative:v1" => Some(collaborative_workflow()),
+        "built-in:collaborative:v1" => Some(collaborative_workflow()),
         _ => None,
     }
 }
@@ -46,7 +46,7 @@ fn default_sub_workflow() -> SubWorkflow {
 
         let mut seller = PermissionAlias::new("po.seller");
         seller.add_permission("can-create-po-version");
-        buyer.add_permission("can-transition-isssued");
+        buyer.add_permission("can-transition-issued");
         buyer.add_transition("issued");
 
         WorkflowStateBuilder::new("create")
@@ -197,8 +197,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
         seller_modify.add_permission("can-update-po-version-response");
 
         let mut editor = PermissionAlias::new("po.editor");
-        editor.add_permission("can-tranisition-editable");
-        editor.add_permission("can-tranisition-review");
+        editor.add_permission("can-transition-editable");
+        editor.add_permission("can-transition-review");
         editor.add_transition("review");
         editor.add_transition("editable");
 
