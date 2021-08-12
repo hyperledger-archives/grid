@@ -27,9 +27,16 @@ cfg_if! {
     }
 }
 
-use grid_sdk::purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE;
-
 use crate::state::PurchaseOrderState;
+use grid_sdk::protos::FromBytes;
+use grid_sdk::{
+    pike::permissions::PermissionChecker,
+    protocol::purchase_order::payload::{
+        Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayload,
+        UpdatePurchaseOrderPayload, UpdateVersionPayload,
+    },
+    purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
+};
 
 #[cfg(target_arch = "wasm32")]
 fn apply(
@@ -87,9 +94,64 @@ impl TransactionHandler for PurchaseOrderTransactionHandler {
         request: &TpProcessRequest,
         context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
-        let _signer = request.get_header().get_signer_public_key();
-        let mut _state = PurchaseOrderState::new(context);
+        let payload = PurchaseOrderPayload::from_bytes(request.get_payload()).map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Cannot build po payload: {}", err))
+        })?;
+        let signer = request.get_header().get_signer_public_key();
+        let mut state = PurchaseOrderState::new(context);
+        let perm_checker = PermissionChecker::new(context);
 
-        unimplemented!()
+        info!("Purchase Order Payload {:?}", payload.action());
+
+        match payload.action() {
+            Action::CreatePo(create_po_payload) => {
+                create_purchase_order(create_po_payload, signer, &mut state, &perm_checker)
+            }
+            Action::UpdatePo(update_po_payload) => {
+                update_purchase_order(update_po_payload, signer, &mut state, &perm_checker)
+            }
+            Action::CreateVersion(create_version_payload) => {
+                create_version(create_version_payload, signer, &mut state, &perm_checker)
+            }
+            Action::UpdateVersion(update_version_payload) => {
+                update_version(update_version_payload, signer, &mut state, &perm_checker)
+            }
+        }
     }
+}
+
+fn create_purchase_order(
+    _payload: &CreatePurchaseOrderPayload,
+    _signer: &str,
+    _state: &mut PurchaseOrderState,
+    _perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    unimplemented!();
+}
+
+fn update_purchase_order(
+    _payload: &UpdatePurchaseOrderPayload,
+    _signer: &str,
+    _state: &mut PurchaseOrderState,
+    _perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    unimplemented!();
+}
+
+fn create_version(
+    _payload: &CreateVersionPayload,
+    _signer: &str,
+    _state: &mut PurchaseOrderState,
+    _perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    unimplemented!();
+}
+
+fn update_version(
+    _payload: &UpdateVersionPayload,
+    _signer: &str,
+    _state: &mut PurchaseOrderState,
+    _perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    unimplemented!();
 }
