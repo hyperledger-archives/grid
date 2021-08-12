@@ -12,5 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for the Schema smart contract.
+//!
+//! These structs are used to represent Schema transaction payloads and state.
+
 pub mod payload;
 pub mod state;

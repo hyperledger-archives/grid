@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Product state
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -25,7 +27,9 @@ use crate::protos::{
 
 use crate::protocol::schema::state::PropertyValue;
 
-/// Native implementation of ProductNamespace enum
+/// Possible Product namespaces
+///
+/// The namespace determines the schema used to define a `Product`'s properties
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProductNamespace {
     Gs1,
@@ -63,7 +67,9 @@ impl FromNative<ProductNamespace> for protos::product_state::Product_ProductName
 impl IntoProto<protos::product_state::Product_ProductNamespace> for ProductNamespace {}
 impl IntoNative<ProductNamespace> for protos::product_state::Product_ProductNamespace {}
 
-/// Native implementation of Product
+/// Native representation of `Product`
+///
+/// A `Product` contains a list of properties determined by the `product_namespace`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Product {
     product_id: String,
@@ -157,6 +163,8 @@ impl IntoBytes for Product {
 impl IntoProto<protos::product_state::Product> for Product {}
 impl IntoNative<Product> for protos::product_state::Product {}
 
+/// Returned if any required fields in a `Product` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum ProductBuildError {
     MissingField(String),
@@ -188,7 +196,7 @@ impl std::fmt::Display for ProductBuildError {
     }
 }
 
-/// Builder used to create a Product
+/// Builder used to create a `Product`
 #[derive(Default, Clone, PartialEq)]
 pub struct ProductBuilder {
     pub product_id: Option<String>,
@@ -249,7 +257,7 @@ impl ProductBuilder {
     }
 }
 
-/// Native implementation of ProductList
+/// Native representation of a list of `Product`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProductList {
     products: Vec<Product>,
@@ -324,6 +332,8 @@ impl IntoBytes for ProductList {
 impl IntoProto<protos::product_state::ProductList> for ProductList {}
 impl IntoNative<ProductList> for protos::product_state::ProductList {}
 
+/// Returned if any required fields in a `ProductList` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum ProductListBuildError {
     MissingField(String),
@@ -351,7 +361,7 @@ impl std::fmt::Display for ProductListBuildError {
     }
 }
 
-/// Builder used to create a ProductList
+/// Builder used to create a `ProductList`
 #[derive(Default, Clone)]
 pub struct ProductListBuilder {
     pub products: Option<Vec<Product>>,
@@ -394,7 +404,7 @@ mod tests {
     use std::fmt::Debug;
 
     #[test]
-    // Test that a product can be built correctly
+    /// Validate that a `Product` may be built correctly
     fn test_product_builder() {
         let product = build_product();
 
@@ -413,7 +423,7 @@ mod tests {
     }
 
     #[test]
-    // Test that a product can be converted to a product builder
+    /// Validate that a `Product` may be correctly converted back to its respective builder
     fn test_product_into_builder() {
         let product = build_product();
 
@@ -426,7 +436,8 @@ mod tests {
     }
 
     #[test]
-    // Test that a product can be converted to bytes and back
+    /// Validate that a `Product` may be correctly converted into bytes and then back to its native
+    /// representation
     fn test_product_into_bytes() {
         let builder = ProductBuilder::new();
         let original = builder
@@ -441,7 +452,7 @@ mod tests {
     }
 
     #[test]
-    // Test that a product list can be built correctly
+    /// Validate that a list of products, `ProductList`, can be built correctly
     fn test_product_list_builder() {
         let product_list = build_product_list();
 
@@ -501,7 +512,7 @@ mod tests {
     }
 
     #[test]
-    // Test that a product list can be converted to a product list builder
+    /// Validate that a `ProductList` can be correctly converted back to a builder
     fn test_product_list_into_builder() {
         let product_list = build_product_list();
 
@@ -511,7 +522,8 @@ mod tests {
     }
 
     #[test]
-    // Test that a product list can be converted to bytes and back
+    /// Validate that a `ProductList` can be converted into bytes and back to its native
+    /// representation successfully
     fn test_product_list_into_bytes() {
         let builder = ProductListBuilder::new();
         let original = builder.with_products(make_products()).build().unwrap();

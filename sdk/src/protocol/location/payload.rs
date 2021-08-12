@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Location transaction payloads
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -26,6 +28,9 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
+/// Possible Location namespaces
+///
+/// The namespace determines the schema used to define a Location's properties
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LocationNamespace {
     Gs1,
@@ -63,6 +68,7 @@ impl FromNative<LocationNamespace> for protos::location_payload::LocationNamespa
 impl IntoProto<protos::location_payload::LocationNamespace> for LocationNamespace {}
 impl IntoNative<LocationNamespace> for protos::location_payload::LocationNamespace {}
 
+/// The Location payload's action envelope
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     LocationCreate(LocationCreateAction),
@@ -70,6 +76,7 @@ pub enum Action {
     LocationDelete(LocationDeleteAction),
 }
 
+/// Native representation of a Location transaction payload
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocationPayload {
     action: Action,
@@ -165,6 +172,8 @@ impl IntoBytes for LocationPayload {
 impl IntoProto<protos::location_payload::LocationPayload> for LocationPayload {}
 impl IntoNative<LocationPayload> for protos::location_payload::LocationPayload {}
 
+/// Returned if any required fields in a `LocationPayload` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum LocationPayloadBuildError {
     MissingField(String),
@@ -192,6 +201,7 @@ impl std::fmt::Display for LocationPayloadBuildError {
     }
 }
 
+/// Builder used to create a Location transaction payload
 #[derive(Default, Clone)]
 pub struct LocationPayloadBuilder {
     action: Option<Action>,
@@ -221,6 +231,7 @@ impl LocationPayloadBuilder {
     }
 }
 
+/// Native representation of the "create location" action payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct LocationCreateAction {
     namespace: LocationNamespace,
@@ -311,6 +322,7 @@ impl IntoBytes for LocationCreateAction {
 impl IntoProto<protos::location_payload::LocationCreateAction> for LocationCreateAction {}
 impl IntoNative<LocationCreateAction> for protos::location_payload::LocationCreateAction {}
 
+/// Builder used to create a "create location" action
 #[derive(Default, Debug)]
 pub struct LocationCreateActionBuilder {
     namespace: Option<LocationNamespace>,
@@ -361,6 +373,7 @@ impl LocationCreateActionBuilder {
     }
 }
 
+/// Native representation of an "update location" action
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct LocationUpdateAction {
     namespace: LocationNamespace,
@@ -445,7 +458,7 @@ impl IntoBytes for LocationUpdateAction {
 impl IntoProto<protos::location_payload::LocationUpdateAction> for LocationUpdateAction {}
 impl IntoNative<LocationUpdateAction> for protos::location_payload::LocationUpdateAction {}
 
-/// Builder used to create a LocationUpdateAction
+/// Builder used to create an "update location" action
 #[derive(Default, Clone)]
 pub struct LocationUpdateActionBuilder {
     namespace: Option<LocationNamespace>,
@@ -500,6 +513,7 @@ impl LocationUpdateActionBuilder {
     }
 }
 
+/// Native representation of a "delete location" action
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct LocationDeleteAction {
     namespace: LocationNamespace,
@@ -564,7 +578,7 @@ impl IntoBytes for LocationDeleteAction {
 impl IntoProto<protos::location_payload::LocationDeleteAction> for LocationDeleteAction {}
 impl IntoNative<LocationDeleteAction> for protos::location_payload::LocationDeleteAction {}
 
-/// Builder used to create a LocationDeleteAction
+/// Builder used to create a "delete location" action
 #[derive(Default, Clone)]
 pub struct LocationDeleteActionBuilder {
     namespace: Option<LocationNamespace>,

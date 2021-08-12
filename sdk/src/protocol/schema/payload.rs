@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Schema transaction payloads
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -23,14 +25,14 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
-/// Native implementation for SchemaPayload_Action
+/// Schema payload's action envelope
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     SchemaCreate(SchemaCreateAction),
     SchemaUpdate(SchemaUpdateAction),
 }
 
-/// Native implementation for SchemaPayload
+/// Native representation of a Schema transaction payload
 #[derive(Debug, Clone, PartialEq)]
 pub struct SchemaPayload {
     action: Action,
@@ -109,6 +111,8 @@ impl IntoBytes for SchemaPayload {
 impl IntoProto<protos::schema_payload::SchemaPayload> for SchemaPayload {}
 impl IntoNative<SchemaPayload> for protos::schema_payload::SchemaPayload {}
 
+/// Returned if any required fields in a `SchemaPayload` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum SchemaPayloadBuildError {
     MissingField(String),
@@ -136,7 +140,7 @@ impl std::fmt::Display for SchemaPayloadBuildError {
     }
 }
 
-/// Builder used to create a SchemaPayload
+/// Builder used to create a Schema payload
 #[derive(Default, Clone)]
 pub struct SchemaPayloadBuilder {
     action: Option<Action>,
@@ -160,7 +164,7 @@ impl SchemaPayloadBuilder {
     }
 }
 
-/// Native implementation for SchemaCreateAction
+/// Native implementation for the "create schema" action
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SchemaCreateAction {
     schema_name: String,
@@ -249,6 +253,8 @@ impl IntoBytes for SchemaCreateAction {
 impl IntoProto<protos::schema_payload::SchemaCreateAction> for SchemaCreateAction {}
 impl IntoNative<SchemaCreateAction> for protos::schema_payload::SchemaCreateAction {}
 
+/// Returned if any required fields in a `SchemaCreateAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum SchemaCreateBuildError {
     MissingField(String),
@@ -276,7 +282,7 @@ impl std::fmt::Display for SchemaCreateBuildError {
     }
 }
 
-/// Builder used to create a SchemaPayload
+/// Builder used to create a "create schema" action
 #[derive(Default, Clone)]
 pub struct SchemaCreateBuilder {
     schema_name: Option<String>,
@@ -340,6 +346,7 @@ impl SchemaCreateBuilder {
     }
 }
 
+/// Native representation of an "update schema" action
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SchemaUpdateAction {
     schema_name: String,
@@ -347,7 +354,6 @@ pub struct SchemaUpdateAction {
     properties: Vec<PropertyDefinition>,
 }
 
-/// Native implementation for SchemaUpdateAction
 impl SchemaUpdateAction {
     pub fn schema_name(&self) -> &str {
         &self.schema_name
@@ -422,6 +428,8 @@ impl IntoBytes for SchemaUpdateAction {
 impl IntoProto<protos::schema_payload::SchemaUpdateAction> for SchemaUpdateAction {}
 impl IntoNative<SchemaUpdateAction> for protos::schema_payload::SchemaUpdateAction {}
 
+/// Returned if any required fields in a `SchemaUpdateAction` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum SchemaUpdateBuildError {
     MissingField(String),
@@ -449,7 +457,7 @@ impl std::fmt::Display for SchemaUpdateBuildError {
     }
 }
 
-/// Builder used to create a SchemaPayload
+/// Builder used to create an "update schema" action
 #[derive(Default, Clone)]
 pub struct SchemaUpdateBuilder {
     schema_name: Option<String>,
@@ -511,7 +519,7 @@ mod tests {
     use crate::protocol::schema::state::{DataType, PropertyDefinitionBuilder};
 
     #[test]
-    // check that a schema create action is built correctly
+    /// Validate that a `SchemaCreateAction` is built correctly
     fn check_schema_create_action() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -536,7 +544,8 @@ mod tests {
     }
 
     #[test]
-    // check that a schema create can be converted to bytes and back
+    /// Validate that a `SchemaCreateAction` may be converted into bytes and back to its native
+    /// representation successfully
     fn check_schema_create_bytes() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -562,7 +571,7 @@ mod tests {
     }
 
     #[test]
-    // check that a schema update action is built correctly
+    /// Validate that a `SchemaUpdateAction` is built correctly
     fn check_schema_update_action() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -585,7 +594,8 @@ mod tests {
     }
 
     #[test]
-    // check that a schema update can be converted to bytes and back
+    /// Validate that a `SchemaUpdateAction` may be converted into bytes and back to its native
+    /// representation successfully
     fn check_schema_update_bytes() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -610,7 +620,7 @@ mod tests {
     }
 
     #[test]
-    // check that a schema payload with create action is built correctly
+    /// Validate that a `SchemaPayload` is built correctly with a `SchemaCreateAction`
     fn check_schema_create_action_payload() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -639,7 +649,7 @@ mod tests {
     }
 
     #[test]
-    // check that a schema payload with update action is built correctly
+    /// Validate that a `SchemaPayload` is built correctly with a `SchemaUpdateAction`
     fn check_schema_update_action_payload() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder
@@ -667,7 +677,8 @@ mod tests {
     }
 
     #[test]
-    // check that a schema payload can be converted to bytes and back
+    /// Validate that a `SchemaPayload` with a `SchemaCreateAction` may be converted into bytes and
+    /// back to its native representation successfully
     fn check_schema_payload_bytes() {
         let builder = PropertyDefinitionBuilder::new();
         let property_definition = builder

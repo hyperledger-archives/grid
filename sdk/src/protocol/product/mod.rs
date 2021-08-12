@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for the Product smart contract.
+//!
+//! These structs are used to represent Product transaction payloads and state.
+
 use super::errors;
 
 pub mod payload;

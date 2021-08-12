@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Protocol structs for Purchase Order state
+
 use protobuf::Message;
 use protobuf::RepeatedField;
 
@@ -22,6 +24,9 @@ use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
 };
 
+/// Native representation of a `PurchaseOrderRevision`
+///
+/// The purchase order revision contains the editable fields of a purchase order
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderRevision {
     revision_id: String,
@@ -97,6 +102,8 @@ impl IntoBytes for PurchaseOrderRevision {
 impl IntoProto<purchase_order_state::PurchaseOrderRevision> for PurchaseOrderRevision {}
 impl IntoNative<PurchaseOrderRevision> for purchase_order_state::PurchaseOrderRevision {}
 
+/// Returned if any required fields in a `PurchaseOrderRevision` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum PurchaseOrderRevisionBuildError {
     MissingField(String),
@@ -120,6 +127,7 @@ impl std::fmt::Display for PurchaseOrderRevisionBuildError {
     }
 }
 
+/// Builder used to create a `PurchaseOrderRevision`
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderRevisionBuilder {
     revision_id: Option<String>,
@@ -187,6 +195,10 @@ impl PurchaseOrderRevisionBuilder {
     }
 }
 
+/// Native representation of a `PurchaseOrderVersion`
+///
+/// A purchase order version is created everytime updates are made to the purchase order, requiring
+/// a new version of the original
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderVersion {
     version_id: String,
@@ -270,6 +282,8 @@ impl IntoBytes for PurchaseOrderVersion {
 impl IntoProto<purchase_order_state::PurchaseOrderVersion> for PurchaseOrderVersion {}
 impl IntoNative<PurchaseOrderVersion> for purchase_order_state::PurchaseOrderVersion {}
 
+/// Returned if any required fields in a `PurchaseOrderVersion` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum PurchaseOrderVersionBuildError {
     MissingField(String),
@@ -293,6 +307,7 @@ impl std::fmt::Display for PurchaseOrderVersionBuildError {
     }
 }
 
+/// Builder used to create a `PurchaseOrderVersion`
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderVersionBuilder {
     version_id: Option<String>,
@@ -371,6 +386,9 @@ impl PurchaseOrderVersionBuilder {
     }
 }
 
+/// Native representation of a `PurchaseOrder`
+///
+/// Purchase orders in real-life trade scenarios are represented by `PurchaseOrder`
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrder {
     uuid: String,
@@ -473,6 +491,8 @@ impl IntoBytes for PurchaseOrder {
 impl IntoProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {}
 impl IntoNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {}
 
+/// Returned if any required fields in a `PurchaseOrder` are not present when being converted from
+/// the corresponding builder
 #[derive(Debug)]
 pub enum PurchaseOrderBuildError {
     MissingField(String),
@@ -497,6 +517,7 @@ impl std::fmt::Display for PurchaseOrderBuildError {
     }
 }
 
+/// Builder used to create a `PurchaseOrder`
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderBuilder {
     uuid: Option<String>,
@@ -580,6 +601,7 @@ impl PurchaseOrderBuilder {
     }
 }
 
+/// Native representation of a list of `PurchaseOrder`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderList {
     purchase_orders: Vec<PurchaseOrder>,
@@ -657,6 +679,7 @@ impl IntoBytes for PurchaseOrderList {
 impl IntoProto<purchase_order_state::PurchaseOrderList> for PurchaseOrderList {}
 impl IntoNative<PurchaseOrderList> for purchase_order_state::PurchaseOrderList {}
 
+/// Builder used to create a list of `PurchaseOrder`s
 #[derive(Default, Clone)]
 pub struct PurchaseOrderListBuilder {
     purchase_orders: Option<Vec<PurchaseOrder>>,
@@ -691,6 +714,11 @@ impl PurchaseOrderListBuilder {
     }
 }
 
+/// Native representation of a `PurchaseOrderAlternateId`
+///
+/// An `AlternateId` is a separate identifier from the `PurchaseOrder`'s unique identifier and
+/// associated `org_id`. This enables certain smart contracts to identify a `PurchaseOrder` within
+/// its own context.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderAlternateId {
     id_type: String,
@@ -758,6 +786,8 @@ impl IntoBytes for PurchaseOrderAlternateId {
 impl IntoProto<purchase_order_state::PurchaseOrderAlternateId> for PurchaseOrderAlternateId {}
 impl IntoNative<PurchaseOrderAlternateId> for purchase_order_state::PurchaseOrderAlternateId {}
 
+/// Returned if any required fields in a `PurchaseOrderAlternateId` are not present when being
+/// converted from the corresponding builder
 #[derive(Debug)]
 pub enum PurchaseOrderAlternateIdBuildError {
     MissingField(String),
@@ -786,6 +816,7 @@ impl std::fmt::Display for PurchaseOrderAlternateIdBuildError {
     }
 }
 
+/// Builder used to create a `PurchaseOrderAlternateId`
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderAlternateIdBuilder {
     id_type: Option<String>,
@@ -838,6 +869,7 @@ impl PurchaseOrderAlternateIdBuilder {
     }
 }
 
+/// Native representation of a list of `PurchaseOrderAlternateId`s
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderAlternateIdList {
     alternate_ids: Vec<PurchaseOrderAlternateId>,
@@ -929,6 +961,7 @@ impl IntoNative<PurchaseOrderAlternateIdList>
 {
 }
 
+/// Builder used to create a list of `PurchaseOrderAlternateId`s
 #[derive(Default, Clone)]
 pub struct PurchaseOrderAlternateIdListBuilder {
     alternate_ids: Option<Vec<PurchaseOrderAlternateId>>,
