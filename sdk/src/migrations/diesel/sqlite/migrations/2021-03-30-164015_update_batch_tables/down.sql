@@ -13,9 +13,9 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-DROP transaction_receipts;
-DROP transactions;
-DROP batches;
+DROP TABLE transaction_receipts;
+DROP TABLE transactions;
+DROP TABLE batches;
 
 CREATE TABLE batches (
     id TEXT PRIMARY KEY,

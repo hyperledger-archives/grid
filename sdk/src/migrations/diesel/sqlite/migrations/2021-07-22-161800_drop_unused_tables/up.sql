@@ -13,12 +13,7 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-DROP TABLE transaction_receipts;
-DROP TABLE transactions;
-DROP TABLE batches;
-
-CREATE TABLE batches (
-    id TEXT PRIMARY KEY,
-    data TEXT NOT NULL,
-    status TEXT NOT NULL
-);
+DROP TABLE grid_circuit;
+DROP TABLE grid_circuit_proposal;
+DROP TABLE grid_circuit_member;
+DROP TABLE grid_circuit_proposal_vote_record;
