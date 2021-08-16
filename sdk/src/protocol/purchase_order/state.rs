@@ -206,6 +206,7 @@ pub struct PurchaseOrderVersion {
     is_draft: bool,
     current_revision_id: String,
     revisions: PurchaseOrderRevision,
+    po_uuid: String,
 }
 
 impl PurchaseOrderVersion {
@@ -229,6 +230,10 @@ impl PurchaseOrderVersion {
         &self.revisions
     }
 
+    pub fn po_uuid(&self) -> &str {
+        &self.po_uuid
+    }
+
     pub fn into_builder(self) -> PurchaseOrderVersionBuilder {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(self.version_id)
@@ -236,6 +241,7 @@ impl PurchaseOrderVersion {
             .with_is_draft(self.is_draft)
             .with_current_revision_id(self.current_revision_id)
             .with_revisions(self.revisions)
+            .with_po_uuid(self.po_uuid)
     }
 }
 
@@ -249,6 +255,7 @@ impl FromProto<purchase_order_state::PurchaseOrderVersion> for PurchaseOrderVers
             is_draft: version.get_is_draft(),
             current_revision_id: version.take_current_revision_id(),
             revisions: PurchaseOrderRevision::from_proto(version.take_revisions())?,
+            po_uuid: version.take_po_uuid(),
         })
     }
 }
@@ -261,6 +268,7 @@ impl FromNative<PurchaseOrderVersion> for purchase_order_state::PurchaseOrderVer
         proto.set_is_draft(version.is_draft());
         proto.set_current_revision_id(version.current_revision_id().to_string());
         proto.set_revisions(version.revisions().clone().into_proto()?);
+        proto.set_po_uuid(version.po_uuid().to_string());
 
         Ok(proto)
     }
@@ -315,6 +323,7 @@ pub struct PurchaseOrderVersionBuilder {
     is_draft: Option<bool>,
     current_revision_id: Option<String>,
     revisions: Option<PurchaseOrderRevision>,
+    po_uuid: Option<String>,
 }
 
 impl PurchaseOrderVersionBuilder {
@@ -347,6 +356,11 @@ impl PurchaseOrderVersionBuilder {
         self
     }
 
+    pub fn with_po_uuid(mut self, po_uuid: String) -> Self {
+        self.po_uuid = Some(po_uuid);
+        self
+    }
+
     pub fn build(self) -> Result<PurchaseOrderVersion, PurchaseOrderVersionBuildError> {
         let version_id = self.version_id.ok_or_else(|| {
             PurchaseOrderVersionBuildError::MissingField(
@@ -376,12 +390,17 @@ impl PurchaseOrderVersionBuilder {
             )
         })?;
 
+        let po_uuid = self.po_uuid.ok_or_else(|| {
+            PurchaseOrderVersionBuildError::MissingField("'po_uuid' field is required".to_string())
+        })?;
+
         Ok(PurchaseOrderVersion {
             version_id,
             workflow_status,
             is_draft,
             current_revision_id,
             revisions,
+            po_uuid,
         })
     }
 }
@@ -391,6 +410,7 @@ impl PurchaseOrderVersionBuilder {
 /// Purchase orders in real-life trade scenarios are represented by `PurchaseOrder`
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrder {
+    org_id: String,
     uuid: String,
     workflow_status: String,
     versions: Vec<PurchaseOrderVersion>,
@@ -400,6 +420,10 @@ pub struct PurchaseOrder {
 }
 
 impl PurchaseOrder {
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
     pub fn uuid(&self) -> &str {
         &self.uuid
     }
@@ -426,6 +450,7 @@ impl PurchaseOrder {
 
     pub fn into_builder(self) -> PurchaseOrderBuilder {
         PurchaseOrderBuilder::new()
+            .with_org_id(self.org_id)
             .with_uuid(self.uuid)
             .with_workflow_status(self.workflow_status)
             .with_versions(self.versions)
@@ -440,6 +465,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
         mut order: purchase_order_state::PurchaseOrder,
     ) -> Result<Self, ProtoConversionError> {
         Ok(PurchaseOrder {
+            org_id: order.take_org_id(),
             uuid: order.take_uuid(),
             workflow_status: order.take_workflow_status(),
             versions: order
@@ -457,6 +483,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
 impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
     fn from_native(order: PurchaseOrder) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_state::PurchaseOrder::new();
+        proto.set_org_id(order.org_id().to_string());
         proto.set_uuid(order.uuid().to_string());
         proto.set_workflow_status(order.workflow_status().to_string());
         proto.set_versions(RepeatedField::from_vec(
@@ -520,6 +547,7 @@ impl std::fmt::Display for PurchaseOrderBuildError {
 /// Builder used to create a `PurchaseOrder`
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderBuilder {
+    org_id: Option<String>,
     uuid: Option<String>,
     workflow_status: Option<String>,
     versions: Option<Vec<PurchaseOrderVersion>>,
@@ -531,6 +559,11 @@ pub struct PurchaseOrderBuilder {
 impl PurchaseOrderBuilder {
     pub fn new() -> Self {
         PurchaseOrderBuilder::default()
+    }
+
+    pub fn with_org_id(mut self, org_id: String) -> Self {
+        self.org_id = Some(org_id);
+        self
     }
 
     pub fn with_uuid(mut self, uuid: String) -> Self {
@@ -564,6 +597,10 @@ impl PurchaseOrderBuilder {
     }
 
     pub fn build(self) -> Result<PurchaseOrder, PurchaseOrderBuildError> {
+        let org_id = self.org_id.ok_or_else(|| {
+            PurchaseOrderBuildError::MissingField("'org_id' field is required".to_string())
+        })?;
+
         let uuid = self.uuid.ok_or_else(|| {
             PurchaseOrderBuildError::MissingField("'uuid' field is required".to_string())
         })?;
@@ -591,6 +628,7 @@ impl PurchaseOrderBuilder {
         })?;
 
         Ok(PurchaseOrder {
+            org_id,
             uuid,
             workflow_status,
             versions,

@@ -24,31 +24,34 @@ message PurchaseOrderPayload {
     UPDATE_VERSION = 4;
   }
   Action action = 1;
-  string org_id = 2;
-  string public_key = 3;
-  uint64 timestamp = 4;
+  string public_key = 2;
+  uint64 timestamp = 3;
 
-  CreatePurchaseOrderPayload create_po_payload = 5;
-  UpdatePurchaseOrderPayload update_po_payload = 6;
-  CreateVersionPayload create_version_payload = 7;
-  UpdateVersionPayload update_version_payload = 8;
+  CreatePurchaseOrderPayload create_po_payload = 4;
+  UpdatePurchaseOrderPayload update_po_payload = 5;
+  CreateVersionPayload create_version_payload = 6;
+  UpdateVersionPayload update_version_payload = 7;
 }
 
 message CreatePurchaseOrderPayload {
-  string uuid = 1;
-  uint64 created_at = 2;
+  string org_id = 1;
+  string uuid = 2;
+  uint64 created_at = 3;
+  CreateVersionPayload create_version_payload = 4;
 }
 
 message UpdatePurchaseOrderPayload {
   string workflow_status = 1;
   bool is_closed = 2;
   string accepted_version_number = 3;
+  string po_uuid = 4;
 }
 
 message CreateVersionPayload {
   string version_id = 1;
   bool is_draft = 2;
   PayloadRevision revision = 3;
+  string po_uuid = 4;
 }
 
 message UpdateVersionPayload {

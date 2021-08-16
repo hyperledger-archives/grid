@@ -16,12 +16,13 @@
 syntax = "proto3";
 
 message PurchaseOrder {
-  string uuid = 1;
-  string workflow_status = 2;
-  repeated PurchaseOrderVersion versions = 3;
-  string accepted_version_number = 4;
-  uint64 created_at = 5;
-  bool is_closed = 6;
+  string org_id = 1;
+  string uuid = 2;
+  string workflow_status = 3;
+  repeated PurchaseOrderVersion versions = 4;
+  string accepted_version_number = 5;
+  uint64 created_at = 6;
+  bool is_closed = 7;
 }
 
 message PurchaseOrderList {
@@ -34,6 +35,7 @@ message PurchaseOrderVersion {
   bool is_draft = 3;
   string current_revision_id = 4;
   PurchaseOrderRevision revisions = 5;
+  string po_uuid = 6;
 }
 
 message PurchaseOrderRevision {
