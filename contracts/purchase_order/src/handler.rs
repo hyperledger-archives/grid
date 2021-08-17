@@ -27,17 +27,23 @@ cfg_if! {
     }
 }
 
-use crate::state::PurchaseOrderState;
 use grid_sdk::protos::FromBytes;
 use grid_sdk::{
     pike::permissions::PermissionChecker,
-    protocol::purchase_order::payload::{
-        Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayload,
-        UpdatePurchaseOrderPayload, UpdateVersionPayload,
+    protocol::purchase_order::{
+        payload::{
+            Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayload,
+            UpdatePurchaseOrderPayload, UpdateVersionPayload,
+        },
+        state::{PurchaseOrderBuilder, PurchaseOrderRevisionBuilder, PurchaseOrderVersionBuilder},
     },
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
     workflow::WorkflowState,
 };
+
+use crate::permissions::{permission_to_perm_string, Permission};
+use crate::state::PurchaseOrderState;
+use crate::workflow::{get_workflow, POWorkflow};
 
 #[cfg(target_arch = "wasm32")]
 fn apply(
@@ -122,12 +128,120 @@ impl TransactionHandler for PurchaseOrderTransactionHandler {
 }
 
 fn create_purchase_order(
-    _payload: &CreatePurchaseOrderPayload,
-    _signer: &str,
-    _state: &mut PurchaseOrderState,
-    _perm_checker: &PermissionChecker,
+    payload: &CreatePurchaseOrderPayload,
+    signer: &str,
+    state: &mut PurchaseOrderState,
+    perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
-    unimplemented!();
+    let org_id = if payload.org_id().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "Organization ID required".into(),
+        ));
+    } else {
+        payload.org_id()
+    };
+
+    let po_uuid = if payload.uuid().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "Purchase Order UUID required".into(),
+        ));
+    } else {
+        payload.uuid()
+    };
+
+    // Check that the organization owning the purchase order exists
+    state.get_organization(org_id)?.ok_or_else(|| {
+        ApplyError::InvalidTransaction(format!("Organization {} does not exist", org_id))
+    })?;
+    // Validate the signer exists
+    state.get_agent(signer)?.ok_or_else(|| {
+        ApplyError::InvalidTransaction(format!("The signer is not an Agent: {}", signer))
+    })?;
+
+    if state.get_purchase_order(po_uuid)?.is_some() {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Purchase Order already exists: {}",
+            po_uuid,
+        )));
+    }
+
+    let mut desired_state = "editable";
+    let mut po_workflow = POWorkflow::SystemOfRecord;
+    let versions = match payload.create_version_payload() {
+        Some(payload) => {
+            let payload_revision = payload.revision();
+            let revision = PurchaseOrderRevisionBuilder::new()
+                .with_revision_id(payload_revision.revision_id().to_string())
+                .with_submitter(signer.to_string())
+                .with_created_at(payload_revision.created_at())
+                .with_order_xml_v3_4(payload_revision.order_xml_v3_4().to_string())
+                .build()
+                .map_err(|err| {
+                    ApplyError::InvalidTransaction(format!(
+                        "Cannot build purchase order revision: {}",
+                        err
+                    ))
+                })?;
+            let mut version_builder = PurchaseOrderVersionBuilder::new()
+                .with_version_id(payload.version_id().to_string())
+                .with_is_draft(payload.is_draft())
+                .with_current_revision_id(revision.revision_id().to_string())
+                .with_revisions(revision)
+                .with_po_uuid(po_uuid.to_string());
+
+            if payload.is_draft() {
+                version_builder = version_builder.with_workflow_status("Editable".to_string());
+            } else {
+                desired_state = "proposed";
+                version_builder = version_builder.with_workflow_status("Proposed".to_string());
+            }
+
+            vec![version_builder.build().map_err(|err| {
+                ApplyError::InvalidTransaction(format!(
+                    "Cannot build purchase order version: {}",
+                    err
+                ))
+            })?]
+        }
+        None => {
+            po_workflow = POWorkflow::Collaborative;
+            vec![]
+        }
+    };
+
+    let beginning_workflow = get_workflow(po_workflow)
+        .ok_or_else(|| ApplyError::InternalError("Cannot get workflow".to_string()))?;
+    let po_subworkflow = beginning_workflow.subworkflow("po").ok_or_else(|| {
+        ApplyError::InternalError("Unable to get po subworkflow: {:?}".to_string())
+    })?;
+    let start_state = po_subworkflow.state("create").ok_or_else(|| {
+        ApplyError::InternalError("Unable to get create state from subworkflow".to_string())
+    })?;
+    let perm_string = &permission_to_perm_string(Permission::CanCreatePo);
+    check_permission_with_workflow(
+        perm_checker,
+        perm_string,
+        signer,
+        org_id,
+        start_state,
+        desired_state,
+    )?;
+
+    let purchase_order = PurchaseOrderBuilder::new()
+        .with_org_id(org_id.to_string())
+        .with_uuid(po_uuid.to_string())
+        .with_versions(versions)
+        .with_workflow_status("issued".to_string())
+        .with_created_at(payload.created_at())
+        .with_is_closed(false)
+        .build()
+        .map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Cannot build purchase order: {}", err))
+        })?;
+
+    state.set_purchase_order(po_uuid, purchase_order)?;
+
+    Ok(())
 }
 
 fn update_purchase_order(
