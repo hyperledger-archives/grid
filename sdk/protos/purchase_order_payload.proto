@@ -43,7 +43,7 @@ message CreatePurchaseOrderPayload {
 message UpdatePurchaseOrderPayload {
   string workflow_status = 1;
   bool is_closed = 2;
-  string accepted_version_number = 3;
+  string accepted_version_id = 3;
   string po_uuid = 4;
 }
 

@@ -20,7 +20,7 @@ message PurchaseOrder {
   string uuid = 2;
   string workflow_status = 3;
   repeated PurchaseOrderVersion versions = 4;
-  string accepted_version_number = 5;
+  string accepted_version_id = 5;
   uint64 created_at = 6;
   bool is_closed = 7;
 }

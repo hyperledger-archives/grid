@@ -414,7 +414,7 @@ pub struct PurchaseOrder {
     uuid: String,
     workflow_status: String,
     versions: Vec<PurchaseOrderVersion>,
-    accepted_version_number: String,
+    accepted_version_id: String,
     created_at: u64,
     is_closed: bool,
 }
@@ -436,8 +436,8 @@ impl PurchaseOrder {
         &self.versions
     }
 
-    pub fn accepted_version_number(&self) -> &str {
-        &self.accepted_version_number
+    pub fn accepted_version_id(&self) -> &str {
+        &self.accepted_version_id
     }
 
     pub fn created_at(&self) -> u64 {
@@ -454,7 +454,7 @@ impl PurchaseOrder {
             .with_uuid(self.uuid)
             .with_workflow_status(self.workflow_status)
             .with_versions(self.versions)
-            .with_accepted_version_number(self.accepted_version_number)
+            .with_accepted_version_id(self.accepted_version_id)
             .with_created_at(self.created_at)
             .with_is_closed(self.is_closed)
     }
@@ -473,7 +473,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
                 .into_iter()
                 .map(PurchaseOrderVersion::from_proto)
                 .collect::<Result<_, _>>()?,
-            accepted_version_number: order.take_accepted_version_number(),
+            accepted_version_id: order.take_accepted_version_id(),
             created_at: order.get_created_at(),
             is_closed: order.get_is_closed(),
         })
@@ -494,7 +494,7 @@ impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
                 .map(|version| version.into_proto())
                 .collect::<Result<_, _>>()?,
         ));
-        proto.set_accepted_version_number(order.accepted_version_number().to_string());
+        proto.set_accepted_version_id(order.accepted_version_id().to_string());
         proto.set_created_at(order.created_at());
         proto.set_is_closed(order.is_closed());
 
@@ -551,7 +551,7 @@ pub struct PurchaseOrderBuilder {
     uuid: Option<String>,
     workflow_status: Option<String>,
     versions: Option<Vec<PurchaseOrderVersion>>,
-    accepted_version_number: Option<String>,
+    accepted_version_id: Option<String>,
     created_at: Option<u64>,
     is_closed: Option<bool>,
 }
@@ -581,8 +581,8 @@ impl PurchaseOrderBuilder {
         self
     }
 
-    pub fn with_accepted_version_number(mut self, accepted_version_number: String) -> Self {
-        self.accepted_version_number = Some(accepted_version_number);
+    pub fn with_accepted_version_id(mut self, accepted_version_id: String) -> Self {
+        self.accepted_version_id = Some(accepted_version_id);
         self
     }
 
@@ -613,9 +613,9 @@ impl PurchaseOrderBuilder {
             PurchaseOrderBuildError::EmptyVec("'versions' field is required".to_string())
         })?;
 
-        let accepted_version_number = self.accepted_version_number.ok_or_else(|| {
+        let accepted_version_id = self.accepted_version_id.ok_or_else(|| {
             PurchaseOrderBuildError::MissingField(
-                "'accepted_version_number' field is required".to_string(),
+                "'accepted_version_id' field is required".to_string(),
             )
         })?;
 
@@ -632,7 +632,7 @@ impl PurchaseOrderBuilder {
             uuid,
             workflow_status,
             versions,
-            accepted_version_number,
+            accepted_version_id,
             created_at,
             is_closed,
         })
