@@ -155,3 +155,22 @@ fn update_version(
 ) -> Result<(), ApplyError> {
     unimplemented!();
 }
+
+fn check_permission(
+    perm_checker: &PermissionChecker,
+    signer: &str,
+    permission: &str,
+    po_owner: &str,
+) -> Result<(), ApplyError> {
+    match perm_checker.has_permission(signer, permission, po_owner) {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(ApplyError::InvalidTransaction(format!(
+            "The signer \"{}\" does not have the \"{}\" permission for org \"{}\"",
+            signer, permission, po_owner
+        ))),
+        Err(e) => Err(ApplyError::InvalidTransaction(format!(
+            "Permission check failed: {}",
+            e
+        ))),
+    }
+}
