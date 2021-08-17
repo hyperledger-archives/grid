@@ -342,7 +342,7 @@ impl CreatePurchaseOrderPayloadBuilder {
 pub struct UpdatePurchaseOrderPayload {
     workflow_status: String,
     is_closed: bool,
-    accepted_version_number: String,
+    accepted_version_id: String,
     po_uuid: String,
 }
 
@@ -355,8 +355,8 @@ impl UpdatePurchaseOrderPayload {
         self.is_closed
     }
 
-    pub fn accepted_version_number(&self) -> &str {
-        &self.accepted_version_number
+    pub fn accepted_version_id(&self) -> &str {
+        &self.accepted_version_id
     }
 
     pub fn po_uuid(&self) -> &str {
@@ -371,7 +371,7 @@ impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePur
         Ok(UpdatePurchaseOrderPayload {
             workflow_status: proto.take_workflow_status(),
             is_closed: proto.get_is_closed(),
-            accepted_version_number: proto.take_accepted_version_number(),
+            accepted_version_id: proto.take_accepted_version_id(),
             po_uuid: proto.take_po_uuid(),
         })
     }
@@ -382,7 +382,7 @@ impl FromNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
         let mut proto = purchase_order_payload::UpdatePurchaseOrderPayload::new();
         proto.set_workflow_status(native.workflow_status().to_string());
         proto.set_is_closed(native.is_closed());
-        proto.set_accepted_version_number(native.accepted_version_number().to_string());
+        proto.set_accepted_version_id(native.accepted_version_id().to_string());
         proto.set_po_uuid(native.po_uuid().to_string());
 
         Ok(proto)
@@ -421,7 +421,7 @@ impl IntoNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
 pub struct UpdatePurchaseOrderPayloadBuilder {
     workflow_status: Option<String>,
     is_closed: Option<bool>,
-    accepted_version_number: Option<String>,
+    accepted_version_id: Option<String>,
     po_uuid: Option<String>,
 }
 
@@ -440,8 +440,8 @@ impl UpdatePurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_accepted_version_number(mut self, value: String) -> Self {
-        self.accepted_version_number = Some(value);
+    pub fn with_accepted_version_id(mut self, value: String) -> Self {
+        self.accepted_version_id = Some(value);
         self
     }
 
@@ -459,8 +459,8 @@ impl UpdatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'is_closed' field is required".to_string())
         })?;
 
-        let accepted_version_number = self.accepted_version_number.ok_or_else(|| {
-            BuilderError::MissingField("'accepted_version_number' field is required".to_string())
+        let accepted_version_id = self.accepted_version_id.ok_or_else(|| {
+            BuilderError::MissingField("'accepted_version_id' field is required".to_string())
         })?;
 
         let po_uuid = self
@@ -470,7 +470,7 @@ impl UpdatePurchaseOrderPayloadBuilder {
         Ok(UpdatePurchaseOrderPayload {
             workflow_status,
             is_closed,
-            accepted_version_number,
+            accepted_version_id,
             po_uuid,
         })
     }
