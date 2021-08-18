@@ -14,7 +14,11 @@
 
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 10 * * *"
 
 env:
   CARGO_TERM_COLOR: always
