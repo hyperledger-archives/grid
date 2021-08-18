@@ -22,9 +22,13 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protocol::{
-    pike::state::{Agent, Organization},
-    purchase_order::state::PurchaseOrder,
+use grid_sdk::{
+    protocol::{
+        pike::state::{Agent, Organization},
+        purchase_order::state::{PurchaseOrder, PurchaseOrderList},
+    },
+    protos::FromBytes,
+    purchase_order::addressing::compute_purchase_order_address,
 };
 
 pub struct PurchaseOrderState<'a> {
@@ -36,8 +40,21 @@ impl<'a> PurchaseOrderState<'a> {
         Self { _context: context }
     }
 
-    pub fn _get_purchase_order(&self, _po_uuid: &str) -> Result<Option<PurchaseOrder>, ApplyError> {
-        unimplemented!();
+    pub fn _get_purchase_order(&self, po_uuid: &str) -> Result<Option<PurchaseOrder>, ApplyError> {
+        let address = compute_purchase_order_address(po_uuid);
+        if let Some(packed) = self._context.get_state_entry(&address)? {
+            let purchase_orders =
+                PurchaseOrderList::from_bytes(packed.as_slice()).map_err(|_| {
+                    ApplyError::InternalError("Cannot deserialize purchase order list".to_string())
+                })?;
+            Ok(purchase_orders
+                .purchase_orders()
+                .iter()
+                .find(|p| p.uuid() == po_uuid)
+                .cloned())
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn _set_purchase_order(
