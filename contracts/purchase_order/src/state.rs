@@ -23,9 +23,9 @@ cfg_if! {
 }
 
 use grid_sdk::{
-    pike::addressing::compute_agent_address,
+    pike::addressing::{compute_agent_address, compute_organization_address},
     protocol::{
-        pike::state::{Agent, AgentList, Organization},
+        pike::state::{Agent, AgentList, Organization, OrganizationList},
         purchase_order::state::{PurchaseOrder, PurchaseOrderList, PurchaseOrderListBuilder},
     },
     protos::{FromBytes, IntoBytes},
@@ -130,7 +130,22 @@ impl<'a> PurchaseOrderState<'a> {
         }
     }
 
-    pub fn _get_organization(&self, _id: &str) -> Result<Option<Organization>, ApplyError> {
-        unimplemented!();
+    pub fn _get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
+        let address = compute_organization_address(id);
+        if let Some(packed) = self._context.get_state_entry(&address)? {
+            let orgs = OrganizationList::from_bytes(packed.as_slice()).map_err(|err| {
+                ApplyError::InternalError(format!(
+                    "Cannot deserialize organization list: {:?}",
+                    err
+                ))
+            })?;
+            Ok(orgs
+                .organizations()
+                .iter()
+                .find(|org| org.org_id() == id)
+                .cloned())
+        } else {
+            Ok(None)
+        }
     }
 }
