@@ -22,7 +22,7 @@ edition = "2018"
 
 [dependencies]
 clap = "2"
-grid-sdk = { path = "../../sdk", features = ["purchase-order", "workflow"] }
+grid-sdk = { path = "../../sdk", features = ["purchase-order", "workflow", "pike"] }
 cfg-if = "1"
 hex = "0.4"
 protobuf = "2.19"

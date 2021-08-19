@@ -139,7 +139,7 @@ impl<'a> PermissionChecker<'a> {
         })
     }
 
-    fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, PermissionCheckerError> {
+    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, PermissionCheckerError> {
         let address = compute_agent_address(public_key);
         let d = self.context.get_state_entry(&address)?;
         match d {
@@ -156,7 +156,7 @@ impl<'a> PermissionChecker<'a> {
         }
     }
 
-    fn get_role(
+    pub fn get_role(
         &self,
         name: &str,
         org_id: Option<&str>,
