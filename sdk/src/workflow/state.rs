@@ -51,6 +51,18 @@ impl WorkflowState {
         perms
     }
 
+    pub fn get_aliases_by_permission(&self, permission: &str) -> Vec<String> {
+        let mut aliases = Vec::new();
+
+        for alias in &self.permission_aliases {
+            if alias.permissions().contains(&permission.to_string()) {
+                aliases.push(alias.name().to_string());
+            }
+        }
+
+        aliases
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
