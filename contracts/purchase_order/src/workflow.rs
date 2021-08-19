@@ -17,6 +17,12 @@ use grid_sdk::workflow::{
 };
 
 #[allow(dead_code)]
+pub enum POWorkflow {
+    SystemOfRecord,
+    Collaborative,
+}
+
+#[allow(dead_code)]
 pub fn get_workflow(name: &str) -> Option<Workflow> {
     match name {
         "built-in:system-of-record:v1" => Some(system_of_record_workflow()),
@@ -38,13 +44,13 @@ fn collaborative_workflow() -> Workflow {
 
 fn default_sub_workflow() -> SubWorkflow {
     let create = {
-        let mut buyer = PermissionAlias::new("po.buyer");
+        let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission("can-create-po");
         buyer.add_permission("can-create-po-version");
         buyer.add_permission("can-transition-issued");
         buyer.add_transition("issued");
 
-        let mut seller = PermissionAlias::new("po.seller");
+        let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission("can-create-po-version");
         buyer.add_permission("can-transition-issued");
         buyer.add_transition("issued");
@@ -57,13 +63,13 @@ fn default_sub_workflow() -> SubWorkflow {
     };
 
     let issued = {
-        let mut buyer = PermissionAlias::new("po.buyer");
+        let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission("can-create-po-version");
         buyer.add_permission("can-update-po-version");
         buyer.add_permission("can-transition-closed");
         buyer.add_transition("closed");
 
-        let mut seller = PermissionAlias::new("po.seller");
+        let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission("can-create-po-version");
         seller.add_permission("can-update-po-version");
         seller.add_permission("can-transition-confirmed");
@@ -78,12 +84,12 @@ fn default_sub_workflow() -> SubWorkflow {
     };
 
     let confirmed = {
-        let mut buyer = PermissionAlias::new("po.buyer");
+        let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission("can-create-po-version");
         buyer.add_permission("can-transition-issued");
         buyer.add_transition("issued");
 
-        let mut seller = PermissionAlias::new("po.seller");
+        let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission("can-create-po-version");
         seller.add_permission("can-transition-closed");
         seller.add_transition("confirmed");
@@ -97,8 +103,8 @@ fn default_sub_workflow() -> SubWorkflow {
     };
 
     let closed = {
-        let buyer = PermissionAlias::new("po.buyer");
-        let seller = PermissionAlias::new("po.seller");
+        let buyer = PermissionAlias::new("po::buyer");
+        let seller = PermissionAlias::new("po::seller");
 
         WorkflowStateBuilder::new("closed")
             .add_permission_alias(buyer)
@@ -117,12 +123,12 @@ fn default_sub_workflow() -> SubWorkflow {
 
 fn system_of_record_sub_workflow() -> SubWorkflow {
     let create = {
-        let mut buyer = PermissionAlias::new("po.buyer");
+        let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission("can-create-po-version");
         buyer.add_permission("can-transition-proposed");
         buyer.add_transition("proposed");
 
-        let seller = PermissionAlias::new("po.seller");
+        let seller = PermissionAlias::new("po::seller");
 
         WorkflowStateBuilder::new("create")
             .add_transition("proposed")
@@ -132,23 +138,21 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let proposed = {
-        let mut buyer = PermissionAlias::new("po.buyer");
+        let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission("can-update-po-version");
         buyer.add_permission("can-transition-obsolete");
         buyer.add_transition("obsolete");
 
-        let mut seller_confirm = PermissionAlias::new("po.seller");
-        seller_confirm.add_permission("can-update-po-version-response");
+        let mut seller_confirm = PermissionAlias::new("po::seller");
+        seller_confirm.add_permission("can-update-po-version");
         seller_confirm.add_permission("can-transition-rejected");
         seller_confirm.add_permission("can-transition-accepted");
         seller_confirm.add_transition("rejected");
         seller_confirm.add_transition("accepted");
 
-        let mut seller_modify = PermissionAlias::new("po.seller");
-        seller_modify.add_permission("can-update-po-version-date");
-        seller_modify.add_permission("can-update-po-version-quantity");
-        seller_modify.add_permission("can-update-po-version-price");
-        seller_modify.add_permission("can-update-po-substitute-item");
+        let mut seller_modify = PermissionAlias::new("po::seller");
+        seller_modify.add_permission("can-update-po-version");
+        seller_modify.add_permission("can-update-po");
         seller_modify.add_permission("can-transition-modified");
         seller_modify.add_transition("modified");
 
@@ -164,8 +168,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let obsolete = {
-        let buyer = PermissionAlias::new("po.buyer");
-        let seller = PermissionAlias::new("po.seller");
+        let buyer = PermissionAlias::new("po::buyer");
+        let seller = PermissionAlias::new("po::seller");
 
         WorkflowStateBuilder::new("obsolete")
             .add_permission_alias(buyer)
@@ -174,8 +178,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let rejected = {
-        let buyer = PermissionAlias::new("po.buyer");
-        let seller = PermissionAlias::new("po.seller");
+        let buyer = PermissionAlias::new("po::buyer");
+        let seller = PermissionAlias::new("po::seller");
 
         WorkflowStateBuilder::new("rejected")
             .add_permission_alias(buyer)
@@ -184,19 +188,17 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let modified = {
-        let mut buyer = PermissionAlias::new("po.buyer");
+        let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission("can-transition-obsolete");
         buyer.add_transition("obsolete");
 
-        let mut seller_modify = PermissionAlias::new("po.seller");
-        seller_modify.add_permission("can-update-po-version-date");
-        seller_modify.add_permission("can-update-po-version-quantity");
-        seller_modify.add_permission("can-update-po-version-price");
-        seller_modify.add_permission("can-update-po-substitute-item");
+        let mut seller_modify = PermissionAlias::new("po::seller");
+        seller_modify.add_permission("can-update-po-version");
+        seller_modify.add_permission("can-update-po");
         seller_modify.add_permission("can-transition-modified");
         seller_modify.add_permission("can-update-po-version-response");
 
-        let mut editor = PermissionAlias::new("po.editor");
+        let mut editor = PermissionAlias::new("po::editor");
         editor.add_permission("can-transition-editable");
         editor.add_permission("can-transition-review");
         editor.add_transition("review");
@@ -213,11 +215,11 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let accepted = {
-        let mut buyer = PermissionAlias::new("po.buyer");
+        let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission("can-transition-obsolete");
         buyer.add_transition("obsolete");
 
-        let seller = PermissionAlias::new("po.seller");
+        let seller = PermissionAlias::new("po::seller");
 
         WorkflowStateBuilder::new("accepted")
             .add_transition("obsolete")
@@ -227,7 +229,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let editable = {
-        let mut draft = PermissionAlias::new("po.draft");
+        let mut draft = PermissionAlias::new("po::draft");
         draft.add_permission("can-update-po-version");
         draft.add_permission("can-transition-cancelled");
         draft.add_permission("can-transition-review");
@@ -242,7 +244,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let review = {
-        let mut draft = PermissionAlias::new("po.draft");
+        let mut draft = PermissionAlias::new("po::draft");
         draft.add_permission("can-update-po-version");
         draft.add_permission("can-transition-editable");
         draft.add_permission("can-transition-composed");
@@ -260,7 +262,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let declined = {
-        let mut draft = PermissionAlias::new("po.draft");
+        let mut draft = PermissionAlias::new("po::draft");
         draft.add_permission("can-transition-editable");
         draft.add_permission("can-transition-cancelled");
         draft.add_transition("editable");
@@ -274,7 +276,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let composed = {
-        let draft = PermissionAlias::new("po.draft");
+        let draft = PermissionAlias::new("po::draft");
 
         WorkflowStateBuilder::new("composed")
             .add_permission_alias(draft)
@@ -282,7 +284,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     let cancelled = {
-        let draft = PermissionAlias::new("po.draft");
+        let draft = PermissionAlias::new("po::draft");
 
         WorkflowStateBuilder::new("cancelled")
             .add_permission_alias(draft)
@@ -308,7 +310,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
 
 fn collaborative_sub_workflow() -> SubWorkflow {
     let create = {
-        let mut partner = PermissionAlias::new("po.partner");
+        let mut partner = PermissionAlias::new("po::partner");
         partner.add_permission("can-create-po-version");
         partner.add_permission("can-transition-proposed");
         partner.add_transition("proposed");
@@ -320,7 +322,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
     };
 
     let proposed = {
-        let mut partner = PermissionAlias::new("po.partner");
+        let mut partner = PermissionAlias::new("po::partner");
         partner.add_permission("can-update-po-version");
         partner.add_permission("can-transition-rejected");
         partner.add_permission("can-transition-accepted");
@@ -341,7 +343,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
     };
 
     let rejected = {
-        let partner = PermissionAlias::new("po.partner");
+        let partner = PermissionAlias::new("po::partner");
 
         WorkflowStateBuilder::new("rejected")
             .add_permission_alias(partner)
@@ -349,7 +351,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
     };
 
     let accepted = {
-        let mut partner = PermissionAlias::new("po.partner");
+        let mut partner = PermissionAlias::new("po::partner");
         partner.add_permission("can-transition-obsolete");
         partner.add_transition("obsolete");
 
@@ -360,11 +362,9 @@ fn collaborative_sub_workflow() -> SubWorkflow {
     };
 
     let modified = {
-        let mut partner = PermissionAlias::new("po.partner");
-        partner.add_permission("can-update-po-version-date");
-        partner.add_permission("can-update-po-version-quantity");
-        partner.add_permission("can-update-po-version-price");
-        partner.add_permission("can-update-po-substitute-item");
+        let mut partner = PermissionAlias::new("po::partner");
+        partner.add_permission("can-update-po-version");
+        partner.add_permission("can-update-po");
         partner.add_permission("can-update-po-version-response");
         partner.add_permission("can-transition-proposed");
         partner.add_permission("can-transition-accepted");
@@ -382,7 +382,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
     };
 
     let obsolete = {
-        let partner = PermissionAlias::new("po.partner");
+        let partner = PermissionAlias::new("po::partner");
 
         WorkflowStateBuilder::new("obsolete")
             .add_permission_alias(partner)
