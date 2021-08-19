@@ -36,6 +36,7 @@ use grid_sdk::{
         UpdatePurchaseOrderPayload, UpdateVersionPayload,
     },
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
+    workflow::WorkflowState,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -154,4 +155,95 @@ fn update_version(
     _perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     unimplemented!();
+}
+
+#[allow(dead_code)]
+fn check_permission_with_workflow(
+    perm_checker: &PermissionChecker,
+    permission: &str,
+    signer: &str,
+    record_owner: &str,
+    workflow_state: WorkflowState,
+    desired_state: &str,
+) -> Result<(), ApplyError> {
+    let agent = perm_checker.get_agent(signer).map_err(|err| {
+        ApplyError::InternalError(format!(
+            "Could not fetch agent to check permissions: {}",
+            err
+        ))
+    })?;
+
+    if agent.is_none() {
+        return Err(ApplyError::InternalError(format!(
+            "Could not fetch agent with public key {}",
+            signer
+        )));
+    }
+
+    let agent = agent.unwrap();
+
+    let mut agent_perms = Vec::new();
+    agent.roles().iter().for_each(|r| {
+        let mut org_id = Some(record_owner);
+        if r.contains('.') {
+            org_id = None;
+        }
+
+        let role = perm_checker.get_role(r, org_id).ok().flatten();
+
+        if let Some(role) = role {
+            agent_perms.extend_from_slice(role.permissions());
+        }
+    });
+
+    let permissions = workflow_state.expand_permissions(agent_perms.as_slice());
+
+    if !permissions.contains(&permission.to_string()) {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Signer {} does not have permission {}",
+            signer, permission
+        )));
+    }
+
+    let can_transition = workflow_state.can_transition(desired_state.to_string(), agent_perms);
+
+    if !can_transition {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Signer {} does not have permission to transition to state {}",
+            signer, desired_state
+        )));
+    }
+
+    let aliases = workflow_state.get_aliases_by_permission(permission);
+
+    let mut has_permission = false;
+    let mut has_permission_err = None;
+
+    for alias in aliases {
+        match perm_checker.has_permission(signer, &alias, record_owner) {
+            Ok(true) => {
+                has_permission = true;
+            }
+            Ok(false) => {}
+            Err(err) => {
+                has_permission_err = Some(ApplyError::InvalidTransaction(format!(
+                    "Permission check failed: {}",
+                    err
+                )));
+            }
+        }
+    }
+
+    if let Some(has_permission_err) = has_permission_err {
+        return Err(has_permission_err);
+    }
+
+    if !has_permission {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Signer {} does not have permission {}",
+            signer, permission
+        )));
+    }
+
+    Ok(())
 }
