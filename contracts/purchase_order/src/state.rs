@@ -26,7 +26,9 @@ use grid_sdk::{
     pike::addressing::{compute_agent_address, compute_organization_address},
     protocol::{
         pike::state::{Agent, AgentList, Organization, OrganizationList},
-        purchase_order::state::{PurchaseOrder, PurchaseOrderList, PurchaseOrderListBuilder},
+        purchase_order::state::{
+            PurchaseOrder, PurchaseOrderList, PurchaseOrderListBuilder, PurchaseOrderVersion,
+        },
     },
     protos::{FromBytes, IntoBytes},
     purchase_order::addressing::compute_purchase_order_address,
@@ -112,6 +114,38 @@ impl<'a> PurchaseOrderState<'a> {
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
 
         Ok(())
+    }
+
+    pub fn _get_purchase_order_version(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+    ) -> Result<Option<PurchaseOrderVersion>, ApplyError> {
+        let address = compute_purchase_order_address(po_uid);
+        if let Some(packed) = self._context.get_state_entry(&address)? {
+            let purchase_orders =
+                PurchaseOrderList::from_bytes(packed.as_slice()).map_err(|_| {
+                    ApplyError::InternalError("Cannot deserialize purchase order list".to_string())
+                })?;
+            let po = purchase_orders
+                .purchase_orders()
+                .iter()
+                .find(|p| p.uid() == po_uid)
+                .cloned()
+                .ok_or_else(|| {
+                    ApplyError::InternalError(format!(
+                        "Purchase order with UID {} does not exist",
+                        po_uid
+                    ))
+                })?;
+            Ok(po
+                .versions()
+                .iter()
+                .find(|v| v.version_id() == version_id)
+                .cloned())
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn _get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
