@@ -66,10 +66,6 @@ impl<'a> PermissionChecker<'a> {
                     return Ok(false);
                 }
 
-                if agent.org_id() != record_owner {
-                    return Ok(false);
-                }
-
                 let agent_roles: Vec<Role> = agent
                     .roles()
                     .iter()
@@ -117,14 +113,20 @@ impl<'a> PermissionChecker<'a> {
                 let inheriting_roles: Vec<Role> = r
                     .inherit_from()
                     .iter()
-                    .filter_map(|r| {
-                        if r.contains('.') {
-                            self.get_role(r, None).ok()
+                    .filter_map(|role| {
+                        if role.contains('.') {
+                            self.get_role(role, None).ok()
                         } else {
-                            self.get_role(r, Some(agent_org_id)).ok()
+                            self.get_role(role, Some(agent_org_id)).ok()
                         }
                     })
                     .flatten()
+                    .filter(|role| {
+                        role.org_id() == agent_org_id
+                            || role
+                                .allowed_organizations()
+                                .contains(&agent_org_id.to_string())
+                    })
                     .collect();
 
                 self.check_roles_for_permission(
@@ -137,7 +139,7 @@ impl<'a> PermissionChecker<'a> {
         })
     }
 
-    fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, PermissionCheckerError> {
+    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, PermissionCheckerError> {
         let address = compute_agent_address(public_key);
         let d = self.context.get_state_entry(&address)?;
         match d {
@@ -154,7 +156,7 @@ impl<'a> PermissionChecker<'a> {
         }
     }
 
-    fn get_role(
+    pub fn get_role(
         &self,
         name: &str,
         org_id: Option<&str>,
