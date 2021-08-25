@@ -148,6 +148,76 @@ impl<'a> PurchaseOrderState<'a> {
         }
     }
 
+    pub fn _set_purchase_order_version(
+        &self,
+        po_uid: &str,
+        purchase_order_version: PurchaseOrderVersion,
+    ) -> Result<(), ApplyError> {
+        let address = compute_purchase_order_address(po_uid);
+        let mut purchase_orders: Vec<PurchaseOrder> =
+            match self._context.get_state_entry(&address)? {
+                Some(packed) => PurchaseOrderList::from_bytes(packed.as_slice())
+                    .map_err(|err| {
+                        ApplyError::InternalError(format!(
+                            "Cannot deserialize purchase order list: {:?}",
+                            err
+                        ))
+                    })?
+                    .purchase_orders()
+                    .to_vec(),
+                None => vec![],
+            };
+
+        let mut index = None;
+        for (i, po) in purchase_orders.iter().enumerate() {
+            if po.uid() == po_uid {
+                index = Some(i);
+                break;
+            }
+        }
+        // Get the original purchase order in state
+        let orig_po = match index {
+            Some(i) => Ok(purchase_orders.remove(i)),
+            _ => Err(ApplyError::InvalidTransaction(format!(
+                "Purchase Order with UID {} does not exist",
+                po_uid
+            ))),
+        }?;
+        // Add the `PurchaseOrderVersion` to the purchase order
+        let mut versions = orig_po.versions().to_vec();
+        versions.push(purchase_order_version);
+        let purchase_order = orig_po
+            .into_builder()
+            .with_versions(versions)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build purchase order: {:?}", err))
+            })?;
+        purchase_orders.push(purchase_order);
+        purchase_orders.sort_by_key(|r| r.uid().to_string());
+        // Add the updated purchase order to state
+        let po_list = PurchaseOrderListBuilder::new()
+            .with_purchase_orders(purchase_orders)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!(
+                    "Cannot build purchase order list: {:?}",
+                    err
+                ))
+            })?;
+
+        let serialized = po_list.into_bytes().map_err(|err| {
+            ApplyError::InvalidTransaction(format!(
+                "Cannot serialize purchase order list: {:?}",
+                err
+            ))
+        })?;
+        self._context
+            .set_state_entry(address, serialized)
+            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        Ok(())
+    }
+
     pub fn _get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
         let address = compute_agent_address(public_key);
         if let Some(packed) = self._context.get_state_entry(&address)? {
