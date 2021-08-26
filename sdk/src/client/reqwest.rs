@@ -22,6 +22,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::Instant;
 
+use super::location::reqwest::ReqwestLocationClient;
 #[cfg(feature = "purchase-order")]
 use super::purchase_order;
 use super::schema::reqwest::ReqwestSchemaClient;
@@ -44,8 +45,8 @@ impl Default for ReqwestClientFactory {
 
 impl ClientFactory for ReqwestClientFactory {
     /// Retrieves a client for listing and showing locations
-    fn get_location_client(&self, _url: String) -> Box<dyn location::LocationClient> {
-        unimplemented!()
+    fn get_location_client(&self, url: String) -> Box<dyn location::LocationClient> {
+        Box::new(ReqwestLocationClient::new(url))
     }
 
     /// Retrieves a client for listing and showing pike members
