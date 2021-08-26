@@ -16,6 +16,9 @@ use crate::error::ClientError;
 
 use super::{schema::DataType, Client};
 
+#[cfg(feature = "client-reqwest")]
+pub mod reqwest;
+
 pub struct Location {
     pub location_id: String,
     pub location_namespace: String,
