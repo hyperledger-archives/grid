@@ -74,12 +74,16 @@
 //! }
 //! ```
 
+#[cfg(feature = "client")]
+mod client;
 mod constraint_violation;
 mod internal;
 mod invalid_argument;
 mod invalid_state;
 mod unavailable;
 
+#[cfg(feature = "client")]
+pub use client::ClientError;
 pub use constraint_violation::{ConstraintViolationError, ConstraintViolationType};
 pub use internal::InternalError;
 pub use invalid_argument::InvalidArgumentError;
