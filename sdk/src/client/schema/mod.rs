@@ -17,6 +17,9 @@ use crate::protocol::schema::state::DataType as StateDataType;
 
 use super::Client;
 
+#[cfg(feature = "client-reqwest")]
+pub mod reqwest;
+
 pub struct Schema {
     pub name: String,
     pub description: String,
@@ -35,6 +38,7 @@ pub struct PropertyDefinition {
     pub struct_properties: Vec<PropertyDefinition>,
 }
 
+#[derive(Debug)]
 pub enum DataType {
     Bytes,
     Boolean,
@@ -66,8 +70,7 @@ pub trait SchemaClient: Client {
     ///
     /// * `name` - the name of the schema (identifier)
     /// * `service_id` - optional - the service id to fetch the schema from
-    fn get_schema(&self, name: String, service_id: Option<&str>)
-        -> Result<Schema, ClientError>;
+    fn get_schema(&self, name: String, service_id: Option<&str>) -> Result<Schema, ClientError>;
 
     /// Fetches a list of schemas for the organization
     ///
