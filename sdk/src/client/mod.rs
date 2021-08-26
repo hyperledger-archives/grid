@@ -19,9 +19,11 @@ pub mod pike;
 pub mod product;
 #[cfg(feature = "purchase-order")]
 pub mod purchase_order;
+#[cfg(feature = "client-reqwest")]
+pub mod reqwest;
 pub mod schema;
 
-use crate::error::ClientError;
+use crate::error::{ClientError, InternalError};
 use sawtooth_sdk::messages::batch::BatchList;
 
 pub trait Client {
@@ -60,4 +62,23 @@ pub trait ClientFactory {
 
     /// Retrieves a client for listing and showing schemas
     fn get_schema_client(&self, url: String) -> Box<dyn schema::SchemaClient>;
+}
+
+pub enum ClientType {
+    #[cfg(feature = "client-reqwest")]
+    Reqwest,
+}
+
+pub fn create_client_factory(
+    client_type: ClientType,
+) -> Result<Box<dyn ClientFactory>, InternalError> {
+    match client_type {
+        #[cfg(feature = "client-reqwest")]
+        ClientType::Reqwest => Ok(Box::new(reqwest::ReqwestClientFactory::new())),
+
+        #[cfg(not(feature = "client-reqwest"))]
+        _ => Err(InternalError::with_message(
+            "Client Type Required. Feature may be required".to_string(),
+        )),
+    }
 }
