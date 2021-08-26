@@ -24,6 +24,7 @@ use std::time::Instant;
 
 #[cfg(feature = "purchase-order")]
 use super::purchase_order;
+use super::schema::reqwest::ReqwestSchemaClient;
 use super::ClientFactory;
 use super::{location, pike, product, schema};
 
@@ -68,8 +69,8 @@ impl ClientFactory for ReqwestClientFactory {
     }
 
     /// Retrieves a client for listing and showing schemas
-    fn get_schema_client(&self, _url: String) -> Box<dyn schema::SchemaClient> {
-        unimplemented!()
+    fn get_schema_client(&self, url: String) -> Box<dyn schema::SchemaClient> {
+        Box::new(ReqwestSchemaClient::new(url))
     }
 }
 
