@@ -19,6 +19,7 @@ use std::cmp;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cylinder::Signer;
+use grid_sdk::client::pike::{PikeClient, PikeOrganization};
 use grid_sdk::{
     pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::pike::payload::{
@@ -26,49 +27,16 @@ use grid_sdk::{
     },
     protos::IntoProto,
 };
-use reqwest::Client;
-use serde::Deserialize;
 
-use crate::actions::Paging;
 use crate::error::CliError;
-use crate::http::submit_batches;
 use crate::transaction::pike_batch_builder;
 
-#[derive(Debug, Deserialize)]
-pub struct AlternateIdSlice {
-    pub id_type: String,
-    pub id: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct OrganizationMetadataSlice {
-    pub key: String,
-    pub value: String,
-    pub service_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct OrganizationSlice {
-    pub org_id: String,
-    pub name: String,
-    pub locations: Vec<String>,
-    pub alternate_ids: Vec<AlternateIdSlice>,
-    pub metadata: Vec<OrganizationMetadataSlice>,
-    pub service_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct OrganizationListSlice {
-    pub data: Vec<OrganizationSlice>,
-    pub paging: Paging,
-}
-
 pub fn do_create_organization(
-    url: &str,
+    client: Box<dyn PikeClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     create_org: CreateOrganizationAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -89,15 +57,16 @@ pub fn do_create_organization(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 pub fn do_update_organization(
-    url: &str,
+    client: Box<dyn PikeClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     update_org: UpdateOrganizationAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -118,45 +87,23 @@ pub fn do_update_organization(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 pub fn do_list_organizations(
-    url: &str,
-    service_id: Option<String>,
+    client: Box<dyn PikeClient>,
+    service_id: Option<&str>,
     format: &str,
     display_alternate_ids: bool,
 ) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/organization", url);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut orgs = Vec::new();
-
-    loop {
-        let mut response = client.get(&final_url).send()?;
-
-        if !response.status().is_success() {
-            return Err(CliError::DaemonError(response.text()?));
-        }
-
-        let mut orgs_list = response.json::<OrganizationListSlice>()?;
-        orgs.append(&mut orgs_list.data);
-
-        if let Some(next) = orgs_list.paging.next {
-            final_url = format!("{}{}", url, next);
-        } else {
-            break;
-        }
-    }
+    let orgs = client.list_organizations(service_id)?;
 
     list_organizations(orgs, format, display_alternate_ids);
     Ok(())
 }
 
-fn list_organizations(orgs: Vec<OrganizationSlice>, format: &str, display_alternate_ids: bool) {
+fn list_organizations(orgs: Vec<PikeOrganization>, format: &str, display_alternate_ids: bool) {
     let mut headers = vec![
         "ORG_ID".to_string(),
         "NAME".to_string(),
@@ -237,72 +184,57 @@ fn print_human_readable(column_names: Vec<String>, row_values: Vec<Vec<String>>)
 }
 
 pub fn do_show_organization(
-    url: &str,
-    service_id: Option<String>,
+    client: Box<dyn PikeClient>,
+    service_id: Option<&str>,
     org_id: &str,
 ) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/organization/{}", url, org_id);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
+    let org = client.get_organization(org_id.into(), service_id)?;
 
-    let mut response = client.get(&final_url).send()?;
-
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
-    }
-
-    let org = response.json::<OrganizationSlice>()?;
-
-    println!("{}", org);
+    print_organization(org);
 
     Ok(())
 }
 
-impl std::fmt::Display for OrganizationSlice {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut display_string =
-            format!("Organization ID: {}\nName: {}\n", &self.org_id, &self.name);
-        if let Some(service_id) = &self.service_id {
-            display_string += &format!("Service ID: {}\n", service_id);
-        }
-        display_string += "Locations:";
-        let locations = if self.locations.is_empty() {
-            " -\n".to_string()
-        } else {
-            self.locations
-                .iter()
-                .map(|locale| format!("\n\t{}", locale))
-                .collect::<Vec<String>>()
-                .join(",")
-        };
-        display_string += &locations;
-
-        display_string += "Alternate IDs:";
-        let ids = if self.alternate_ids.is_empty() {
-            " -\n".to_string()
-        } else {
-            self.alternate_ids
-                .iter()
-                .map(|alt_id| format!("\n\t{}: {}", alt_id.id_type, alt_id.id))
-                .collect::<Vec<String>>()
-                .join(",")
-        };
-        display_string += &ids;
-
-        display_string += "Metadata:";
-        let metadata = if self.metadata.is_empty() {
-            " -\n".to_string()
-        } else {
-            self.metadata
-                .iter()
-                .map(|data| format!("\n\t{}: {}", data.key, data.value))
-                .collect::<Vec<String>>()
-                .join(",")
-        };
-        display_string += &metadata;
-
-        write!(f, "{}", display_string)
+fn print_organization(org: PikeOrganization) {
+    let mut display_string = format!("Organization ID: {}\nName: {}\n", &org.org_id, &org.name);
+    if let Some(service_id) = &org.service_id {
+        display_string += &format!("Service ID: {}\n", service_id);
     }
+    display_string += "Locations:";
+    let locations = if org.locations.is_empty() {
+        " -\n".to_string()
+    } else {
+        org.locations
+            .iter()
+            .map(|locale| format!("\n\t{}", locale))
+            .collect::<Vec<String>>()
+            .join(",")
+    };
+    display_string += &locations;
+
+    display_string += "Alternate IDs:";
+    let ids = if org.alternate_ids.is_empty() {
+        " -\n".to_string()
+    } else {
+        org.alternate_ids
+            .iter()
+            .map(|alt_id| format!("\n\t{}: {}", alt_id.id_type, alt_id.id))
+            .collect::<Vec<String>>()
+            .join(",")
+    };
+    display_string += &ids;
+
+    display_string += "Metadata:";
+    let metadata = if org.metadata.is_empty() {
+        " -\n".to_string()
+    } else {
+        org.metadata
+            .iter()
+            .map(|data| format!("\n\t{}: {}", data.key, data.value))
+            .collect::<Vec<String>>()
+            .join(",")
+    };
+    display_string += &metadata;
+
+    println!("{}", display_string)
 }

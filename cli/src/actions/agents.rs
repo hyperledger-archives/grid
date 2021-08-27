@@ -16,40 +16,26 @@
  */
 
 use std::cmp;
-use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use grid_sdk::{
+    client::pike::{PikeAgent, PikeClient},
     pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::pike::payload::{Action, CreateAgentAction, PikePayloadBuilder, UpdateAgentAction},
     protos::IntoProto,
 };
 
 use cylinder::Signer;
-use reqwest::Client;
-use serde::Deserialize;
 
-use crate::actions::ListSlice;
 use crate::error::CliError;
-use crate::http::submit_batches;
 use crate::transaction::pike_batch_builder;
 
-#[derive(Debug, Deserialize)]
-pub struct AgentSlice {
-    pub public_key: String,
-    pub org_id: String,
-    pub active: bool,
-    pub roles: Vec<String>,
-    pub service_id: Option<String>,
-    pub metadata: HashMap<String, String>,
-}
-
 pub fn do_create_agent(
-    url: &str,
+    client: Box<dyn PikeClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     create_agent: CreateAgentAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -70,15 +56,16 @@ pub fn do_create_agent(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 pub fn do_update_agent(
-    url: &str,
+    client: Box<dyn PikeClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     update_agent: UpdateAgentAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -99,70 +86,34 @@ pub fn do_update_agent(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 pub fn do_list_agents(
-    url: &str,
-    service_id: Option<String>,
+    client: Box<dyn PikeClient>,
+    service_id: Option<&str>,
     format: &str,
     line_per_role: bool,
 ) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/agent", url);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut agents = Vec::new();
-
-    loop {
-        let mut response = client.get(&final_url).send()?;
-
-        if !response.status().is_success() {
-            return Err(CliError::DaemonError(response.text()?));
-        }
-
-        let mut agents_list = response.json::<ListSlice<AgentSlice>>()?;
-
-        agents.append(&mut agents_list.data);
-
-        if let Some(next) = agents_list.paging.next {
-            final_url = format!("{}{}", url, next);
-        } else {
-            break;
-        }
-    }
+    let agents = client.list_agents(service_id)?;
 
     display_agents_info(&agents, format, line_per_role);
     Ok(())
 }
 
 pub fn do_show_agents(
-    url: &str,
+    client: Box<dyn PikeClient>,
     public_key: &str,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/agent/{}", url, public_key);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut response = client.get(&final_url).send()?;
-
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
-    }
-
-    let agent = response.json::<AgentSlice>()?;
+    let agent = client.get_agent(public_key.into(), service_id)?;
 
     display_agent(&agent);
-
     Ok(())
 }
 
-pub fn display_agent(agent: &AgentSlice) {
+pub fn display_agent(agent: &PikeAgent) {
     println!(
         "{}",
         vec![
@@ -187,7 +138,7 @@ pub fn display_agent(agent: &AgentSlice) {
     );
 }
 
-pub fn display_agents_info(agents: &[AgentSlice], format: &str, line_per_role: bool) {
+pub fn display_agents_info(agents: &[PikeAgent], format: &str, line_per_role: bool) {
     let column_names = if line_per_role {
         vec!["PUBLIC_KEY", "ORG_ID", "ACTIVE", "ROLE"]
     } else {

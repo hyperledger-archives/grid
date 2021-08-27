@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::actions::Paging;
 use crate::error::CliError;
-use crate::http::submit_batches;
 use crate::transaction::schema_batch_builder;
 use crate::yaml_parser::{
     parse_value_as_boolean, parse_value_as_data_type, parse_value_as_i32, parse_value_as_sequence,
     parse_value_as_string, parse_value_as_vec_string,
 };
 use cylinder::Signer;
+use grid_sdk::client::schema::{
+    PropertyDefinition as GridPropertyDefinition, Schema as GridSchema, SchemaClient,
+};
 use grid_sdk::pike::addressing::GRID_PIKE_NAMESPACE;
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
@@ -31,36 +32,9 @@ use grid_sdk::protocol::schema::state::{
 };
 use grid_sdk::protos::IntoProto;
 use grid_sdk::schema::addressing::GRID_SCHEMA_NAMESPACE;
-use reqwest::Client;
 
 use serde::Deserialize;
 use serde_yaml::{Mapping, Value};
-
-#[derive(Debug, Deserialize)]
-pub struct GridSchemaSlice {
-    pub name: String,
-    pub description: String,
-    pub owner: String,
-    pub properties: Vec<GridPropertyDefinitionSlice>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GridSchemaListSlice {
-    pub data: Vec<GridSchemaSlice>,
-    pub paging: Paging,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GridPropertyDefinitionSlice {
-    pub name: String,
-    pub schema_name: String,
-    pub data_type: DataType,
-    pub required: bool,
-    pub description: String,
-    pub number_exponent: i64,
-    pub enum_options: Vec<String>,
-    pub struct_properties: Vec<GridPropertyDefinitionSlice>,
-}
 
 #[derive(Deserialize, Debug)]
 pub enum DataType {
@@ -87,7 +61,7 @@ impl From<DataType> for StateDataType {
     }
 }
 
-pub fn display_schemas_info(schemas: &[GridSchemaSlice]) {
+pub fn display_schemas_info(schemas: &[GridSchema]) {
     // Maximum length of the name column
     let mut name_width: usize = "NAME".len();
     // Minimum length of the owner column
@@ -120,7 +94,7 @@ pub fn display_schemas_info(schemas: &[GridSchemaSlice]) {
     });
 }
 
-pub fn display_schema(schema: &GridSchemaSlice) {
+pub fn display_schema(schema: &GridSchema) {
     println!(
         "Name: {:?}\n Description: {:?}\n Owner: {:?}\n Properties:",
         schema.name, schema.description, schema.owner,
@@ -128,7 +102,7 @@ pub fn display_schema(schema: &GridSchemaSlice) {
     display_schema_property_definitions(&schema.properties);
 }
 
-pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionSlice]) {
+pub fn display_schema_property_definitions(properties: &[GridPropertyDefinition]) {
     properties.iter().for_each(|def| {
         println!(
             "\tName: {:?}\n\t Data Type: {:?}\n\t Required: {:?}\n\t Description: {:?}
@@ -144,68 +118,31 @@ pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionS
     });
 }
 
-pub fn do_list_schemas(url: &str, service_id: Option<String>) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/schema", url);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut schemas = Vec::new();
-
-    loop {
-        let mut response = client.get(&final_url).send()?;
-
-        if !response.status().is_success() {
-            return Err(CliError::DaemonError(response.text()?));
-        }
-        let mut schema_list = response.json::<GridSchemaListSlice>()?;
-
-        schemas.append(&mut schema_list.data);
-
-        if let Some(next) = schema_list.paging.next {
-            final_url = format!("{}{}", url, next);
-        } else {
-            break;
-        }
-    }
-
+pub fn do_list_schemas(
+    client: Box<dyn SchemaClient>,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let schemas = client.list_schemas(service_id)?;
     display_schemas_info(&schemas);
     Ok(())
 }
 
-pub fn do_show_schema(url: &str, name: &str, service_id: Option<String>) -> Result<(), CliError> {
-    let schema = get_schema(url, name, service_id.as_deref())?;
+pub fn do_show_schema(
+    client: Box<dyn SchemaClient>,
+    name: String,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let schema = client.get_schema(name, service_id.as_deref())?;
     display_schema(&schema);
     Ok(())
 }
 
-pub fn get_schema(
-    url: &str,
-    namespace: &str,
-    service_id: Option<&str>,
-) -> Result<GridSchemaSlice, CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/schema/{}", url, namespace);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut response = client.get(&final_url).send()?;
-
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
-    }
-
-    response.json::<GridSchemaSlice>().map_err(CliError::from)
-}
-
 pub fn do_create_schemas(
-    url: &str,
+    client: Box<dyn SchemaClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     path: &str,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payloads = parse_yaml(path, Action::SchemaCreate(SchemaCreateAction::default()))?;
     let mut batch_list_builder = schema_batch_builder(signer);
@@ -222,15 +159,16 @@ pub fn do_create_schemas(
 
     let batch_list = batch_list_builder.create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 pub fn do_update_schemas(
-    url: &str,
+    client: Box<dyn SchemaClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     path: &str,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payloads = parse_yaml(path, Action::SchemaUpdate(SchemaUpdateAction::default()))?;
     let mut batch_list_builder = schema_batch_builder(signer);
@@ -247,7 +185,8 @@ pub fn do_update_schemas(
 
     let batch_list = batch_list_builder.create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError> {

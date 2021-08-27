@@ -13,11 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::actions::schemas::{self, get_schema, GridPropertyDefinitionSlice};
-use crate::actions::Paging;
-use crate::http::submit_batches;
 use crate::transaction::product_batch_builder;
 use cylinder::Signer;
+use grid_sdk::client::product::{
+    Product as GridProduct, ProductClient, PropertyValue as GridPropertyValue,
+};
+use grid_sdk::client::schema::{DataType, PropertyDefinition, SchemaClient};
 use grid_sdk::pike::addressing::GRID_PIKE_NAMESPACE;
 use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 use grid_sdk::product::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
@@ -29,50 +30,17 @@ use grid_sdk::protocol::product::state::ProductNamespace;
 use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder};
 use grid_sdk::protos::IntoProto;
 use grid_sdk::schema::addressing::GRID_SCHEMA_NAMESPACE;
-use reqwest::Client;
 
 use crate::error::CliError;
 use serde::Deserialize;
 
+use std::borrow::Borrow;
 use std::{
     collections::HashMap,
     fs::File,
     io::prelude::*,
     time::{SystemTime, UNIX_EPOCH},
 };
-
-#[derive(Debug, Deserialize)]
-pub struct GridProduct {
-    pub product_id: String,
-    pub product_namespace: String,
-    pub owner: String,
-    pub properties: Vec<GridPropertyValue>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GridProductList {
-    pub data: Vec<GridProduct>,
-    pub paging: Paging,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct GridPropertyValue {
-    pub name: String,
-    pub data_type: String,
-    pub bytes_value: Option<Vec<u8>>,
-    pub boolean_value: Option<bool>,
-    pub number_value: Option<i64>,
-    pub string_value: Option<String>,
-    pub enum_value: Option<u32>,
-    pub struct_values: Option<Vec<String>>,
-    pub lat_long_value: Option<LatLong>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct LatLong {
-    latitude: i64,
-    longitude: i64,
-}
 
 /**
  * Prints basic info for products
@@ -153,14 +121,14 @@ pub fn display_product_property_definitions(properties: &[GridPropertyValue]) {
  * path - Path to the yaml file that contains the product descriptions
  */
 pub fn do_create_products(
-    url: &str,
+    client: Box<dyn ProductClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<ProductCreateAction>,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
-        url,
+        client,
         signer,
         wait,
         actions.into_iter().map(Action::ProductCreate).collect(),
@@ -177,14 +145,14 @@ pub fn do_create_products(
  * path - Path to the yaml file that contains the product descriptions
  */
 pub fn do_update_products(
-    url: &str,
+    client: Box<dyn ProductClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<ProductUpdateAction>,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
-        url,
+        client,
         signer,
         wait,
         actions.into_iter().map(Action::ProductUpdate).collect(),
@@ -201,14 +169,14 @@ pub fn do_update_products(
  * path - Path to the yaml file that contains the product descriptions
  */
 pub fn do_delete_products(
-    url: &str,
+    client: Box<dyn ProductClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     action: ProductDeleteAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
-        url,
+        client,
         signer,
         wait,
         vec![Action::ProductDelete(action)],
@@ -221,33 +189,11 @@ pub fn do_delete_products(
  *
  * url - Url for the REST API
  */
-pub fn do_list_products(url: &str, service_id: Option<String>) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/product", url);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut products = Vec::new();
-
-    loop {
-        let mut response = client.get(&final_url).send()?;
-
-        if !response.status().is_success() {
-            return Err(CliError::DaemonError(response.text()?));
-        }
-
-        let mut product_list = response.json::<GridProductList>()?;
-
-        products.append(&mut product_list.data);
-
-        if let Some(next) = product_list.paging.next {
-            final_url = format!("{}{}", url, next);
-        } else {
-            break;
-        }
-    }
-
+pub fn do_list_products(
+    client: Box<dyn ProductClient>,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let products = client.list_products(service_id)?;
     display_products_info(&products);
     Ok(())
 }
@@ -259,23 +205,11 @@ pub fn do_list_products(url: &str, service_id: Option<String>) -> Result<(), Cli
  * product_id - e.g. GTIN
  */
 pub fn do_show_products(
-    url: &str,
-    product_id: &str,
-    service_id: Option<String>,
+    client: Box<dyn ProductClient>,
+    product_id: String,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/product/{}", url, product_id);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut response = client.get(&final_url).send()?;
-
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
-    }
-
-    let product = response.json::<GridProduct>()?;
+    let product = client.get_product(product_id, service_id)?;
     display_product(&product);
     Ok(())
 }
@@ -313,7 +247,7 @@ fn determine_file_type(path: &str) -> Result<ProductFileType, CliError> {
 
 pub fn create_product_payloads_from_file(
     paths: Vec<&str>,
-    url: &str,
+    client: Box<dyn SchemaClient>,
     service_id: Option<&str>,
     owner: Option<&str>,
 ) -> Result<Vec<ProductCreateAction>, CliError> {
@@ -333,7 +267,7 @@ pub fn create_product_payloads_from_file(
                 create_product_payloads_from_xml(path, owner)?
             }
             ProductFileType::SchemaBasedDefinition => {
-                create_product_payloads_from_yaml(path, url, service_id)?
+                create_product_payloads_from_yaml(path, client.borrow(), service_id)?
             }
         };
 
@@ -372,7 +306,7 @@ pub fn create_product_payloads_from_file(
 
 pub fn update_product_payloads_from_file(
     paths: Vec<&str>,
-    url: &str,
+    client: Box<dyn SchemaClient>,
     service_id: Option<&str>,
 ) -> Result<Vec<ProductUpdateAction>, CliError> {
     let mut total_payloads: Vec<ProductUpdateAction> = Vec::new();
@@ -383,7 +317,7 @@ pub fn update_product_payloads_from_file(
         let file_payloads = match file_type {
             ProductFileType::Gdsn3_1 => update_product_payloads_from_xml(path)?,
             ProductFileType::SchemaBasedDefinition => {
-                update_product_payloads_from_yaml(path, url, service_id)?
+                update_product_payloads_from_yaml(path, client.borrow(), service_id)?
             }
         };
 
@@ -439,7 +373,7 @@ pub fn create_product_payloads_from_xml(
 
 pub fn create_product_payloads_from_yaml(
     path: &str,
-    url: &str,
+    client: &dyn SchemaClient,
     service_id: Option<&str>,
 ) -> Result<Vec<ProductCreateAction>, CliError> {
     let file = std::fs::File::open(path)?;
@@ -449,9 +383,9 @@ pub fn create_product_payloads_from_yaml(
 
     for yml in ymls {
         let namespace = match yml.product_namespace {
-            Namespace::Gs1 => "gs1_product",
+            Namespace::Gs1 => "gs1_product".to_string(),
         };
-        let schema = get_schema(url, namespace, service_id)?;
+        let schema = client.get_schema(namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
     }
 
@@ -475,7 +409,7 @@ pub fn update_product_payloads_from_xml(path: &str) -> Result<Vec<ProductUpdateA
 
 pub fn update_product_payloads_from_yaml(
     path: &str,
-    url: &str,
+    client: &dyn SchemaClient,
     service_id: Option<&str>,
 ) -> Result<Vec<ProductUpdateAction>, CliError> {
     let file = std::fs::File::open(path)?;
@@ -485,9 +419,9 @@ pub fn update_product_payloads_from_yaml(
 
     for yml in ymls {
         let namespace = match yml.product_namespace {
-            Namespace::Gs1 => "gs1_product",
+            Namespace::Gs1 => "gs1_product".to_string(),
         };
-        let schema = get_schema(url, namespace, service_id)?;
+        let schema = client.get_schema(namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
     }
 
@@ -505,7 +439,7 @@ pub struct ProductCreateYaml {
 impl ProductCreateYaml {
     pub fn into_payload(
         self,
-        definitions: Vec<GridPropertyDefinitionSlice>,
+        definitions: Vec<PropertyDefinition>,
     ) -> Result<ProductCreateAction, CliError> {
         let property_values = yaml_to_property_values(&self.properties, definitions)?;
         ProductCreateActionBuilder::new()
@@ -547,7 +481,7 @@ pub struct ProductUpdateYaml {
 impl ProductUpdateYaml {
     pub fn into_payload(
         self,
-        definitions: Vec<GridPropertyDefinitionSlice>,
+        definitions: Vec<PropertyDefinition>,
     ) -> Result<ProductUpdateAction, CliError> {
         let property_values = yaml_to_property_values(&self.properties, definitions)?;
         ProductUpdateActionBuilder::new()
@@ -561,7 +495,7 @@ impl ProductUpdateYaml {
 
 fn yaml_to_property_values(
     properties: &HashMap<String, serde_yaml::Value>,
-    definitions: Vec<GridPropertyDefinitionSlice>,
+    definitions: Vec<PropertyDefinition>,
 ) -> Result<Vec<PropertyValue>, CliError> {
     let mut property_values = Vec::new();
 
@@ -578,7 +512,7 @@ fn yaml_to_property_values(
         };
 
         match def.data_type {
-            schemas::DataType::Bytes => {
+            DataType::Bytes => {
                 let mut f = File::open(&serde_yaml::from_value::<String>(value.clone())?)?;
                 let mut buffer = Vec::new();
                 f.read_to_end(&mut buffer)?;
@@ -592,7 +526,7 @@ fn yaml_to_property_values(
 
                 property_values.push(property_value);
             }
-            schemas::DataType::Boolean => {
+            DataType::Boolean => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -601,7 +535,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::Number => {
+            DataType::Number => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -610,7 +544,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::String => {
+            DataType::String => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -619,7 +553,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::Enum => {
+            DataType::Enum => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -628,7 +562,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::Struct => {
+            DataType::Struct => {
                 let properties: HashMap<String, serde_yaml::Value> =
                     serde_yaml::from_value(value.clone())?;
                 let property_value = PropertyValueBuilder::new()
@@ -642,7 +576,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::LatLong => {
+            DataType::LatLong => {
                 let lat_long = serde_yaml::from_value::<String>(value.clone())?
                     .split(',')
                     .map(|x| {
@@ -679,7 +613,7 @@ fn yaml_to_property_values(
 }
 
 fn submit_payloads(
-    url: &str,
+    client: Box<dyn ProductClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<Action>,
@@ -712,7 +646,8 @@ fn submit_payloads(
 
     let batches = builder.create_batch_list();
 
-    submit_batches(url, wait, &batches, service_id)
+    client.post_batches(wait, &batches, service_id)?;
+    Ok(())
 }
 
 #[derive(Deserialize, Debug)]

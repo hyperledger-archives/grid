@@ -17,52 +17,25 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::actions::Paging;
 use crate::error::CliError;
-use crate::http::submit_batches;
 use crate::transaction::pike_batch_builder;
 use cylinder::Signer;
 use grid_sdk::{
+    client::pike::{InheritFrom, PikeClient, PikeRole},
     pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::pike::payload::{
         Action, CreateRoleAction, DeleteRoleAction, PikePayloadBuilder, UpdateRoleAction,
     },
     protos::IntoProto,
 };
-use reqwest::Client;
 use std::cmp::max;
-
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-pub struct GridRole {
-    pub org_id: String,
-    pub name: String,
-    pub description: String,
-    pub active: bool,
-    pub permissions: Vec<String>,
-    pub inherit_from: Vec<GridInheritFrom>,
-    pub allowed_organizations: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GridRoleList {
-    pub data: Vec<GridRole>,
-    pub paging: Paging,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GridInheritFrom {
-    pub role_name: String,
-    pub org_id: String,
-}
 
 /**
  * Prints info for a Grid Role
  *
  * role - Role to be printed
  */
-pub fn display_role(role: &GridRole) {
+pub fn display_role(role: &PikeRole) {
     println!(
         "Organization ID: {:?}\nName: {:?}\nDescription: {:?}\nActive: {:?}\nPermissions: {:?}\n\
         Allowed Orgs: {:?}\nInherit from:",
@@ -81,7 +54,7 @@ pub fn display_role(role: &GridRole) {
  *
  * roles - Roles to be printed
  */
-pub fn display_roles_info(roles: &[GridRole]) {
+pub fn display_roles_info(roles: &[PikeRole]) {
     let mut width_org_id = "Organization ID".len();
     let mut width_role_name = "Role Name".len();
     let width_active = "Active".len();
@@ -125,7 +98,7 @@ pub fn display_roles_info(roles: &[GridRole]) {
  *
  * inherited - Inherited roles to be printed
  */
-pub fn display_inherit_from(inherited: &[GridInheritFrom]) {
+pub fn display_inherit_from(inherited: &[InheritFrom]) {
     inherited.iter().for_each(|i| {
         println!("\tOrg ID: {:?}\n\tName: {:?}", i.org_id, i.role_name,);
     });
@@ -141,11 +114,11 @@ pub fn display_inherit_from(inherited: &[GridInheritFrom]) {
  * service_id - ID of the service to delete a role from
  */
 pub fn do_create_role(
-    url: &str,
+    client: Box<dyn PikeClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     create_role: CreateRoleAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -166,7 +139,8 @@ pub fn do_create_role(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 /**
@@ -179,11 +153,11 @@ pub fn do_create_role(
  * service_id - ID of the service to delete a role from
  */
 pub fn do_update_role(
-    url: &str,
+    client: Box<dyn PikeClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     update_role: UpdateRoleAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -204,7 +178,8 @@ pub fn do_update_role(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 /**
@@ -217,11 +192,11 @@ pub fn do_update_role(
  * service_id - ID of the service to delete a role from
  */
 pub fn do_delete_role(
-    url: &str,
+    client: Box<dyn PikeClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     delete_role: DeleteRoleAction,
-    service_id: Option<String>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -242,7 +217,8 @@ pub fn do_delete_role(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 /**
@@ -254,24 +230,12 @@ pub fn do_delete_role(
  * service_id - ID of the service to show the role from
  */
 pub fn do_show_role(
-    url: &str,
-    org_id: &str,
-    name: &str,
-    service_id: Option<String>,
+    client: Box<dyn PikeClient>,
+    org_id: String,
+    name: String,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/role/{}/{}", url, org_id, name);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut response = client.get(&final_url).send()?;
-
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
-    }
-
-    let role = response.json::<GridRole>()?;
+    let role = client.get_role(org_id, name, service_id)?;
     display_role(&role);
     Ok(())
 }
@@ -279,37 +243,16 @@ pub fn do_show_role(
 /**
  * Print all roles in state for an organization
  *
- * url - Url for the REST API
+ * Client - RoleClient for the REST API
  * org_id - Org ID for the roles
  * service_id - ID of the service to list roles from
  */
-pub fn do_list_roles(url: &str, org_id: &str, service_id: Option<String>) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/role/{}", url, org_id);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut roles = Vec::new();
-
-    loop {
-        let mut response = client.get(&final_url).send()?;
-
-        if !response.status().is_success() {
-            return Err(CliError::DaemonError(response.text()?));
-        }
-
-        let mut role_list = response.json::<GridRoleList>()?;
-
-        roles.append(&mut role_list.data);
-
-        if let Some(next) = role_list.paging.next {
-            final_url = format!("{}{}", url, next);
-        } else {
-            break;
-        }
-    }
-
+pub fn do_list_roles(
+    client: Box<dyn PikeClient>,
+    org_id: String,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let roles = client.list_roles(org_id, service_id)?;
     display_roles_info(&roles);
     Ok(())
 }
