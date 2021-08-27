@@ -16,6 +16,9 @@ use crate::error::ClientError;
 
 use super::Client;
 
+#[cfg(feature = "client-reqwest")]
+pub mod reqwest;
+
 pub struct Product {
     pub product_id: String,
     pub product_namespace: String,

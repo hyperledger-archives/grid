@@ -24,6 +24,7 @@ use std::time::Instant;
 
 use super::location::reqwest::ReqwestLocationClient;
 use super::pike::reqwest::ReqwestPikeClient;
+use super::product::reqwest::ReqwestProductClient;
 #[cfg(feature = "purchase-order")]
 use super::purchase_order;
 use super::schema::reqwest::ReqwestSchemaClient;
@@ -56,8 +57,8 @@ impl ClientFactory for ReqwestClientFactory {
     }
 
     /// Retrieves a client for listing and showing products
-    fn get_product_client(&self, _url: String) -> Box<dyn product::ProductClient> {
-        unimplemented!()
+    fn get_product_client(&self, url: String) -> Box<dyn product::ProductClient> {
+        Box::new(ReqwestProductClient::new(url))
     }
 
     /// Retrieves a client for listing and showing
