@@ -18,6 +18,9 @@ use crate::error::ClientError;
 
 use super::Client;
 
+#[cfg(feature = "client-reqwest")]
+pub mod reqwest;
+
 pub struct PurchaseOrder {
     pub org_id: String,
     pub uuid: String,
