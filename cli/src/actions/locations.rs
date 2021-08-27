@@ -20,6 +20,8 @@ use std::{
 };
 
 use grid_sdk::{
+    client::location::{Location, LocationClient},
+    client::schema::{DataType, PropertyDefinition, SchemaClient},
     location::addressing::GRID_LOCATION_NAMESPACE,
     pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::{
@@ -35,26 +37,20 @@ use grid_sdk::{
 };
 
 use cylinder::Signer;
-use reqwest::Client;
 use serde::Deserialize;
 
-use crate::actions::Paging;
 use crate::error::CliError;
-use crate::http::submit_batches;
-use crate::{
-    actions::schemas::{self, get_schema, GridPropertyDefinitionSlice},
-    transaction::location_batch_builder,
-};
+use crate::transaction::location_batch_builder;
 
 pub fn do_create_location(
-    url: &str,
+    client: Box<dyn LocationClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<LocationCreateAction>,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
-        url,
+        client,
         signer,
         wait,
         actions.into_iter().map(Action::LocationCreate).collect(),
@@ -63,14 +59,14 @@ pub fn do_create_location(
 }
 
 pub fn do_update_location(
-    url: &str,
+    client: Box<dyn LocationClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<LocationUpdateAction>,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
-        url,
+        client,
         signer,
         wait,
         actions.into_iter().map(Action::LocationUpdate).collect(),
@@ -79,14 +75,14 @@ pub fn do_update_location(
 }
 
 pub fn do_delete_location(
-    url: &str,
+    client: Box<dyn LocationClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     action: LocationDeleteAction,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
     submit_payloads(
-        url,
+        client,
         signer,
         wait,
         vec![Action::LocationDelete(action)],
@@ -94,63 +90,27 @@ pub fn do_delete_location(
     )
 }
 
-pub fn do_list_locations(url: &str, service_id: Option<&str>) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/location", url);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut locations = Vec::new();
-
-    loop {
-        let mut response = client.get(&final_url).send()?;
-
-        if !response.status().is_success() {
-            return Err(CliError::DaemonError(response.text()?));
-        }
-
-        let mut location_list = response.json::<LocationListSlice>()?;
-
-        locations.append(&mut location_list.data);
-
-        if let Some(next) = location_list.paging.next {
-            final_url = format!("{}{}", url, next);
-        } else {
-            break;
-        }
-    }
-
+pub fn do_list_locations(
+    client: Box<dyn LocationClient>,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let locations = client.list_locations(service_id)?;
     display_locations_info(&locations);
     Ok(())
 }
 
 pub fn do_show_location(
-    url: &str,
+    client: Box<dyn LocationClient>,
     location_id: &str,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let client = Client::new();
-    let mut final_url = format!("{}/location/{}", url, location_id);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
-
-    let mut response = client.get(&final_url).send()?;
-
-    if !response.status().is_success() {
-        return Err(CliError::DaemonError(response.text()?));
-    }
-
-    let location = response.json::<LocationSlice>()?;
-
+    let location = client.get_location(location_id.into(), service_id)?;
     display_location(&location);
-
     Ok(())
 }
 
 fn submit_payloads(
-    url: &str,
+    client: Box<dyn LocationClient>,
     signer: Box<dyn Signer>,
     wait: u64,
     actions: Vec<Action>,
@@ -183,12 +143,13 @@ fn submit_payloads(
 
     let batches = builder.create_batch_list();
 
-    submit_batches(url, wait, &batches, service_id)
+    client.post_batches(wait, &batches, service_id)?;
+    Ok(())
 }
 
 pub fn create_location_payloads_from_file(
     path: &str,
-    url: &str,
+    client: Box<dyn SchemaClient>,
     service_id: Option<&str>,
 ) -> Result<Vec<LocationCreateAction>, CliError> {
     let file = std::fs::File::open(path)?;
@@ -198,9 +159,9 @@ pub fn create_location_payloads_from_file(
 
     for yml in ymls {
         let namespace = match yml.namespace {
-            Namespace::Gs1 => "gs1_location",
+            Namespace::Gs1 => "gs1_location".to_string(),
         };
-        let schema = get_schema(url, namespace, service_id)?;
+        let schema = client.get_schema(namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
     }
 
@@ -209,7 +170,7 @@ pub fn create_location_payloads_from_file(
 
 pub fn update_location_payloads_from_file(
     path: &str,
-    url: &str,
+    client: Box<dyn SchemaClient>,
     service_id: Option<&str>,
 ) -> Result<Vec<LocationUpdateAction>, CliError> {
     let file = std::fs::File::open(path)?;
@@ -219,9 +180,9 @@ pub fn update_location_payloads_from_file(
 
     for yml in ymls {
         let namespace = match yml.namespace {
-            Namespace::Gs1 => "gs1_location",
+            Namespace::Gs1 => "gs1_location".to_string(),
         };
-        let schema = get_schema(url, namespace, service_id)?;
+        let schema = client.get_schema(namespace, service_id)?;
         payloads.push(yml.into_payload(schema.properties)?);
     }
 
@@ -230,7 +191,7 @@ pub fn update_location_payloads_from_file(
 
 fn yaml_to_property_values(
     properties: &HashMap<String, serde_yaml::Value>,
-    definitions: Vec<GridPropertyDefinitionSlice>,
+    definitions: Vec<PropertyDefinition>,
 ) -> Result<Vec<PropertyValue>, CliError> {
     let mut property_values = Vec::new();
 
@@ -247,7 +208,7 @@ fn yaml_to_property_values(
         };
 
         match def.data_type {
-            schemas::DataType::Bytes => {
+            DataType::Bytes => {
                 let mut f = File::open(&serde_yaml::from_value::<String>(value.clone())?)?;
                 let mut buffer = Vec::new();
                 f.read_to_end(&mut buffer)?;
@@ -261,7 +222,7 @@ fn yaml_to_property_values(
 
                 property_values.push(property_value);
             }
-            schemas::DataType::Boolean => {
+            DataType::Boolean => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -270,7 +231,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::Number => {
+            DataType::Number => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -279,7 +240,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::String => {
+            DataType::String => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -288,7 +249,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::Enum => {
+            DataType::Enum => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(def.name.clone())
                     .with_data_type(def.data_type.into())
@@ -297,7 +258,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::Struct => {
+            DataType::Struct => {
                 let properties: HashMap<String, serde_yaml::Value> =
                     serde_yaml::from_value(value.clone())?;
                 let property_value = PropertyValueBuilder::new()
@@ -311,7 +272,7 @@ fn yaml_to_property_values(
                     .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                 property_values.push(property_value);
             }
-            schemas::DataType::LatLong => {
+            DataType::LatLong => {
                 let lat_long = serde_yaml::from_value::<String>(value.clone())?
                     .split(',')
                     .map(|x| {
@@ -347,7 +308,7 @@ fn yaml_to_property_values(
     Ok(property_values)
 }
 
-fn display_locations_info(locations: &[LocationSlice]) {
+fn display_locations_info(locations: &[Location]) {
     // GLNs are always 13 characters
     const ID_LENGTH: usize = 13;
     // The column header "Namespace" will be longer than the values, in practice
@@ -376,32 +337,32 @@ fn display_locations_info(locations: &[LocationSlice]) {
     });
 }
 
-fn display_location(location: &LocationSlice) {
+fn display_location(location: &Location) {
     println!(
         "Location ID: {}\nNamespace: {}\nOwner: {}\nProperties",
         location.location_id, location.location_namespace, location.owner,
     );
 
     location.properties.iter().for_each(|p| match p.data_type {
-        schemas::DataType::Bytes => {
+        DataType::Bytes => {
             println!("{}: {:?}", p.name, p.bytes_value.as_ref().unwrap());
         }
-        schemas::DataType::Boolean => {
+        DataType::Boolean => {
             println!("{}: {:?}", p.name, p.boolean_value.as_ref().unwrap());
         }
-        schemas::DataType::Number => {
+        DataType::Number => {
             println!("{}: {:?}", p.name, p.number_value.as_ref().unwrap());
         }
-        schemas::DataType::String => {
+        DataType::String => {
             println!("{}: {:?}", p.name, p.string_value.as_ref().unwrap());
         }
-        schemas::DataType::Enum => {
+        DataType::Enum => {
             println!("{}: {:?}", p.name, p.enum_value.as_ref().unwrap());
         }
-        schemas::DataType::Struct => {
+        DataType::Struct => {
             println!("{}: {:?}", p.name, p.struct_values.as_ref().unwrap());
         }
-        schemas::DataType::LatLong => {
+        DataType::LatLong => {
             println!(
                 "{}: {}, {}",
                 p.name,
@@ -410,46 +371,6 @@ fn display_location(location: &LocationSlice) {
             );
         }
     });
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LocationSlice {
-    pub location_id: String,
-    pub location_namespace: String,
-    pub owner: String,
-    pub properties: Vec<LocationPropertyValueSlice>,
-
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub service_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LocationListSlice {
-    pub data: Vec<LocationSlice>,
-    pub paging: Paging,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LocationPropertyValueSlice {
-    pub name: String,
-    pub data_type: schemas::DataType,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub service_id: Option<String>,
-    pub bytes_value: Option<Vec<u8>>,
-    pub boolean_value: Option<bool>,
-    pub number_value: Option<i64>,
-    pub string_value: Option<String>,
-    pub enum_value: Option<i32>,
-    pub struct_values: Option<Vec<String>>,
-    pub lat_long_value: Option<LatLongSlice>,
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-pub struct LatLongSlice {
-    pub latitude: i64,
-    pub longitude: i64,
 }
 
 #[derive(Deserialize, Debug)]
@@ -463,7 +384,7 @@ pub struct LocationCreateYaml {
 impl LocationCreateYaml {
     pub fn into_payload(
         self,
-        definitions: Vec<GridPropertyDefinitionSlice>,
+        definitions: Vec<PropertyDefinition>,
     ) -> Result<LocationCreateAction, CliError> {
         let property_values = yaml_to_property_values(&self.properties, definitions)?;
         LocationCreateActionBuilder::new()
@@ -486,7 +407,7 @@ pub struct LocationUpdateYaml {
 impl LocationUpdateYaml {
     pub fn into_payload(
         self,
-        definitions: Vec<GridPropertyDefinitionSlice>,
+        definitions: Vec<PropertyDefinition>,
     ) -> Result<LocationUpdateAction, CliError> {
         let property_values = yaml_to_property_values(&self.properties, definitions)?;
         LocationUpdateActionBuilder::new()

@@ -42,7 +42,6 @@ pub enum CliError {
     SigningError(signing::Error),
     IoError(io::Error),
     ProtobufError(protobuf::ProtobufError),
-    ReqwestError(reqwest::Error),
     GridProtoError(protos::ProtoConversionError),
     SabreProtoError(sabre_sdk::protos::ProtoConversionError),
     #[cfg(any(
@@ -78,7 +77,6 @@ impl StdError for CliError {
             CliError::IoError(err) => Some(err),
             CliError::ProtobufError(err) => Some(err),
             CliError::SigningError(err) => Some(err),
-            CliError::ReqwestError(err) => Some(err),
             CliError::GridProtoError(err) => Some(err),
             CliError::SabreProtoError(err) => Some(err),
             #[cfg(any(
@@ -118,7 +116,6 @@ impl std::fmt::Display for CliError {
             CliError::LoggingInitializationError(ref err) => {
                 write!(f, "LoggingInitializationError: {}", err)
             }
-            CliError::ReqwestError(ref err) => write!(f, "{}", err),
             CliError::GridProtoError(ref err) => write!(f, "Grid Proto Error: {}", err),
             CliError::SabreProtoError(ref err) => write!(f, "Sabre Proto Error: {}", err),
             #[cfg(any(
@@ -161,12 +158,6 @@ impl From<protobuf::ProtobufError> for CliError {
     }
 }
 
-impl From<reqwest::Error> for CliError {
-    fn from(err: reqwest::Error) -> Self {
-        CliError::ReqwestError(err)
-    }
-}
-
 impl From<protos::ProtoConversionError> for CliError {
     fn from(err: protos::ProtoConversionError) -> Self {
         CliError::GridProtoError(err)
@@ -182,5 +173,20 @@ impl From<sabre_sdk::protos::ProtoConversionError> for CliError {
 impl From<grid_sdk::product::gdsn::ProductGdsnError> for CliError {
     fn from(err: grid_sdk::product::gdsn::ProductGdsnError) -> Self {
         CliError::UserError(err.to_string())
+    }
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+))]
+impl From<grid_sdk::error::ClientError> for CliError {
+    fn from(client_error: grid_sdk::error::ClientError) -> Self {
+        match client_error {
+            grid_sdk::error::ClientError::IoError(err) => CliError::IoError(err),
+            grid_sdk::error::ClientError::DaemonError(err) => CliError::DaemonError(err),
+        }
     }
 }
