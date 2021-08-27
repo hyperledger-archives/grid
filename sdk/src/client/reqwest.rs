@@ -27,6 +27,8 @@ use super::pike::reqwest::ReqwestPikeClient;
 use super::product::reqwest::ReqwestProductClient;
 #[cfg(feature = "purchase-order")]
 use super::purchase_order;
+#[cfg(feature = "purchase-order")]
+use super::purchase_order::reqwest::ReqwestPurchaseOrderClient;
 use super::schema::reqwest::ReqwestSchemaClient;
 use super::ClientFactory;
 use super::{location, pike, product, schema};
@@ -66,9 +68,9 @@ impl ClientFactory for ReqwestClientFactory {
     #[cfg(feature = "purchase-order")]
     fn get_purchase_order_client(
         &self,
-        _url: String,
+        url: String,
     ) -> Box<dyn purchase_order::PurchaseOrderClient> {
-        unimplemented!()
+        Box::new(ReqwestPurchaseOrderClient::new(url))
     }
 
     /// Retrieves a client for listing and showing schemas
