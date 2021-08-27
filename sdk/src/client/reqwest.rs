@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! A Reqwest-based implementation of Client
+use crate::error::ClientError;
+use serde::de::DeserializeOwned;
 
 use protobuf::Message;
 use reqwest::blocking::Client as BlockingClient;
@@ -21,204 +22,79 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::error::InternalError;
-
-use super::Client;
+use super::location::reqwest::ReqwestLocationClient;
+use super::pike::reqwest::ReqwestPikeClient;
+use super::product::reqwest::ReqwestProductClient;
 #[cfg(feature = "purchase-order")]
-use super::{PurchaseOrder, PurchaseOrderRevision, PurchaseOrderVersion};
+use super::purchase_order;
+#[cfg(feature = "purchase-order")]
+use super::purchase_order::reqwest::ReqwestPurchaseOrderClient;
+use super::schema::reqwest::ReqwestSchemaClient;
+use super::ClientFactory;
+use super::{location, pike, product, schema};
 
-pub struct ReqwestClient {
-    pub url: String,
-}
+pub struct ReqwestClientFactory {}
 
-impl ReqwestClient {
-    pub fn _new(url: String) -> Self {
-        ReqwestClient { url }
+impl ReqwestClientFactory {
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
-impl Client for ReqwestClient {
-    /// Submits a list of batches
-    fn post_batches(
-        &self,
-        batch_list: &BatchList,
-        service_id: Option<&str>,
-        wait: u64,
-    ) -> Result<(), InternalError> {
-        let bytes = batch_list.write_to_bytes().map_err(|err| {
-            InternalError::from_source_with_message(
-                Box::new(err),
-                "Failed to convert batch list to bytes".to_string(),
-            )
-        })?;
+impl Default for ReqwestClientFactory {
+    fn default() -> Self {
+        ReqwestClientFactory::new()
+    }
+}
 
-        let mut wait_time = wait;
-
-        let mut url = format!("{}/batches", self.url);
-
-        if let Some(service_id) = service_id {
-            url.push_str(&format!("?service_id={}", service_id));
-        }
-
-        let client = BlockingClient::new();
-
-        let response = client
-            .post(&url)
-            .header("GridProtocolVersion", "1")
-            .body(bytes)
-            .send()
-            .map_err(|err| {
-                InternalError::from_source_with_message(
-                    Box::new(err),
-                    "Failed to post batch list".to_string(),
-                )
-            })?;
-
-        if !response.status().is_success() {
-            return Err(InternalError::with_message(response.text().map_err(
-                |_| {
-                    InternalError::with_message(
-                        "Unable to convert error response to text".to_string(),
-                    )
-                },
-            )?));
-        }
-
-        let batch_link = response.json::<BatchStatusLink>().map_err(|err| {
-            InternalError::from_source_with_message(
-                Box::new(err),
-                "Unable to get batch status link from response".to_string(),
-            )
-        })?;
-
-        let params: Vec<&str> = batch_link.link.split('?').collect();
-
-        let id_param: Vec<&str> = params[1].split('=').collect();
-
-        let id = id_param[1];
-
-        info!("Submitted batch: {}", id);
-
-        while wait_time > 0 {
-            let time = Instant::now();
-
-            let url = if let Some(service_id) = service_id {
-                format!(
-                    "{}&wait={}&service_id={}",
-                    batch_link.link, wait_time, service_id
-                )
-            } else {
-                format!("{}&wait={}", batch_link.link, wait_time)
-            };
-
-            let response = client.get(&url).send().map_err(|err| {
-                InternalError::from_source_with_message(
-                    Box::new(err),
-                    "Unable to get batch status".to_string(),
-                )
-            })?;
-
-            if !response.status().is_success() {
-                return Err(InternalError::with_message(response.text().map_err(
-                    |_| {
-                        InternalError::with_message(
-                            "Unable to convert error response to text".to_string(),
-                        )
-                    },
-                )?));
-            }
-
-            let batch_status = response.json::<BatchStatusResponse>().map_err(|err| {
-                InternalError::from_source_with_message(
-                    Box::new(err),
-                    "Unable to get batch status response".to_string(),
-                )
-            })?;
-
-            for t in &batch_status.data {
-                if t.status == "Invalid" {
-                    for i in &t.invalid_transactions {
-                        error!(
-                            "Error: {}",
-                            i.get("message")
-                                .unwrap_or(&"Batch contained invalid transactions".to_string())
-                        );
-                    }
-                }
-            }
-
-            if batch_status.data.iter().all(|d| d.status == "Valid") {
-                info!("Batch and transaction structure was valid. Batch queued.");
-            }
-
-            if batch_status.data.iter().all(|x| x.status != "PENDING") {
-                break;
-            }
-
-            wait_time -= time.elapsed().as_secs()
-        }
-
-        Ok(())
+impl ClientFactory for ReqwestClientFactory {
+    /// Retrieves a client for listing and showing locations
+    fn get_location_client(&self, url: String) -> Box<dyn location::LocationClient> {
+        Box::new(ReqwestLocationClient::new(url))
     }
 
-    /// Retrieves the purchase order with the specified `id`.
+    /// Retrieves a client for listing and showing pike members
+    fn get_pike_client(&self, url: String) -> Box<dyn pike::PikeClient> {
+        Box::new(ReqwestPikeClient::new(url))
+    }
+
+    /// Retrieves a client for listing and showing products
+    fn get_product_client(&self, url: String) -> Box<dyn product::ProductClient> {
+        Box::new(ReqwestProductClient::new(url))
+    }
+
+    /// Retrieves a client for listing and showing
+    /// purchase orders, revisions, and versions
     #[cfg(feature = "purchase-order")]
-    fn get_purchase_order(&self, _id: String) -> Result<Option<PurchaseOrder>, InternalError> {
-        unimplemented!()
+    fn get_purchase_order_client(
+        &self,
+        url: String,
+    ) -> Box<dyn purchase_order::PurchaseOrderClient> {
+        Box::new(ReqwestPurchaseOrderClient::new(url))
     }
 
-    /// Retrieves the purchase order version with the given `version_id` of the purchase order
-    /// with the given `id`
-    #[cfg(feature = "purchase-order")]
-    fn get_purchase_order_version(
-        &self,
-        _id: String,
-        _version_id: String,
-    ) -> Result<Option<PurchaseOrderVersion>, InternalError> {
-        unimplemented!()
+    /// Retrieves a client for listing and showing schemas
+    fn get_schema_client(&self, url: String) -> Box<dyn schema::SchemaClient> {
+        Box::new(ReqwestSchemaClient::new(url))
     }
+}
 
-    /// Retrieves the purchase order revision with the given `revision_id` of the purchase
-    /// order version with the given `version_id` of the purchase order with the given `id`
-    #[cfg(feature = "purchase-order")]
-    fn get_purchase_order_revision(
-        &self,
-        _id: String,
-        _version_id: String,
-        _revision_id: String,
-    ) -> Result<Option<PurchaseOrderRevision>, InternalError> {
-        unimplemented!()
-    }
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Paging {
+    current: String,
+    offset: i64,
+    limit: i64,
+    total: i64,
+    first: String,
+    prev: String,
+    next: Option<String>,
+    last: String,
+}
 
-    /// lists purchase orders.
-    #[cfg(feature = "purchase-order")]
-    fn list_purchase_orders(
-        &self,
-        _filter: Option<&str>,
-    ) -> Result<Vec<PurchaseOrder>, InternalError> {
-        unimplemented!()
-    }
-
-    /// lists the purchase order versions of a specific purchase order.
-    #[cfg(feature = "purchase-order")]
-    fn list_purchase_order_versions(
-        &self,
-        _id: String,
-        _filter: Option<&str>,
-    ) -> Result<Vec<PurchaseOrderVersion>, InternalError> {
-        unimplemented!()
-    }
-
-    /// lists the purchase order revisions of a specific purchase order version.
-    #[cfg(feature = "purchase-order")]
-    fn list_purchase_order_revisions(
-        &self,
-        _id: String,
-        _version_id: String,
-        _filter: Option<&str>,
-    ) -> Result<Vec<PurchaseOrderRevision>, InternalError> {
-        unimplemented!()
-    }
+#[derive(Debug, Deserialize)]
+pub struct ListSlice<T> {
+    pub data: Vec<T>,
+    pub paging: Paging,
 }
 
 #[derive(Deserialize, Debug)]
@@ -237,4 +113,172 @@ struct BatchStatus {
     pub id: String,
     pub invalid_transactions: Vec<HashMap<String, String>>,
     pub status: String,
+}
+
+/// Fetches and serializes T entities from REST API
+///
+/// # Arguments
+///
+/// * `url` - The base url of the request
+/// * `route` - the route to find the entity
+/// * `service_id` - optional - the service id to fetch the entities from
+pub fn fetch_entities_list<T: DeserializeOwned>(
+    url: &str,
+    route: String,
+    service_id: Option<&str>,
+) -> Result<Vec<T>, ClientError> {
+    let client = BlockingClient::new();
+    let mut final_url = format!("{}/{}", url, route);
+    if let Some(service_id) = service_id {
+        final_url = format!("{}?service_id={}", final_url, service_id);
+    }
+
+    let mut entities: Vec<T> = Vec::new();
+
+    loop {
+        let response = client.get(&final_url).send()?;
+
+        if !response.status().is_success() {
+            return Err(ClientError::DaemonError(response.text()?));
+        }
+
+        let mut entity_list_slice = response.json::<ListSlice<T>>()?;
+
+        entities.append(&mut entity_list_slice.data);
+
+        if let Some(next) = entity_list_slice.paging.next {
+            final_url = format!("{}{}", url, next);
+        } else {
+            break;
+        }
+    }
+
+    Ok(entities)
+}
+
+/// Fetches and serializes single T Entity from REST API
+///
+/// # Arguments
+///
+/// * `url` - the base url of the request
+/// * `route` - the identifying route where to find the entity
+/// * `service_id` - optional - the service id to fetch the entity from
+pub fn fetch_entity<T: DeserializeOwned>(
+    url: &str,
+    route: String,
+    service_id: Option<&str>,
+) -> Result<T, ClientError> {
+    let client = BlockingClient::new();
+    let mut final_url = format!("{}/{}", url, route);
+    if let Some(service_id) = service_id {
+        final_url = format!("{}?service_id={}", final_url, service_id);
+    }
+
+    let response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(ClientError::DaemonError(response.text()?));
+    }
+
+    let agent = response.json::<T>()?;
+
+    Ok(agent)
+}
+
+pub fn post_batches(
+    url: &str,
+    wait: u64,
+    batch_list: &BatchList,
+    service_id: Option<&str>,
+) -> Result<(), ClientError> {
+    let bytes = batch_list.write_to_bytes().map_err(|_err| {
+        ClientError::DaemonError("Failed to convert batch list to bytes".to_string())
+    })?;
+
+    let mut wait_time = wait;
+
+    let mut url = format!("{}/batches", url);
+
+    if let Some(service_id) = service_id {
+        url.push_str(&format!("?service_id={}", service_id));
+    }
+
+    let client = BlockingClient::new();
+
+    let response = client
+        .post(&url)
+        .header("GridProtocolVersion", "1")
+        .body(bytes)
+        .send()
+        .map_err(|_err| ClientError::DaemonError("Failed to post batch list".to_string()))?;
+
+    if !response.status().is_success() {
+        return Err(ClientError::DaemonError(response.text().map_err(|_| {
+            ClientError::DaemonError("Unable to convert error response to text".to_string())
+        })?));
+    }
+
+    let batch_link = response.json::<BatchStatusLink>().map_err(|_err| {
+        ClientError::DaemonError("Unable to get batch status link from response".to_string())
+    })?;
+
+    let params: Vec<&str> = batch_link.link.split('?').collect();
+
+    let id_param: Vec<&str> = params[1].split('=').collect();
+
+    let id = id_param[1];
+
+    info!("Submitted batch: {}", id);
+
+    while wait_time > 0 {
+        let time = Instant::now();
+
+        let url = if let Some(service_id) = service_id {
+            format!(
+                "{}&wait={}&service_id={}",
+                batch_link.link, wait_time, service_id
+            )
+        } else {
+            format!("{}&wait={}", batch_link.link, wait_time)
+        };
+
+        let response = client
+            .get(&url)
+            .send()
+            .map_err(|_err| ClientError::DaemonError("Unable to get batch status".to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(ClientError::DaemonError(response.text().map_err(|_| {
+                ClientError::DaemonError("Unable to convert error response to text".to_string())
+            })?));
+        }
+
+        let batch_status = response.json::<BatchStatusResponse>().map_err(|_err| {
+            ClientError::DaemonError("Unable to get batch status response".to_string())
+        })?;
+
+        for t in &batch_status.data {
+            if t.status == "Invalid" {
+                for i in &t.invalid_transactions {
+                    error!(
+                        "Error: {}",
+                        i.get("message")
+                            .unwrap_or(&"Batch contained invalid transactions".to_string())
+                    );
+                }
+            }
+        }
+
+        if batch_status.data.iter().all(|d| d.status == "Valid") {
+            info!("Batch and transaction structure was valid. Batch queued.");
+        }
+
+        if batch_status.data.iter().all(|x| x.status != "PENDING") {
+            break;
+        }
+
+        wait_time -= time.elapsed().as_secs()
+    }
+
+    Ok(())
 }

@@ -20,8 +20,6 @@ use std::path::Path;
 
 use super::error::CliError;
 
-use serde::Deserialize;
-
 fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
     let pathstr = path
         .to_str()
@@ -35,23 +33,6 @@ fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
             pathstr, code
         ))),
     }
-}
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct Paging {
-    current: String,
-    offset: i64,
-    limit: i64,
-    total: i64,
-    first: String,
-    prev: String,
-    next: Option<String>,
-    last: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ListSlice<T> {
-    pub data: Vec<T>,
-    pub paging: Paging,
 }
 
 #[cfg(feature = "pike")]

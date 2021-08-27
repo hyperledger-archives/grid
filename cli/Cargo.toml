@@ -38,11 +38,10 @@ log = "0.4"
 flexi_logger = "0.17"
 sawtooth-sdk = "0.4"
 sabre-sdk = "0.5"
-grid-sdk = { path = "../sdk", features = ["postgres", "sqlite", "pike", "schema", "product", "product-gdsn", "location"] }
+grid-sdk = { path = "../sdk", features = ["postgres", "sqlite", "pike", "schema", "product", "product-gdsn", "location", "client", "client-reqwest"] }
 rust-crypto = "0.2"
 protobuf = "2.19"
 users = "0.11"
-reqwest = "0.9"
 dirs = "3"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
