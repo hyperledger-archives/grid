@@ -18,6 +18,9 @@ use crate::error::ClientError;
 
 use super::Client;
 
+#[cfg(feature = "client-reqwest")]
+pub mod reqwest;
+
 pub struct AlternateId {
     pub id_type: String,
     pub id: String,
@@ -75,7 +78,7 @@ pub trait PikeClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch the agenst from
+    /// * `service_id` - optional - the service id to fetch the agents from
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<PikeAgent>, ClientError>;
 
     /// Fetches organization by id

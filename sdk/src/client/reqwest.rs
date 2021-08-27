@@ -23,6 +23,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use super::location::reqwest::ReqwestLocationClient;
+use super::pike::reqwest::ReqwestPikeClient;
 #[cfg(feature = "purchase-order")]
 use super::purchase_order;
 use super::schema::reqwest::ReqwestSchemaClient;
@@ -50,8 +51,8 @@ impl ClientFactory for ReqwestClientFactory {
     }
 
     /// Retrieves a client for listing and showing pike members
-    fn get_pike_client(&self, _url: String) -> Box<dyn pike::PikeClient> {
-        unimplemented!()
+    fn get_pike_client(&self, url: String) -> Box<dyn pike::PikeClient> {
+        Box::new(ReqwestPikeClient::new(url))
     }
 
     /// Retrieves a client for listing and showing products
