@@ -74,7 +74,6 @@ EXAMPLES
 The command
 
 ```
-
 $ grid po show --org=crgl 82urioz098aui3871uc
 ```
 
@@ -125,6 +124,34 @@ Accepted Version (v3):
     latest revision  4
 
 Revision 4:
+    <summary fields from order_xml_3_4>
+```
+
+The command
+
+```
+$ grid po show --org=crgl purchase_order:809832081 --version v3 --revision 2
+```
+
+will display revision `2` of version `v3` of the purchase order
+with the alternate ID of `purchase_order:809832081` in human-readable format.
+It will display output like the following:
+
+```
+Purchase Order:
+    organization     crgl (Cargill Incorporated)
+    uuid             82urioz098aui3871uc
+    purchase_order   809832081
+    workflow status  Confirmed
+    is closed        False
+    created          <datetime string>
+
+Accepted Version (v2):
+    workflow_status  Editable
+    draft            False
+    latest revision  4
+
+Revision 2:
     <summary fields from order_xml_3_4>
 ```
 
