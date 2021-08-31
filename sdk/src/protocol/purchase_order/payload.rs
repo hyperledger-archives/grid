@@ -36,7 +36,6 @@ pub enum Action {
 pub struct PurchaseOrderPayload {
     action: Action,
     org_id: String,
-    public_key: String,
     timestamp: u64,
 }
 
@@ -47,10 +46,6 @@ impl PurchaseOrderPayload {
 
     pub fn org_id(&self) -> &str {
         &self.org_id
-    }
-
-    pub fn public_key(&self) -> &str {
-        &self.public_key
     }
 
     pub fn timestamp(&self) -> u64 {
@@ -88,7 +83,6 @@ impl FromProto<purchase_order_payload::PurchaseOrderPayload> for PurchaseOrderPa
         Ok(PurchaseOrderPayload {
             action,
             org_id: payload.take_org_id(),
-            public_key: payload.take_public_key(),
             timestamp: payload.get_timestamp(),
         })
     }
@@ -100,7 +94,6 @@ impl FromNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderP
 
         proto.set_timestamp(native.timestamp());
         proto.set_org_id(native.org_id().to_string());
-        proto.set_public_key(native.public_key().to_string());
 
         match native.action() {
             Action::CreatePo(payload) => {
@@ -161,7 +154,6 @@ impl IntoNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderP
 pub struct PurchaseOrderPayloadBuilder {
     action: Option<Action>,
     org_id: Option<String>,
-    public_key: Option<String>,
     timestamp: Option<u64>,
 }
 
@@ -180,11 +172,6 @@ impl PurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_public_key(mut self, public_key: String) -> Self {
-        self.public_key = Some(public_key);
-        self
-    }
-
     pub fn with_timestamp(mut self, value: u64) -> Self {
         self.timestamp = Some(value);
         self
@@ -199,10 +186,6 @@ impl PurchaseOrderPayloadBuilder {
             .org_id
             .ok_or_else(|| BuilderError::MissingField("'org_id' field is required".into()))?;
 
-        let public_key = self
-            .public_key
-            .ok_or_else(|| BuilderError::MissingField("'public_key' field is required".into()))?;
-
         let timestamp = self
             .timestamp
             .ok_or_else(|| BuilderError::MissingField("'timestamp' field is required".into()))?;
@@ -210,7 +193,6 @@ impl PurchaseOrderPayloadBuilder {
         Ok(PurchaseOrderPayload {
             action,
             org_id,
-            public_key,
             timestamp,
         })
     }
