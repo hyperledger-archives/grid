@@ -203,6 +203,7 @@ impl PurchaseOrderPayloadBuilder {
 pub struct CreatePurchaseOrderPayload {
     uuid: String,
     created_at: u64,
+    create_version_payload: Option<CreateVersionPayload>,
 }
 
 impl CreatePurchaseOrderPayload {
@@ -213,15 +214,22 @@ impl CreatePurchaseOrderPayload {
     pub fn created_at(&self) -> u64 {
         self.created_at
     }
+
+    pub fn create_version_payload(&self) -> Option<CreateVersionPayload> {
+        self.create_version_payload.clone()
+    }
 }
 
 impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePurchaseOrderPayload {
     fn from_proto(
         mut proto: purchase_order_payload::CreatePurchaseOrderPayload,
     ) -> Result<Self, ProtoConversionError> {
+        let create_version_payload =
+            CreateVersionPayload::from_proto(proto.take_create_version_payload()).ok();
         Ok(CreatePurchaseOrderPayload {
             uuid: proto.take_uuid(),
             created_at: proto.get_created_at(),
+            create_version_payload,
         })
     }
 }
@@ -231,6 +239,12 @@ impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
         let mut proto = purchase_order_payload::CreatePurchaseOrderPayload::new();
         proto.set_uuid(native.uuid().to_string());
         proto.set_created_at(native.created_at());
+
+        if let Some(payload) = native.create_version_payload() {
+            let proto_payload: purchase_order_payload::CreateVersionPayload =
+                payload.into_proto()?;
+            proto.set_create_version_payload(proto_payload);
+        }
 
         Ok(proto)
     }
@@ -268,6 +282,7 @@ impl IntoNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
 pub struct CreatePurchaseOrderPayloadBuilder {
     uuid: Option<String>,
     created_at: Option<u64>,
+    create_version_payload: Option<CreateVersionPayload>,
 }
 
 impl CreatePurchaseOrderPayloadBuilder {
@@ -285,6 +300,11 @@ impl CreatePurchaseOrderPayloadBuilder {
         self
     }
 
+    pub fn with_create_version_payload(mut self, payload: CreateVersionPayload) -> Self {
+        self.create_version_payload = Some(payload);
+        self
+    }
+
     pub fn build(self) -> Result<CreatePurchaseOrderPayload, BuilderError> {
         let uuid = self
             .uuid
@@ -294,7 +314,13 @@ impl CreatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'created_at' field is required".to_string())
         })?;
 
-        Ok(CreatePurchaseOrderPayload { uuid, created_at })
+        let create_version_payload = self.create_version_payload;
+
+        Ok(CreatePurchaseOrderPayload {
+            uuid,
+            created_at,
+            create_version_payload,
+        })
     }
 }
 
