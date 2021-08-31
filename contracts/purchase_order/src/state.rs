@@ -41,8 +41,8 @@ impl<'a> PurchaseOrderState<'a> {
         Self { _context: context }
     }
 
-    pub fn _get_purchase_order(&self, po_uuid: &str) -> Result<Option<PurchaseOrder>, ApplyError> {
-        let address = compute_purchase_order_address(po_uuid);
+    pub fn _get_purchase_order(&self, po_uid: &str) -> Result<Option<PurchaseOrder>, ApplyError> {
+        let address = compute_purchase_order_address(po_uid);
         if let Some(packed) = self._context.get_state_entry(&address)? {
             let purchase_orders =
                 PurchaseOrderList::from_bytes(packed.as_slice()).map_err(|_| {
@@ -51,7 +51,7 @@ impl<'a> PurchaseOrderState<'a> {
             Ok(purchase_orders
                 .purchase_orders()
                 .iter()
-                .find(|p| p.uuid() == po_uuid)
+                .find(|p| p.uid() == po_uid)
                 .cloned())
         } else {
             Ok(None)
@@ -60,10 +60,10 @@ impl<'a> PurchaseOrderState<'a> {
 
     pub fn _set_purchase_order(
         &self,
-        po_uuid: &str,
+        po_uid: &str,
         purchase_order: PurchaseOrder,
     ) -> Result<(), ApplyError> {
-        let address = compute_purchase_order_address(po_uuid);
+        let address = compute_purchase_order_address(po_uid);
         let mut purchase_orders: Vec<PurchaseOrder> =
             match self._context.get_state_entry(&address)? {
                 Some(packed) => PurchaseOrderList::from_bytes(packed.as_slice())
@@ -80,7 +80,7 @@ impl<'a> PurchaseOrderState<'a> {
 
         let mut index = None;
         for (i, po) in purchase_orders.iter().enumerate() {
-            if po.uuid() == po_uuid {
+            if po.uid() == po_uid {
                 index = Some(i);
                 break;
             }
@@ -90,7 +90,7 @@ impl<'a> PurchaseOrderState<'a> {
             purchase_orders.remove(i);
         }
         purchase_orders.push(purchase_order);
-        purchase_orders.sort_by_key(|r| r.uuid().to_string());
+        purchase_orders.sort_by_key(|r| r.uid().to_string());
         let po_list = PurchaseOrderListBuilder::new()
             .with_purchase_orders(purchase_orders)
             .build()
