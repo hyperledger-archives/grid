@@ -25,13 +25,12 @@ message PurchaseOrderPayload {
   }
   Action action = 1;
   string org_id = 2;
-  string public_key = 3;
-  uint64 timestamp = 4;
+  uint64 timestamp = 3;
 
-  CreatePurchaseOrderPayload create_po_payload = 5;
-  UpdatePurchaseOrderPayload update_po_payload = 6;
-  CreateVersionPayload create_version_payload = 7;
-  UpdateVersionPayload update_version_payload = 8;
+  CreatePurchaseOrderPayload create_po_payload = 4;
+  UpdatePurchaseOrderPayload update_po_payload = 5;
+  CreateVersionPayload create_version_payload = 6;
+  UpdateVersionPayload update_version_payload = 7;
 }
 
 message CreatePurchaseOrderPayload {
