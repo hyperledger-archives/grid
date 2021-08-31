@@ -16,7 +16,7 @@
 syntax = "proto3";
 
 message PurchaseOrder {
-  string uuid = 1;
+  string uid = 1;
   string workflow_status = 2;
   repeated PurchaseOrderVersion versions = 3;
   string accepted_version_number = 4;

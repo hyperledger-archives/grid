@@ -391,7 +391,7 @@ impl PurchaseOrderVersionBuilder {
 /// Purchase orders in real-life trade scenarios are represented by `PurchaseOrder`
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrder {
-    uuid: String,
+    uid: String,
     workflow_status: String,
     versions: Vec<PurchaseOrderVersion>,
     accepted_version_number: String,
@@ -400,8 +400,8 @@ pub struct PurchaseOrder {
 }
 
 impl PurchaseOrder {
-    pub fn uuid(&self) -> &str {
-        &self.uuid
+    pub fn uid(&self) -> &str {
+        &self.uid
     }
 
     pub fn workflow_status(&self) -> &str {
@@ -426,7 +426,7 @@ impl PurchaseOrder {
 
     pub fn into_builder(self) -> PurchaseOrderBuilder {
         PurchaseOrderBuilder::new()
-            .with_uuid(self.uuid)
+            .with_uid(self.uid)
             .with_workflow_status(self.workflow_status)
             .with_versions(self.versions)
             .with_accepted_version_number(self.accepted_version_number)
@@ -440,7 +440,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
         mut order: purchase_order_state::PurchaseOrder,
     ) -> Result<Self, ProtoConversionError> {
         Ok(PurchaseOrder {
-            uuid: order.take_uuid(),
+            uid: order.take_uid(),
             workflow_status: order.take_workflow_status(),
             versions: order
                 .take_versions()
@@ -457,7 +457,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
 impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
     fn from_native(order: PurchaseOrder) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_state::PurchaseOrder::new();
-        proto.set_uuid(order.uuid().to_string());
+        proto.set_uid(order.uid().to_string());
         proto.set_workflow_status(order.workflow_status().to_string());
         proto.set_versions(RepeatedField::from_vec(
             order
@@ -520,7 +520,7 @@ impl std::fmt::Display for PurchaseOrderBuildError {
 /// Builder used to create a `PurchaseOrder`
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderBuilder {
-    uuid: Option<String>,
+    uid: Option<String>,
     workflow_status: Option<String>,
     versions: Option<Vec<PurchaseOrderVersion>>,
     accepted_version_number: Option<String>,
@@ -533,8 +533,8 @@ impl PurchaseOrderBuilder {
         PurchaseOrderBuilder::default()
     }
 
-    pub fn with_uuid(mut self, uuid: String) -> Self {
-        self.uuid = Some(uuid);
+    pub fn with_uid(mut self, uid: String) -> Self {
+        self.uid = Some(uid);
         self
     }
 
@@ -564,8 +564,8 @@ impl PurchaseOrderBuilder {
     }
 
     pub fn build(self) -> Result<PurchaseOrder, PurchaseOrderBuildError> {
-        let uuid = self.uuid.ok_or_else(|| {
-            PurchaseOrderBuildError::MissingField("'uuid' field is required".to_string())
+        let uid = self.uid.ok_or_else(|| {
+            PurchaseOrderBuildError::MissingField("'uid' field is required".to_string())
         })?;
 
         let workflow_status = self.workflow_status.ok_or_else(|| {
@@ -591,7 +591,7 @@ impl PurchaseOrderBuilder {
         })?;
 
         Ok(PurchaseOrder {
-            uuid,
+            uid,
             workflow_status,
             versions,
             accepted_version_number,

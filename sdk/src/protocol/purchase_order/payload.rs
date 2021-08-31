@@ -201,14 +201,14 @@ impl PurchaseOrderPayloadBuilder {
 /// Native representation of the "create purchase order" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreatePurchaseOrderPayload {
-    uuid: String,
+    uid: String,
     created_at: u64,
     create_version_payload: Option<CreateVersionPayload>,
 }
 
 impl CreatePurchaseOrderPayload {
-    pub fn uuid(&self) -> &str {
-        &self.uuid
+    pub fn uid(&self) -> &str {
+        &self.uid
     }
 
     pub fn created_at(&self) -> u64 {
@@ -227,7 +227,7 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
         let create_version_payload =
             CreateVersionPayload::from_proto(proto.take_create_version_payload()).ok();
         Ok(CreatePurchaseOrderPayload {
-            uuid: proto.take_uuid(),
+            uid: proto.take_uid(),
             created_at: proto.get_created_at(),
             create_version_payload,
         })
@@ -237,7 +237,7 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
 impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePurchaseOrderPayload {
     fn from_native(native: CreatePurchaseOrderPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::CreatePurchaseOrderPayload::new();
-        proto.set_uuid(native.uuid().to_string());
+        proto.set_uid(native.uid().to_string());
         proto.set_created_at(native.created_at());
 
         if let Some(payload) = native.create_version_payload() {
@@ -280,7 +280,7 @@ impl IntoNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
 /// Builder used to create the "create agent" payload
 #[derive(Default, Debug)]
 pub struct CreatePurchaseOrderPayloadBuilder {
-    uuid: Option<String>,
+    uid: Option<String>,
     created_at: Option<u64>,
     create_version_payload: Option<CreateVersionPayload>,
 }
@@ -290,8 +290,8 @@ impl CreatePurchaseOrderPayloadBuilder {
         CreatePurchaseOrderPayloadBuilder::default()
     }
 
-    pub fn with_uuid(mut self, value: String) -> Self {
-        self.uuid = Some(value);
+    pub fn with_uid(mut self, value: String) -> Self {
+        self.uid = Some(value);
         self
     }
 
@@ -306,9 +306,9 @@ impl CreatePurchaseOrderPayloadBuilder {
     }
 
     pub fn build(self) -> Result<CreatePurchaseOrderPayload, BuilderError> {
-        let uuid = self
-            .uuid
-            .ok_or_else(|| BuilderError::MissingField("'uuid' field is required".to_string()))?;
+        let uid = self
+            .uid
+            .ok_or_else(|| BuilderError::MissingField("'uid' field is required".to_string()))?;
 
         let created_at = self.created_at.ok_or_else(|| {
             BuilderError::MissingField("'created_at' field is required".to_string())
@@ -317,7 +317,7 @@ impl CreatePurchaseOrderPayloadBuilder {
         let create_version_payload = self.create_version_payload;
 
         Ok(CreatePurchaseOrderPayload {
-            uuid,
+            uid,
             created_at,
             create_version_payload,
         })

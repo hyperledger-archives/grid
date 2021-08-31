@@ -34,7 +34,7 @@ message PurchaseOrderPayload {
 }
 
 message CreatePurchaseOrderPayload {
-  string uuid = 1;
+  string uid = 1;
   uint64 created_at = 2;
   CreateVersionPayload create_version_payload = 3;
 }
