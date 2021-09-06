@@ -46,7 +46,7 @@ discussion](https://grid.hyperledger.org/community/join_the_discussion.html).
 
 ## Building Grid
 
-Before building, make sure you `libzmq3-dev` package installed in Debian(Ubuntu). 
+Before building, please make sure you have the `libzmq3-dev` package installed in Debian(Ubuntu). 
 
 This can be installed with:
 
