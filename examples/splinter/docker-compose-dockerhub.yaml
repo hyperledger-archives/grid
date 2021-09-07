@@ -32,11 +32,11 @@ services:
       - contracts-shared:/usr/share/scar
     entrypoint: |
       bash -c "
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-track-and-trace_0.1.2.scar -o /usr/share/scar/grid-track-and-trace_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-schema_0.1.2.scar -o /usr/share/scar/grid-schema_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-pike_0.1.2.scar -o /usr/share/scar/grid-pike_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-product_0.1.2.scar -o /usr/share/scar/grid-product_0.1.2.scar
-        curl https://grid.hyperledger.org/scar/0.1.2/grid-location_0.1.2.scar -o /usr/share/scar/grid-location_0.1.2.scar
+        curl https://grid.hyperledger.org/scar/0.2.2/grid-track-and-trace_0.2.2.scar -o /usr/share/scar/grid-track-and-trace_0.2.2.scar
+        curl https://grid.hyperledger.org/scar/0.2.2/grid-schema_0.2.2.scar -o /usr/share/scar/grid-schema_0.2.2.scar
+        curl https://grid.hyperledger.org/scar/0.2.2/grid-pike_0.2.2.scar -o /usr/share/scar/grid-pike_0.2.2.scar
+        curl https://grid.hyperledger.org/scar/0.2.2/grid-product_0.2.2.scar -o /usr/share/scar/grid-product_0.2.2.scar
+        curl https://grid.hyperledger.org/scar/0.2.2/grid-location_0.2.2.scar -o /usr/share/scar/grid-location_0.2.2.scar
       "
 
   generate-registry:
@@ -111,7 +111,7 @@ services:
       POSTGRES_DB: grid
 
   gridd-alpha:
-    image: hyperledger/gridd:0.1.2
+    image: hyperledger/gridd:0.2
     container_name: gridd-alpha
     hostname: gridd-alpha
     volumes:
@@ -132,7 +132,7 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
+        grid -vv keygen --system --skip gridd && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-alpha/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
@@ -201,7 +201,7 @@ services:
       POSTGRES_DB: splinter
 
   grid-ui-alpha:
-    image: hyperledger/grid-ui:0.1
+    image: hyperledger/grid-ui:0.2
     container_name: grid-ui-alpha
     expose:
       - 80
@@ -227,7 +227,7 @@ services:
       POSTGRES_DB: grid
 
   gridd-beta:
-    image: hyperledger/gridd:0.1.2
+    image: hyperledger/gridd:0.2
     container_name: gridd-beta
     hostname: gridd-beta
     volumes:
@@ -248,7 +248,7 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
+        grid -vv keygen --system --skip gridd && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-beta/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
@@ -316,7 +316,7 @@ services:
       POSTGRES_DB: splinter
 
   grid-ui-beta:
-    image: hyperledger/grid-ui:0.1
+    image: hyperledger/grid-ui:0.2
     container_name: grid-ui-beta
     expose:
       - 80
@@ -342,7 +342,7 @@ services:
       POSTGRES_DB: grid
 
   gridd-gamma:
-    image: hyperledger/gridd:0.1.2
+    image: hyperledger/gridd:0.2
     container_name: gridd-gamma
     hostname: gridd-gamma
     volumes:
@@ -363,7 +363,7 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
+        grid -vv keygen --system --skip gridd && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-gamma/grid &&
         gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-gamma:8085 \
@@ -424,7 +424,7 @@ services:
 
   grid-ui-gamma:
 
-    image: hyperledger/grid-ui:0.1
+    image: hyperledger/grid-ui:0.2
     container_name: grid-ui-gamma
     expose:
       - 80
