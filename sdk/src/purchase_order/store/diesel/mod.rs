@@ -32,6 +32,7 @@ use crate::error::ResourceTemporarilyUnavailableError;
 use operations::add_alternate_id::PurchaseOrderStoreAddAlternateIdOperation as _;
 use operations::add_purchase_order::PurchaseOrderStoreAddPurchaseOrderOperation as _;
 use operations::get_purchase_order::PurchaseOrderStoreGetPurchaseOrderOperation as _;
+use operations::get_purchase_order_version::PurchaseOrderStoreGetPurchaseOrderVersionOperation as _;
 use operations::list_alternate_ids_for_purchase_order::PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation as _;
 use operations::list_purchase_orders::PurchaseOrderStoreListPurchaseOrdersOperation as _;
 use operations::PurchaseOrderStoreOperations;
@@ -95,6 +96,20 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
             )
         })?)
         .get_purchase_order(purchase_order_uid, service_id)
+    }
+
+    fn get_purchase_order_version(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_purchase_order_version(po_uid, version_id, service_id)
     }
 
     fn add_alternate_id(
@@ -174,6 +189,20 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
             )
         })?)
         .get_purchase_order(purchase_order_uid, service_id)
+    }
+
+    fn get_purchase_order_version(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_purchase_order_version(po_uid, version_id, service_id)
     }
 
     fn add_alternate_id(
@@ -265,6 +294,16 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
             .get_purchase_order(purchase_order_uid, service_id)
     }
 
+    fn get_purchase_order_version(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(self.connection)
+            .get_purchase_order_version(po_uid, version_id, service_id)
+    }
+
     fn add_alternate_id(
         &self,
         alternate_id: PurchaseOrderAlternateId,
@@ -326,6 +365,16 @@ impl<'a> PurchaseOrderStore
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(self.connection)
             .get_purchase_order(purchase_order_uid, service_id)
+    }
+
+    fn get_purchase_order_version(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(self.connection)
+            .get_purchase_order_version(po_uid, version_id, service_id)
     }
 
     fn add_alternate_id(
