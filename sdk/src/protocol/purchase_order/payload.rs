@@ -36,7 +36,6 @@ pub enum Action {
 pub struct PurchaseOrderPayload {
     action: Action,
     org_id: String,
-    public_key: String,
     timestamp: u64,
 }
 
@@ -47,10 +46,6 @@ impl PurchaseOrderPayload {
 
     pub fn org_id(&self) -> &str {
         &self.org_id
-    }
-
-    pub fn public_key(&self) -> &str {
-        &self.public_key
     }
 
     pub fn timestamp(&self) -> u64 {
@@ -88,7 +83,6 @@ impl FromProto<purchase_order_payload::PurchaseOrderPayload> for PurchaseOrderPa
         Ok(PurchaseOrderPayload {
             action,
             org_id: payload.take_org_id(),
-            public_key: payload.take_public_key(),
             timestamp: payload.get_timestamp(),
         })
     }
@@ -100,7 +94,6 @@ impl FromNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderP
 
         proto.set_timestamp(native.timestamp());
         proto.set_org_id(native.org_id().to_string());
-        proto.set_public_key(native.public_key().to_string());
 
         match native.action() {
             Action::CreatePo(payload) => {
@@ -161,7 +154,6 @@ impl IntoNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderP
 pub struct PurchaseOrderPayloadBuilder {
     action: Option<Action>,
     org_id: Option<String>,
-    public_key: Option<String>,
     timestamp: Option<u64>,
 }
 
@@ -180,11 +172,6 @@ impl PurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_public_key(mut self, public_key: String) -> Self {
-        self.public_key = Some(public_key);
-        self
-    }
-
     pub fn with_timestamp(mut self, value: u64) -> Self {
         self.timestamp = Some(value);
         self
@@ -199,10 +186,6 @@ impl PurchaseOrderPayloadBuilder {
             .org_id
             .ok_or_else(|| BuilderError::MissingField("'org_id' field is required".into()))?;
 
-        let public_key = self
-            .public_key
-            .ok_or_else(|| BuilderError::MissingField("'public_key' field is required".into()))?;
-
         let timestamp = self
             .timestamp
             .ok_or_else(|| BuilderError::MissingField("'timestamp' field is required".into()))?;
@@ -210,7 +193,6 @@ impl PurchaseOrderPayloadBuilder {
         Ok(PurchaseOrderPayload {
             action,
             org_id,
-            public_key,
             timestamp,
         })
     }
@@ -219,17 +201,22 @@ impl PurchaseOrderPayloadBuilder {
 /// Native representation of the "create purchase order" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreatePurchaseOrderPayload {
-    uuid: String,
+    uid: String,
     created_at: u64,
+    create_version_payload: Option<CreateVersionPayload>,
 }
 
 impl CreatePurchaseOrderPayload {
-    pub fn uuid(&self) -> &str {
-        &self.uuid
+    pub fn uid(&self) -> &str {
+        &self.uid
     }
 
     pub fn created_at(&self) -> u64 {
         self.created_at
+    }
+
+    pub fn create_version_payload(&self) -> Option<CreateVersionPayload> {
+        self.create_version_payload.clone()
     }
 }
 
@@ -237,9 +224,12 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
     fn from_proto(
         mut proto: purchase_order_payload::CreatePurchaseOrderPayload,
     ) -> Result<Self, ProtoConversionError> {
+        let create_version_payload =
+            CreateVersionPayload::from_proto(proto.take_create_version_payload()).ok();
         Ok(CreatePurchaseOrderPayload {
-            uuid: proto.take_uuid(),
+            uid: proto.take_uid(),
             created_at: proto.get_created_at(),
+            create_version_payload,
         })
     }
 }
@@ -247,8 +237,14 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
 impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePurchaseOrderPayload {
     fn from_native(native: CreatePurchaseOrderPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::CreatePurchaseOrderPayload::new();
-        proto.set_uuid(native.uuid().to_string());
+        proto.set_uid(native.uid().to_string());
         proto.set_created_at(native.created_at());
+
+        if let Some(payload) = native.create_version_payload() {
+            let proto_payload: purchase_order_payload::CreateVersionPayload =
+                payload.into_proto()?;
+            proto.set_create_version_payload(proto_payload);
+        }
 
         Ok(proto)
     }
@@ -284,8 +280,9 @@ impl IntoNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
 /// Builder used to create the "create agent" payload
 #[derive(Default, Debug)]
 pub struct CreatePurchaseOrderPayloadBuilder {
-    uuid: Option<String>,
+    uid: Option<String>,
     created_at: Option<u64>,
+    create_version_payload: Option<CreateVersionPayload>,
 }
 
 impl CreatePurchaseOrderPayloadBuilder {
@@ -293,8 +290,8 @@ impl CreatePurchaseOrderPayloadBuilder {
         CreatePurchaseOrderPayloadBuilder::default()
     }
 
-    pub fn with_uuid(mut self, value: String) -> Self {
-        self.uuid = Some(value);
+    pub fn with_uid(mut self, value: String) -> Self {
+        self.uid = Some(value);
         self
     }
 
@@ -303,16 +300,27 @@ impl CreatePurchaseOrderPayloadBuilder {
         self
     }
 
+    pub fn with_create_version_payload(mut self, payload: CreateVersionPayload) -> Self {
+        self.create_version_payload = Some(payload);
+        self
+    }
+
     pub fn build(self) -> Result<CreatePurchaseOrderPayload, BuilderError> {
-        let uuid = self
-            .uuid
-            .ok_or_else(|| BuilderError::MissingField("'uuid' field is required".to_string()))?;
+        let uid = self
+            .uid
+            .ok_or_else(|| BuilderError::MissingField("'uid' field is required".to_string()))?;
 
         let created_at = self.created_at.ok_or_else(|| {
             BuilderError::MissingField("'created_at' field is required".to_string())
         })?;
 
-        Ok(CreatePurchaseOrderPayload { uuid, created_at })
+        let create_version_payload = self.create_version_payload;
+
+        Ok(CreatePurchaseOrderPayload {
+            uid,
+            created_at,
+            create_version_payload,
+        })
     }
 }
 
@@ -580,6 +588,7 @@ impl PayloadRevisionBuilder {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CreateVersionPayload {
     version_id: String,
+    po_uid: String,
     is_draft: bool,
     revision: PayloadRevision,
 }
@@ -587,6 +596,10 @@ pub struct CreateVersionPayload {
 impl CreateVersionPayload {
     pub fn version_id(&self) -> &str {
         &self.version_id
+    }
+
+    pub fn po_uid(&self) -> &str {
+        &self.po_uid
     }
 
     pub fn is_draft(&self) -> bool {
@@ -604,6 +617,7 @@ impl FromProto<purchase_order_payload::CreateVersionPayload> for CreateVersionPa
     ) -> Result<Self, ProtoConversionError> {
         Ok(CreateVersionPayload {
             version_id: proto.take_version_id(),
+            po_uid: proto.take_po_uid(),
             is_draft: proto.get_is_draft(),
             revision: PayloadRevision::from_proto(proto.take_revision())?,
         })
@@ -614,6 +628,7 @@ impl FromNative<CreateVersionPayload> for purchase_order_payload::CreateVersionP
     fn from_native(native: CreateVersionPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::CreateVersionPayload::new();
         proto.set_version_id(native.version_id().to_string());
+        proto.set_po_uid(native.po_uid().to_string());
         proto.set_is_draft(native.is_draft());
         proto.set_revision(native.revision().clone().into_proto()?);
 
@@ -652,6 +667,7 @@ impl IntoNative<CreateVersionPayload> for purchase_order_payload::CreateVersionP
 #[derive(Default, Debug)]
 pub struct CreateVersionPayloadBuilder {
     version_id: Option<String>,
+    po_uid: Option<String>,
     is_draft: Option<bool>,
     revision: Option<PayloadRevision>,
 }
@@ -663,6 +679,11 @@ impl CreateVersionPayloadBuilder {
 
     pub fn with_version_id(mut self, value: String) -> Self {
         self.version_id = Some(value);
+        self
+    }
+
+    pub fn with_po_uid(mut self, value: String) -> Self {
+        self.po_uid = Some(value);
         self
     }
 
@@ -681,6 +702,10 @@ impl CreateVersionPayloadBuilder {
             BuilderError::MissingField("'version_id' field is required".to_string())
         })?;
 
+        let po_uid = self
+            .po_uid
+            .ok_or_else(|| BuilderError::MissingField("'po_uid' field is required".to_string()))?;
+
         let is_draft = self.is_draft.ok_or_else(|| {
             BuilderError::MissingField("'is_draft' field is required".to_string())
         })?;
@@ -691,6 +716,7 @@ impl CreateVersionPayloadBuilder {
 
         Ok(CreateVersionPayload {
             version_id,
+            po_uid,
             is_draft,
             revision,
         })
@@ -701,6 +727,7 @@ impl CreateVersionPayloadBuilder {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdateVersionPayload {
     version_id: String,
+    po_uid: String,
     workflow_status: String,
     is_draft: bool,
     current_revision_id: String,
@@ -710,6 +737,10 @@ pub struct UpdateVersionPayload {
 impl UpdateVersionPayload {
     pub fn version_id(&self) -> &str {
         &self.version_id
+    }
+
+    pub fn po_uid(&self) -> &str {
+        &self.po_uid
     }
 
     pub fn workflow_status(&self) -> &str {
@@ -735,6 +766,7 @@ impl FromProto<purchase_order_payload::UpdateVersionPayload> for UpdateVersionPa
     ) -> Result<Self, ProtoConversionError> {
         Ok(UpdateVersionPayload {
             version_id: proto.take_version_id(),
+            po_uid: proto.take_po_uid(),
             workflow_status: proto.take_workflow_status(),
             is_draft: proto.get_is_draft(),
             current_revision_id: proto.take_current_revision_id(),
@@ -747,6 +779,7 @@ impl FromNative<UpdateVersionPayload> for purchase_order_payload::UpdateVersionP
     fn from_native(native: UpdateVersionPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::UpdateVersionPayload::new();
         proto.set_version_id(native.version_id().to_string());
+        proto.set_po_uid(native.po_uid().to_string());
         proto.set_workflow_status(native.workflow_status().to_string());
         proto.set_is_draft(native.is_draft());
         proto.set_current_revision_id(native.current_revision_id().to_string());
@@ -787,6 +820,7 @@ impl IntoNative<UpdateVersionPayload> for purchase_order_payload::UpdateVersionP
 #[derive(Default, Debug)]
 pub struct UpdateVersionPayloadBuilder {
     version_id: Option<String>,
+    po_uid: Option<String>,
     workflow_status: Option<String>,
     is_draft: Option<bool>,
     current_revision_id: Option<String>,
@@ -800,6 +834,11 @@ impl UpdateVersionPayloadBuilder {
 
     pub fn with_version_id(mut self, value: String) -> Self {
         self.version_id = Some(value);
+        self
+    }
+
+    pub fn with_po_uid(mut self, value: String) -> Self {
+        self.po_uid = Some(value);
         self
     }
 
@@ -828,6 +867,10 @@ impl UpdateVersionPayloadBuilder {
             BuilderError::MissingField("'version_id' field is required".to_string())
         })?;
 
+        let po_uid = self
+            .po_uid
+            .ok_or_else(|| BuilderError::MissingField("'po_uid' field is required".to_string()))?;
+
         let workflow_status = self.workflow_status.ok_or_else(|| {
             BuilderError::MissingField("'workflow_status' field is required".to_string())
         })?;
@@ -846,6 +889,7 @@ impl UpdateVersionPayloadBuilder {
 
         Ok(UpdateVersionPayload {
             version_id,
+            po_uid,
             workflow_status,
             is_draft,
             current_revision_id,
