@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::PurchaseOrderStoreOperations;
+use super::{
+    add_purchase_order_version, add_purchase_order_version_revision, PurchaseOrderStoreOperations,
+};
 use crate::purchase_order::store::diesel::{
     models::{
         NewPurchaseOrderModel, NewPurchaseOrderVersionModel, NewPurchaseOrderVersionRevisionModel,
-        PurchaseOrderModel, PurchaseOrderVersionModel, PurchaseOrderVersionRevisionModel,
+        PurchaseOrderModel,
     },
-    schema::{purchase_order, purchase_order_version, purchase_order_version_revision},
+    schema::purchase_order,
     PurchaseOrderStoreError,
 };
 
@@ -28,7 +30,6 @@ use crate::error::InternalError;
 use diesel::{
     dsl::{insert_into, update},
     prelude::*,
-    result::Error as dsl_error,
 };
 
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreAddPurchaseOrderOperation {
@@ -51,6 +52,18 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
         revisions: Vec<NewPurchaseOrderVersionRevisionModel>,
     ) -> Result<(), PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            for revision in revisions {
+                add_purchase_order_version_revision::pg::add_purchase_order_version_revision(
+                    self.conn,
+                    &revision,
+                    &order.purchase_order_uid,
+                )?;
+            }
+
+            for version in versions {
+                add_purchase_order_version::pg::add_purchase_order_version(self.conn, &version)?;
+            }
+
             let mut query = purchase_order::table.into_boxed().filter(
                 purchase_order::purchase_order_uid
                     .eq(&order.purchase_order_uid)
@@ -65,14 +78,7 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
 
             let duplicate = query
                 .first::<PurchaseOrderModel>(self.conn)
-                .map(Some)
-                .or_else(|err| {
-                    if err == dsl_error::NotFound {
-                        Ok(None)
-                    } else {
-                        Err(err)
-                    }
-                })
+                .optional()
                 .map_err(|err| {
                     PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(
                         err,
@@ -111,118 +117,6 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(PurchaseOrderStoreError::from)?;
-
-            for version in versions {
-                let mut query = purchase_order_version::table.into_boxed().filter(
-                    purchase_order_version::purchase_order_uid
-                        .eq(&order.purchase_order_uid)
-                        .and(purchase_order_version::version_id.eq(&version.version_id))
-                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
-
-                if let Some(service_id) = &order.service_id {
-                    query = query.filter(purchase_order_version::service_id.eq(service_id));
-                } else {
-                    query = query.filter(purchase_order_version::service_id.is_null());
-                }
-
-                let duplicate = query
-                    .first::<PurchaseOrderVersionModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| {
-                        if err == dsl_error::NotFound {
-                            Ok(None)
-                        } else {
-                            Err(err)
-                        }
-                    })
-                    .map_err(|err| {
-                        PurchaseOrderStoreError::InternalError(InternalError::from_source(
-                            Box::new(err),
-                        ))
-                    })?;
-
-                if duplicate.is_some() {
-                    if let Some(service_id) = &order.service_id {
-                        update(purchase_order_version::table)
-                            .filter(
-                                purchase_order_version::purchase_order_uid
-                                    .eq(&order.purchase_order_uid)
-                                    .and(purchase_order_version::version_id.eq(&version.version_id))
-                                    .and(purchase_order_version::service_id.eq(service_id))
-                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                            )
-                            .set(
-                                purchase_order_version::end_commit_num
-                                    .eq(&version.start_commit_num),
-                            )
-                            .execute(self.conn)
-                            .map(|_| ())
-                            .map_err(PurchaseOrderStoreError::from)?;
-                    } else {
-                        update(purchase_order_version::table)
-                            .filter(
-                                purchase_order_version::purchase_order_uid
-                                    .eq(&order.purchase_order_uid)
-                                    .and(purchase_order_version::version_id.eq(&version.version_id))
-                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                            )
-                            .set(
-                                purchase_order_version::end_commit_num
-                                    .eq(&version.start_commit_num),
-                            )
-                            .execute(self.conn)
-                            .map(|_| ())
-                            .map_err(PurchaseOrderStoreError::from)?;
-                    }
-                }
-
-                insert_into(purchase_order_version::table)
-                    .values(&version)
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PurchaseOrderStoreError::from)?;
-            }
-
-            for revision in revisions {
-                let mut query = purchase_order_version_revision::table.into_boxed().filter(
-                    purchase_order_version_revision::version_id
-                        .eq(&revision.version_id)
-                        .and(purchase_order_version_revision::revision_id.eq(&revision.revision_id))
-                        .and(purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
-
-                if let Some(service_id) = &order.service_id {
-                    query =
-                        query.filter(purchase_order_version_revision::service_id.eq(service_id));
-                } else {
-                    query = query.filter(purchase_order_version_revision::service_id.is_null());
-                }
-
-                let duplicate = query
-                    .first::<PurchaseOrderVersionRevisionModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| {
-                        if err == dsl_error::NotFound {
-                            Ok(None)
-                        } else {
-                            Err(err)
-                        }
-                    })
-                    .map_err(|err| {
-                        PurchaseOrderStoreError::InternalError(InternalError::from_source(
-                            Box::new(err),
-                        ))
-                    })?;
-
-                if duplicate.is_none() {
-                    insert_into(purchase_order_version_revision::table)
-                        .values(&revision)
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PurchaseOrderStoreError::from)?;
-                }
-            }
 
             Ok(())
         })
@@ -240,6 +134,20 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
         revisions: Vec<NewPurchaseOrderVersionRevisionModel>,
     ) -> Result<(), PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            for revision in revisions {
+                add_purchase_order_version_revision::sqlite::add_purchase_order_version_revision(
+                    self.conn,
+                    &revision,
+                    &order.purchase_order_uid,
+                )?;
+            }
+
+            for version in versions {
+                add_purchase_order_version::sqlite::add_purchase_order_version(
+                    self.conn, &version,
+                )?;
+            }
+
             let mut query = purchase_order::table.into_boxed().filter(
                 purchase_order::purchase_order_uid
                     .eq(&order.purchase_order_uid)
@@ -254,14 +162,7 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
 
             let duplicate = query
                 .first::<PurchaseOrderModel>(self.conn)
-                .map(Some)
-                .or_else(|err| {
-                    if err == dsl_error::NotFound {
-                        Ok(None)
-                    } else {
-                        Err(err)
-                    }
-                })
+                .optional()
                 .map_err(|err| {
                     PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(
                         err,
@@ -300,118 +201,6 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 .execute(self.conn)
                 .map(|_| ())
                 .map_err(PurchaseOrderStoreError::from)?;
-
-            for version in versions {
-                let mut query = purchase_order_version::table.into_boxed().filter(
-                    purchase_order_version::purchase_order_uid
-                        .eq(&order.purchase_order_uid)
-                        .and(purchase_order_version::version_id.eq(&version.version_id))
-                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
-
-                if let Some(service_id) = &order.service_id {
-                    query = query.filter(purchase_order_version::service_id.eq(service_id));
-                } else {
-                    query = query.filter(purchase_order_version::service_id.is_null());
-                }
-
-                let duplicate = query
-                    .first::<PurchaseOrderVersionModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| {
-                        if err == dsl_error::NotFound {
-                            Ok(None)
-                        } else {
-                            Err(err)
-                        }
-                    })
-                    .map_err(|err| {
-                        PurchaseOrderStoreError::InternalError(InternalError::from_source(
-                            Box::new(err),
-                        ))
-                    })?;
-
-                if duplicate.is_some() {
-                    if let Some(service_id) = &order.service_id {
-                        update(purchase_order_version::table)
-                            .filter(
-                                purchase_order_version::purchase_order_uid
-                                    .eq(&order.purchase_order_uid)
-                                    .and(purchase_order_version::version_id.eq(&version.version_id))
-                                    .and(purchase_order_version::service_id.eq(service_id))
-                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                            )
-                            .set(
-                                purchase_order_version::end_commit_num
-                                    .eq(&version.start_commit_num),
-                            )
-                            .execute(self.conn)
-                            .map(|_| ())
-                            .map_err(PurchaseOrderStoreError::from)?;
-                    } else {
-                        update(purchase_order_version::table)
-                            .filter(
-                                purchase_order_version::purchase_order_uid
-                                    .eq(&order.purchase_order_uid)
-                                    .and(purchase_order_version::version_id.eq(&version.version_id))
-                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                            )
-                            .set(
-                                purchase_order_version::end_commit_num
-                                    .eq(&version.start_commit_num),
-                            )
-                            .execute(self.conn)
-                            .map(|_| ())
-                            .map_err(PurchaseOrderStoreError::from)?;
-                    }
-                }
-
-                insert_into(purchase_order_version::table)
-                    .values(&version)
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PurchaseOrderStoreError::from)?;
-            }
-
-            for revision in revisions {
-                let mut query = purchase_order_version_revision::table.into_boxed().filter(
-                    purchase_order_version_revision::version_id
-                        .eq(&revision.version_id)
-                        .and(purchase_order_version_revision::revision_id.eq(&revision.revision_id))
-                        .and(purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
-
-                if let Some(service_id) = &order.service_id {
-                    query =
-                        query.filter(purchase_order_version_revision::service_id.eq(service_id));
-                } else {
-                    query = query.filter(purchase_order_version_revision::service_id.is_null());
-                }
-
-                let duplicate = query
-                    .first::<PurchaseOrderVersionRevisionModel>(self.conn)
-                    .map(Some)
-                    .or_else(|err| {
-                        if err == dsl_error::NotFound {
-                            Ok(None)
-                        } else {
-                            Err(err)
-                        }
-                    })
-                    .map_err(|err| {
-                        PurchaseOrderStoreError::InternalError(InternalError::from_source(
-                            Box::new(err),
-                        ))
-                    })?;
-
-                if duplicate.is_none() {
-                    insert_into(purchase_order_version_revision::table)
-                        .values(&revision)
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PurchaseOrderStoreError::from)?;
-                }
-            }
 
             Ok(())
         })
