@@ -263,6 +263,19 @@ impl PurchaseOrderBuilder {
     }
 }
 
+/// Represents a list of Grid Purchase Order Versions
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct PurchaseOrderVersionList {
+    pub data: Vec<PurchaseOrderVersion>,
+    pub paging: Paging,
+}
+
+impl PurchaseOrderVersionList {
+    pub fn new(data: Vec<PurchaseOrderVersion>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
+}
+
 /// Represents a Grid Purchase Order Version
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderVersion {
@@ -756,7 +769,7 @@ pub trait PurchaseOrderStore {
     ///
     ///  * `buyer_org_id` - The buyer organization to fetch for
     ///  * `seller_org_id` - The seller organization to fetch for
-    ///  * `service_id` - The service id
+    ///  * `service_id` - The service ID
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
     fn list_purchase_orders(
@@ -767,6 +780,22 @@ pub trait PurchaseOrderStore {
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError>;
+
+    /// Lists purchase order versions from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `po_uid`   - The uid of the purchase order to get versions for
+    ///  * `service_id` - The service ID
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
+    fn list_purchase_order_versions(
+        &self,
+        po_uid: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<PurchaseOrderVersionList, PurchaseOrderStoreError>;
 
     /// Fetches a purchase order from the underlying storage
     ///
@@ -826,6 +855,16 @@ where
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
         (**self).list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
+    }
+
+    fn list_purchase_order_versions(
+        &self,
+        po_uid: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<PurchaseOrderVersionList, PurchaseOrderStoreError> {
+        (**self).list_purchase_order_versions(po_uid, service_id, offset, limit)
     }
 
     fn get_purchase_order(
