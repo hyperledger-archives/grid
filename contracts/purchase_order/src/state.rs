@@ -274,6 +274,9 @@ mod tests {
     const PO_VERSION_ID_1: &str = "01";
     const PO_VERSION_ID_2: &str = "02";
 
+    const ORG_1: &str = "test_org_1";
+    const ORG_2: &str = "test_org_2";
+
     #[derive(Default, Debug)]
     /// A MockTransactionContext that can be used to test Purchase Order state
     struct MockTransactionContext {
@@ -435,6 +438,8 @@ mod tests {
             .with_workflow_status("Issued".to_string())
             .with_created_at(1)
             .with_accepted_version_number("".to_string())
+            .with_buyer_org_id(ORG_1.to_string())
+            .with_seller_org_id(ORG_2.to_string())
             .with_versions(vec![purchase_order_version(PO_VERSION_ID_1)])
             .with_is_closed(false)
             .build()
@@ -447,6 +452,8 @@ mod tests {
             .with_workflow_status("Issued".to_string())
             .with_created_at(2)
             .with_accepted_version_number("".to_string())
+            .with_buyer_org_id(ORG_1.to_string())
+            .with_seller_org_id(ORG_2.to_string())
             .with_versions(vec![
                 purchase_order_version(PO_VERSION_ID_1),
                 purchase_order_version(PO_VERSION_ID_2),
