@@ -35,17 +35,12 @@ pub enum Action {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderPayload {
     action: Action,
-    org_id: String,
     timestamp: u64,
 }
 
 impl PurchaseOrderPayload {
     pub fn action(&self) -> &Action {
         &self.action
-    }
-
-    pub fn org_id(&self) -> &str {
-        &self.org_id
     }
 
     pub fn timestamp(&self) -> u64 {
@@ -82,7 +77,6 @@ impl FromProto<purchase_order_payload::PurchaseOrderPayload> for PurchaseOrderPa
         };
         Ok(PurchaseOrderPayload {
             action,
-            org_id: payload.take_org_id(),
             timestamp: payload.get_timestamp(),
         })
     }
@@ -91,9 +85,7 @@ impl FromProto<purchase_order_payload::PurchaseOrderPayload> for PurchaseOrderPa
 impl FromNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderPayload {
     fn from_native(native: PurchaseOrderPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::PurchaseOrderPayload::new();
-
         proto.set_timestamp(native.timestamp());
-        proto.set_org_id(native.org_id().to_string());
 
         match native.action() {
             Action::CreatePo(payload) => {
@@ -153,7 +145,6 @@ impl IntoNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderP
 #[derive(Default, Clone)]
 pub struct PurchaseOrderPayloadBuilder {
     action: Option<Action>,
-    org_id: Option<String>,
     timestamp: Option<u64>,
 }
 
@@ -167,11 +158,6 @@ impl PurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_org_id(mut self, org_id: String) -> Self {
-        self.org_id = Some(org_id);
-        self
-    }
-
     pub fn with_timestamp(mut self, value: u64) -> Self {
         self.timestamp = Some(value);
         self
@@ -182,19 +168,11 @@ impl PurchaseOrderPayloadBuilder {
             .action
             .ok_or_else(|| BuilderError::MissingField("'action' field is required".into()))?;
 
-        let org_id = self
-            .org_id
-            .ok_or_else(|| BuilderError::MissingField("'org_id' field is required".into()))?;
-
         let timestamp = self
             .timestamp
             .ok_or_else(|| BuilderError::MissingField("'timestamp' field is required".into()))?;
 
-        Ok(PurchaseOrderPayload {
-            action,
-            org_id,
-            timestamp,
-        })
+        Ok(PurchaseOrderPayload { action, timestamp })
     }
 }
 

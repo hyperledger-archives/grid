@@ -24,7 +24,6 @@ message PurchaseOrderPayload {
     UPDATE_VERSION = 4;
   }
   Action action = 1;
-  string org_id = 2;
   uint64 timestamp = 3;
 
   CreatePurchaseOrderPayload create_po_payload = 4;
