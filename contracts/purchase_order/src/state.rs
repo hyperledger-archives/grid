@@ -253,3 +253,227 @@ impl<'a> PurchaseOrderState<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+
+    use grid_sdk::protocol::purchase_order::state::{
+        PurchaseOrder, PurchaseOrderBuilder, PurchaseOrderRevision, PurchaseOrderRevisionBuilder,
+        PurchaseOrderVersion, PurchaseOrderVersionBuilder,
+    };
+
+    use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
+
+    const AGENT_PUB_KEY: &str = "test_agent_pub_key";
+
+    const PO_UID: &str = "test_po_1";
+    const PO_VERSION_ID_1: &str = "01";
+    const PO_VERSION_ID_2: &str = "02";
+
+    #[derive(Default, Debug)]
+    /// A MockTransactionContext that can be used to test Purchase Order state
+    struct MockTransactionContext {
+        state: RefCell<HashMap<String, Vec<u8>>>,
+    }
+
+    impl TransactionContext for MockTransactionContext {
+        fn get_state_entries(
+            &self,
+            addresses: &[String],
+        ) -> Result<Vec<(String, Vec<u8>)>, ContextError> {
+            let mut results = Vec::new();
+            for addr in addresses {
+                let data = match self.state.borrow().get(addr) {
+                    Some(data) => data.clone(),
+                    None => Vec::new(),
+                };
+                results.push((addr.to_string(), data));
+            }
+            Ok(results)
+        }
+
+        fn set_state_entries(&self, entries: Vec<(String, Vec<u8>)>) -> Result<(), ContextError> {
+            for (addr, data) in entries {
+                self.state.borrow_mut().insert(addr, data);
+            }
+            Ok(())
+        }
+
+        /// this is not needed for these tests
+        fn delete_state_entries(&self, _addresses: &[String]) -> Result<Vec<String>, ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_receipt_data(&self, _data: &[u8]) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_event(
+            &self,
+            _event_type: String,
+            _attributes: Vec<(String, String)>,
+            _data: &[u8],
+        ) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    /// Validate `PurchaseOrderState` returns correctly if the purchase order does not exist
+    ///
+    /// 1. Create the context and state for the test
+    /// 2. Attempt to get a purchase order from state
+    /// 3. Validate `None` is returned, as no purchase orders have been added to state
+    fn test_get_po_does_not_exist() {
+        let mut ctx = MockTransactionContext::default();
+        let state = PurchaseOrderState::new(&mut ctx);
+
+        let result = state._get_purchase_order("does_not_exist").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    /// Validate `PurchaseOrderState` returns correctly if the purchase order version does not exist
+    ///
+    /// 1. Create the context and state for the test
+    /// 2. Create a purchase order, with one version, and set this object in state
+    /// 3. Attempt to get a version that does not exist from the purchase order added to state
+    /// 4. Validate `None` is returned, as the version does not exist
+    fn test_get_po_version_does_not_exist() {
+        let mut ctx = MockTransactionContext::default();
+        let state = PurchaseOrderState::new(&mut ctx);
+
+        let po = purchase_order_basic();
+        if let Err(err) = state._set_purchase_order(PO_UID, po.clone()) {
+            panic!("Unable to add Purchase Order to state: {:?}", err);
+        }
+
+        let result = state
+            ._get_purchase_order_version(PO_UID, "does_not_exist")
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    /// Validate `PurchaseOrderState` returns correctly if the purchase order version does exist
+    ///
+    /// 1. Create the context and state for the test
+    /// 2. Create a purchase order, with two versions, and set this object in state
+    /// 3. Attempt to get the first version from the purchase order added to state
+    /// 4. Validate the expected version is returned successfully
+    /// 5. Attempt to get the second version from the purchase order added to state
+    /// 6. Validate the expected version is returned successfully
+    /// 7. Retrieve the Purchase Order from state and validate both versions are present
+    fn test_get_po_version_does_exist() {
+        let mut ctx = MockTransactionContext::default();
+        let state = PurchaseOrderState::new(&mut ctx);
+
+        let po = purchase_order_multiple_versions();
+        if let Err(err) = state._set_purchase_order(PO_UID, po.clone()) {
+            panic!("Unable to add Purchase Order to state: {:?}", err);
+        }
+
+        let version_result = state
+            ._get_purchase_order_version(PO_UID, PO_VERSION_ID_1)
+            .unwrap();
+        assert_eq!(
+            version_result,
+            Some(purchase_order_version(PO_VERSION_ID_1))
+        );
+
+        let version_result = state
+            ._get_purchase_order_version(PO_UID, PO_VERSION_ID_2)
+            .unwrap();
+        assert_eq!(
+            version_result,
+            Some(purchase_order_version(PO_VERSION_ID_2))
+        );
+
+        let po_result = state
+            ._get_purchase_order(PO_UID)
+            .expect("Unable to get purchase order from state")
+            .unwrap();
+        assert!(po_result
+            .versions()
+            .contains(&purchase_order_version(PO_VERSION_ID_1)));
+        assert!(po_result
+            .versions()
+            .contains(&purchase_order_version(PO_VERSION_ID_2)));
+    }
+
+    #[test]
+    /// Validate `PurchaseOrderState` returns correctly if the purchase order version does exist
+    ///
+    /// 1. Create the context and state for the test
+    /// 2. Create a purchase order, with two versions, and set this object in state
+    /// 3. Attempt to get the purchase order added in the previous step from state
+    /// 4. Validate the expected purchase order is returned successfully
+    fn test_get_po_does_exist() {
+        let mut ctx = MockTransactionContext::default();
+        let state = PurchaseOrderState::new(&mut ctx);
+
+        let po = purchase_order_basic();
+        if let Err(err) = state._set_purchase_order(PO_UID, po.clone()) {
+            panic!("Unable to add Purchase Order to state: {:?}", err);
+        }
+
+        let result = state
+            ._get_purchase_order(PO_UID)
+            .expect("Unable to get po from state");
+        assert_eq!(result, Some(po));
+    }
+
+    fn purchase_order_basic() -> PurchaseOrder {
+        PurchaseOrderBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_workflow_status("Issued".to_string())
+            .with_created_at(1)
+            .with_accepted_version_number("".to_string())
+            .with_versions(vec![purchase_order_version(PO_VERSION_ID_1)])
+            .with_is_closed(false)
+            .build()
+            .expect("Unable to build purchase order")
+    }
+
+    fn purchase_order_multiple_versions() -> PurchaseOrder {
+        PurchaseOrderBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_workflow_status("Issued".to_string())
+            .with_created_at(2)
+            .with_accepted_version_number("".to_string())
+            .with_versions(vec![
+                purchase_order_version(PO_VERSION_ID_1),
+                purchase_order_version(PO_VERSION_ID_2),
+            ])
+            .with_is_closed(false)
+            .build()
+            .expect("Unable to build purchase order")
+    }
+
+    fn purchase_order_version(version_id: &str) -> PurchaseOrderVersion {
+        PurchaseOrderVersionBuilder::new()
+            .with_version_id(version_id.to_string())
+            .with_workflow_status("Editable".to_string())
+            .with_is_draft(true)
+            .with_current_revision_id("1".to_string())
+            .with_revisions(purchase_order_revision())
+            .build()
+            .expect("Unable to build first purchase order version")
+    }
+
+    fn purchase_order_revision() -> PurchaseOrderRevision {
+        PurchaseOrderRevisionBuilder::new()
+            .with_revision_id("1".to_string())
+            .with_submitter(AGENT_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_purchase_order".to_string())
+            .build()
+            .expect("Unable to build purchase order revision")
+    }
+}
