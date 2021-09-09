@@ -35,17 +35,17 @@ use grid_sdk::{
 };
 
 pub struct PurchaseOrderState<'a> {
-    _context: &'a dyn TransactionContext,
+    context: &'a dyn TransactionContext,
 }
 
 impl<'a> PurchaseOrderState<'a> {
     pub fn new(context: &'a dyn TransactionContext) -> Self {
-        Self { _context: context }
+        Self { context }
     }
 
-    pub fn _get_purchase_order(&self, po_uid: &str) -> Result<Option<PurchaseOrder>, ApplyError> {
+    pub fn get_purchase_order(&self, po_uid: &str) -> Result<Option<PurchaseOrder>, ApplyError> {
         let address = compute_purchase_order_address(po_uid);
-        if let Some(packed) = self._context.get_state_entry(&address)? {
+        if let Some(packed) = self.context.get_state_entry(&address)? {
             let purchase_orders =
                 PurchaseOrderList::from_bytes(packed.as_slice()).map_err(|_| {
                     ApplyError::InternalError("Cannot deserialize purchase order list".to_string())
@@ -60,14 +60,14 @@ impl<'a> PurchaseOrderState<'a> {
         }
     }
 
-    pub fn _set_purchase_order(
+    pub fn set_purchase_order(
         &self,
         po_uid: &str,
         purchase_order: PurchaseOrder,
     ) -> Result<(), ApplyError> {
         let address = compute_purchase_order_address(po_uid);
         let mut purchase_orders: Vec<PurchaseOrder> =
-            match self._context.get_state_entry(&address)? {
+            match self.context.get_state_entry(&address)? {
                 Some(packed) => PurchaseOrderList::from_bytes(packed.as_slice())
                     .map_err(|err| {
                         ApplyError::InternalError(format!(
@@ -109,7 +109,7 @@ impl<'a> PurchaseOrderState<'a> {
             ))
         })?;
 
-        self._context
+        self.context
             .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
 
@@ -122,7 +122,7 @@ impl<'a> PurchaseOrderState<'a> {
         version_id: &str,
     ) -> Result<Option<PurchaseOrderVersion>, ApplyError> {
         let address = compute_purchase_order_address(po_uid);
-        if let Some(packed) = self._context.get_state_entry(&address)? {
+        if let Some(packed) = self.context.get_state_entry(&address)? {
             let purchase_orders =
                 PurchaseOrderList::from_bytes(packed.as_slice()).map_err(|_| {
                     ApplyError::InternalError("Cannot deserialize purchase order list".to_string())
@@ -155,7 +155,7 @@ impl<'a> PurchaseOrderState<'a> {
     ) -> Result<(), ApplyError> {
         let address = compute_purchase_order_address(po_uid);
         let mut purchase_orders: Vec<PurchaseOrder> =
-            match self._context.get_state_entry(&address)? {
+            match self.context.get_state_entry(&address)? {
                 Some(packed) => PurchaseOrderList::from_bytes(packed.as_slice())
                     .map_err(|err| {
                         ApplyError::InternalError(format!(
@@ -212,15 +212,15 @@ impl<'a> PurchaseOrderState<'a> {
                 err
             ))
         })?;
-        self._context
+        self.context
             .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
 
-    pub fn _get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
+    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
         let address = compute_agent_address(public_key);
-        if let Some(packed) = self._context.get_state_entry(&address)? {
+        if let Some(packed) = self.context.get_state_entry(&address)? {
             let agents = AgentList::from_bytes(packed.as_slice()).map_err(|err| {
                 ApplyError::InternalError(format!("Cannot deserialize agent list: {:?}", err))
             })?;
@@ -234,9 +234,9 @@ impl<'a> PurchaseOrderState<'a> {
         }
     }
 
-    pub fn _get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
+    pub fn get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
         let address = compute_organization_address(id);
-        if let Some(packed) = self._context.get_state_entry(&address)? {
+        if let Some(packed) = self.context.get_state_entry(&address)? {
             let orgs = OrganizationList::from_bytes(packed.as_slice()).map_err(|err| {
                 ApplyError::InternalError(format!(
                     "Cannot deserialize organization list: {:?}",
@@ -337,7 +337,7 @@ mod tests {
         let mut ctx = MockTransactionContext::default();
         let state = PurchaseOrderState::new(&mut ctx);
 
-        let result = state._get_purchase_order("does_not_exist").unwrap();
+        let result = state.get_purchase_order("does_not_exist").unwrap();
         assert!(result.is_none());
     }
 
@@ -353,7 +353,7 @@ mod tests {
         let state = PurchaseOrderState::new(&mut ctx);
 
         let po = purchase_order_basic();
-        if let Err(err) = state._set_purchase_order(PO_UID, po.clone()) {
+        if let Err(err) = state.set_purchase_order(PO_UID, po.clone()) {
             panic!("Unable to add Purchase Order to state: {:?}", err);
         }
 
@@ -378,7 +378,7 @@ mod tests {
         let state = PurchaseOrderState::new(&mut ctx);
 
         let po = purchase_order_multiple_versions();
-        if let Err(err) = state._set_purchase_order(PO_UID, po.clone()) {
+        if let Err(err) = state.set_purchase_order(PO_UID, po.clone()) {
             panic!("Unable to add Purchase Order to state: {:?}", err);
         }
 
@@ -399,7 +399,7 @@ mod tests {
         );
 
         let po_result = state
-            ._get_purchase_order(PO_UID)
+            .get_purchase_order(PO_UID)
             .expect("Unable to get purchase order from state")
             .unwrap();
         assert!(po_result
@@ -422,12 +422,12 @@ mod tests {
         let state = PurchaseOrderState::new(&mut ctx);
 
         let po = purchase_order_basic();
-        if let Err(err) = state._set_purchase_order(PO_UID, po.clone()) {
+        if let Err(err) = state.set_purchase_order(PO_UID, po.clone()) {
             panic!("Unable to add Purchase Order to state: {:?}", err);
         }
 
         let result = state
-            ._get_purchase_order(PO_UID)
+            .get_purchase_order(PO_UID)
             .expect("Unable to get po from state");
         assert_eq!(result, Some(po));
     }
