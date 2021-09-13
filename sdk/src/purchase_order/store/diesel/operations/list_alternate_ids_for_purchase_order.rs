@@ -19,7 +19,7 @@ pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListAlterna
 {
     fn list_alternate_ids_for_purchase_order(
         &self,
-        purchase_order_uuid: &str,
+        purchase_order_uid: &str,
         org_id: &str,
         service_id: Option<&str>,
         offset: i64,
@@ -33,7 +33,7 @@ impl<'a> PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
 {
     fn list_alternate_ids_for_purchase_order(
         &self,
-        _purchase_order_uuid: &str,
+        _purchase_order_uid: &str,
         _org_id: &str,
         _service_id: Option<&str>,
         _offset: i64,
@@ -49,7 +49,7 @@ impl<'a> PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
 {
     fn list_alternate_ids_for_purchase_order(
         &self,
-        _purchase_order_uuid: &str,
+        _purchase_order_uid: &str,
         _org_id: &str,
         _service_id: Option<&str>,
         _offset: i64,

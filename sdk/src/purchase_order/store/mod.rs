@@ -105,13 +105,15 @@ pub trait PurchaseOrderStore {
     ///
     /// # Arguments
     ///
-    ///  * `org_id` - The organization to fetch for
+    ///  * `buyer_org_id` - The buyer organization to fetch for
+    ///  * `seller_org_id` - The seller organization to fetch for
     ///  * `service_id` - The service id
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
     fn list_purchase_orders(
         &self,
-        org_id: Option<String>,
+        buyer_org_id: Option<String>,
+        seller_org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -121,11 +123,11 @@ pub trait PurchaseOrderStore {
     ///
     /// # Arguments
     ///
-    ///  * `uuid`   - The uuid of the purchase order
+    ///  * `purchase_order_uid`   - The uid of the purchase order
     ///  * `service_id` - The service id
     fn get_purchase_order(
         &self,
-        uuid: &str,
+        purchase_order_uid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError>;
 
@@ -143,14 +145,14 @@ pub trait PurchaseOrderStore {
     ///
     /// # Arguments
     ///
-    ///  * `purchase_order_uuid` - The purchase order to fetch alternate IDs for
+    ///  * `purchase_order_uid` - The purchase order to fetch alternate IDs for
     ///  * `org_id` - The organization to fetch for
     ///  * `service_id` - The service id
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
     fn list_alternate_ids_for_purchase_order(
         &self,
-        purchase_order_uuid: &str,
+        purchase_order_uid: &str,
         org_id: &str,
         service_id: Option<&str>,
         offset: i64,
@@ -168,20 +170,21 @@ where
 
     fn list_purchase_orders(
         &self,
-        org_id: Option<String>,
+        buyer_org_id: Option<String>,
+        seller_org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
-        (**self).list_purchase_orders(org_id, service_id, offset, limit)
+        (**self).list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
     }
 
     fn get_purchase_order(
         &self,
-        uuid: &str,
+        purchase_order_uid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
-        (**self).get_purchase_order(uuid, service_id)
+        (**self).get_purchase_order(purchase_order_uid, service_id)
     }
 
     fn add_alternate_id(
@@ -193,14 +196,14 @@ where
 
     fn list_alternate_ids_for_purchase_order(
         &self,
-        purchase_order_uuid: &str,
+        purchase_order_uid: &str,
         org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError> {
         (**self).list_alternate_ids_for_purchase_order(
-            purchase_order_uuid,
+            purchase_order_uid,
             org_id,
             service_id,
             offset,
