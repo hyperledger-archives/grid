@@ -27,7 +27,7 @@ use diesel::{prelude::*, result::Error::NotFound};
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreGetPurchaseOrderOperation {
     fn get_purchase_order(
         &self,
-        uuid: &str,
+        purchase_order_uid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError>;
 }
@@ -38,7 +38,7 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
 {
     fn get_purchase_order(
         &self,
-        uuid: &str,
+        purchase_order_uid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
@@ -46,8 +46,8 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                 .into_boxed()
                 .select(purchase_order::all_columns)
                 .filter(
-                    purchase_order::uuid
-                        .eq(&uuid)
+                    purchase_order::purchase_order_uid
+                        .eq(&purchase_order_uid)
                         .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -71,8 +71,8 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
                 .filter(
-                    purchase_order_version::purchase_order_uuid
-                        .eq(&uuid)
+                    purchase_order_version::purchase_order_uid
+                        .eq(&purchase_order_uid)
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -100,7 +100,6 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                     .filter(
                         purchase_order_version_revision::version_id
                             .eq(&v.version_id)
-                            .and(purchase_order_version_revision::org_id.eq(&v.org_id))
                             .and(
                                 purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
                             ),
@@ -135,7 +134,7 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
 {
     fn get_purchase_order(
         &self,
-        uuid: &str,
+        purchase_order_uid: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
@@ -143,8 +142,8 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                 .into_boxed()
                 .select(purchase_order::all_columns)
                 .filter(
-                    purchase_order::uuid
-                        .eq(&uuid)
+                    purchase_order::purchase_order_uid
+                        .eq(&purchase_order_uid)
                         .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -168,8 +167,8 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
                 .filter(
-                    purchase_order_version::purchase_order_uuid
-                        .eq(&uuid)
+                    purchase_order_version::purchase_order_uid
+                        .eq(&purchase_order_uid)
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -197,7 +196,6 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                     .filter(
                         purchase_order_version_revision::version_id
                             .eq(&v.version_id)
-                            .and(purchase_order_version_revision::org_id.eq(&v.org_id))
                             .and(
                                 purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
                             ),
