@@ -44,14 +44,14 @@ mod tests {
 
     #[test]
     fn test_permission_alias() {
-        let mut permission = PermissionAlias::new("po.seller");
-        permission.add_permission("po.create");
-        permission.add_permission("po.update");
+        let mut permission = PermissionAlias::new("po::seller");
+        permission.add_permission("can-create-po");
+        permission.add_permission("can-update-po");
         permission.add_transition("confirm");
 
-        assert_eq!("po.seller", permission.name());
+        assert_eq!("po::seller", permission.name());
         assert_eq!(
-            &["po.create".to_string(), "po.update".to_string()],
+            &["can-create-po".to_string(), "can-update-po".to_string()],
             permission.permissions()
         );
         assert_eq!(&["confirm".to_string()], permission.transitions());
@@ -59,9 +59,9 @@ mod tests {
 
     #[test]
     fn test_workflow_state() {
-        let mut permission = PermissionAlias::new("po.seller");
-        permission.add_permission("po.create");
-        permission.add_permission("po.update");
+        let mut permission = PermissionAlias::new("po::seller");
+        permission.add_permission("can-create-po");
+        permission.add_permission("can-update-po");
         permission.add_transition("confirm");
 
         let state = WorkflowStateBuilder::new("issued")
@@ -72,26 +72,26 @@ mod tests {
             .build();
 
         assert_eq!(
-            vec!["po.create".to_string(), "po.update".to_string()],
-            state.expand_permissions(&vec!["po.seller".to_string()]),
+            vec!["can-create-po".to_string(), "can-update-po".to_string()],
+            state.expand_permissions(&vec!["po::seller".to_string()]),
         );
 
         assert_eq!(
             true,
-            state.can_transition("confirm".to_string(), vec!["po.seller".to_string()]),
+            state.can_transition("confirm".to_string(), vec!["po::seller".to_string()]),
         );
 
         assert_eq!(
             false,
-            state.can_transition("issued".to_string(), vec!["po.seller".to_string()]),
+            state.can_transition("issued".to_string(), vec!["po::seller".to_string()]),
         );
     }
 
     #[test]
     fn test_subworkflow() {
-        let mut permission = PermissionAlias::new("po.seller");
-        permission.add_permission("po.create");
-        permission.add_permission("po.update");
+        let mut permission = PermissionAlias::new("po::seller");
+        permission.add_permission("can-create-po");
+        permission.add_permission("can-update-po");
         permission.add_transition("confirm");
 
         let state = WorkflowStateBuilder::new("issued")
@@ -117,9 +117,9 @@ mod tests {
 
     #[test]
     fn test_workflow() {
-        let mut permission = PermissionAlias::new("po.seller");
-        permission.add_permission("po.create");
-        permission.add_permission("po.update");
+        let mut permission = PermissionAlias::new("po::seller");
+        permission.add_permission("can-create-po");
+        permission.add_permission("can-update-po");
         permission.add_transition("confirm");
 
         let state = WorkflowStateBuilder::new("issued")
