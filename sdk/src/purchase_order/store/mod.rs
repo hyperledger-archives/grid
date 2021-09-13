@@ -38,9 +38,10 @@ impl PurchaseOrderList {
 /// Represents a Grid Purchase Order
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrder {
-    pub uuid: String,
-    pub org_id: String,
+    pub purchase_order_uid: String,
     pub workflow_status: String,
+    pub buyer_org_id: String,
+    pub seller_org_id: String,
     pub is_closed: bool,
     pub accepted_version_id: String,
     pub versions: Vec<PurchaseOrderVersion>,
@@ -83,7 +84,7 @@ pub struct PurchaseOrderAlternateIdList {
 /// Represents a Grid Purchase Order Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderAlternateId {
-    pub purchase_order_uuid: String,
+    pub purchase_order_uid: String,
     pub org_id: String,
     pub id_type: String,
     pub id: String,
