@@ -15,8 +15,9 @@
 table! {
     purchase_order (id) {
         id -> Int8,
-        uuid -> Text,
-        org_id -> Varchar,
+        purchase_order_uid -> Text,
+        buyer_org_id -> Varchar,
+        seller_org_id -> Varchar,
         workflow_status -> Text,
         is_closed -> Bool,
         accepted_version_id -> Text,
@@ -30,8 +31,7 @@ table! {
 table! {
     purchase_order_version (id) {
         id -> Int8,
-        purchase_order_uuid -> Text,
-        org_id -> Varchar,
+        purchase_order_uid -> Text,
         version_id -> Text,
         is_draft -> Bool,
         current_revision_id -> Text,
@@ -45,7 +45,6 @@ table! {
     purchase_order_version_revision (id) {
         id -> Int8,
         version_id -> Text,
-        org_id -> Varchar,
         revision_id -> Text,
         order_xml_v3_4 -> Text,
         submitter -> Text,
@@ -59,7 +58,7 @@ table! {
 table! {
     purchase_order_alternate_id (id) {
         id -> Int8,
-        purchase_order_uuid -> Text,
+        purchase_order_uid -> Text,
         org_id -> Varchar,
         alternate_id_type -> Text,
         alternate_id -> Text,
