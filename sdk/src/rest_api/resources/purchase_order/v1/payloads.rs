@@ -16,7 +16,7 @@ use crate::{purchase_order::store::PurchaseOrder, rest_api::resources::paging::v
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderSlice {
-    pub uuid: String,
+    pub purchase_order_uid: String,
     pub workflow_status: String,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,7 +30,7 @@ pub struct PurchaseOrderSlice {
 impl From<PurchaseOrder> for PurchaseOrderSlice {
     fn from(purchase_order: PurchaseOrder) -> Self {
         Self {
-            uuid: purchase_order.uuid,
+            purchase_order_uid: purchase_order.purchase_order_uid,
             workflow_status: purchase_order.workflow_status,
             accepted_version_id: Some(purchase_order.accepted_version_id),
             version_numbers: Some(
