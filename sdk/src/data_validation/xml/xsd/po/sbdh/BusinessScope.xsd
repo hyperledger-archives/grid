@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XML Spy v4.3 U (http://www.xmlspy.com) by Ted Osinski (Uniform Code Council) --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader">
+	<xs:complexType name="BusinessScope">
+		<xs:sequence>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="Scope" type="Scope"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Scope">
+		<xs:sequence>
+			<xs:group ref="ScopeAttributes"/>
+			<xs:element maxOccurs="unbounded" minOccurs="0" ref="ScopeInformation"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:group name="ScopeAttributes">
+		<xs:sequence>
+			<xs:element name="Type" type="xs:string"/>
+			<xs:element name="InstanceIdentifier" type="xs:string"/>
+			<xs:element minOccurs="0" name="Identifier" type="xs:string"/>
+		</xs:sequence>
+	</xs:group>
+	<xs:element abstract="true" name="ScopeInformation" type="xs:anyType"/>
+	<xs:element name="CorrelationInformation" substitutionGroup="ScopeInformation" type="CorrelationInformation"/>
+	<xs:complexType name="CorrelationInformation">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="RequestingDocumentCreationDateTime" type="xs:dateTime"/>
+			<xs:element minOccurs="0" name="RequestingDocumentInstanceIdentifier" type="xs:string"/>
+			<xs:element minOccurs="0" name="ExpectedResponseDateTime" type="xs:dateTime"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:element name="BusinessService" substitutionGroup="ScopeInformation" type="BusinessService"/>
+	<xs:complexType name="BusinessService">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="BusinessServiceName" type="xs:string"/>
+			<xs:element minOccurs="0" name="ServiceTransaction" type="ServiceTransaction"/>
+		</xs:sequence>
+	</xs:complexType>
+<xs:complexType name="ServiceTransaction">
+		<xs:attribute name="TypeOfServiceTransaction" type="TypeOfServiceTransaction" use="optional"/>
+		<xs:attribute name="IsNonRepudiationRequired" type="xs:string"/>
+		<xs:attribute name="IsAuthenticationRequired" type="xs:string"/>
+		<xs:attribute name="IsNonRepudiationOfReceiptRequired" type="xs:string"/>
+		<xs:attribute name="IsIntegrityCheckRequired" type="xs:string"/>
+		<xs:attribute name="IsApplicationErrorResponseRequested" type="xs:string"/>
+		<xs:attribute name="TimeToAcknowledgeReceipt" type="xs:string"/>
+		<xs:attribute name="TimeToAcknowledgeAcceptance" type="xs:string"/>
+		<xs:attribute name="TimeToPerform" type="xs:string"/>
+		<xs:attribute name="Recurrence" type="xs:string"/>
+	</xs:complexType>
+	<xs:simpleType name="TypeOfServiceTransaction">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="RequestingServiceTransaction"/>
+			<xs:enumeration value="RespondingServiceTransaction"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

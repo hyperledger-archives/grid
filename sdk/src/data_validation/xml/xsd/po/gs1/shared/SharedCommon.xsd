@@ -1,0 +1,1506 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:shared_common="urn:gs1:shared:shared_common:xsd:3" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="urn:gs1:shared:shared_common:xsd:3" version="3.4">
+    <xsd:annotation>
+        <xsd:documentation><![CDATA[---------------------------
+© Copyright GS1, 2019
+
+GS1 is providing this XML Schema Definition file and resultant XML file as a service to interested industries.
+This XML Schema Definition file and resultant XML file were developed through a consensus process of interested parties.
+
+Although efforts have been made to ensure that the XML Schema Definition file and resultant XML file are correct, reliable, and technically
+accurate,  GS1 makes NO WARRANTY, EXPRESS OR IMPLIED, THAT THIS XML Schema Definition file and resultant XML file ARE
+CORRECT, WILL NOT REQUIRE MODIFICATION AS EXPERIENCE AND TECHNOLOGICAL ADVANCES DICTATE, OR WILL BE SUITABLE FOR
+ANY PURPOSE OR WORKABLE IN ANY APPLICATION, OR OTHERWISE.  Use of the XML Schema Definition file and resultant XML
+file are with the understanding that GS1 has no liability for any claim to the contrary, or for any damage or loss of any kind or nature.
+
+Version Information:
+Version Number: 3.4
+Date of creation: April 2019
+
+The schema and subsequent updates will be provided on the GS1 websites.
+---------------------------
+]]></xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType name="AdditionalConsignmentIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalConsignmentIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalConsignmentIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalIndividualAssetIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalIndividualAssetIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalIndividualAssetIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalLogisticUnitIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalLogisticUnitIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalLogisticUnitIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalPartyIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalPartyIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalPartyIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalReturnableAssetIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalReturnableAssetIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalReturnableAssetIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalServiceRelationIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalServiceRelationIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalServiceRelationIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalShipmentIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalShipmentIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalShipmentIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalTradeItemClassificationCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalTradeItemClassificationCodeListCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="additionalTradeItemClassificationCodeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeDescription">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalTradeItemIdentificationType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="additionalTradeItemIdentificationTypeCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AdditionalTradeItemIdentificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AddressType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="city">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="cityCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="countryCode" type="shared_common:CountryCodeType"/>
+            <xsd:element minOccurs="0" name="countyCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="crossStreet">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="currencyOfPartyCode" type="shared_common:CurrencyCodeType"/>
+            <xsd:element minOccurs="0" name="languageOfThePartyCode" type="shared_common:LanguageCodeType"/>
+            <xsd:element minOccurs="0" name="name">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="pOBoxNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="postalCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="provinceCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="state">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="streetAddressOne">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="streetAddressTwo">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="streetAddressThree">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="geographicalCoordinates" type="shared_common:GeographicalCoordinatesType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="AllowanceChargeTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AmountRangeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="maximumAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="minimumAmount" type="shared_common:AmountType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="AmountType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:float">
+                <xsd:attribute name="currencyCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="BarCodeTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="codeDescription">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListAgencyCode">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListAgencyCodeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListAgencyName">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListName">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListURI" type="xsd:string"/>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ColourCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="colourCodeListCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="colourCodeListDescription">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="colourCodeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ColourType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="colourCode" type="shared_common:ColourCodeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="colourDescription" type="shared_common:Description80Type"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CommunicationChannelCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CommunicationChannelType">
+        <xsd:sequence>
+            <xsd:element name="communicationChannelCode" type="shared_common:CommunicationChannelCodeType"/>
+            <xsd:element name="communicationValue">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="communicationChannelName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ConsignmentIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="ginc" type="shared_common:GINCType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalConsignmentIdentification" type="shared_common:AdditionalConsignmentIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ContactType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="contactTypeCode" type="shared_common:ContactTypeCodeType"/>
+            <xsd:element minOccurs="0" name="personName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="70"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="departmentName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="70"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="jobTitle">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="70"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="responsibility" type="shared_common:Description70Type"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="communicationChannel" type="shared_common:CommunicationChannelType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="afterHoursCommunicationChannel" type="shared_common:CommunicationChannelType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ContactTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CountryCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CountrySubdivisionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CurrencyCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CurrencyExchangeRateInformationType">
+        <xsd:sequence>
+            <xsd:element name="currencyConversionFromCode" type="shared_common:CurrencyCodeType"/>
+            <xsd:element name="currencyConversionToCode" type="shared_common:CurrencyCodeType"/>
+            <xsd:element minOccurs="0" name="exchangeRate" type="xsd:float"/>
+            <xsd:element minOccurs="0" name="exchangeRateDateTime" type="xsd:dateTime"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DateFormatCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DateOptionalTimeType">
+        <xsd:sequence>
+            <xsd:element name="date" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="time" type="xsd:time"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DateTimeRangeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="beginDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="beginTime" type="xsd:time"/>
+            <xsd:element minOccurs="0" name="endDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="endTime" type="xsd:time"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Description1000Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String1000Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Description200Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String200Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Description2500Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String2500Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Description35Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String35Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Description5000Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String5000Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Description500Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String500Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Description70Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String70Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Description80Type">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="languageCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DimensionType">
+        <xsd:sequence>
+            <xsd:element name="depth" type="shared_common:MeasurementType"/>
+            <xsd:element name="height" type="shared_common:MeasurementType"/>
+            <xsd:element name="width" type="shared_common:MeasurementType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DocumentReferenceType">
+        <xsd:complexContent>
+            <xsd:extension base="shared_common:EntityIdentificationType">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="creationDateTime" type="xsd:dateTime"/>
+                    <xsd:element minOccurs="0" name="revisionNumber" type="xsd:positiveInteger"/>
+                    <xsd:element minOccurs="0" name="lineItemNumber" type="xsd:positiveInteger"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType abstract="true" name="DocumentType">
+        <xsd:sequence>
+            <xsd:element name="creationDateTime" type="xsd:dateTime"/>
+            <xsd:element name="documentStatusCode" type="shared_common:DocumentStatusEnumerationType"/>
+            <xsd:element minOccurs="0" name="documentActionCode" type="shared_common:DocumentActionEnumerationType"/>
+            <xsd:element minOccurs="0" name="documentStructureVersion">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="lastUpdateDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="revisionNumber" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="extension" type="shared_common:ExtensionType"/>
+            <xsd:element minOccurs="0" name="documentEffectiveDate" type="shared_common:DateOptionalTimeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="EntityIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="entityIdentification">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="contentOwner" type="shared_common:PartyIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="EntityTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ExtensionType">
+        <xsd:sequence>
+            <xsd:any maxOccurs="unbounded" minOccurs="0" namespace="##any" processContents="lax"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="FinancialAccountNumberTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="FinancialAccountType">
+        <xsd:sequence>
+            <xsd:element name="financialAccountNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="financialAccountNumberTypeCode" type="shared_common:FinancialAccountNumberTypeCodeType"/>
+            <xsd:element minOccurs="0" name="financialAccountName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="FinancialRoutingNumberType">
+        <xsd:sequence>
+            <xsd:element name="financialRoutingNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="financialRoutingNumberTypeCode" type="shared_common:FinancialRoutingNumberTypeCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="FinancialRoutingNumberTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="GeographicalCoordinatesType">
+        <xsd:sequence>
+            <xsd:element name="latitude">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="longitude">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="GPCAttributeType">
+        <xsd:sequence>
+            <xsd:element name="gpcAttributeTypeCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:pattern value="\d{8}"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="gpcAttributeValueCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:pattern value="\d{8}"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="gpcAttributeTypeName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="105"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="gpcAttributeValueName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="105"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="GS1CodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="IdentifierType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="identificationSchemeAgencyCode">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="identificationSchemeAgencyCodeCodeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="identificationSchemeAgencyName">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="identificationSchemeName">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="IncotermsCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="IndividualAssetIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="giai" type="shared_common:GIAIType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalIndividualAssetIdentification" type="shared_common:AdditionalIndividualAssetIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LanguageCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticUnitIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="sscc" type="shared_common:SSCCType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalLogisticUnitIdentification" type="shared_common:AdditionalLogisticUnitIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="MeasurementRangeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="maximumMeasurement" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="minimumMeasurement" type="shared_common:MeasurementType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="MeasurementType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:decimal">
+                <xsd:attribute name="measurementUnitCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="MeasurementUnitCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="MultiDescription70Type">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" name="description" type="shared_common:Description70Type"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="NutrientTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PartyIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="gln" type="shared_common:GLNType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalPartyIdentification" type="shared_common:AdditionalPartyIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PartyRoleCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentMethodCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentTermsTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentTimePeriodType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="dateDue" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="dayOfMonthDue" type="xsd:gDay"/>
+            <xsd:element minOccurs="0" name="timePeriodDue" type="shared_common:TimeMeasurementType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="QuantityRangeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="maximumQuantity" type="shared_common:QuantityType"/>
+            <xsd:element minOccurs="0" name="minimumQuantity" type="shared_common:QuantityType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="QuantityType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:decimal">
+                <xsd:attribute name="measurementUnitCode">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="RangeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="maximum" type="xsd:float"/>
+            <xsd:element minOccurs="0" name="maximumType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="minimum" type="xsd:float"/>
+            <xsd:element minOccurs="0" name="minimumType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ResponsibleAgencyCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="codeDescription">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ReturnableAssetIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="grai" type="shared_common:GRAIType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalReturnableAssetIdentification" type="shared_common:AdditionalReturnableAssetIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ServiceRelationIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="gsrn" type="shared_common:GSRNType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalServiceRelationIdentification" type="shared_common:AdditionalServiceRelationIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ShipmentIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="gsin" type="shared_common:GSINType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalShipmentIdentification" type="shared_common:AdditionalShipmentIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="SizeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:String80Type">
+                <xsd:attribute name="sizeCodeListCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="sizeCodeListDescription">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="sizeCodeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="SizeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="descriptiveSize" type="shared_common:Description80Type"/>
+            <xsd:element minOccurs="0" name="sizeCode" type="shared_common:SizeCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="StringRangeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="maximumValue" type="xsd:string"/>
+            <xsd:element minOccurs="0" name="minimumValue" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TargetMarketType">
+        <xsd:sequence>
+            <xsd:element name="targetMarketCountryCode" type="shared_common:CountryCodeType"/>
+            <xsd:element minOccurs="0" name="targetMarketSubdivisionCode" type="shared_common:CountrySubdivisionCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TaxCategoryCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TemperatureMeasurementType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:decimal">
+                <xsd:attribute name="temperatureMeasurementUnitCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TemperatureMeasurementUnitCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TemperatureRangeType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="maximumTemperature" type="shared_common:TemperatureMeasurementType"/>
+            <xsd:element minOccurs="0" name="minimumTemperature" type="shared_common:TemperatureMeasurementType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TimeMeasurementType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:decimal">
+                <xsd:attribute name="timeMeasurementUnitCode" use="required">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="80"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="codeListVersion">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:maxLength value="35"/>
+                            <xsd:minLength value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TimeMeasurementUnitCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TradeItemClassificationType">
+        <xsd:sequence>
+            <xsd:element name="gpcCategoryCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:pattern value="\d{8}"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalTradeItemClassificationCode" type="shared_common:AdditionalTradeItemClassificationCodeType"/>
+            <xsd:element minOccurs="0" name="gpcCategoryName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="105"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="gpcAttribute" type="shared_common:GPCAttributeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TradeItemIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="gtin" type="shared_common:GTINType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalTradeItemIdentification" type="shared_common:AdditionalTradeItemIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TypedEntityIdentificationType">
+        <xsd:complexContent>
+            <xsd:extension base="shared_common:EntityIdentificationType">
+                <xsd:sequence>
+                    <xsd:element name="entityTypeCode" type="shared_common:EntityTypeCodeType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:simpleType name="AllowanceOrChargeEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="ALLOWANCE"/>
+            <xsd:enumeration value="CHARGE"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="DayOfTheWeekEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="FRIDAY"/>
+            <xsd:enumeration value="MONDAY"/>
+            <xsd:enumeration value="SATURDAY"/>
+            <xsd:enumeration value="SUNDAY"/>
+            <xsd:enumeration value="THURSDAY"/>
+            <xsd:enumeration value="TUESDAY"/>
+            <xsd:enumeration value="WEDNESDAY"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="DocumentActionEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="ADD"/>
+            <xsd:enumeration value="CHANGE_BY_REFRESH"/>
+            <xsd:enumeration value="DELETE"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="DocumentStatusEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="ADDITIONAL_TRANSMISSION"/>
+            <xsd:enumeration value="COPY"/>
+            <xsd:enumeration value="ORIGINAL"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="EnumerationType">
+        <xsd:restriction base="xsd:string"/>
+    </xsd:simpleType>
+    <xsd:simpleType name="GenderEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="FEMALE"/>
+            <xsd:enumeration value="MALE"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GIAIType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="[-!&quot;%&amp;'()*+,./0-9:;&lt;=&gt;?A-Z_a-z]{4,30}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GINCType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="[-!&quot;%&amp;'()*+,./0-9:;&lt;=&gt;?A-Z_a-z]{4,30}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GLNType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="\d{13}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GRAIType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="\d{14}[-!&quot;%&amp;'()*+,./0-9:;&lt;=&gt;?A-Z_a-z]{0,16}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GSINType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="\d{17}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GSRNType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="\d{18}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GTINType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="\d{14}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="NonBinaryLogicEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="FALSE"/>
+            <xsd:enumeration value="NOT_APPLICABLE"/>
+            <xsd:enumeration value="TRUE"/>
+            <xsd:enumeration value="UNSPECIFIED"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="ResponseStatusEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="ACCEPTED"/>
+            <xsd:enumeration value="MODIFIED"/>
+            <xsd:enumeration value="NO_ACTION"/>
+            <xsd:enumeration value="REJECTED"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="SSCCType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="\d{18}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String1000Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="1000"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String200Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="200"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String2500Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="2500"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String35Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="35"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String5000Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="5000"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String500Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="500"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String70Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="70"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="String80Type">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="80"/>
+            <xsd:minLength value="1"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="WeekendDayEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="SATURDAY"/>
+            <xsd:enumeration value="SUNDAY"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+</xsd:schema>

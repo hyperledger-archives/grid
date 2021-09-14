@@ -1,0 +1,1858 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ecom_common="urn:gs1:ecom:ecom_common:xsd:3" xmlns:shared_common="urn:gs1:shared:shared_common:xsd:3" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="urn:gs1:ecom:ecom_common:xsd:3" version="3.4">
+    <xsd:annotation>
+        <xsd:documentation><![CDATA[---------------------------
+© Copyright GS1, 2019
+
+GS1 is providing this XML Schema Definition file and resultant XML file as a service to interested industries.
+This XML Schema Definition file and resultant XML file were developed through a consensus process of interested parties.
+
+Although efforts have been made to ensure that the XML Schema Definition file and resultant XML file are correct, reliable, and technically
+accurate,  GS1 makes NO WARRANTY, EXPRESS OR IMPLIED, THAT THIS XML Schema Definition file and resultant XML file ARE
+CORRECT, WILL NOT REQUIRE MODIFICATION AS EXPERIENCE AND TECHNOLOGICAL ADVANCES DICTATE, OR WILL BE SUITABLE FOR
+ANY PURPOSE OR WORKABLE IN ANY APPLICATION, OR OTHERWISE.  Use of the XML Schema Definition file and resultant XML
+file are with the understanding that GS1 has no liability for any claim to the contrary, or for any damage or loss of any kind or nature.
+
+Version Information:
+Version Number: 3.4
+Date of creation: April 2019
+
+The schema and subsequent updates will be provided on the GS1 websites.
+---------------------------
+]]></xsd:documentation>
+    </xsd:annotation>
+    <xsd:import namespace="urn:gs1:shared:shared_common:xsd:3" schemaLocation="../shared/SharedCommon.xsd"/>
+    <xsd:complexType name="AcceptableOverAllocationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="overAllocationQuantity" type="shared_common:QuantityType"/>
+            <xsd:element minOccurs="0" name="overAllocationPercentage" type="xsd:decimal"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="AdministrativeUnitType">
+        <xsd:sequence>
+            <xsd:element name="administrativeUnitTypeCode" type="ecom_common:AdministrativeUnitTypeCodeType"/>
+            <xsd:element minOccurs="0" name="gln" type="shared_common:GLNType"/>
+            <xsd:element minOccurs="0" name="internalAdministrativeUnitIdentification">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="AdministrativeUnitTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="AllowanceChargeType">
+        <xsd:sequence>
+            <xsd:element name="allowanceChargeType" type="shared_common:AllowanceChargeTypeCodeType"/>
+            <xsd:element name="allowanceOrChargeType" type="shared_common:AllowanceOrChargeEnumerationType"/>
+            <xsd:element name="settlementType" type="ecom_common:SettlementTypeCodeType"/>
+            <xsd:element minOccurs="0" name="allowanceChargeAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="allowanceChargePercentage" type="xsd:float"/>
+            <xsd:element minOccurs="0" name="amountPerUnit" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="baseAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="baseNumberOfUnits" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="bracketIdentifier">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="effectiveDateType" type="ecom_common:EffectiveDateTypeCodeType"/>
+            <xsd:element minOccurs="0" name="sequenceNumber" type="xsd:nonNegativeInteger"/>
+            <xsd:element minOccurs="0" name="specialServiceType" type="ecom_common:SpecialServiceTypeCodeType"/>
+            <xsd:element minOccurs="0" name="allowanceChargeDescription" type="shared_common:MultiDescription70Type"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="AppointmentTimeMeasurementBasisTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="BatchNumberListType">
+        <xsd:sequence>
+            <xsd:element name="batchNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="tradeItemQuantity" type="shared_common:QuantityType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CargoTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CarrierPickUpDropOffDetailsType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="carrier" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transportResponsiblePerson" type="ecom_common:PersonType"/>
+            <xsd:element minOccurs="0" name="transportMeans" type="ecom_common:TransportMeansType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transportEquipment" type="ecom_common:TransportEquipmentType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CarrierTrackAndTraceInformationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="carrierTrackAndTraceURL">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:anyURI">
+                        <xsd:maxLength value="2000"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="packageTrackingNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="70"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ChildPackageLevelType">
+        <xsd:sequence>
+            <xsd:element name="packageLevelCode" type="ecom_common:PackageLevelCodeType"/>
+            <xsd:element name="childPackageLevelQuantity" type="xsd:nonNegativeInteger"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CollaborativeTradeItemType">
+        <xsd:sequence>
+            <xsd:element name="tradeItemIdentification" type="ecom_common:Ecom_TradeItemIdentificationType"/>
+            <xsd:element name="sellerLocation" type="ecom_common:Ecom_PartyIdentificationType"/>
+            <xsd:element name="buyerLocation" type="ecom_common:Ecom_PartyIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ConsignmentReferenceType">
+        <xsd:sequence>
+            <xsd:element name="consignmentIdentification" type="ecom_common:Ecom_ConsignmentIdentificationType"/>
+            <xsd:element minOccurs="0" name="consignor" type="ecom_common:Ecom_PartyIdentificationType"/>
+            <xsd:element minOccurs="0" name="consignee" type="ecom_common:Ecom_PartyIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CreditReasonCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="CustomsWarehouseStatusCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DangerousGoodsAttributeType">
+        <xsd:sequence>
+            <xsd:element name="dangerousGoodsAttributeTypeCode" type="ecom_common:DangerousGoodsAttributeTypeCodeType"/>
+            <xsd:element minOccurs="0" name="dangerousGoodsAttributeText">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="dangerousGoodsAttributeMeasurement" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="dangerousGoodsAttributeIndicator" type="xsd:boolean"/>
+            <xsd:element minOccurs="0" name="dangerousGoodsAttributeDateTime" type="xsd:dateTime"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DangerousGoodsAttributeTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DangerousGoodsInformationType">
+        <xsd:sequence>
+            <xsd:element name="dangerousGoodsUNIdentifier" type="shared_common:IdentifierType"/>
+            <xsd:element name="dangerousGoodsShippingName" type="shared_common:Description200Type"/>
+            <xsd:element minOccurs="0" name="dangerousGoodsTechnicalName" type="shared_common:Description200Type"/>
+            <xsd:element minOccurs="0" name="dangerousGoodsDescription" type="shared_common:Description1000Type"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="contact" type="shared_common:ContactType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="dangerousGoodsRegulationInformation" type="ecom_common:DangerousGoodsRegulationInformationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DangerousGoodsRegulationCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DangerousGoodsRegulationInformationType">
+        <xsd:sequence>
+            <xsd:element name="dangerousGoodsRegulationCode" type="ecom_common:DangerousGoodsRegulationCodeType"/>
+            <xsd:element minOccurs="0" name="dangerousGoodsRegulationName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="dangerousGoodsHazardClass">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="dangerousGoodsPackingGroup">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="dangerousGoodsAttribute" type="ecom_common:DangerousGoodsAttributeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DataCarrierTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DeliverDateInformationType">
+        <xsd:sequence>
+            <xsd:element name="deliverDate" type="xsd:date"/>
+            <xsd:element name="deliverDateType" type="ecom_common:DeliverDateTypeCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DeliverDateTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DeliveryMethodCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DeliveryTermsType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="incotermsCode" type="shared_common:IncotermsCodeType"/>
+            <xsd:element minOccurs="0" name="alternateDeliveryTermsCode" type="shared_common:CodeType"/>
+            <xsd:element minOccurs="0" name="deliveryInstructions" type="shared_common:Description500Type"/>
+            <xsd:element minOccurs="0" name="deliveryCostPayment" type="ecom_common:TransportChargesPaymentMethodCodeType"/>
+            <xsd:element minOccurs="0" name="isSignatureRequired" type="shared_common:NonBinaryLogicEnumerationType"/>
+            <xsd:element minOccurs="0" name="deliveryTermsLocation" type="ecom_common:LogisticLocationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DeliveryTimeMeasurementBasisTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DeliveryTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DemandEstimationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DespatchInformationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="actualShipDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="despatchDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="estimatedDeliveryDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="estimatedDeliveryDateTimeAtUltimateConsignee" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="loadingDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="pickUpDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="releaseDateTimeOfSupplier" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="estimatedDeliveryPeriod" type="shared_common:DateTimeRangeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DiscountAgreementCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DockTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DutyFeeTaxExemptionReasonCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DutyFeeTaxLiabilityCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DutyFeeTaxRegistrationType">
+        <xsd:sequence>
+            <xsd:element name="dutyFeeTaxRegistrationID" type="shared_common:IdentifierType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxTypeCode" type="ecom_common:DutyFeeTaxTypeCodeType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxAgencyName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="dutyFeeTaxDescription" type="shared_common:Description80Type"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxRegistrationType" type="ecom_common:DutyFeeTaxRegistrationTypeCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DutyFeeTaxRegistrationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="DutyFeeTaxTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_AttributeValuePairListType">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="eComStringAttributeValuePairList" type="ecom_common:EcomStringAttributeValuePairListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_ConsignmentIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="ginc" type="shared_common:GINCType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalConsignmentIdentification" type="shared_common:AdditionalConsignmentIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_DocumentReferenceType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_EntityIdentificationType">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="creationDateTime" type="xsd:dateTime"/>
+                    <xsd:element minOccurs="0" name="revisionNumber" type="xsd:positiveInteger"/>
+                    <xsd:element minOccurs="0" name="lineItemNumber" type="xsd:positiveInteger"/>
+                    <xsd:element minOccurs="0" name="referencedDocumentUrl">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:anyURI">
+                                <xsd:maxLength value="2000"/>
+                                <xsd:minLength value="1"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:element>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_EntityIdentificationType">
+        <xsd:sequence>
+            <xsd:element name="entityIdentification">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="contentOwner" type="ecom_common:Ecom_PartyIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_IndividualAssetIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="giai" type="shared_common:GIAIType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalIndividualAssetIdentification" type="shared_common:AdditionalIndividualAssetIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_LogisticUnitIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="sscc" type="shared_common:SSCCType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalLogisticUnitIdentification" type="shared_common:AdditionalLogisticUnitIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_PartyIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="gln" type="shared_common:GLNType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalPartyIdentification" type="shared_common:AdditionalPartyIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_ReturnableAssetIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="grai" type="shared_common:GRAIType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalReturnableAssetIdentification" type="shared_common:AdditionalReturnableAssetIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_ServiceRelationIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="gsrn" type="shared_common:GSRNType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalServiceRelationIdentification" type="shared_common:AdditionalServiceRelationIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_ShipmentIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="gsin" type="shared_common:GSINType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalShipmentIdentification" type="shared_common:AdditionalShipmentIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Ecom_TradeItemIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="gtin" type="shared_common:GTINType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalTradeItemIdentification" type="shared_common:AdditionalTradeItemIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="EcomDocumentType">
+        <xsd:complexContent>
+            <xsd:extension base="shared_common:DocumentType">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="EcomStringAttributeValuePairListType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+                <xsd:attribute name="attributeName" type="shared_common:String70Type" use="required"/>
+                <xsd:attribute name="qualifierCodeName" type="shared_common:String70Type"/>
+                <xsd:attribute name="qualifierCodeList" type="shared_common:String70Type"/>
+                <xsd:attribute name="qualifierCodeListVersion" type="shared_common:String70Type"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EffectiveDateTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EndCustomerRelatedDetailsType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="deliveryMethod" type="ecom_common:DeliveryMethodCodeType"/>
+            <xsd:element minOccurs="0" name="ultimateCustomer" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="EnergyQuantityCalculationConditionsType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="countedMeasureandFactor" type="xsd:integer"/>
+            <xsd:element minOccurs="0" name="standardConditionConversion" type="xsd:decimal"/>
+            <xsd:element minOccurs="0" name="calorificValue" type="xsd:decimal"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ErrorOrWarningCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EuUniqueIDType">
+        <xsd:sequence>
+            <xsd:element name="euUniqueIDTypeCode" type="ecom_common:EuUniqueIDTypeCodeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="unitPacketLevelUniqueIdentifier" type="shared_common:String500Type"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="aggregatedLevelUniqueIdentifier" type="shared_common:String500Type"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="EuUniqueIDTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ExtendedLogisticUnitType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:LogisticUnitType">
+                <xsd:sequence>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="logisticUnitDetails" type="ecom_common:LogisticUnitDetailsType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="FinancialAdjustmentReasonCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="FinancialInstitutionInformationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="financialInstitutionName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="financialInstitutionBranchName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="financialAccount" type="shared_common:FinancialAccountType"/>
+            <xsd:element minOccurs="0" name="financialRoutingNumber" type="shared_common:FinancialRoutingNumberType"/>
+            <xsd:element minOccurs="0" name="additionalFinancialInformation" type="shared_common:MultiDescription70Type"/>
+            <xsd:element minOccurs="0" name="address" type="shared_common:AddressType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ForecastPurposeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ForecastTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="GoodsReceiptReportingCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="GS1ItemIdentificationKeyCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="HandlingInstructionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="HandlingInstructionType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="handlingInstructionCode" type="ecom_common:HandlingInstructionCodeType"/>
+            <xsd:element minOccurs="0" name="handlingInstructionText" type="shared_common:Description500Type"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="printingInstructionCode" type="ecom_common:PrintingInstructionCodeType"/>
+            <xsd:element minOccurs="0" name="storageTemperature" type="shared_common:TemperatureRangeType"/>
+            <xsd:element minOccurs="0" name="transportTemperature" type="shared_common:TemperatureRangeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="HarmonizedSystemCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="IdentityDocumentType">
+        <xsd:sequence>
+            <xsd:element name="identityDocumentNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="identityDocumentType" type="ecom_common:IdentityDocumentTypeCodeType"/>
+            <xsd:element minOccurs="0" name="identityDocumentIssuer">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="IdentityDocumentTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="IncidentCircumstancesType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="complaintID">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="circumstanceDescription" type="shared_common:Description5000Type"/>
+            <xsd:element minOccurs="0" name="incidentTypeCode" type="ecom_common:IncidentTypeCodeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="IncidentDetailsType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="incidentDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="depositDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="incidentDetectedDuringBankNoteRecycling" type="xsd:boolean"/>
+            <xsd:element minOccurs="0" name="incidentDetected" type="shared_common:String500Type"/>
+            <xsd:element minOccurs="0" name="incidentLocation" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="IncidentTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="InkStainDetailsType">
+        <xsd:sequence>
+            <xsd:element name="theftDeterrenceSystemID">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="theftDeterrenceSystemName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="theftDeterrenceSystemType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="incidentCircumstances" type="ecom_common:IncidentCircumstancesType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="InstallmentDueType">
+        <xsd:sequence>
+            <xsd:element name="percentOfPaymentDue" type="xsd:float"/>
+            <xsd:element name="paymentTimePeriod" type="shared_common:PaymentTimePeriodType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="InventoryActivityTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="InventoryDutyFeeTaxStatusType">
+        <xsd:sequence>
+            <xsd:element name="dutyFeeTaxTypeCode" type="ecom_common:DutyFeeTaxTypeCodeType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxAgencyName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="dutyFeeTaxDescription" type="shared_common:Description80Type"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxCategoryCode" type="shared_common:TaxCategoryCodeType"/>
+            <xsd:element minOccurs="0" name="customsWarehouseStatusCode" type="ecom_common:CustomsWarehouseStatusCodeType"/>
+            <xsd:element minOccurs="0" name="customsLicenseCode" type="shared_common:CodeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transactionalReference" type="ecom_common:TransactionalReferenceType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="InventoryMeasurementBasisTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="InventoryMovementTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="InventoryStatusCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="InventoryStatusQuantitySpecificationType">
+        <xsd:sequence>
+            <xsd:element name="inventoryStatusType" type="ecom_common:InventoryStatusCodeType"/>
+            <xsd:element name="quantityOfUnits" type="shared_common:QuantityType"/>
+            <xsd:element minOccurs="0" name="actualProcessedQuantity" type="shared_common:QuantityType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transactionalItemData" type="ecom_common:TransactionalItemDataType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="InventorySubLocationFunctionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="InventorySubLocationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="gln" type="shared_common:GLNType"/>
+            <xsd:element minOccurs="0" name="glnExtension">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="20"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalPartyIdentification" type="shared_common:AdditionalPartyIdentificationType"/>
+            <xsd:element minOccurs="0" name="inventorySubLocationTypeCode" type="ecom_common:InventorySubLocationTypeCodeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="inventorySubLocationFunctionCode" type="ecom_common:InventorySubLocationFunctionCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="InventorySubLocationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="InvoiceDocumentReferenceType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_DocumentReferenceType">
+                <xsd:sequence>
+                    <xsd:element name="invoiceTypeCode" type="ecom_common:InvoiceTypeCodeType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="InvoiceTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ItemScopeTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ItemSourceCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ItemTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LegalRegistrationCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LegalRegistrationType">
+        <xsd:sequence>
+            <xsd:element name="legalRegistrationNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="legalRegistrationType" type="ecom_common:LegalRegistrationCodeType"/>
+            <xsd:element minOccurs="0" name="legalRegistrationAdditionalInformation">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LeviedDutyFeeTaxType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="dutyFeeTaxAccountingCurrency" type="shared_common:CurrencyCodeType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxAgencyName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="dutyFeeTaxAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxAmountInAccountingCurrency" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxBasisAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxBasisAmountInAccountingCurrency" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxCategoryCode" type="shared_common:TaxCategoryCodeType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxDescription" type="shared_common:Description80Type"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxExemptionDescription" type="shared_common:Description80Type"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxExemptionReason" type="ecom_common:DutyFeeTaxExemptionReasonCodeType"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxPercentage" type="xsd:float"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxPointDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="dutyFeeTaxTypeCode" type="ecom_common:DutyFeeTaxTypeCodeType"/>
+            <xsd:element minOccurs="0" name="extension" type="shared_common:ExtensionType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LineItemActionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LocationInformationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="partyIdentification" type="ecom_common:Ecom_PartyIdentificationType"/>
+            <xsd:element minOccurs="0" name="address" type="shared_common:AddressType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="contactInformation" type="shared_common:ContactType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LocationScopeParameterTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LocationScopeTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticEventType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="logisticEventTypeCode" type="ecom_common:LogisticEventTypeCodeType"/>
+            <xsd:element minOccurs="0" name="logisticEventDuration" type="shared_common:TimeMeasurementType"/>
+            <xsd:element minOccurs="0" name="logisticLocation" type="ecom_common:LogisticLocationType"/>
+            <xsd:element minOccurs="0" name="logisticEventPeriod" type="shared_common:DateTimeRangeType"/>
+            <xsd:element minOccurs="0" name="logisticEventDateTime" type="shared_common:DateOptionalTimeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticEventTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticLocationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="unLocationCode" type="ecom_common:UNLocationCodeType"/>
+            <xsd:element minOccurs="0" name="gln" type="shared_common:GLNType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalLocationIdentification" type="shared_common:IdentifierType"/>
+            <xsd:element minOccurs="0" name="sublocationIdentification">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="locationName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="locationSpecificInstructions" type="shared_common:Description200Type"/>
+            <xsd:element minOccurs="0" name="utcOffset" type="xsd:float"/>
+            <xsd:element minOccurs="0" name="address" type="shared_common:AddressType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="contact" type="shared_common:ContactType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="regularOperatingHours" type="ecom_common:OperatingHoursType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="specialOperatingHours" type="ecom_common:SpecialOperatingHoursType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticServiceReferenceType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_DocumentReferenceType">
+                <xsd:sequence>
+                    <xsd:element name="logisticServiceReferenceTypeCode" type="ecom_common:LogisticServiceReferenceTypeCodeType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticServiceReferenceTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticServiceRequirementCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticServiceType">
+        <xsd:sequence>
+            <xsd:element name="logisticServiceRequirementCode" type="ecom_common:LogisticServiceRequirementCodeType"/>
+            <xsd:element minOccurs="0" name="cashOnDeliveryAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="insuranceValue" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="logisticServiceChargeAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="cashOnDeliveryPayer" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element minOccurs="0" name="cashOnDeliveryBillTo" type="ecom_common:TransactionalPartyType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticUnitDetailsType">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="serialNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="20"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="batchNumberList" type="ecom_common:BatchNumberListType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="lotNumberList" type="ecom_common:LotNumberListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticUnitMeasurementType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="dimension" type="shared_common:DimensionType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="unitMeasurement" type="ecom_common:UnitMeasurementType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticUnitsType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="levelIdentification" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="parentLevelIdentification" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="packageTypeCode" type="ecom_common:PackageTypeCodeType"/>
+            <xsd:element minOccurs="0" name="quantityOfLogisticUnits" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="childPackageTypeCode" type="ecom_common:PackageTypeCodeType"/>
+            <xsd:element minOccurs="0" name="quantityOfChildren" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="logisticUnitIdentification" type="ecom_common:Ecom_LogisticUnitIdentificationType"/>
+            <xsd:element minOccurs="0" name="logisticUnitMeasurement" type="ecom_common:LogisticUnitMeasurementType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="returnablePackaging" type="ecom_common:ReturnablePackagingType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="individualAssetIdentification" type="ecom_common:Ecom_IndividualAssetIdentificationType"/>
+            <xsd:element minOccurs="0" name="carrierTrackAndTraceInformation" type="ecom_common:CarrierTrackAndTraceInformationType"/>
+            <xsd:element minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LogisticUnitType">
+        <xsd:complexContent>
+            <xsd:extension base="shared_common:LogisticUnitIdentificationType">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="parentLogisticUnitId" type="ecom_common:Ecom_LogisticUnitIdentificationType"/>
+                    <xsd:element minOccurs="0" name="grossWeight" type="shared_common:MeasurementType"/>
+                    <xsd:element minOccurs="0" name="packageLevelCode" type="ecom_common:PackageLevelCodeType"/>
+                    <xsd:element minOccurs="0" name="packageTypeCode" type="ecom_common:PackageTypeCodeType"/>
+                    <xsd:element minOccurs="0" name="tradeItemQuantity" type="shared_common:QuantityType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="packagingMarking" type="ecom_common:PackagingMarkingType"/>
+                    <xsd:element minOccurs="0" name="referencedTransportEquipment" type="ecom_common:TransportEquipmentType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="returnablePackaging" type="ecom_common:ReturnablePackagingType"/>
+                    <xsd:element minOccurs="0" name="dimension" type="shared_common:DimensionType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="unitMeasurement" type="ecom_common:UnitMeasurementType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="LotNumberListType">
+        <xsd:sequence>
+            <xsd:element name="lotNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="tradeItemQuantity" type="shared_common:QuantityType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="LowerLevelTradeItemType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_TradeItemIdentificationType">
+                <xsd:sequence>
+                    <xsd:element name="quantityOfLowerLevelTradeItem" type="xsd:nonNegativeInteger"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="MarginSchemeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="MaterialTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="MeasurementTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ObservationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="OperatingHoursType">
+        <xsd:sequence>
+            <xsd:element name="dayOfTheWeekCode" type="shared_common:DayOfTheWeekEnumerationType"/>
+            <xsd:element name="isOperational" type="xsd:boolean"/>
+            <xsd:element minOccurs="0" name="closingTime" type="xsd:time"/>
+            <xsd:element minOccurs="0" name="openingTime" type="xsd:time"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="OrderEntryTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="OrderInstructionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="OrderLogisticalDateInformationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="requestedDeliveryDateRange" type="shared_common:DateTimeRangeType"/>
+            <xsd:element minOccurs="0" name="requestedShipDateRange" type="shared_common:DateTimeRangeType"/>
+            <xsd:element minOccurs="0" name="requestedDeliveryDateRangeAtUltimateConsignee" type="shared_common:DateTimeRangeType"/>
+            <xsd:element minOccurs="0" name="requestedDeliveryDateTime" type="shared_common:DateOptionalTimeType"/>
+            <xsd:element minOccurs="0" name="requestedShipDateTime" type="shared_common:DateOptionalTimeType"/>
+            <xsd:element minOccurs="0" name="requestedPickUpDateTime" type="shared_common:DateOptionalTimeType"/>
+            <xsd:element minOccurs="0" name="requestedDeliveryDateTimeAtUltimateConsignee" type="shared_common:DateOptionalTimeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="OrderLogisticalInformationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="commodityTypeCode" type="shared_common:CodeType"/>
+            <xsd:element minOccurs="0" name="shipmentSplitMethodCode" type="ecom_common:ShipmentSplitMethodCodeType"/>
+            <xsd:element minOccurs="0" name="shipFrom" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element minOccurs="0" name="shipTo" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element minOccurs="0" name="inventoryLocation" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element minOccurs="0" name="ultimateConsignee" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element minOccurs="0" name="intermediateDeliveryParty" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element minOccurs="0" name="orderLogisticalDateInformation" type="ecom_common:OrderLogisticalDateInformationType"/>
+            <xsd:element minOccurs="0" name="shipmentTransportationInformation" type="ecom_common:ShipmentTransportationInformationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="OrderRelationshipTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="OrderTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="OrganisationType">
+        <xsd:sequence>
+            <xsd:element name="organisationName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="issuedCapital" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="legalStructure" type="shared_common:Description80Type"/>
+            <xsd:element minOccurs="0" name="officialAddress" type="shared_common:AddressType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="legalRegistration" type="ecom_common:LegalRegistrationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="OutOfStockMeasurementTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="OwnershipTransferConditionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PackageLevelCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PackageTotalType">
+        <xsd:sequence>
+            <xsd:element name="packageTypeCode" type="ecom_common:PackageTypeCodeType"/>
+            <xsd:element name="totalPackageQuantity" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="totalGrossVolume" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="totalGrossWeight" type="shared_common:MeasurementType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="returnablePackaging" type="ecom_common:ReturnablePackagingType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PackageTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PackagingConditionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PackagingMarkingType">
+        <xsd:sequence>
+            <xsd:element name="markingTypeCode" type="ecom_common:PackagingMarkingTypeCodeType"/>
+            <xsd:element minOccurs="0" name="markingContentDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="markingContentText">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PackagingMarkingTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PackagingTermsAndConditionsCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PartyReferenceType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_PartyIdentificationType">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="partyName">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:string">
+                                <xsd:maxLength value="80"/>
+                                <xsd:minLength value="1"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:element>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="PassengerCategoryCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PassengerInformationType">
+        <xsd:sequence>
+            <xsd:element name="numberOfPassengers" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="passengerCategoryCode" type="ecom_common:PassengerCategoryCodeType"/>
+            <xsd:element minOccurs="0" name="passengerTariffGroup" type="shared_common:Description80Type"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="person" type="ecom_common:PersonType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentFormatCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentMethodType">
+        <xsd:sequence>
+            <xsd:element name="paymentMethodCode" type="shared_common:PaymentMethodCodeType"/>
+            <xsd:element minOccurs="0" name="paymentMethodIdentification">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="automatedClearingHousePaymentFormat" type="ecom_common:PaymentFormatCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentTermsDiscountType">
+        <xsd:sequence>
+            <xsd:element name="discountType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="discountAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="discountPercent" type="xsd:float"/>
+            <xsd:element name="paymentTimePeriod" type="shared_common:PaymentTimePeriodType"/>
+            <xsd:element minOccurs="0" name="discountDescription" type="shared_common:MultiDescription70Type"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentTermsEventCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PaymentTermsType">
+        <xsd:sequence>
+            <xsd:element name="paymentTermsEventCode" type="ecom_common:PaymentTermsEventCodeType"/>
+            <xsd:element name="paymentTermsTypeCode" type="shared_common:PaymentTermsTypeCodeType"/>
+            <xsd:element minOccurs="0" name="proximoCutOffDay" type="xsd:gDay"/>
+            <xsd:element minOccurs="0" name="netPaymentDue" type="shared_common:PaymentTimePeriodType"/>
+            <xsd:element minOccurs="0" name="installmentDue" type="ecom_common:InstallmentDueType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="paymentTermsDiscount" type="ecom_common:PaymentTermsDiscountType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="paymentMethod" type="ecom_common:PaymentMethodType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="sEPAReference" type="ecom_common:TransactionalGenericReferenceType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PerformanceMeasureTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PeriodicityTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PersonType">
+        <xsd:sequence>
+            <xsd:element name="personName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="dateOfBirth" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="gender" type="shared_common:GenderEnumerationType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="nationality" type="shared_common:CountryCodeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="identityDocument" type="ecom_common:IdentityDocumentType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PhysicalOrLogicalStateDescriptionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PlanBucketSizeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PlanCommitmentLevelCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PrintingInstructionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PurchaseConditionsCommitmentTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="QualityControlCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="QuantitySpecificationType">
+        <xsd:sequence>
+            <xsd:element name="quantitySpecificationType" type="ecom_common:QuantitySpecificationTypeCodeType"/>
+            <xsd:element name="specificQuantity" type="shared_common:QuantityType"/>
+            <xsd:element minOccurs="0" name="transactionalItemData" type="ecom_common:TransactionalItemDataType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="QuantitySpecificationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ReceivingConditionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ReferencedOrderType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_DocumentReferenceType">
+                <xsd:sequence>
+                    <xsd:element name="orderRelationship" type="ecom_common:OrderRelationshipTypeCodeType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="RemainingQuantityStatusCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ResponseStatusCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ReturnablePackagingType">
+        <xsd:sequence>
+            <xsd:element name="packagingQuantity" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="currentHolderRegistration" type="shared_common:IdentifierType"/>
+            <xsd:element minOccurs="0" name="newHolderRegistration" type="shared_common:IdentifierType"/>
+            <xsd:element minOccurs="0" name="packagingConditionCode" type="ecom_common:PackagingConditionCodeType"/>
+            <xsd:element minOccurs="0" name="returnableAssetIdentification" type="ecom_common:Ecom_ReturnableAssetIdentificationType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="individualReturnableAssetIdentification" type="ecom_common:Ecom_ReturnableAssetIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="SalesMeasurementTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="SealConditionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="SealTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ServiceLevelBasisTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ServiceLevelMeasurementBasisTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="SettlementHandlingTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="SettlementTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ShipmentReferenceType">
+        <xsd:sequence>
+            <xsd:element name="shipmentIdentification" type="ecom_common:Ecom_ShipmentIdentificationType"/>
+            <xsd:element minOccurs="0" name="shipper" type="ecom_common:Ecom_PartyIdentificationType"/>
+            <xsd:element minOccurs="0" name="receiver" type="ecom_common:Ecom_PartyIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ShipmentSplitMethodCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ShipmentTransportationInformationType">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="handlingInstructionCode" type="ecom_common:HandlingInstructionCodeType"/>
+            <xsd:element minOccurs="0" name="transportMeansType" type="ecom_common:TransportMeansTypeCodeType"/>
+            <xsd:element minOccurs="0" name="transportMeansID" type="shared_common:IdentifierType"/>
+            <xsd:element minOccurs="0" name="transportServiceCategoryType" type="ecom_common:TransportServiceCategoryCodeType"/>
+            <xsd:element minOccurs="0" name="transportServiceLevelCode" type="ecom_common:TransportServiceLevelCodeType"/>
+            <xsd:element minOccurs="0" name="routeID" type="shared_common:IdentifierType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="additionalHandlingInstruction" type="shared_common:Description1000Type"/>
+            <xsd:element minOccurs="0" name="carrier" type="ecom_common:TransactionalPartyType"/>
+            <xsd:element minOccurs="0" name="freightForwarder" type="ecom_common:TransactionalPartyType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="SourceReferenceType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="sourceName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="referenceIdentifier">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="referenceURI">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="1000"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="versionIdentifier">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="versionDateTime" type="xsd:dateTime"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="SpecialOperatingHoursType">
+        <xsd:sequence>
+            <xsd:element name="isOperational" type="xsd:boolean"/>
+            <xsd:element name="specialDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="closingTime" type="xsd:time"/>
+            <xsd:element minOccurs="0" name="openingTime" type="xsd:time"/>
+            <xsd:element minOccurs="0" name="specialDateName" type="shared_common:Description80Type"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="SpecialServiceTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="StockRequirementTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="StructuredNoteType">
+        <xsd:sequence>
+            <xsd:element name="structuredNoteIdentification" type="ecom_common:Ecom_EntityIdentificationType"/>
+            <xsd:element name="noteText" type="shared_common:Description500Type"/>
+            <xsd:element minOccurs="0" name="structuredNoteType" type="shared_common:CodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="StructureTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="SymbolComponentCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="SynchronisationCalculationTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TimePeriodScopeTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TradeItemDataOwnerCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TradeItemUnitDescriptorCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TradeStatisticClassificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="classificationSystemName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="classificationSystemVersion">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="35"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element name="classificationSystemCode">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalGenericReferenceType">
+        <xsd:sequence>
+            <xsd:element name="transactionalReferenceTypeCode" type="ecom_common:TransactionalReferenceTypeCodeType"/>
+            <xsd:element name="transactionalReferenceValue">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="transactionalReferenceDateTime" type="xsd:dateTime"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalItemCertificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="itemCertificationAgency">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="itemCertificationStandard">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="itemCertificationValue">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="200"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalItemDataCarrierAndIdentificationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="gs1TransactionalItemIdentificationKey" type="ecom_common:GS1ItemIdentificationKeyCodeType"/>
+            <xsd:element minOccurs="0" name="dataCarrier" type="ecom_common:DataCarrierTypeCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalItemDataType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="availableForSaleDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="batchNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="bestBeforeDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="countryOfOrigin" type="shared_common:CountryCodeType"/>
+            <xsd:element minOccurs="0" name="itemExpirationDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="lotNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="packagingDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="productionDate" type="xsd:date"/>
+            <xsd:element minOccurs="0" name="productQualityIndication" type="shared_common:QuantityType"/>
+            <xsd:element minOccurs="0" name="sellByDate" type="xsd:date"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="serialNumber">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="20"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="shelfLife">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="tradeItemQuantity" type="shared_common:QuantityType"/>
+            <xsd:element minOccurs="0" name="itemInContactWithFoodProduct" type="xsd:boolean"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transactionalItemWeight" type="ecom_common:UnitMeasurementType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transactionalItemVolume" type="ecom_common:UnitMeasurementType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="serialNumberRange" type="shared_common:StringRangeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transactionalItemDimensions" type="shared_common:DimensionType"/>
+            <xsd:element minOccurs="0" name="transactionalItemLogisticUnitInformation" type="ecom_common:TransactionalItemLogisticUnitInformationType"/>
+            <xsd:element minOccurs="0" name="transactionalItemDataCarrierAndIdentification" type="ecom_common:TransactionalItemDataCarrierAndIdentificationType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="tradeItemWaste" type="ecom_common:WasteDetailsType"/>
+            <xsd:element minOccurs="0" name="transactionalItemOrganicInformation" type="ecom_common:TransactionalItemOrganicInformationType"/>
+            <xsd:element minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalItemLogisticUnitInformationType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="numberOfLayers" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="numberOfUnitsPerLayer" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="numberOfUnitsPerPallet" type="xsd:positiveInteger"/>
+            <xsd:element minOccurs="0" name="packagingTerms" type="ecom_common:PackagingTermsAndConditionsCodeType"/>
+            <xsd:element minOccurs="0" name="packageTypeCode" type="ecom_common:PackageTypeCodeType"/>
+            <xsd:element name="maximumStackingFactor" type="xsd:nonNegativeInteger"/>
+            <xsd:element minOccurs="0" name="returnablePackageTransportCostPayment" type="ecom_common:TransportChargesPaymentMethodCodeType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="dimensionsOfLogisticUnit" type="shared_common:DimensionType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalItemOrganicInformationType">
+        <xsd:sequence>
+            <xsd:element name="isTradeItemOrganic" type="xsd:boolean"/>
+            <xsd:element minOccurs="0" name="organicCertification" type="ecom_common:TransactionalItemCertificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalPartyInRoleType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:TransactionalPartyType">
+                <xsd:sequence>
+                    <xsd:element name="partyRoleCode" type="shared_common:PartyRoleCodeType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalPartyType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_PartyIdentificationType">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="address" type="shared_common:AddressType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="contact" type="shared_common:ContactType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="dutyFeeTaxRegistration" type="ecom_common:DutyFeeTaxRegistrationType"/>
+                    <xsd:element minOccurs="0" name="organisationDetails" type="ecom_common:OrganisationType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="financialInstitutionInformation" type="ecom_common:FinancialInstitutionInformationType"/>
+                    <xsd:element minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalReferenceType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_DocumentReferenceType">
+                <xsd:sequence>
+                    <xsd:element name="transactionalReferenceTypeCode" type="ecom_common:TransactionalReferenceTypeCodeType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalReferenceTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransactionalTradeItemType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_TradeItemIdentificationType">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="tradeItemQuantity" type="shared_common:QuantityType"/>
+                    <xsd:element minOccurs="0" name="tradeItemDescription" type="shared_common:Description200Type"/>
+                    <xsd:element minOccurs="0" name="productVariantIdentifier">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:string">
+                                <xsd:maxLength value="80"/>
+                                <xsd:minLength value="1"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:element>
+                    <xsd:element minOccurs="0" name="itemTypeCode" type="ecom_common:ItemTypeCodeType"/>
+                    <xsd:element minOccurs="0" name="tradeItemDataOwner" type="ecom_common:TradeItemDataOwnerCodeType"/>
+                    <xsd:element minOccurs="0" name="butterFatReference">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:string">
+                                <xsd:maxLength value="35"/>
+                                <xsd:minLength value="1"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:element>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="transactionalItemData" type="ecom_common:TransactionalItemDataType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="colour" type="shared_common:ColourType"/>
+                    <xsd:element maxOccurs="unbounded" minOccurs="0" name="size" type="shared_common:SizeType"/>
+                    <xsd:element minOccurs="0" name="tradeItemClassification" type="shared_common:TradeItemClassificationType"/>
+                    <xsd:element minOccurs="0" name="avpList" type="ecom_common:Ecom_AttributeValuePairListType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportCargoCharacteristicsType">
+        <xsd:sequence>
+            <xsd:element name="cargoTypeCode" type="ecom_common:CargoTypeCodeType"/>
+            <xsd:element minOccurs="0" name="harmonizedSystemCode" type="ecom_common:HarmonizedSystemCodeType"/>
+            <xsd:element minOccurs="0" name="cargoTypeDescription" type="shared_common:Description200Type"/>
+            <xsd:element minOccurs="0" name="countryOfOriginCode" type="shared_common:CountryCodeType"/>
+            <xsd:element minOccurs="0" name="finalDestinationCountry" type="shared_common:CountryCodeType"/>
+            <xsd:element minOccurs="0" name="totalGrossVolume" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="totalGrossWeight" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="totalTransportNetWeight" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="totalChargeableWeight" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="declaredWeightForCustoms" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="totalLoadingLength" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="associatedInvoiceAmount" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="declaredValueForCustoms" type="shared_common:AmountType"/>
+            <xsd:element minOccurs="0" name="totalPackageQuantity" type="shared_common:QuantityType"/>
+            <xsd:element minOccurs="0" name="totalItemQuantity" type="shared_common:QuantityType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransportChargesPaymentMethodCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportEquipmentType">
+        <xsd:sequence>
+            <xsd:element name="transportEquipmentTypeCode" type="shared_common:CodeType"/>
+            <xsd:element minOccurs="0" name="returnableAssetTypeIdentification" type="ecom_common:Ecom_ReturnableAssetIdentificationType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="individualReturnableAssetIdentification" type="ecom_common:Ecom_ReturnableAssetIdentificationType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="individualAssetIdentification" type="ecom_common:Ecom_IndividualAssetIdentificationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransportInstructionStatusReasonCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportMeansType">
+        <xsd:sequence>
+            <xsd:element name="transportMeansType" type="ecom_common:TransportMeansTypeCodeType"/>
+            <xsd:element minOccurs="0" name="transportMeansID" type="shared_common:IdentifierType"/>
+            <xsd:element minOccurs="0" name="transportMeansName">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="communicationChannel" type="shared_common:CommunicationChannelType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransportMeansTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportModeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportPartyRoleCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportPaymentMethodCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportReferenceType">
+        <xsd:complexContent>
+            <xsd:extension base="ecom_common:Ecom_DocumentReferenceType">
+                <xsd:sequence>
+                    <xsd:element name="transportReferenceTypeCode" type="ecom_common:TransportReferenceTypeCodeType"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportReferenceTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportSealType">
+        <xsd:sequence>
+            <xsd:element name="sealIdentification" type="shared_common:IdentifierType"/>
+            <xsd:element name="sealTypeCode" type="ecom_common:SealTypeCodeType"/>
+            <xsd:element minOccurs="0" name="sealAffixingPartyRole" type="ecom_common:TransportPartyRoleCodeType"/>
+            <xsd:element minOccurs="0" name="sealConditionCode" type="ecom_common:SealConditionCodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransportServiceCategoryCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportServiceConditionTypeCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportServiceLevelCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportStatusConditionCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportStatusReasonCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="TransportStatusType">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" name="transportStatusConditionCode" type="ecom_common:TransportStatusConditionCodeType"/>
+            <xsd:element minOccurs="0" name="transportStatusDateTime" type="xsd:dateTime"/>
+            <xsd:element minOccurs="0" name="transportStatusDescription" type="shared_common:Description500Type"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transportStatusReasonCode" type="ecom_common:TransportStatusReasonCodeType"/>
+            <xsd:element minOccurs="0" name="transportStatusReasonDescription" type="shared_common:Description500Type"/>
+            <xsd:element minOccurs="0" name="logisticLocation" type="ecom_common:LogisticLocationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransportTrackingLogEventType">
+        <xsd:sequence>
+            <xsd:element name="logEventDateTime" type="xsd:dateTime"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transportTrackingObservation" type="ecom_common:TransportTrackingObservationType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transportTrackingSensorObservation" type="ecom_common:TransportTrackingSensorObservationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransportTrackingObservationType">
+        <xsd:sequence>
+            <xsd:element name="transportObservationTypeCode" type="ecom_common:ObservationTypeCodeType"/>
+            <xsd:element minOccurs="0" name="transportObservationValueCode" type="shared_common:CodeType"/>
+            <xsd:element minOccurs="0" name="transportObservationValueMeasurement" type="shared_common:MeasurementType"/>
+            <xsd:element minOccurs="0" name="transportObservationValueNumeric" type="xsd:float"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TransportTrackingSensorObservationType">
+        <xsd:sequence>
+            <xsd:element name="sensorLocation">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:maxLength value="80"/>
+                        <xsd:minLength value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="transportTrackingObservation" type="ecom_common:TransportTrackingObservationType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="UnitMeasurementType">
+        <xsd:sequence>
+            <xsd:element name="measurementType" type="ecom_common:MeasurementTypeCodeType"/>
+            <xsd:element name="measurementValue" type="shared_common:MeasurementType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="UNLocationCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="VarianceReasonCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="WarehouseABCClassificationCodeType">
+        <xsd:simpleContent>
+            <xsd:extension base="shared_common:GS1CodeType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="WasteDetailsType">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="wasteIdentification" type="shared_common:GTINType"/>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="typeOfWaste" type="shared_common:CodeType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:simpleType name="DebitCreditEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="CREDIT"/>
+            <xsd:enumeration value="DEBIT"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="GDTIType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="[-!&quot;%&amp;'()*+,./0-9:;&lt;=&gt;?A-Z_a-z]{13,30}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="TransportPlanningDateTypeEnumerationType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="DELIVERY_DATE"/>
+            <xsd:enumeration value="PICKUP_DATE"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+</xsd:schema>
