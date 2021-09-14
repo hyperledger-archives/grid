@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader">
+  <xs:include schemaLocation="BasicTypes.xsd"/>
+
+  <xs:complexType name="Manifest">
+    <xs:sequence>
+      <xs:element name="NumberOfItems" type="xs:integer"/>
+      <xs:element maxOccurs="unbounded" name="ManifestItem" type="ManifestItem"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ManifestItem">
+    <xs:sequence>
+      <xs:element name="MimeTypeQualifierCode" type="MimeTypeQualifier"/>
+      <xs:element name="UniformResourceIdentifier" type="xs:anyURI"/>
+      <xs:element minOccurs="0" name="Description" type="xs:string"/>
+      <xs:element minOccurs="0" name="LanguageCode" type="Language"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
