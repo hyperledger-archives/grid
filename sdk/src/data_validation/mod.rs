@@ -65,3 +65,153 @@ pub fn validate_gdsn_3_1(data: &str, is_path: bool) -> Result<(), DataValidation
     validate_xml(data, is_path, Schema::GdsnXmlV3_1)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::io::Read;
+    use std::path::PathBuf;
+
+    use crate::error::InvalidArgumentError;
+
+    // GDSN Product
+    /// Test a valid GDSN 3.1 xml string validates successfully
+    #[test]
+    fn test_validate_gdsn_3_1() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/gdsn_product.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let mut data = String::new();
+        std::fs::File::open(path_str)
+            .unwrap()
+            .read_to_string(&mut data)
+            .unwrap();
+
+        let result = validate_gdsn_3_1(&data, false);
+
+        assert!(result.is_ok());
+    }
+
+    /// Test a path to a valid GDSN 3.1 xml file validates successfully
+    #[test]
+    fn test_validate_gdsn_3_1_path() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/gdsn_product.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let result = validate_gdsn_3_1(path_str, true);
+
+        assert!(result.is_ok());
+    }
+
+    /// Test an invalid GDSN 3.1 xml string doesn't validate
+    #[test]
+    fn test_validate_gdsn_3_1_invalid() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/gdsn_product_invalid.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let mut data = String::new();
+        std::fs::File::open(path_str)
+            .unwrap()
+            .read_to_string(&mut data)
+            .unwrap();
+
+        let result = validate_gdsn_3_1(&data, false);
+
+        assert!(result.is_err());
+
+        let expected_error = InvalidArgumentError::new(data, "file fails to validate".to_string());
+
+        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
+    }
+
+    /// Test a path to an invalid GDSN 3.1 xml file doesn't validate
+    #[test]
+    fn test_validate_gdsn_3_1_path_invalid() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/gdsn_product_invalid.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let result = validate_gdsn_3_1(path_str, true);
+
+        assert!(result.is_err());
+
+        let expected_error =
+            InvalidArgumentError::new(path_str.to_string(), "file fails to validate".to_string());
+
+        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
+    }
+
+    // Purchase Order
+    /// Test a valid GS1 Order 3.4 xml string validates successfully
+    #[test]
+    fn test_validate_order_xml_3_4() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/order.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let mut data = String::new();
+        std::fs::File::open(path_str)
+            .unwrap()
+            .read_to_string(&mut data)
+            .unwrap();
+
+        let result = validate_order_xml_3_4(&data, false);
+
+        assert!(result.is_ok());
+    }
+
+    /// Test a path to a valid GS1 Order 3.4 xml file validates successfully
+    #[test]
+    fn test_validate_order_xml_3_4_path() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/order.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let result = validate_order_xml_3_4(path_str, true);
+
+        assert!(result.is_ok());
+    }
+
+    /// Test an invalid GS1 Order 3.4 xml string doesn't validate
+    #[test]
+    fn test_validate_order_xml_3_4_invalid() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/order_invalid.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let mut data = String::new();
+        std::fs::File::open(path_str)
+            .unwrap()
+            .read_to_string(&mut data)
+            .unwrap();
+
+        let result = validate_order_xml_3_4(&data, false);
+
+        assert!(result.is_err());
+
+        let expected_error = InvalidArgumentError::new(data, "file fails to validate".to_string());
+
+        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
+    }
+
+    /// Test a path to an invalid GS1 Order 3.4 xml file doesn't validate
+    #[test]
+    fn test_validate_order_xml_3_4_path_invalid() {
+        let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_gdsn_xml_path.push("src/data_validation/test_files/order_invalid.xml");
+
+        let path_str = test_gdsn_xml_path.to_str().unwrap();
+        let result = validate_order_xml_3_4(path_str, true);
+
+        assert!(result.is_err());
+
+        let expected_error =
+            InvalidArgumentError::new(path_str.to_string(), "file fails to validate".to_string());
+
+        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
+    }
+}
