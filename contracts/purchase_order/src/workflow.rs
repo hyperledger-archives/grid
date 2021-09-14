@@ -18,13 +18,11 @@ use grid_sdk::workflow::{
 
 use crate::permissions::Permission;
 
-#[allow(dead_code)]
 pub enum POWorkflow {
     SystemOfRecord,
     Collaborative,
 }
 
-#[allow(dead_code)]
 pub fn get_workflow(name: &POWorkflow) -> Option<Workflow> {
     match *name {
         POWorkflow::SystemOfRecord => Some(system_of_record_workflow()),
