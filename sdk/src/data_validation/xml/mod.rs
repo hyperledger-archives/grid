@@ -55,6 +55,7 @@ extern "C" {
 
 pub enum Schema {
     OrderXmlV3_4,
+    GdsnXmlV3_1,
 }
 
 /// Checks whether an XML file validates against a specified schema. This
@@ -131,6 +132,7 @@ fn validate_xml_by_path(data: &str, schema: XmlSchemaPtr) -> Result<(), DataVali
 
 fn load_schema(schema_type: Schema) -> Result<XmlSchemaPtr, DataValidationError> {
     static ORDER_XML_V3_4_SCHEMA: &str = include_str!("xsd/po/gs1/ecom/Order.xsd");
+    static GRID_TRADE_ITEMS_SCHEMA: &str = include_str!("xsd/product/GridTradeItems.xsd");
 
     let cwd = current_dir()?;
 
@@ -141,6 +143,7 @@ fn load_schema(schema_type: Schema) -> Result<XmlSchemaPtr, DataValidationError>
             set_current_dir(schema_path)?;
             ORDER_XML_V3_4_SCHEMA
         }
+        Schema::GdsnXmlV3_1 => GRID_TRADE_ITEMS_SCHEMA,
     };
 
     let buff = schema.as_ptr() as *const c_char;

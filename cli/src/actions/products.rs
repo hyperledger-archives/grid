@@ -19,6 +19,7 @@ use grid_sdk::client::product::{
     Product as GridProduct, ProductClient, PropertyValue as GridPropertyValue,
 };
 use grid_sdk::client::schema::{DataType, PropertyDefinition, SchemaClient};
+use grid_sdk::data_validation::validate_gdsn_3_1;
 use grid_sdk::pike::addressing::GRID_PIKE_NAMESPACE;
 use grid_sdk::product::addressing::GRID_PRODUCT_NAMESPACE;
 use grid_sdk::product::gdsn::{get_trade_items_from_xml, GDSN_3_1_PROPERTY_NAME};
@@ -358,6 +359,7 @@ pub fn create_product_payloads_from_xml(
     owner: &str,
 ) -> Result<Vec<ProductCreateAction>, CliError> {
     let trade_items = get_trade_items_from_xml(path)?;
+    validate_gdsn_3_1(path, true)?;
 
     let mut payloads = Vec::new();
 
@@ -394,6 +396,7 @@ pub fn create_product_payloads_from_yaml(
 
 pub fn update_product_payloads_from_xml(path: &str) -> Result<Vec<ProductUpdateAction>, CliError> {
     let trade_items = get_trade_items_from_xml(path)?;
+    validate_gdsn_3_1(path, true)?;
 
     let mut payloads = Vec::new();
 
