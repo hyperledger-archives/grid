@@ -397,6 +397,8 @@ pub struct PurchaseOrder {
     accepted_version_number: String,
     created_at: u64,
     is_closed: bool,
+    buyer_org_id: String,
+    seller_org_id: String,
 }
 
 impl PurchaseOrder {
@@ -424,6 +426,14 @@ impl PurchaseOrder {
         self.is_closed
     }
 
+    pub fn buyer_org_id(&self) -> &str {
+        &self.buyer_org_id
+    }
+
+    pub fn seller_org_id(&self) -> &str {
+        &self.seller_org_id
+    }
+
     pub fn into_builder(self) -> PurchaseOrderBuilder {
         PurchaseOrderBuilder::new()
             .with_uid(self.uid)
@@ -432,6 +442,8 @@ impl PurchaseOrder {
             .with_accepted_version_number(self.accepted_version_number)
             .with_created_at(self.created_at)
             .with_is_closed(self.is_closed)
+            .with_buyer_org_id(self.buyer_org_id)
+            .with_seller_org_id(self.seller_org_id)
     }
 }
 
@@ -450,6 +462,8 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
             accepted_version_number: order.take_accepted_version_number(),
             created_at: order.get_created_at(),
             is_closed: order.get_is_closed(),
+            buyer_org_id: order.take_buyer_org_id(),
+            seller_org_id: order.take_seller_org_id(),
         })
     }
 }
@@ -470,6 +484,8 @@ impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
         proto.set_accepted_version_number(order.accepted_version_number().to_string());
         proto.set_created_at(order.created_at());
         proto.set_is_closed(order.is_closed());
+        proto.set_buyer_org_id(order.buyer_org_id().to_string());
+        proto.set_seller_org_id(order.seller_org_id().to_string());
 
         Ok(proto)
     }
@@ -526,6 +542,8 @@ pub struct PurchaseOrderBuilder {
     accepted_version_number: Option<String>,
     created_at: Option<u64>,
     is_closed: Option<bool>,
+    buyer_org_id: Option<String>,
+    seller_org_id: Option<String>,
 }
 
 impl PurchaseOrderBuilder {
@@ -563,6 +581,16 @@ impl PurchaseOrderBuilder {
         self
     }
 
+    pub fn with_buyer_org_id(mut self, buyer: String) -> Self {
+        self.buyer_org_id = Some(buyer);
+        self
+    }
+
+    pub fn with_seller_org_id(mut self, seller: String) -> Self {
+        self.seller_org_id = Some(seller);
+        self
+    }
+
     pub fn build(self) -> Result<PurchaseOrder, PurchaseOrderBuildError> {
         let uid = self.uid.ok_or_else(|| {
             PurchaseOrderBuildError::MissingField("'uid' field is required".to_string())
@@ -590,6 +618,14 @@ impl PurchaseOrderBuilder {
             PurchaseOrderBuildError::MissingField("'is_closed' field is required".to_string())
         })?;
 
+        let buyer_org_id = self.buyer_org_id.ok_or_else(|| {
+            PurchaseOrderBuildError::MissingField("'buyer_org_id' field is required".to_string())
+        })?;
+
+        let seller_org_id = self.seller_org_id.ok_or_else(|| {
+            PurchaseOrderBuildError::MissingField("'seller_org_id' field is required".to_string())
+        })?;
+
         Ok(PurchaseOrder {
             uid,
             workflow_status,
@@ -597,6 +633,8 @@ impl PurchaseOrderBuilder {
             accepted_version_number,
             created_at,
             is_closed,
+            buyer_org_id,
+            seller_org_id,
         })
     }
 }

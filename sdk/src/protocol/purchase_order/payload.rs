@@ -35,17 +35,12 @@ pub enum Action {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderPayload {
     action: Action,
-    org_id: String,
     timestamp: u64,
 }
 
 impl PurchaseOrderPayload {
     pub fn action(&self) -> &Action {
         &self.action
-    }
-
-    pub fn org_id(&self) -> &str {
-        &self.org_id
     }
 
     pub fn timestamp(&self) -> u64 {
@@ -82,7 +77,6 @@ impl FromProto<purchase_order_payload::PurchaseOrderPayload> for PurchaseOrderPa
         };
         Ok(PurchaseOrderPayload {
             action,
-            org_id: payload.take_org_id(),
             timestamp: payload.get_timestamp(),
         })
     }
@@ -91,9 +85,7 @@ impl FromProto<purchase_order_payload::PurchaseOrderPayload> for PurchaseOrderPa
 impl FromNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderPayload {
     fn from_native(native: PurchaseOrderPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::PurchaseOrderPayload::new();
-
         proto.set_timestamp(native.timestamp());
-        proto.set_org_id(native.org_id().to_string());
 
         match native.action() {
             Action::CreatePo(payload) => {
@@ -153,7 +145,6 @@ impl IntoNative<PurchaseOrderPayload> for purchase_order_payload::PurchaseOrderP
 #[derive(Default, Clone)]
 pub struct PurchaseOrderPayloadBuilder {
     action: Option<Action>,
-    org_id: Option<String>,
     timestamp: Option<u64>,
 }
 
@@ -167,11 +158,6 @@ impl PurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_org_id(mut self, org_id: String) -> Self {
-        self.org_id = Some(org_id);
-        self
-    }
-
     pub fn with_timestamp(mut self, value: u64) -> Self {
         self.timestamp = Some(value);
         self
@@ -182,19 +168,11 @@ impl PurchaseOrderPayloadBuilder {
             .action
             .ok_or_else(|| BuilderError::MissingField("'action' field is required".into()))?;
 
-        let org_id = self
-            .org_id
-            .ok_or_else(|| BuilderError::MissingField("'org_id' field is required".into()))?;
-
         let timestamp = self
             .timestamp
             .ok_or_else(|| BuilderError::MissingField("'timestamp' field is required".into()))?;
 
-        Ok(PurchaseOrderPayload {
-            action,
-            org_id,
-            timestamp,
-        })
+        Ok(PurchaseOrderPayload { action, timestamp })
     }
 }
 
@@ -203,6 +181,8 @@ impl PurchaseOrderPayloadBuilder {
 pub struct CreatePurchaseOrderPayload {
     uid: String,
     created_at: u64,
+    buyer_org_id: String,
+    seller_org_id: String,
     create_version_payload: Option<CreateVersionPayload>,
 }
 
@@ -213,6 +193,14 @@ impl CreatePurchaseOrderPayload {
 
     pub fn created_at(&self) -> u64 {
         self.created_at
+    }
+
+    pub fn buyer_org_id(&self) -> &str {
+        &self.buyer_org_id
+    }
+
+    pub fn seller_org_id(&self) -> &str {
+        &self.seller_org_id
     }
 
     pub fn create_version_payload(&self) -> Option<CreateVersionPayload> {
@@ -229,6 +217,8 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
         Ok(CreatePurchaseOrderPayload {
             uid: proto.take_uid(),
             created_at: proto.get_created_at(),
+            buyer_org_id: proto.take_buyer_org_id(),
+            seller_org_id: proto.take_seller_org_id(),
             create_version_payload,
         })
     }
@@ -239,6 +229,8 @@ impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
         let mut proto = purchase_order_payload::CreatePurchaseOrderPayload::new();
         proto.set_uid(native.uid().to_string());
         proto.set_created_at(native.created_at());
+        proto.set_buyer_org_id(native.buyer_org_id().to_string());
+        proto.set_seller_org_id(native.seller_org_id().to_string());
 
         if let Some(payload) = native.create_version_payload() {
             let proto_payload: purchase_order_payload::CreateVersionPayload =
@@ -282,6 +274,8 @@ impl IntoNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
 pub struct CreatePurchaseOrderPayloadBuilder {
     uid: Option<String>,
     created_at: Option<u64>,
+    buyer_org_id: Option<String>,
+    seller_org_id: Option<String>,
     create_version_payload: Option<CreateVersionPayload>,
 }
 
@@ -300,6 +294,16 @@ impl CreatePurchaseOrderPayloadBuilder {
         self
     }
 
+    pub fn with_buyer_org_id(mut self, value: String) -> Self {
+        self.buyer_org_id = Some(value);
+        self
+    }
+
+    pub fn with_seller_org_id(mut self, value: String) -> Self {
+        self.seller_org_id = Some(value);
+        self
+    }
+
     pub fn with_create_version_payload(mut self, payload: CreateVersionPayload) -> Self {
         self.create_version_payload = Some(payload);
         self
@@ -314,11 +318,21 @@ impl CreatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'created_at' field is required".to_string())
         })?;
 
+        let buyer_org_id = self.buyer_org_id.ok_or_else(|| {
+            BuilderError::MissingField("'buyer_org_id' field is required".to_string())
+        })?;
+
+        let seller_org_id = self.seller_org_id.ok_or_else(|| {
+            BuilderError::MissingField("'seller_org_id' field is required".to_string())
+        })?;
+
         let create_version_payload = self.create_version_payload;
 
         Ok(CreatePurchaseOrderPayload {
             uid,
             created_at,
+            buyer_org_id,
+            seller_org_id,
             create_version_payload,
         })
     }

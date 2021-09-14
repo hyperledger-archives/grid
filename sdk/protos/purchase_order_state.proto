@@ -18,10 +18,12 @@ syntax = "proto3";
 message PurchaseOrder {
   string uid = 1;
   string workflow_status = 2;
-  repeated PurchaseOrderVersion versions = 3;
-  string accepted_version_number = 4;
-  uint64 created_at = 5;
-  bool is_closed = 6;
+  string buyer_org_id = 3;
+  string seller_org_id = 4;
+  repeated PurchaseOrderVersion versions = 5;
+  string accepted_version_number = 6;
+  uint64 created_at = 7;
+  bool is_closed = 8;
 }
 
 message PurchaseOrderList {
