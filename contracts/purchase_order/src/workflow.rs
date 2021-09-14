@@ -25,8 +25,8 @@ pub enum POWorkflow {
 }
 
 #[allow(dead_code)]
-pub fn get_workflow(name: POWorkflow) -> Option<Workflow> {
-    match name {
+pub fn get_workflow(name: &POWorkflow) -> Option<Workflow> {
+    match *name {
         POWorkflow::SystemOfRecord => Some(system_of_record_workflow()),
         POWorkflow::Collaborative => Some(collaborative_workflow()),
     }
