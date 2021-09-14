@@ -19,7 +19,6 @@
 //! resulting `TradeItem` structs can be converted into Grid Product transaction
 //! payloads.
 mod error;
-mod validate;
 
 use std::io::{Cursor, Read};
 
@@ -42,7 +41,6 @@ use crate::protocol::{
     schema::state::{DataType, PropertyValueBuilder},
 };
 pub use error::ProductGdsnError;
-use validate::validate_product_definitions;
 
 /// Name of the property where GDSN 3.1 XML data will be stored
 pub const GDSN_3_1_PROPERTY_NAME: &str = "GDSN_3_1";
@@ -131,8 +129,6 @@ pub fn get_trade_items_from_xml(path: &str) -> Result<Vec<TradeItem>, ProductGds
             error.to_string(),
         ))
     })?;
-
-    validate_product_definitions(path)?;
 
     let mut reader = Reader::from_str(&xml_str);
     reader.trim_text(true);
@@ -291,22 +287,6 @@ mod tests {
         };
 
         assert_eq!(result.unwrap(), vec![expected_1, expected_2]);
-    }
-
-    /// Test that an invalid product definition will result in an error
-    #[test]
-    fn test_get_trade_items_from_xml_invalid() {
-        let mut test_gdsn_product_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        test_gdsn_product_path.push("src/product/gdsn/test_files/gdsn_product_invalid.xml");
-
-        let path_str = test_gdsn_product_path.to_str().unwrap();
-        let result = get_trade_items_from_xml(path_str);
-
-        assert!(result.is_err());
-
-        let expected_error =
-            InvalidArgumentError::new(path_str.to_string(), "file fails to validate".to_string());
-        assert_eq!(result.unwrap_err().to_string(), expected_error.to_string());
     }
 
     /// Test that a poorly formed product definition will result in an error

@@ -40,3 +40,28 @@ pub fn validate_order_xml_3_4(data: &str, is_path: bool) -> Result<(), DataValid
     validate_xml(data, is_path, Schema::OrderXmlV3_4)?;
     Ok(())
 }
+
+/// Checks whether an XML file at the provided path validates against the
+/// GridTradeItems.xsd XML schema definition. The GridTradeItems schema is a
+/// wrapper around the GDSN XML 3.1 TradeItem schema. An error will be returned
+/// if the file fails to validate for any reason.
+///
+/// View the GridTradeItems XML schema definition here:
+///     https://github.com/hyperledger/grid/blob/main/sdk/src/products/gdsn/GridTradeItems.xsd
+///
+/// For more information about the GDSN XML 3.1 schema, view the documentation
+/// here:
+///     https://www.gs1.org/docs/gdsn/3.1/gdsn_3_1_operations_manual_i2.pdf#page=19
+///
+/// This implementation uses the libxml2 C library. For more information about
+/// libxml2, see the documentation here:
+///     http://www.xmlsoft.org/
+///
+/// # Arguments
+///
+/// * `xml_path` - The path to an XML file containing GDSN trade item definitions
+///
+pub fn validate_gdsn_3_1(data: &str, is_path: bool) -> Result<(), DataValidationError> {
+    validate_xml(data, is_path, Schema::GdsnXmlV3_1)?;
+    Ok(())
+}
