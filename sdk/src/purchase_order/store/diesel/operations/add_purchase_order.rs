@@ -51,13 +51,19 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
         revisions: Vec<NewPurchaseOrderVersionRevisionModel>,
     ) -> Result<(), PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
-            let duplicate = purchase_order::table
-                .filter(
-                    purchase_order::uuid
-                        .eq(&order.uuid)
-                        .and(purchase_order::org_id.eq(&order.org_id))
-                        .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
-                )
+            let mut query = purchase_order::table.into_boxed().filter(
+                purchase_order::purchase_order_uid
+                    .eq(&order.purchase_order_uid)
+                    .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &order.service_id {
+                query = query.filter(purchase_order::service_id.eq(service_id));
+            } else {
+                query = query.filter(purchase_order::service_id.is_null());
+            }
+
+            let duplicate = query
                 .first::<PurchaseOrderModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -74,17 +80,30 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 })?;
 
             if duplicate.is_some() {
-                update(purchase_order::table)
-                    .filter(
-                        purchase_order::uuid
-                            .eq(&order.uuid)
-                            .and(purchase_order::org_id.eq(&order.org_id))
-                            .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(purchase_order::end_commit_num.eq(&order.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PurchaseOrderStoreError::from)?;
+                if let Some(service_id) = &order.service_id {
+                    update(purchase_order::table)
+                        .filter(
+                            purchase_order::purchase_order_uid
+                                .eq(&order.purchase_order_uid)
+                                .and(purchase_order::service_id.eq(service_id))
+                                .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(purchase_order::end_commit_num.eq(&order.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PurchaseOrderStoreError::from)?;
+                } else {
+                    update(purchase_order::table)
+                        .filter(
+                            purchase_order::purchase_order_uid
+                                .eq(&order.purchase_order_uid)
+                                .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(purchase_order::end_commit_num.eq(&order.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PurchaseOrderStoreError::from)?;
+                }
             }
 
             insert_into(purchase_order::table)
@@ -94,14 +113,20 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 .map_err(PurchaseOrderStoreError::from)?;
 
             for version in versions {
-                let duplicate = purchase_order_version::table
-                    .filter(
-                        purchase_order_version::purchase_order_uuid
-                            .eq(&order.uuid)
-                            .and(purchase_order_version::org_id.eq(&order.org_id))
-                            .and(purchase_order_version::version_id.eq(&version.version_id))
-                            .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = purchase_order_version::table.into_boxed().filter(
+                    purchase_order_version::purchase_order_uid
+                        .eq(&order.purchase_order_uid)
+                        .and(purchase_order_version::version_id.eq(&version.version_id))
+                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &order.service_id {
+                    query = query.filter(purchase_order_version::service_id.eq(service_id));
+                } else {
+                    query = query.filter(purchase_order_version::service_id.is_null());
+                }
+
+                let duplicate = query
                     .first::<PurchaseOrderVersionModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
@@ -118,18 +143,38 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                     })?;
 
                 if duplicate.is_some() {
-                    update(purchase_order_version::table)
-                        .filter(
-                            purchase_order_version::purchase_order_uuid
-                                .eq(&order.uuid)
-                                .and(purchase_order_version::org_id.eq(&order.org_id))
-                                .and(purchase_order_version::version_id.eq(&version.version_id))
-                                .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(purchase_order_version::end_commit_num.eq(&version.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PurchaseOrderStoreError::from)?;
+                    if let Some(service_id) = &order.service_id {
+                        update(purchase_order_version::table)
+                            .filter(
+                                purchase_order_version::purchase_order_uid
+                                    .eq(&order.purchase_order_uid)
+                                    .and(purchase_order_version::version_id.eq(&version.version_id))
+                                    .and(purchase_order_version::service_id.eq(service_id))
+                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(
+                                purchase_order_version::end_commit_num
+                                    .eq(&version.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PurchaseOrderStoreError::from)?;
+                    } else {
+                        update(purchase_order_version::table)
+                            .filter(
+                                purchase_order_version::purchase_order_uid
+                                    .eq(&order.purchase_order_uid)
+                                    .and(purchase_order_version::version_id.eq(&version.version_id))
+                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(
+                                purchase_order_version::end_commit_num
+                                    .eq(&version.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PurchaseOrderStoreError::from)?;
+                    }
                 }
 
                 insert_into(purchase_order_version::table)
@@ -140,22 +185,21 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
             }
 
             for revision in revisions {
-                let duplicate = purchase_order_version_revision::table
-                    .filter(
-                        purchase_order_version_revision::org_id
-                            .eq(&revision.org_id)
-                            .and(
-                                purchase_order_version_revision::version_id
-                                    .eq(&revision.version_id),
-                            )
-                            .and(
-                                purchase_order_version_revision::revision_id
-                                    .eq(&revision.revision_id),
-                            )
-                            .and(
-                                purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
-                            ),
-                    )
+                let mut query = purchase_order_version_revision::table.into_boxed().filter(
+                    purchase_order_version_revision::version_id
+                        .eq(&revision.version_id)
+                        .and(purchase_order_version_revision::revision_id.eq(&revision.revision_id))
+                        .and(purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &order.service_id {
+                    query =
+                        query.filter(purchase_order_version_revision::service_id.eq(service_id));
+                } else {
+                    query = query.filter(purchase_order_version_revision::service_id.is_null());
+                }
+
+                let duplicate = query
                     .first::<PurchaseOrderVersionRevisionModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
@@ -196,13 +240,19 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
         revisions: Vec<NewPurchaseOrderVersionRevisionModel>,
     ) -> Result<(), PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
-            let duplicate = purchase_order::table
-                .filter(
-                    purchase_order::uuid
-                        .eq(&order.uuid)
-                        .and(purchase_order::org_id.eq(&order.org_id))
-                        .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
-                )
+            let mut query = purchase_order::table.into_boxed().filter(
+                purchase_order::purchase_order_uid
+                    .eq(&order.purchase_order_uid)
+                    .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+            if let Some(service_id) = &order.service_id {
+                query = query.filter(purchase_order::service_id.eq(service_id));
+            } else {
+                query = query.filter(purchase_order::service_id.is_null());
+            }
+
+            let duplicate = query
                 .first::<PurchaseOrderModel>(self.conn)
                 .map(Some)
                 .or_else(|err| {
@@ -219,17 +269,30 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 })?;
 
             if duplicate.is_some() {
-                update(purchase_order::table)
-                    .filter(
-                        purchase_order::uuid
-                            .eq(&order.uuid)
-                            .and(purchase_order::org_id.eq(&order.org_id))
-                            .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .set(purchase_order::end_commit_num.eq(&order.start_commit_num))
-                    .execute(self.conn)
-                    .map(|_| ())
-                    .map_err(PurchaseOrderStoreError::from)?;
+                if let Some(service_id) = &order.service_id {
+                    update(purchase_order::table)
+                        .filter(
+                            purchase_order::purchase_order_uid
+                                .eq(&order.purchase_order_uid)
+                                .and(purchase_order::service_id.eq(service_id))
+                                .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(purchase_order::end_commit_num.eq(&order.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PurchaseOrderStoreError::from)?;
+                } else {
+                    update(purchase_order::table)
+                        .filter(
+                            purchase_order::purchase_order_uid
+                                .eq(&order.purchase_order_uid)
+                                .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(purchase_order::end_commit_num.eq(&order.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(PurchaseOrderStoreError::from)?;
+                }
             }
 
             insert_into(purchase_order::table)
@@ -239,14 +302,20 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 .map_err(PurchaseOrderStoreError::from)?;
 
             for version in versions {
-                let duplicate = purchase_order_version::table
-                    .filter(
-                        purchase_order_version::purchase_order_uuid
-                            .eq(&order.uuid)
-                            .and(purchase_order_version::org_id.eq(&order.org_id))
-                            .and(purchase_order_version::version_id.eq(&version.version_id))
-                            .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = purchase_order_version::table.into_boxed().filter(
+                    purchase_order_version::purchase_order_uid
+                        .eq(&order.purchase_order_uid)
+                        .and(purchase_order_version::version_id.eq(&version.version_id))
+                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &order.service_id {
+                    query = query.filter(purchase_order_version::service_id.eq(service_id));
+                } else {
+                    query = query.filter(purchase_order_version::service_id.is_null());
+                }
+
+                let duplicate = query
                     .first::<PurchaseOrderVersionModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {
@@ -263,18 +332,38 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                     })?;
 
                 if duplicate.is_some() {
-                    update(purchase_order_version::table)
-                        .filter(
-                            purchase_order_version::purchase_order_uuid
-                                .eq(&order.uuid)
-                                .and(purchase_order_version::org_id.eq(&order.org_id))
-                                .and(purchase_order_version::version_id.eq(&version.version_id))
-                                .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .set(purchase_order_version::end_commit_num.eq(&version.start_commit_num))
-                        .execute(self.conn)
-                        .map(|_| ())
-                        .map_err(PurchaseOrderStoreError::from)?;
+                    if let Some(service_id) = &order.service_id {
+                        update(purchase_order_version::table)
+                            .filter(
+                                purchase_order_version::purchase_order_uid
+                                    .eq(&order.purchase_order_uid)
+                                    .and(purchase_order_version::version_id.eq(&version.version_id))
+                                    .and(purchase_order_version::service_id.eq(service_id))
+                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(
+                                purchase_order_version::end_commit_num
+                                    .eq(&version.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PurchaseOrderStoreError::from)?;
+                    } else {
+                        update(purchase_order_version::table)
+                            .filter(
+                                purchase_order_version::purchase_order_uid
+                                    .eq(&order.purchase_order_uid)
+                                    .and(purchase_order_version::version_id.eq(&version.version_id))
+                                    .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(
+                                purchase_order_version::end_commit_num
+                                    .eq(&version.start_commit_num),
+                            )
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(PurchaseOrderStoreError::from)?;
+                    }
                 }
 
                 insert_into(purchase_order_version::table)
@@ -285,22 +374,21 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
             }
 
             for revision in revisions {
-                let duplicate = purchase_order_version_revision::table
-                    .filter(
-                        purchase_order_version_revision::org_id
-                            .eq(&revision.org_id)
-                            .and(
-                                purchase_order_version_revision::version_id
-                                    .eq(&revision.version_id),
-                            )
-                            .and(
-                                purchase_order_version_revision::revision_id
-                                    .eq(&revision.revision_id),
-                            )
-                            .and(
-                                purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
-                            ),
-                    )
+                let mut query = purchase_order_version_revision::table.into_boxed().filter(
+                    purchase_order_version_revision::version_id
+                        .eq(&revision.version_id)
+                        .and(purchase_order_version_revision::revision_id.eq(&revision.revision_id))
+                        .and(purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = &order.service_id {
+                    query =
+                        query.filter(purchase_order_version_revision::service_id.eq(service_id));
+                } else {
+                    query = query.filter(purchase_order_version_revision::service_id.is_null());
+                }
+
+                let duplicate = query
                     .first::<PurchaseOrderVersionRevisionModel>(self.conn)
                     .map(Some)
                     .or_else(|err| {

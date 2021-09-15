@@ -21,9 +21,10 @@ use crate::purchase_order::store::diesel::schema::*;
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order"]
 pub struct NewPurchaseOrderModel {
-    pub uuid: String,
-    pub org_id: String,
+    pub purchase_order_uid: String,
     pub workflow_status: String,
+    pub buyer_org_id: String,
+    pub seller_org_id: String,
     pub is_closed: bool,
     pub accepted_version_id: String,
     pub created_at: i64,
@@ -36,9 +37,10 @@ pub struct NewPurchaseOrderModel {
 #[table_name = "purchase_order"]
 pub struct PurchaseOrderModel {
     pub id: i64,
-    pub uuid: String,
-    pub org_id: String,
+    pub purchase_order_uid: String,
     pub workflow_status: String,
+    pub buyer_org_id: String,
+    pub seller_org_id: String,
     pub is_closed: bool,
     pub accepted_version_id: String,
     pub created_at: i64,
@@ -50,8 +52,7 @@ pub struct PurchaseOrderModel {
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order_version"]
 pub struct NewPurchaseOrderVersionModel {
-    pub purchase_order_uuid: String,
-    pub org_id: String,
+    pub purchase_order_uid: String,
     pub version_id: String,
     pub is_draft: bool,
     pub current_revision_id: String,
@@ -64,8 +65,7 @@ pub struct NewPurchaseOrderVersionModel {
 #[table_name = "purchase_order_version"]
 pub struct PurchaseOrderVersionModel {
     pub id: i64,
-    pub purchase_order_uuid: String,
-    pub org_id: String,
+    pub purchase_order_uid: String,
     pub version_id: String,
     pub is_draft: bool,
     pub current_revision_id: String,
@@ -78,7 +78,6 @@ pub struct PurchaseOrderVersionModel {
 #[table_name = "purchase_order_version_revision"]
 pub struct NewPurchaseOrderVersionRevisionModel {
     pub version_id: String,
-    pub org_id: String,
     pub revision_id: String,
     pub order_xml_v3_4: String,
     pub submitter: String,
@@ -93,7 +92,6 @@ pub struct NewPurchaseOrderVersionRevisionModel {
 pub struct PurchaseOrderVersionRevisionModel {
     pub id: i64,
     pub version_id: String,
-    pub org_id: String,
     pub revision_id: String,
     pub order_xml_v3_4: String,
     pub submitter: String,
@@ -106,7 +104,7 @@ pub struct PurchaseOrderVersionRevisionModel {
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order_alternate_id"]
 pub struct NewPurchaseOrderAlternateIdModel {
-    pub purchase_order_uuid: String,
+    pub purchase_order_uid: String,
     pub org_id: String,
     pub alternate_id_type: String,
     pub alternate_id: String,
@@ -119,7 +117,7 @@ pub struct NewPurchaseOrderAlternateIdModel {
 #[table_name = "purchase_order_alternate_id"]
 pub struct PurchaseOrderAlternateIdModel {
     pub id: i64,
-    pub purchase_order_uuid: String,
+    pub purchase_order_uid: String,
     pub org_id: String,
     pub alternate_id_type: String,
     pub alternate_id: String,
@@ -131,8 +129,9 @@ pub struct PurchaseOrderAlternateIdModel {
 impl From<PurchaseOrder> for NewPurchaseOrderModel {
     fn from(order: PurchaseOrder) -> Self {
         Self {
-            uuid: order.uuid.to_string(),
-            org_id: order.org_id.to_string(),
+            purchase_order_uid: order.purchase_order_uid.to_string(),
+            buyer_org_id: order.buyer_org_id.to_string(),
+            seller_org_id: order.seller_org_id.to_string(),
             workflow_status: order.workflow_status.to_string(),
             is_closed: order.is_closed,
             accepted_version_id: order.accepted_version_id.to_string(),
@@ -147,8 +146,9 @@ impl From<PurchaseOrder> for NewPurchaseOrderModel {
 impl From<(PurchaseOrderModel, Vec<PurchaseOrderVersion>)> for PurchaseOrder {
     fn from((order, versions): (PurchaseOrderModel, Vec<PurchaseOrderVersion>)) -> Self {
         Self {
-            uuid: order.uuid.to_string(),
-            org_id: order.org_id.to_string(),
+            purchase_order_uid: order.purchase_order_uid.to_string(),
+            buyer_org_id: order.buyer_org_id.to_string(),
+            seller_org_id: order.seller_org_id.to_string(),
             workflow_status: order.workflow_status.to_string(),
             is_closed: order.is_closed,
             accepted_version_id: order.accepted_version_id.to_string(),
@@ -176,8 +176,9 @@ impl
         ),
     ) -> Self {
         Self {
-            uuid: order.uuid.to_string(),
-            org_id: order.org_id.to_string(),
+            purchase_order_uid: order.purchase_order_uid.to_string(),
+            buyer_org_id: order.buyer_org_id.to_string(),
+            seller_org_id: order.seller_org_id.to_string(),
             workflow_status: order.workflow_status.to_string(),
             is_closed: order.is_closed,
             accepted_version_id: order.accepted_version_id.to_string(),
@@ -238,7 +239,7 @@ impl From<&PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
 impl From<PurchaseOrderAlternateId> for NewPurchaseOrderAlternateIdModel {
     fn from(id: PurchaseOrderAlternateId) -> Self {
         Self {
-            purchase_order_uuid: id.purchase_order_uuid.to_string(),
+            purchase_order_uid: id.purchase_order_uid.to_string(),
             org_id: id.org_id.to_string(),
             alternate_id_type: id.id_type.to_string(),
             alternate_id: id.id.to_string(),
@@ -253,8 +254,7 @@ pub fn make_purchase_order_versions(order: &PurchaseOrder) -> Vec<NewPurchaseOrd
     let mut models = Vec::new();
     for version in &order.versions {
         let model = NewPurchaseOrderVersionModel {
-            purchase_order_uuid: order.uuid.to_string(),
-            org_id: order.org_id.to_string(),
+            purchase_order_uid: order.purchase_order_uid.to_string(),
             version_id: version.version_id.to_string(),
             is_draft: version.is_draft,
             current_revision_id: version.current_revision_id.to_string(),
@@ -277,7 +277,6 @@ pub fn make_purchase_order_version_revisions(
         for revision in &version.revisions {
             let model = NewPurchaseOrderVersionRevisionModel {
                 version_id: version.version_id.to_string(),
-                org_id: order.org_id.to_string(),
                 revision_id: revision.revision_id.to_string(),
                 order_xml_v3_4: revision.order_xml_v3_4.to_string(),
                 submitter: revision.submitter.to_string(),

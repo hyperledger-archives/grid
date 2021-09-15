@@ -30,7 +30,8 @@ pub struct QueryOrgId {
 #[get("/purchase-order")]
 pub async fn list_purchase_orders(
     store_state: web::Data<StoreState>,
-    query_org_id: web::Query<QueryOrgId>,
+    query_buyer_org_id: web::Query<QueryOrgId>,
+    query_seller_org_id: web::Query<QueryOrgId>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
@@ -40,11 +41,13 @@ pub async fn list_purchase_orders(
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
-            let org_id = query_org_id.into_inner().org_id;
+            let buyer_org_id = query_buyer_org_id.into_inner().org_id;
+            let seller_org_id = query_seller_org_id.into_inner().org_id;
             let service_id = query_service_id.into_inner().service_id;
             match v1::list_purchase_orders(
                 store,
-                org_id,
+                buyer_org_id,
+                seller_org_id,
                 service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),

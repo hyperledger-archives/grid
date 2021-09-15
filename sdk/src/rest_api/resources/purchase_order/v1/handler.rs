@@ -23,7 +23,8 @@ use super::payloads::{PurchaseOrderListSlice, PurchaseOrderSlice};
 
 pub fn list_purchase_orders<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
-    org_id: Option<String>,
+    buyer_org_id: Option<String>,
+    seller_org_id: Option<String>,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -33,7 +34,7 @@ pub fn list_purchase_orders<'a>(
     let limit = i64::try_from(limit).unwrap_or(10);
 
     let purchase_order_list = store
-        .list_purchase_orders(org_id, service_id, offset, limit)
+        .list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))
@@ -62,11 +63,11 @@ pub fn list_purchase_orders<'a>(
 
 pub fn get_purchase_order<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
-    uuid: String,
+    purchase_order_uid: String,
     service_id: Option<&str>,
 ) -> Result<PurchaseOrderSlice, ErrorResponse> {
     let purchase_order = store
-        .get_purchase_order(&uuid, service_id)
+        .get_purchase_order(&purchase_order_uid, service_id)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))
@@ -77,12 +78,18 @@ pub fn get_purchase_order<'a>(
             PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(_) => {
                 ErrorResponse::new(503, "Service Unavailable")
             }
-            PurchaseOrderStoreError::NotFoundError(_) => {
-                ErrorResponse::new(404, &format!("Purchase order {} not found", uuid))
-            }
+            PurchaseOrderStoreError::NotFoundError(_) => ErrorResponse::new(
+                404,
+                &format!("Purchase order {} not found", purchase_order_uid),
+            ),
         })?;
 
     Ok(PurchaseOrderSlice::from(purchase_order.ok_or_else(
-        || ErrorResponse::new(404, &format!("PurchaseOrder {} not found", uuid)),
+        || {
+            ErrorResponse::new(
+                404,
+                &format!("PurchaseOrder {} not found", purchase_order_uid),
+            )
+        },
     )?))
 }

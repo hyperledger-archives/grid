@@ -28,7 +28,8 @@ use diesel::prelude::*;
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchaseOrdersOperation {
     fn list_purchase_orders(
         &self,
-        org_id: Option<String>,
+        buyer_org_id: Option<String>,
+        seller_org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -41,7 +42,8 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
 {
     fn list_purchase_orders(
         &self,
-        org_id: Option<String>,
+        buyer_org_id: Option<String>,
+        seller_org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -54,8 +56,12 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                 .limit(limit)
                 .filter(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM));
 
-            if let Some(org_id) = org_id {
-                query = query.filter(purchase_order::org_id.eq(org_id))
+            if let Some(buyer_org_id) = buyer_org_id {
+                query = query.filter(purchase_order::buyer_org_id.eq(buyer_org_id))
+            }
+
+            if let Some(seller_org_id) = seller_org_id {
+                query = query.filter(purchase_order::seller_org_id.eq(seller_org_id))
             }
 
             if let Some(service_id) = service_id {
@@ -90,9 +96,8 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                     .into_boxed()
                     .select(purchase_order_version::all_columns)
                     .filter(
-                        purchase_order_version::purchase_order_uuid
-                            .eq(&o.uuid)
-                            .and(purchase_order_version::org_id.eq(&o.org_id))
+                        purchase_order_version::purchase_order_uid
+                            .eq(&o.purchase_order_uid)
                             .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                     );
 
@@ -120,7 +125,6 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                         .filter(
                             purchase_order_version_revision::version_id
                                 .eq(&v.version_id)
-                                .and(purchase_order_version_revision::org_id.eq(&v.org_id))
                                 .and(
                                     purchase_order_version_revision::end_commit_num
                                         .eq(MAX_COMMIT_NUM),
@@ -162,7 +166,8 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
 {
     fn list_purchase_orders(
         &self,
-        org_id: Option<String>,
+        buyer_org_id: Option<String>,
+        seller_org_id: Option<String>,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -175,8 +180,12 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                 .limit(limit)
                 .filter(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM));
 
-            if let Some(org_id) = org_id {
-                query = query.filter(purchase_order::org_id.eq(org_id))
+            if let Some(buyer_org_id) = buyer_org_id {
+                query = query.filter(purchase_order::buyer_org_id.eq(buyer_org_id))
+            }
+
+            if let Some(seller_org_id) = seller_org_id {
+                query = query.filter(purchase_order::seller_org_id.eq(seller_org_id))
             }
 
             if let Some(service_id) = service_id {
@@ -211,9 +220,8 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                     .into_boxed()
                     .select(purchase_order_version::all_columns)
                     .filter(
-                        purchase_order_version::purchase_order_uuid
-                            .eq(&o.uuid)
-                            .and(purchase_order_version::org_id.eq(&o.org_id))
+                        purchase_order_version::purchase_order_uid
+                            .eq(&o.purchase_order_uid)
                             .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                     );
 
@@ -241,7 +249,6 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                         .filter(
                             purchase_order_version_revision::version_id
                                 .eq(&v.version_id)
-                                .and(purchase_order_version_revision::org_id.eq(&v.org_id))
                                 .and(
                                     purchase_order_version_revision::end_commit_num
                                         .eq(MAX_COMMIT_NUM),
