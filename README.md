@@ -46,13 +46,26 @@ discussion](https://grid.hyperledger.org/community/join_the_discussion.html).
 
 ## Building Grid
 
-Before building, please make sure you have the `libzmq3-dev` package installed in Debian(Ubuntu). 
+Before building, please make sure you have the following packages 
+installed in Debian(Ubuntu):
 
-This can be installed with:
+- `build-essential`
+- `libssl-dev`
+- `pkg-config`
+- `libzmq3-dev`
+- `protobuf-compiler`
+- `libsqlite3-dev`
+- `libpq-dev`
+- `libxml2-dev`
+
+These can be installed with, for example, for the first one:
 
 ```
-sudo apt install libzmq3-dev -y
+sudo apt install build-essential -y
 ```
+
+Similarly, make sure you have all the other packages installed, 
+before invoking the build.
 
 To build Grid, run `cargo build` from the root directory. This command
 builds all of the Grid components, including `gridd` (the grid daemon),
