@@ -61,6 +61,8 @@ use grid_sdk::client::{create_client_factory, ClientType};
 #[cfg(feature = "schema")]
 use grid_sdk::client::{schema, schema::SchemaClient};
 
+#[cfg(any(feature = "purchase-order"))]
+use grid_sdk::data_validation::validate_order_xml_3_4;
 #[cfg(feature = "location")]
 use grid_sdk::protocol::location::payload::{
     LocationCreateActionBuilder, LocationDeleteActionBuilder, LocationNamespace,
@@ -2511,7 +2513,13 @@ fn run() -> Result<(), CliError> {
                 ("list", Some(_)) => unimplemented!(),
                 ("show", Some(_)) => unimplemented!(),
                 ("version", Some(m)) => match m.subcommand() {
-                    ("create", Some(_)) => unimplemented!(),
+                    ("create", Some(m)) => {
+                        let order_xml_path = m.value_of("order_xml").unwrap();
+                        let mut xml_str = String::new();
+                        std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
+                        validate_order_xml_3_4(&xml_str, false)?;
+                        info!("Purchase order was valid.");
+                    }
                     ("update", Some(_)) => unimplemented!(),
                     ("list", Some(_)) => unimplemented!(),
                     ("show", Some(_)) => unimplemented!(),

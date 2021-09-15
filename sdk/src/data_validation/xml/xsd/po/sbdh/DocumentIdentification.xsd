@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader">
+
+  <xs:complexType name="DocumentIdentification">
+    <xs:sequence>
+      <xs:element name="Standard" type="xs:string"/>
+      <xs:element name="TypeVersion" type="xs:string"/>
+      <xs:element name="InstanceIdentifier" type="xs:string"/>
+      <xs:element name="Type" type="xs:string"/>
+      <xs:element minOccurs="0" name="MultipleType" type="xs:boolean"/>
+      <xs:element name="CreationDateAndTime" type="xs:dateTime"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -190,3 +190,10 @@ impl From<grid_sdk::error::ClientError> for CliError {
         }
     }
 }
+
+#[cfg(any(feature = "purchase-order", feature = "product"))]
+impl From<grid_sdk::data_validation::DataValidationError> for CliError {
+    fn from(err: grid_sdk::data_validation::DataValidationError) -> Self {
+        CliError::UserError(err.to_string())
+    }
+}

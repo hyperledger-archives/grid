@@ -106,6 +106,7 @@ experimental = [
     "client",
     "client-reqwest",
     "cylinder-jwt-support",
+    "data-validation",
     "pike-rest-api",
     "purchase-order",
     "rest-api-resources",
@@ -128,6 +129,7 @@ backend-splinter = ["backend", "reqwest"]
 client = []
 client-reqwest = ["client", "reqwest"]
 cylinder-jwt-support = ["cylinder/jwt"]
+data-validation = [ "libc", "quick-xml", "reqwest"]
 location = ["pike", "schema"]
 pike = ["cfg-if", "workflow"]
 pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
