@@ -474,13 +474,13 @@ mod tests {
             .expect("Unable to build first purchase order version")
     }
 
-    fn purchase_order_revision() -> PurchaseOrderRevision {
-        PurchaseOrderRevisionBuilder::new()
+    fn purchase_order_revision() -> Vec<PurchaseOrderRevision> {
+        vec![PurchaseOrderRevisionBuilder::new()
             .with_revision_id("1".to_string())
             .with_submitter(AGENT_PUB_KEY.to_string())
             .with_created_at(1)
             .with_order_xml_v3_4("xml_purchase_order".to_string())
             .build()
-            .expect("Unable to build purchase order revision")
+            .expect("Unable to build purchase order revision")]
     }
 }

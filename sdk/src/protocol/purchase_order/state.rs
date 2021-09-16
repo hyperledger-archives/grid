@@ -205,7 +205,7 @@ pub struct PurchaseOrderVersion {
     workflow_status: String,
     is_draft: bool,
     current_revision_id: String,
-    revisions: PurchaseOrderRevision,
+    revisions: Vec<PurchaseOrderRevision>,
 }
 
 impl PurchaseOrderVersion {
@@ -225,7 +225,7 @@ impl PurchaseOrderVersion {
         &self.current_revision_id
     }
 
-    pub fn revisions(&self) -> &PurchaseOrderRevision {
+    pub fn revisions(&self) -> &[PurchaseOrderRevision] {
         &self.revisions
     }
 
@@ -248,7 +248,11 @@ impl FromProto<purchase_order_state::PurchaseOrderVersion> for PurchaseOrderVers
             workflow_status: version.take_workflow_status(),
             is_draft: version.get_is_draft(),
             current_revision_id: version.take_current_revision_id(),
-            revisions: PurchaseOrderRevision::from_proto(version.take_revisions())?,
+            revisions: version
+                .take_revisions()
+                .into_iter()
+                .map(PurchaseOrderRevision::from_proto)
+                .collect::<Result<_, _>>()?,
         })
     }
 }
@@ -260,7 +264,14 @@ impl FromNative<PurchaseOrderVersion> for purchase_order_state::PurchaseOrderVer
         proto.set_workflow_status(version.workflow_status().to_string());
         proto.set_is_draft(version.is_draft());
         proto.set_current_revision_id(version.current_revision_id().to_string());
-        proto.set_revisions(version.revisions().clone().into_proto()?);
+        proto.set_revisions(RepeatedField::from_vec(
+            version
+                .revisions()
+                .to_vec()
+                .into_iter()
+                .map(|revision| revision.into_proto())
+                .collect::<Result<_, _>>()?,
+        ));
 
         Ok(proto)
     }
@@ -314,7 +325,7 @@ pub struct PurchaseOrderVersionBuilder {
     workflow_status: Option<String>,
     is_draft: Option<bool>,
     current_revision_id: Option<String>,
-    revisions: Option<PurchaseOrderRevision>,
+    revisions: Option<Vec<PurchaseOrderRevision>>,
 }
 
 impl PurchaseOrderVersionBuilder {
@@ -342,7 +353,7 @@ impl PurchaseOrderVersionBuilder {
         self
     }
 
-    pub fn with_revisions(mut self, revisions: PurchaseOrderRevision) -> Self {
+    pub fn with_revisions(mut self, revisions: Vec<PurchaseOrderRevision>) -> Self {
         self.revisions = Some(revisions);
         self
     }
