@@ -190,7 +190,7 @@ fn create_purchase_order(
                     )
                 })?;
                 let perm_result = perm_checker
-                    ._check_permission_with_workflow(
+                    .check_permission_with_workflow(
                         &perm_string,
                         signer,
                         agent.org_id(),
@@ -226,7 +226,7 @@ fn create_purchase_order(
                     )
                 })?;
                 let perm_result = perm_checker
-                    ._check_permission_with_workflow(
+                    .check_permission_with_workflow(
                         &perm_string,
                         signer,
                         agent.org_id(),
@@ -273,13 +273,7 @@ fn create_purchase_order(
     })?;
     let perm_string = Permission::CanCreatePo.to_string();
     let perm_result = perm_checker
-        ._check_permission_with_workflow(
-            &perm_string,
-            signer,
-            agent.org_id(),
-            start_state,
-            "issued",
-        )
+        .check_permission_with_workflow(&perm_string, signer, agent.org_id(), start_state, "issued")
         .map_err(|err| {
             ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
         })?;
