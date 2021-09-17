@@ -26,7 +26,7 @@ use sawtooth_sdk::messages::batch::BatchList;
 
 const AGENT_ROUTE: &str = "agent";
 const ORGANIZATION_ROUTE: &str = "organization";
-const ROLES_ROUTE: &str = "roles";
+const ROLE_ROUTE: &str = "role";
 
 #[derive(Debug, Deserialize)]
 struct AlternateIdDto {
@@ -249,7 +249,7 @@ impl PikeClient for ReqwestPikeClient {
     ) -> Result<PikeRole, ClientError> {
         let dto = fetch_entity::<PikeRoleDto>(
             &self.url,
-            format!("{}/{}/{}", ROLES_ROUTE, org_id, name),
+            format!("{}/{}/{}", ROLE_ROUTE, org_id, name),
             service_id,
         )?;
         Ok(PikeRole::from(&dto))
@@ -268,7 +268,7 @@ impl PikeClient for ReqwestPikeClient {
     ) -> Result<Vec<PikeRole>, ClientError> {
         let dto_vec = fetch_entities_list::<PikeRoleDto>(
             &self.url,
-            format!("{}/{}", ROLES_ROUTE, org_id),
+            format!("{}/{}", ROLE_ROUTE, org_id),
             service_id,
         )?;
         Ok(dto_vec.iter().map(PikeRole::from).collect())
