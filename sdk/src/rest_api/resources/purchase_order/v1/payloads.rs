@@ -30,17 +30,17 @@ pub struct PurchaseOrderSlice {
 impl From<PurchaseOrder> for PurchaseOrderSlice {
     fn from(purchase_order: PurchaseOrder) -> Self {
         Self {
-            purchase_order_uid: purchase_order.purchase_order_uid,
-            workflow_status: purchase_order.workflow_status,
-            accepted_version_id: Some(purchase_order.accepted_version_id),
+            purchase_order_uid: purchase_order.purchase_order_uid().to_string(),
+            workflow_status: purchase_order.workflow_status().to_string(),
+            accepted_version_id: Some(purchase_order.accepted_version_id().to_string()),
             version_numbers: Some(
                 purchase_order
-                    .versions
+                    .versions()
                     .into_iter()
-                    .map(|version| version.version_id)
+                    .map(|version| version.version_id().to_string())
                     .collect(),
             ),
-            is_closed: purchase_order.is_closed,
+            is_closed: purchase_order.is_closed(),
         }
     }
 }

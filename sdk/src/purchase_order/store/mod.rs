@@ -20,7 +20,7 @@ use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::{DieselConnectionPurchaseOrderStore, DieselPurchaseOrderStore};
-pub use error::PurchaseOrderStoreError;
+pub use error::{PurchaseOrderBuilderError, PurchaseOrderStoreError};
 
 /// Represents a list of Grid Purchase Orders
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -38,29 +38,385 @@ impl PurchaseOrderList {
 /// Represents a Grid Purchase Order
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrder {
-    pub purchase_order_uid: String,
-    pub workflow_status: String,
-    pub buyer_org_id: String,
-    pub seller_org_id: String,
-    pub is_closed: bool,
-    pub accepted_version_id: String,
-    pub versions: Vec<PurchaseOrderVersion>,
-    pub created_at: i64,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
+    purchase_order_uid: String,
+    workflow_status: String,
+    buyer_org_id: String,
+    seller_org_id: String,
+    is_closed: bool,
+    accepted_version_id: String,
+    versions: Vec<PurchaseOrderVersion>,
+    created_at: i64,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl PurchaseOrder {
+    /// Returns the UID for the PO
+    pub fn purchase_order_uid(&self) -> &str {
+        &self.purchase_order_uid
+    }
+
+    /// Returns the workflow status for the PO
+    pub fn workflow_status(&self) -> &str {
+        &self.workflow_status
+    }
+
+    /// Returns the buyer's org ID for the PO
+    pub fn buyer_org_id(&self) -> &str {
+        &self.buyer_org_id
+    }
+
+    /// Returns the seller's org ID for the PO
+    pub fn seller_org_id(&self) -> &str {
+        &self.seller_org_id
+    }
+
+    /// Returns the is_closed value for the PO
+    pub fn is_closed(&self) -> bool {
+        self.is_closed
+    }
+
+    /// Returns the accepted version ID for the PO
+    pub fn accepted_version_id(&self) -> &str {
+        &self.accepted_version_id
+    }
+
+    /// Returns the versions list for the PO
+    pub fn versions(&self) -> Vec<PurchaseOrderVersion> {
+        self.versions.to_vec()
+    }
+
+    /// Returns the created_at timestamp for the PO
+    pub fn created_at(&self) -> &i64 {
+        &self.created_at
+    }
+
+    /// Returns the start_commit_num for the PO
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Returns the end_commit_num for the PO
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Returns the service_id for the PO
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct PurchaseOrderBuilder {
+    purchase_order_uid: String,
+    workflow_status: String,
+    buyer_org_id: String,
+    seller_org_id: String,
+    is_closed: bool,
+    accepted_version_id: String,
+    versions: Vec<PurchaseOrderVersion>,
+    created_at: i64,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl PurchaseOrderBuilder {
+    /// Sets the unique ID for this PO
+    pub fn with_purchase_order_uid(mut self, uid: String) -> Self {
+        self.purchase_order_uid = uid;
+        self
+    }
+
+    /// Sets the workflow status for this PO
+    pub fn with_workflow_status(mut self, status: String) -> Self {
+        self.workflow_status = status;
+        self
+    }
+
+    /// Sets the buyer's organization ID for this PO
+    pub fn with_buyer_org_id(mut self, org_id: String) -> Self {
+        self.buyer_org_id = org_id;
+        self
+    }
+
+    /// Sets the seller's organization ID for this PO
+    pub fn with_seller_org_id(mut self, org_id: String) -> Self {
+        self.seller_org_id = org_id;
+        self
+    }
+
+    /// Sets the is_closed value for this PO
+    pub fn with_is_closed(mut self, is_closed: bool) -> Self {
+        self.is_closed = is_closed;
+        self
+    }
+
+    /// Sets the accepted version for this PO
+    pub fn with_accepted_version_id(mut self, version_id: String) -> Self {
+        self.accepted_version_id = version_id;
+        self
+    }
+
+    /// Sets the versions list for this PO
+    pub fn with_versions(mut self, versions: Vec<PurchaseOrderVersion>) -> Self {
+        self.versions = versions;
+        self
+    }
+
+    /// Sets the created_at timestamp for this PO
+    pub fn with_created_at(mut self, created_at: i64) -> Self {
+        self.created_at = created_at;
+        self
+    }
+
+    /// Sets the start commit number for this PO
+    pub fn with_start_commit_number(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = start_commit_num;
+        self
+    }
+
+    /// Sets the end commit number for this PO
+    pub fn with_end_commit_number(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = end_commit_num;
+        self
+    }
+
+    /// Sets the service ID for this PO
+    pub fn with_service_id(mut self, service_id: Option<String>) -> Self {
+        self.service_id = service_id;
+        self
+    }
+
+    pub fn build(self) -> Result<PurchaseOrder, PurchaseOrderBuilderError> {
+        let PurchaseOrderBuilder {
+            purchase_order_uid,
+            workflow_status,
+            buyer_org_id,
+            seller_org_id,
+            is_closed,
+            accepted_version_id,
+            versions,
+            created_at,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        } = self;
+
+        if purchase_order_uid.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "purchase_order_uid".to_string(),
+            ));
+        };
+
+        if buyer_org_id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "buyer_org_id".to_string(),
+            ));
+        };
+
+        if seller_org_id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "seller_org_id".to_string(),
+            ));
+        };
+
+        if workflow_status.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "workflow_status".to_string(),
+            ));
+        };
+
+        if accepted_version_id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "accepted_version_id".to_string(),
+            ));
+        };
+
+        if start_commit_num >= end_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "start_commit_number must be less than end_commit_num".to_string(),
+            ));
+        };
+
+        if end_commit_num <= start_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "end_commit_number must be greater than start_commit_num".to_string(),
+            ));
+        };
+
+        Ok(PurchaseOrder {
+            purchase_order_uid,
+            workflow_status,
+            buyer_org_id,
+            seller_org_id,
+            is_closed,
+            accepted_version_id,
+            versions,
+            created_at,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        })
+    }
 }
 
 /// Represents a Grid Purchase Order Version
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderVersion {
-    pub version_id: String,
-    pub is_draft: bool,
-    pub current_revision_id: String,
-    pub revisions: Vec<PurchaseOrderVersionRevision>,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
+    version_id: String,
+    is_draft: bool,
+    current_revision_id: String,
+    revisions: Vec<PurchaseOrderVersionRevision>,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl PurchaseOrderVersion {
+    /// Returns the version ID for the PO version
+    pub fn version_id(&self) -> &str {
+        &self.version_id
+    }
+
+    /// Returns the draft status for the PO version
+    pub fn is_draft(&self) -> bool {
+        self.is_draft
+    }
+
+    /// Returns the current revision ID for the PO version
+    pub fn current_revision_id(&self) -> &str {
+        &self.current_revision_id
+    }
+
+    /// Returns the revisions list for the PO version
+    pub fn revisions(&self) -> Vec<PurchaseOrderVersionRevision> {
+        self.revisions.to_vec()
+    }
+
+    /// Returns the start_commit_num for the PO version
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Returns the end_commit_num for the PO version
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Returns the service_id for the PO version
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct PurchaseOrderVersionBuilder {
+    version_id: String,
+    is_draft: bool,
+    current_revision_id: String,
+    revisions: Vec<PurchaseOrderVersionRevision>,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl PurchaseOrderVersionBuilder {
+    /// Sets the version ID for this PO version
+    pub fn with_version_id(mut self, version_id: String) -> Self {
+        self.version_id = version_id;
+        self
+    }
+
+    /// Sets the is_draft value for this PO version
+    pub fn with_is_draft(mut self, is_draft: bool) -> Self {
+        self.is_draft = is_draft;
+        self
+    }
+
+    /// Sets the current revision ID for this PO version
+    pub fn with_current_revision_id(mut self, revision_id: String) -> Self {
+        self.current_revision_id = revision_id;
+        self
+    }
+
+    /// Sets the revisions list for this PO version
+    pub fn with_revisions(mut self, revisions: Vec<PurchaseOrderVersionRevision>) -> Self {
+        self.revisions = revisions;
+        self
+    }
+
+    /// Sets the start commit number for this PO version
+    pub fn with_start_commit_number(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = start_commit_num;
+        self
+    }
+
+    /// Sets the end commit number for this PO version
+    pub fn with_end_commit_number(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = end_commit_num;
+        self
+    }
+
+    /// Sets the service ID for this PO version
+    pub fn with_service_id(mut self, service_id: Option<String>) -> Self {
+        self.service_id = service_id;
+        self
+    }
+
+    pub fn build(self) -> Result<PurchaseOrderVersion, PurchaseOrderBuilderError> {
+        let PurchaseOrderVersionBuilder {
+            version_id,
+            is_draft,
+            current_revision_id,
+            revisions,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        } = self;
+
+        if version_id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "version_id".to_string(),
+            ));
+        };
+
+        if current_revision_id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "current_revision_id".to_string(),
+            ));
+        };
+
+        if revisions.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "revisions".to_string(),
+            ));
+        };
+
+        if start_commit_num >= end_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "start_commit_number must be less than end_commit_num".to_string(),
+            ));
+        };
+
+        if end_commit_num <= start_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "end_commit_number must be greater than start_commit_num".to_string(),
+            ));
+        };
+
+        Ok(PurchaseOrderVersion {
+            version_id,
+            is_draft,
+            current_revision_id,
+            revisions,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        })
+    }
 }
 
 /// Represents a Grid Purchase Order Version Revision
@@ -75,6 +431,150 @@ pub struct PurchaseOrderVersionRevision {
     pub service_id: Option<String>,
 }
 
+impl PurchaseOrderVersionRevision {
+    /// Returns the revision ID for the revision
+    pub fn revision_id(&self) -> &str {
+        &self.revision_id
+    }
+
+    /// Returns the order XML for the revision
+    pub fn order_xml_v3_4(&self) -> &str {
+        &self.order_xml_v3_4
+    }
+
+    /// Returns the submitter for the revision
+    pub fn submitter(&self) -> &str {
+        &self.submitter
+    }
+
+    /// Returns the created_at timestamp for the revision
+    pub fn created_at(&self) -> i64 {
+        self.created_at
+    }
+
+    /// Returns the start_commit_num for the revision
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Returns the end_commit_num for the revision
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Returns the service_id for the revision
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct PurchaseOrderVersionRevisionBuilder {
+    revision_id: String,
+    order_xml_v3_4: String,
+    submitter: String,
+    created_at: i64,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl PurchaseOrderVersionRevisionBuilder {
+    /// Sets the revision ID for this revision
+    pub fn with_revision_id(mut self, revision_id: String) -> Self {
+        self.revision_id = revision_id;
+        self
+    }
+
+    /// Sets the order XML v3.4 for this revision
+    pub fn with_order_xml_v3_4(mut self, xml: String) -> Self {
+        self.order_xml_v3_4 = xml;
+        self
+    }
+
+    /// Sets the submitter for this revision
+    pub fn with_submitter(mut self, submitter: String) -> Self {
+        self.submitter = submitter;
+        self
+    }
+
+    /// Sets the created_at timestamp for this revision
+    pub fn with_created_at(mut self, created_at: i64) -> Self {
+        self.created_at = created_at;
+        self
+    }
+
+    /// Sets the start commit number for this revision
+    pub fn with_start_commit_number(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = start_commit_num;
+        self
+    }
+
+    /// Sets the end commit number for this revision
+    pub fn with_end_commit_number(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = end_commit_num;
+        self
+    }
+
+    /// Sets the service ID for this revision
+    pub fn with_service_id(mut self, service_id: Option<String>) -> Self {
+        self.service_id = service_id;
+        self
+    }
+
+    pub fn build(self) -> Result<PurchaseOrderVersionRevision, PurchaseOrderBuilderError> {
+        let PurchaseOrderVersionRevisionBuilder {
+            revision_id,
+            order_xml_v3_4,
+            submitter,
+            created_at,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        } = self;
+
+        if revision_id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "revision_id".to_string(),
+            ));
+        };
+
+        if order_xml_v3_4.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "order_xml_v3_4".to_string(),
+            ));
+        };
+
+        if submitter.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "submitter".to_string(),
+            ));
+        };
+
+        if start_commit_num >= end_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "start_commit_number must be less than end_commit_num".to_string(),
+            ));
+        };
+
+        if end_commit_num <= start_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "end_commit_number must be greater than start_commit_num".to_string(),
+            ));
+        };
+
+        Ok(PurchaseOrderVersionRevision {
+            revision_id,
+            order_xml_v3_4,
+            submitter,
+            created_at,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        })
+    }
+}
+
 /// Represents a list of Grid Purchase Order Alternate IDs
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderAlternateIdList {
@@ -84,13 +584,162 @@ pub struct PurchaseOrderAlternateIdList {
 /// Represents a Grid Purchase Order Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderAlternateId {
-    pub purchase_order_uid: String,
-    pub org_id: String,
-    pub id_type: String,
-    pub id: String,
-    pub start_commit_num: i64,
-    pub end_commit_num: i64,
-    pub service_id: Option<String>,
+    purchase_order_uid: String,
+    org_id: String,
+    id_type: String,
+    id: String,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl PurchaseOrderAlternateId {
+    /// Returns the purchase order UID for the PO alternate ID
+    pub fn purchase_order_uid(&self) -> &str {
+        &self.purchase_order_uid
+    }
+
+    /// Returns the organization ID for the PO alternate ID
+    pub fn org_id(&self) -> &str {
+        &self.org_id
+    }
+
+    /// Returns the ID type for the PO alternate ID
+    pub fn id_type(&self) -> &str {
+        &self.id_type
+    }
+
+    /// Returns the ID for the PO alternate ID
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Returns the start_commit_num for the PO alternate ID
+    pub fn start_commit_num(&self) -> &i64 {
+        &self.start_commit_num
+    }
+
+    /// Returns the end_commit_num for the PO alternate ID
+    pub fn end_commit_num(&self) -> &i64 {
+        &self.end_commit_num
+    }
+
+    /// Returns the service_id for the PO alternate ID
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+}
+
+pub struct PurchaseOrderAlternateIdBuilder {
+    purchase_order_uid: String,
+    org_id: String,
+    id_type: String,
+    id: String,
+    start_commit_num: i64,
+    end_commit_num: i64,
+    service_id: Option<String>,
+}
+
+impl PurchaseOrderAlternateIdBuilder {
+    /// Sets the purchase order UID for this alternate ID
+    pub fn with_purchase_order_uid(mut self, uid: String) -> Self {
+        self.purchase_order_uid = uid;
+        self
+    }
+
+    /// Sets the organization ID for this alternate ID
+    pub fn with_org_id(mut self, org_id: String) -> Self {
+        self.org_id = org_id;
+        self
+    }
+
+    /// Sets the ID type for this alternate ID
+    pub fn with_id_type(mut self, id_type: String) -> Self {
+        self.id_type = id_type;
+        self
+    }
+
+    /// Sets the ID for this alternate ID
+    pub fn with_id(mut self, id: String) -> Self {
+        self.id = id;
+        self
+    }
+
+    /// Sets the start commit number for this alternate ID
+    pub fn with_start_commit_number(mut self, start_commit_num: i64) -> Self {
+        self.start_commit_num = start_commit_num;
+        self
+    }
+
+    /// Sets the end commit number for this alternate ID
+    pub fn with_end_commit_number(mut self, end_commit_num: i64) -> Self {
+        self.end_commit_num = end_commit_num;
+        self
+    }
+
+    /// Sets the service ID for this alternate ID
+    pub fn with_service_id(mut self, service_id: Option<String>) -> Self {
+        self.service_id = service_id;
+        self
+    }
+
+    pub fn build(self) -> Result<PurchaseOrderAlternateId, PurchaseOrderBuilderError> {
+        let PurchaseOrderAlternateIdBuilder {
+            purchase_order_uid,
+            org_id,
+            id_type,
+            id,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        } = self;
+
+        if purchase_order_uid.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "purchase_order_uid".to_string(),
+            ));
+        };
+
+        if org_id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "org_id".to_string(),
+            ));
+        };
+
+        if id_type.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "id_type".to_string(),
+            ));
+        };
+
+        if id.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "id".to_string(),
+            ));
+        };
+
+        if start_commit_num >= end_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "start_commit_number must be less than end_commit_num".to_string(),
+            ));
+        };
+
+        if end_commit_num <= start_commit_num {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "end_commit_number must be greater than start_commit_num".to_string(),
+            ));
+        };
+
+        Ok(PurchaseOrderAlternateId {
+            purchase_order_uid,
+            org_id,
+            id_type,
+            id,
+            start_commit_num,
+            end_commit_num,
+            service_id,
+        })
+    }
 }
 
 pub trait PurchaseOrderStore {

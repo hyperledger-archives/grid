@@ -85,3 +85,34 @@ impl From<diesel::r2d2::PoolError> for PurchaseOrderStoreError {
         )
     }
 }
+
+/// Represents PurchaseOrderBuilder errors
+#[derive(Debug)]
+pub enum PurchaseOrderBuilderError {
+    /// Returned when a required field was not set
+    MissingRequiredField(String),
+    /// Returned when an error occurs building the PO
+    BuildError(Box<dyn Error>),
+}
+
+impl Error for PurchaseOrderBuilderError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            PurchaseOrderBuilderError::MissingRequiredField(_) => None,
+            PurchaseOrderBuilderError::BuildError(err) => Some(&**err),
+        }
+    }
+}
+
+impl fmt::Display for PurchaseOrderBuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PurchaseOrderBuilderError::MissingRequiredField(ref s) => {
+                write!(f, "Missing required field: {}", s)
+            }
+            PurchaseOrderBuilderError::BuildError(ref s) => {
+                write!(f, "Failed to build purchase order object: {}", s)
+            }
+        }
+    }
+}
