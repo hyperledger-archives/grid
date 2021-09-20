@@ -64,6 +64,21 @@ use grid_sdk::{
     },
     protocol::product::state::ProductList,
 };
+#[cfg(feature = "purchase-order")]
+use grid_sdk::{
+    protocol::purchase_order::state::{
+        PurchaseOrderList, PurchaseOrderRevision as ProtocolPORevision,
+        PurchaseOrderVersion as ProtocolPOVersion,
+    },
+    purchase_order::{
+        addressing::{GRID_PURCHASE_ORDER_NAMESPACE, GRID_PURCHASE_ORDER_PO_NAMESPACE},
+        store::{
+            PurchaseOrder, PurchaseOrderBuilder, PurchaseOrderBuilderError, PurchaseOrderStore,
+            PurchaseOrderVersion, PurchaseOrderVersionBuilder, PurchaseOrderVersionRevision,
+            PurchaseOrderVersionRevisionBuilder,
+        },
+    },
+};
 #[cfg(feature = "track-and-trace")]
 use grid_sdk::{
     protocol::schema::state::DataType,
@@ -91,6 +106,8 @@ use grid_sdk::{
 };
 #[cfg(feature = "pike")]
 use std::collections::HashMap;
+#[cfg(feature = "purchase-order")]
+use std::convert::TryInto;
 use std::i64;
 
 use super::{CommitEvent, EventError, EventHandler, StateChange, IGNORED_NAMESPACES};
@@ -260,6 +277,13 @@ impl EventHandler for DatabaseEventHandler {
                     DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
                         txn.get_grid_product_store()
                             .delete_product(address, current_commit_num)?;
+                    }
+                    #[cfg(feature = "purchase-order")]
+                    DbInsertOperation::PurchaseOrders(pos) => {
+                        debug!("Inserting {} purchase orders", pos.len());
+                        pos.into_iter().try_for_each(|po| {
+                            txn.get_grid_purchase_order_store().add_purchase_order(po)
+                        })?;
                     }
                 };
             }
@@ -688,6 +712,45 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Products(products)))
             }
+            #[cfg(feature = "purchase-order")]
+            GRID_PURCHASE_ORDER_NAMESPACE => match &key[0..10] {
+                GRID_PURCHASE_ORDER_PO_NAMESPACE => {
+                    let pos: Vec<PurchaseOrder> = PurchaseOrderList::from_bytes(value)
+                        .map_err(|err| EventError(format!("Failed to parse PO list {}", err)))?
+                        .purchase_orders()
+                        .iter()
+                        .map(|po| {
+                            let mut builder = PurchaseOrderBuilder::default()
+                                .with_purchase_order_uid(po.uid().to_string())
+                                .with_workflow_status(po.workflow_status().to_string())
+                                .with_versions(make_po_versions(
+                                    po.versions().to_vec(),
+                                    commit_num,
+                                    service_id,
+                                )?)
+                                .with_accepted_version_id(po.accepted_version_number().to_string())
+                                .with_created_at(po.created_at().try_into().map_err(|err| {
+                                    EventError(format!("Invalid created_at value: {}", err))
+                                })?)
+                                .with_is_closed(po.is_closed())
+                                .with_buyer_org_id(po.buyer_org_id().to_string())
+                                .with_seller_org_id(po.seller_org_id().to_string())
+                                .with_start_commit_number(commit_num)
+                                .with_end_commit_number(MAX_COMMIT_NUM);
+                            if let Some(service_id) = service_id {
+                                builder = builder.with_service_id(Some(service_id.to_string()));
+                            }
+                            builder.build().map_err(|err| EventError(err.to_string()))
+                        })
+                        .collect::<Result<Vec<PurchaseOrder>, EventError>>()?;
+
+                    Ok(Some(DbInsertOperation::PurchaseOrders(pos)))
+                }
+                _ => {
+                    debug!("received state change for unknown address: {}", key);
+                    Ok(None)
+                }
+            },
             _ => {
                 let ignore_state_change = IGNORED_NAMESPACES
                     .iter()
@@ -753,6 +816,8 @@ enum DbInsertOperation {
     RemoveLocation(String, i64),
     #[cfg(feature = "product")]
     RemoveProduct(String, i64),
+    #[cfg(feature = "purchase-order")]
+    PurchaseOrders(Vec<PurchaseOrder>),
 }
 
 #[cfg(feature = "track-and-trace")]
@@ -941,4 +1006,62 @@ fn make_location_attributes(
     }
 
     attrs
+}
+
+#[cfg(feature = "purchase-order")]
+fn make_po_versions(
+    versions: Vec<ProtocolPOVersion>,
+    start_commit_num: i64,
+    service_id: Option<&String>,
+) -> Result<Vec<PurchaseOrderVersion>, EventError> {
+    let versions: Vec<PurchaseOrderVersion> = versions
+        .iter()
+        .map(|version| {
+            PurchaseOrderVersionBuilder::default()
+                .with_version_id(version.version_id().to_string())
+                .with_is_draft(version.is_draft())
+                .with_current_revision_id(version.current_revision_id().to_string())
+                .with_revisions(
+                    make_po_revisions(version.revisions().to_vec(), start_commit_num, service_id)
+                        .map_err(|err| PurchaseOrderBuilderError::BuildError(Box::new(err)))?,
+                )
+                .with_start_commit_number(start_commit_num)
+                .with_end_commit_number(MAX_COMMIT_NUM)
+                .with_service_id(service_id.cloned())
+                .build()
+        })
+        .collect::<Result<Vec<PurchaseOrderVersion>, PurchaseOrderBuilderError>>()
+        .map_err(|err| EventError(format!("{}", err)))?;
+
+    Ok(versions)
+}
+
+#[cfg(feature = "purchase-order")]
+fn make_po_revisions(
+    revisions: Vec<ProtocolPORevision>,
+    start_commit_num: i64,
+    service_id: Option<&String>,
+) -> Result<Vec<PurchaseOrderVersionRevision>, EventError> {
+    let revisions: Vec<PurchaseOrderVersionRevision> = revisions
+        .iter()
+        .map(|revision| {
+            PurchaseOrderVersionRevisionBuilder::default()
+                .with_revision_id(revision.revision_id().to_string())
+                .with_order_xml_v3_4(revision.order_xml_v3_4().to_string())
+                .with_submitter(revision.submitter().to_string())
+                .with_created_at(
+                    revision
+                        .created_at()
+                        .try_into()
+                        .map_err(|err| PurchaseOrderBuilderError::BuildError(Box::new(err)))?,
+                )
+                .with_start_commit_number(start_commit_num)
+                .with_end_commit_number(MAX_COMMIT_NUM)
+                .with_service_id(service_id.cloned())
+                .build()
+        })
+        .collect::<Result<Vec<PurchaseOrderVersionRevision>, PurchaseOrderBuilderError>>()
+        .map_err(|err| EventError(format!("{}", err)))?;
+
+    Ok(revisions)
 }

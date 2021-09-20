@@ -27,6 +27,8 @@ use grid_sdk::location::store::LocationStoreError;
 use grid_sdk::pike::store::PikeStoreError;
 #[cfg(feature = "product")]
 use grid_sdk::product::store::{ProductBuilderError, ProductStoreError};
+#[cfg(feature = "purchase-order")]
+use grid_sdk::purchase_order::store::{PurchaseOrderBuilderError, PurchaseOrderStoreError};
 #[cfg(feature = "schema")]
 use grid_sdk::schema::store::SchemaStoreError;
 #[cfg(feature = "track-and-trace")]
@@ -90,6 +92,20 @@ impl From<ProductStoreError> for EventError {
 #[cfg(feature = "product")]
 impl From<ProductBuilderError> for EventError {
     fn from(err: ProductBuilderError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+#[cfg(feature = "purchase-order")]
+impl From<PurchaseOrderStoreError> for EventError {
+    fn from(err: PurchaseOrderStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+#[cfg(feature = "purchase-order")]
+impl From<PurchaseOrderBuilderError> for EventError {
+    fn from(err: PurchaseOrderBuilderError) -> Self {
         EventError(format!("{}", err))
     }
 }
