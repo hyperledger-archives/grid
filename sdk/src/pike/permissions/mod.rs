@@ -196,7 +196,7 @@ impl<'a> PermissionChecker<'a> {
         }
     }
 
-    pub fn _check_permission_with_workflow(
+    pub fn check_permission_with_workflow(
         &self,
         permission: &str,
         signer: &str,
@@ -670,7 +670,7 @@ mod tests {
             .expect("Unable to get create state from subworkflow");
         // Validate that the Agent has the correct permission
         let result = perm_checker
-            ._check_permission_with_workflow(
+            .check_permission_with_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
@@ -745,7 +745,7 @@ mod tests {
             .expect("Unable to get create state from subworkflow");
         // Validate the Agent does not have the correct permission.
         let result = perm_checker
-            ._check_permission_with_workflow(
+            .check_permission_with_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
@@ -809,7 +809,7 @@ mod tests {
             .expect("Unable to get issued state from subworkflow");
 
         let result = perm_checker
-            ._check_permission_with_workflow(
+            .check_permission_with_workflow(
                 PERM_CAN_UPDATE_PO_VERSION,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
@@ -890,7 +890,7 @@ mod tests {
         // Check that the agent is able to transition the state to "issued" and has the
         // "can-create-po" permission for the Alpha organization
         let result = perm_checker
-            ._check_permission_with_workflow(
+            .check_permission_with_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_BETA,
                 ORG_ID_ALPHA,
@@ -966,7 +966,7 @@ mod tests {
             .expect("Unable to get create state from subworkflow");
 
         let result = perm_checker
-            ._check_permission_with_workflow(
+            .check_permission_with_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_BETA,
                 ORG_ID_ALPHA,

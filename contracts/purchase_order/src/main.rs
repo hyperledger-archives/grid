@@ -35,6 +35,7 @@ cfg_if! {
 }
 
 pub mod handler;
+pub mod permissions;
 mod state;
 pub(in crate) mod workflow;
 
