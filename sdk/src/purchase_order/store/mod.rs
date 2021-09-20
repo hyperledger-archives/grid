@@ -780,6 +780,20 @@ pub trait PurchaseOrderStore {
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError>;
 
+    /// Fetches a purchase order version from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `po_uid`    - The uid of the purchase order the version belongs to
+    ///  * `version_id` - The ID of the version to fetch
+    ///  * `service_id` - The service ID
+    fn get_purchase_order_version(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError>;
+
     /// Adds an alternate id to the underlying storage
     ///
     /// # Arguments
@@ -834,6 +848,15 @@ where
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         (**self).get_purchase_order(purchase_order_uid, service_id)
+    }
+
+    fn get_purchase_order_version(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError> {
+        (**self).get_purchase_order_version(po_uid, version_id, service_id)
     }
 
     fn add_alternate_id(
