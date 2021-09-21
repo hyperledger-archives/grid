@@ -20,7 +20,7 @@ table! {
         seller_org_id -> Varchar,
         workflow_status -> Text,
         is_closed -> Bool,
-        accepted_version_id -> Text,
+        accepted_version_id -> Nullable<Text>,
         created_at -> Int8,
         start_commit_num -> Int8,
         end_commit_num -> Int8,

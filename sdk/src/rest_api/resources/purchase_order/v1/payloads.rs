@@ -32,7 +32,7 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
         Self {
             purchase_order_uid: purchase_order.purchase_order_uid().to_string(),
             workflow_status: purchase_order.workflow_status().to_string(),
-            accepted_version_id: Some(purchase_order.accepted_version_id().to_string()),
+            accepted_version_id: purchase_order.accepted_version_id().map(ToOwned::to_owned),
             version_numbers: Some(
                 purchase_order
                     .versions()

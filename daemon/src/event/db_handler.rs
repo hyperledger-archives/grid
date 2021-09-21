@@ -728,7 +728,6 @@ fn state_change_to_db_operation(
                                     commit_num,
                                     service_id,
                                 )?)
-                                .with_accepted_version_id(po.accepted_version_number().to_string())
                                 .with_created_at(po.created_at().try_into().map_err(|err| {
                                     EventError(format!("Invalid created_at value: {}", err))
                                 })?)
@@ -737,6 +736,11 @@ fn state_change_to_db_operation(
                                 .with_seller_org_id(po.seller_org_id().to_string())
                                 .with_start_commit_number(commit_num)
                                 .with_end_commit_number(MAX_COMMIT_NUM);
+
+                            if let Some(accepted_version_id) = po.accepted_version_number() {
+                                builder = builder
+                                    .with_accepted_version_id(accepted_version_id.to_string());
+                            }
                             if let Some(service_id) = service_id {
                                 builder = builder.with_service_id(Some(service_id.to_string()));
                             }

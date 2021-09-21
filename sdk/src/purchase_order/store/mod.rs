@@ -43,7 +43,7 @@ pub struct PurchaseOrder {
     buyer_org_id: String,
     seller_org_id: String,
     is_closed: bool,
-    accepted_version_id: String,
+    accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
     created_at: i64,
     start_commit_num: i64,
@@ -78,8 +78,8 @@ impl PurchaseOrder {
     }
 
     /// Returns the accepted version ID for the PO
-    pub fn accepted_version_id(&self) -> &str {
-        &self.accepted_version_id
+    pub fn accepted_version_id(&self) -> Option<&str> {
+        self.accepted_version_id.as_deref()
     }
 
     /// Returns the versions list for the PO
@@ -115,7 +115,7 @@ pub struct PurchaseOrderBuilder {
     buyer_org_id: String,
     seller_org_id: String,
     is_closed: bool,
-    accepted_version_id: String,
+    accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
     created_at: i64,
     start_commit_num: i64,
@@ -156,7 +156,7 @@ impl PurchaseOrderBuilder {
 
     /// Sets the accepted version for this PO
     pub fn with_accepted_version_id(mut self, version_id: String) -> Self {
-        self.accepted_version_id = version_id;
+        self.accepted_version_id = Some(version_id);
         self
     }
 
@@ -226,12 +226,6 @@ impl PurchaseOrderBuilder {
         if workflow_status.is_empty() {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
                 "workflow_status".to_string(),
-            ));
-        };
-
-        if accepted_version_id.is_empty() {
-            return Err(PurchaseOrderBuilderError::MissingRequiredField(
-                "accepted_version_id".to_string(),
             ));
         };
 
