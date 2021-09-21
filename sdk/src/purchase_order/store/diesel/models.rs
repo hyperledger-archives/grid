@@ -222,6 +222,26 @@ impl
     }
 }
 
+impl From<(PurchaseOrderVersionModel, &String, &i64)> for NewPurchaseOrderVersionModel {
+    fn from(
+        (version, current_revision_id, start_commit_num): (
+            PurchaseOrderVersionModel,
+            &String,
+            &i64,
+        ),
+    ) -> Self {
+        Self {
+            purchase_order_uid: version.purchase_order_uid,
+            version_id: version.version_id,
+            is_draft: version.is_draft,
+            current_revision_id: current_revision_id.to_string(),
+            start_commit_num: *start_commit_num,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id: version.service_id,
+        }
+    }
+}
+
 impl From<&PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
     fn from(revision: &PurchaseOrderVersionRevisionModel) -> Self {
         Self {
