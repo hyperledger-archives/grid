@@ -24,6 +24,7 @@ message PurchaseOrder {
   string accepted_version_number = 6;
   uint64 created_at = 7;
   bool is_closed = 8;
+  string workflow_type = 9;
 }
 
 message PurchaseOrderList {
