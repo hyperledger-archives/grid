@@ -408,15 +408,17 @@ pub fn make_inherit_from_models(role: &Role) -> Vec<NewInheritFromModel> {
 
     for i in &role.inherit_from {
         let mut ifoid = role.org_id.to_string();
+        let mut ifname = i.to_string();
         if i.contains('.') {
             let inherit_from: Vec<&str> = i.split('.').collect();
             ifoid = inherit_from[0].to_string();
+            ifname = inherit_from[1].to_string();
         }
 
         let model = NewInheritFromModel {
             role_name: role.name.to_string(),
             org_id: role.org_id.to_string(),
-            inherit_from_role_name: i.to_string(),
+            inherit_from_role_name: ifname,
             inherit_from_org_id: ifoid,
             start_commit_num: role.start_commit_num,
             end_commit_num: role.end_commit_num,
