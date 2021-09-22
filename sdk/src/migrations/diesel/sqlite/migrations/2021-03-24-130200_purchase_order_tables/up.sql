@@ -20,6 +20,7 @@ CREATE TABLE purchase_order (
     workflow_status TEXT NOT NULL,
     is_closed BOOLEAN NOT NULL,
     accepted_version_id TEXT,
+    workflow_type TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT

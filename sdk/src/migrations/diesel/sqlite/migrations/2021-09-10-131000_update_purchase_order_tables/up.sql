@@ -23,13 +23,14 @@ CREATE TABLE po_temp (
     workflow_status TEXT NOT NULL,
     is_closed BOOLEAN NOT NULL,
     accepted_version_id TEXT,
+    workflow_type TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
 );
 
-INSERT INTO po_temp(id,purchase_order_uid,workflow_status,is_closed,accepted_version_id,start_commit_num,end_commit_num,service_id)
-SELECT id,uuid,workflow_status,is_closed,accepted_version_id,start_commit_num,end_commit_num,service_id
+INSERT INTO po_temp(id,purchase_order_uid,workflow_status,is_closed,accepted_version_id,workflow_type,start_commit_num,end_commit_num,service_id)
+SELECT id,uuid,workflow_status,is_closed,accepted_version_id,workflow_type,start_commit_num,end_commit_num,service_id
 FROM purchase_order;
 
 DROP TABLE purchase_order;
