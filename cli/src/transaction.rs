@@ -53,6 +53,11 @@ const GRID_PRODUCT_FAMILY_NAME: &str = "grid_product";
 #[cfg(feature = "product")]
 const GRID_PRODUCT_FAMILY_VERSION: &str = "2";
 
+#[cfg(feature = "purchase-order")]
+const GRID_PURCHASE_ORDER_FAMILY_NAME: &str = "grid_purchase_order";
+#[cfg(feature = "purchase-order")]
+const GRID_PURCHASE_ORDER_FAMILY_VERSION: &str = "2";
+
 const SABRE_FAMILY_NAME: &str = "sabre";
 const SABRE_FAMILY_VERSION: &str = "0.5";
 const SABRE_NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
@@ -74,6 +79,15 @@ pub fn product_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
     BatchBuilder::new(
         GRID_PRODUCT_FAMILY_NAME,
         GRID_PRODUCT_FAMILY_VERSION,
+        signer,
+    )
+}
+
+#[cfg(feature = "purchase-order")]
+pub fn purchase_order_batch_builder(signer: Box<dyn Signer>) -> BatchBuilder {
+    BatchBuilder::new(
+        GRID_PURCHASE_ORDER_FAMILY_NAME,
+        GRID_PURCHASE_ORDER_FAMILY_VERSION,
         signer,
     )
 }
