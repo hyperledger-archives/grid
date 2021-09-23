@@ -82,6 +82,12 @@ impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct PurchaseOrderVersionListSlice {
+    pub data: Vec<PurchaseOrderVersionSlice>,
+    pub paging: Paging,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderRevisionSlice {
     revision_number: u64,
     submitter: String,

@@ -19,7 +19,10 @@ use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
 };
 
-use super::payloads::{PurchaseOrderListSlice, PurchaseOrderSlice, PurchaseOrderVersionSlice};
+use super::payloads::{
+    PurchaseOrderListSlice, PurchaseOrderSlice, PurchaseOrderVersionListSlice,
+    PurchaseOrderVersionSlice,
+};
 
 pub fn list_purchase_orders<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
@@ -126,4 +129,48 @@ pub fn get_purchase_order_version<'a>(
             )
         })?,
     ))
+}
+
+pub fn list_purchase_order_versions<'a>(
+    store: Box<dyn PurchaseOrderStore + 'a>,
+    purchase_order_uid: String,
+    service_id: Option<&str>,
+    offset: u64,
+    limit: u16,
+) -> Result<PurchaseOrderVersionListSlice, ErrorResponse> {
+    let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+
+    let limit = i64::try_from(limit).unwrap_or(10);
+
+    let purchase_order_version_list = store
+        .list_purchase_order_versions(&purchase_order_uid, service_id, offset, limit)
+        .map_err(|err| match err {
+            PurchaseOrderStoreError::InternalError(err) => {
+                ErrorResponse::internal_error(Box::new(err))
+            }
+            PurchaseOrderStoreError::ConstraintViolationError(err) => {
+                ErrorResponse::new(400, &format!("{}", err))
+            }
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(_) => {
+                ErrorResponse::new(503, "Service Unavailable")
+            }
+            PurchaseOrderStoreError::NotFoundError(_) => ErrorResponse::new(
+                404,
+                &format!("Purchase order {} not found", purchase_order_uid),
+            ),
+        })?;
+
+    let data = purchase_order_version_list
+        .data
+        .into_iter()
+        .map(PurchaseOrderVersionSlice::from)
+        .collect();
+
+    let paging = Paging::new(
+        &format!("/purchase-order/{}/versions", purchase_order_uid),
+        purchase_order_version_list.paging,
+        service_id,
+    );
+
+    Ok(PurchaseOrderVersionListSlice { data, paging })
 }
