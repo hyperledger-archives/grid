@@ -622,6 +622,7 @@ pub struct CreateVersionPayload {
     version_id: String,
     po_uid: String,
     is_draft: bool,
+    workflow_status: String,
     revision: PayloadRevision,
 }
 
@@ -638,6 +639,10 @@ impl CreateVersionPayload {
         self.is_draft
     }
 
+    pub fn workflow_status(&self) -> &str {
+        &self.workflow_status
+    }
+
     pub fn revision(&self) -> &PayloadRevision {
         &self.revision
     }
@@ -651,6 +656,7 @@ impl FromProto<purchase_order_payload::CreateVersionPayload> for CreateVersionPa
             version_id: proto.take_version_id(),
             po_uid: proto.take_po_uid(),
             is_draft: proto.get_is_draft(),
+            workflow_status: proto.take_workflow_status(),
             revision: PayloadRevision::from_proto(proto.take_revision())?,
         })
     }
@@ -662,6 +668,7 @@ impl FromNative<CreateVersionPayload> for purchase_order_payload::CreateVersionP
         proto.set_version_id(native.version_id().to_string());
         proto.set_po_uid(native.po_uid().to_string());
         proto.set_is_draft(native.is_draft());
+        proto.set_workflow_status(native.workflow_status().to_string());
         proto.set_revision(native.revision().clone().into_proto()?);
 
         Ok(proto)
@@ -701,6 +708,7 @@ pub struct CreateVersionPayloadBuilder {
     version_id: Option<String>,
     po_uid: Option<String>,
     is_draft: Option<bool>,
+    workflow_status: Option<String>,
     revision: Option<PayloadRevision>,
 }
 
@@ -724,6 +732,11 @@ impl CreateVersionPayloadBuilder {
         self
     }
 
+    pub fn with_workflow_status(mut self, value: String) -> Self {
+        self.workflow_status = Some(value);
+        self
+    }
+
     pub fn with_revision(mut self, value: PayloadRevision) -> Self {
         self.revision = Some(value);
         self
@@ -742,6 +755,10 @@ impl CreateVersionPayloadBuilder {
             BuilderError::MissingField("'is_draft' field is required".to_string())
         })?;
 
+        let workflow_status = self.workflow_status.ok_or_else(|| {
+            BuilderError::MissingField("'workflow_status' field is required".to_string())
+        })?;
+
         let revision = self.revision.ok_or_else(|| {
             BuilderError::MissingField("'revision' field is required".to_string())
         })?;
@@ -750,6 +767,7 @@ impl CreateVersionPayloadBuilder {
             version_id,
             po_uid,
             is_draft,
+            workflow_status,
             revision,
         })
     }
