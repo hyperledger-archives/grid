@@ -79,6 +79,7 @@ pub struct PurchaseOrderVersionModel {
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order_version_revision"]
 pub struct NewPurchaseOrderVersionRevisionModel {
+    pub purchase_order_uid: String,
     pub version_id: String,
     pub revision_id: String,
     pub order_xml_v3_4: String,
@@ -93,6 +94,7 @@ pub struct NewPurchaseOrderVersionRevisionModel {
 #[table_name = "purchase_order_version_revision"]
 pub struct PurchaseOrderVersionRevisionModel {
     pub id: i64,
+    pub purchase_order_uid: String,
     pub version_id: String,
     pub revision_id: String,
     pub order_xml_v3_4: String,
@@ -301,6 +303,7 @@ pub fn make_purchase_order_version_revisions(
     for version in &order.versions {
         for revision in &version.revisions {
             let model = NewPurchaseOrderVersionRevisionModel {
+                purchase_order_uid: order.purchase_order_uid.to_string(),
                 version_id: version.version_id.to_string(),
                 revision_id: revision.revision_id.to_string(),
                 order_xml_v3_4: revision.order_xml_v3_4.to_string(),
