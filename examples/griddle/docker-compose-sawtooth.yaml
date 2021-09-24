@@ -324,7 +324,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-0
+        grid -vv keygen --skip --system griddle-alpha-0
         griddle -v --connect tcp://sawtooth-validator:4004
       "
 
@@ -349,7 +349,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-1
+        grid -vv keygen --skip --system griddle-alpha-1
         griddle -v --connect tcp://sawtooth-validator:4004
       "
 
@@ -374,7 +374,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-2
+        grid -vv keygen --skip --system griddle-alpha-2
         griddle -v --connect tcp://sawtooth-validator:4004
       "
 
@@ -399,7 +399,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-3
+        grid -vv keygen --skip --system griddle-alpha-3
         griddle -v --connect tcp://sawtooth-validator:4004
       "
 
@@ -476,7 +476,7 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-0
+        grid -vv keygen --skip --system griddle-beta-0
         griddle -v --connect tcp://sawtooth-validator:4004
       "
 
@@ -501,7 +501,7 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-1
+        grid -vv keygen --skip --system griddle-beta-1
         griddle -v --connect tcp://sawtooth-validator:4004
       "
 
@@ -526,7 +526,7 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-2
+        grid -vv keygen --skip --system griddle-beta-2
         griddle -v --connect tcp://sawtooth-validator:4004
       "
 
@@ -551,6 +551,6 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-3
+        grid -vv keygen --skip --system griddle-beta-3
         griddle -v --connect tcp://sawtooth-validator:4004
       "
