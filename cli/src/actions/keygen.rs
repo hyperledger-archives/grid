@@ -16,7 +16,7 @@
  * ------------------------------------------------------------------------------
  */
 
-use std::fs::{create_dir_all, metadata, OpenOptions};
+use std::fs::{create_dir_all, metadata, File, OpenOptions};
 use std::io::prelude::*;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
@@ -31,25 +31,64 @@ use cylinder::{secp256k1::Secp256k1Context, Context};
 
 use super::chown;
 
+/// Creates a public/private key pair.
+///
+/// Returns the public key in hex, if successful.
 pub fn create_key_pair(
     key_dir: &Path,
     private_key_path: PathBuf,
     public_key_path: PathBuf,
     force_create: bool,
+    skip_create: bool,
     change_permissions: bool,
 ) -> Result<Vec<u8>, CliError> {
     if !force_create {
-        if private_key_path.exists() {
-            return Err(CliError::UserError(format!(
-                "File already exists: {:?}",
-                private_key_path
-            )));
-        }
-        if public_key_path.exists() {
-            return Err(CliError::UserError(format!(
-                "File already exists: {:?}",
-                public_key_path
-            )));
+        match (private_key_path.exists(), public_key_path.exists()) {
+            (true, true) => {
+                if skip_create {
+                    info!(
+                        "Skipping, key already exists: {}",
+                        private_key_path.display()
+                    );
+
+                    let mut public_key = String::new();
+                    File::open(public_key_path)?.read_to_string(&mut public_key)?;
+
+                    return Ok(public_key.into_bytes());
+                } else {
+                    return Err(CliError::UserError(format!(
+                        "Files already exists: private_key: {:?}, public_key: {:?}",
+                        private_key_path, public_key_path
+                    )));
+                }
+            }
+            (true, false) => {
+                if skip_create {
+                    return Err(CliError::UserError(format!(
+                        "Cannot skip, private key exists but not the public key: {:?}",
+                        private_key_path
+                    )));
+                } else {
+                    return Err(CliError::UserError(format!(
+                        "File already exists: {:?}",
+                        private_key_path
+                    )));
+                }
+            }
+            (false, true) => {
+                if skip_create {
+                    return Err(CliError::UserError(format!(
+                        "Cannot skip, public key exists but not the private key: {:?}",
+                        public_key_path
+                    )));
+                } else {
+                    return Err(CliError::UserError(format!(
+                        "File already exists: {:?}",
+                        public_key_path
+                    )));
+                }
+            }
+            (false, false) => (),
         }
     }
 
@@ -147,14 +186,26 @@ pub fn create_key_pair(
 ///   $HOME/.grid/keys/
 ///
 /// If no key_name is provided the key name is set to USER environment variable.
-pub fn generate_keys(key_name: String, force: bool, key_dir: PathBuf) -> Result<(), CliError> {
+pub fn generate_keys(
+    key_name: String,
+    force: bool,
+    skip: bool,
+    key_dir: PathBuf,
+) -> Result<(), CliError> {
     create_dir_all(key_dir.as_path())
         .map_err(|err| CliError::UserError(format!("Failed to create keys directory: {}", err)))?;
 
     let private_key_path = key_dir.join(&key_name).with_extension("priv");
     let public_key_path = key_dir.join(&key_name).with_extension("pub");
 
-    create_key_pair(&key_dir, private_key_path, public_key_path, force, true)?;
+    create_key_pair(
+        &key_dir,
+        private_key_path,
+        public_key_path,
+        force,
+        skip,
+        true,
+    )?;
 
     Ok(())
 }
