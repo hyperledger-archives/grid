@@ -263,6 +263,20 @@ impl From<&PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
     }
 }
 
+impl From<PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
+    fn from(revision: PurchaseOrderVersionRevisionModel) -> Self {
+        Self {
+            revision_id: revision.revision_id.to_string(),
+            order_xml_v3_4: revision.order_xml_v3_4.to_string(),
+            submitter: revision.submitter.to_string(),
+            created_at: revision.created_at,
+            start_commit_num: revision.start_commit_num,
+            end_commit_num: revision.end_commit_num,
+            service_id: revision.service_id,
+        }
+    }
+}
+
 impl From<PurchaseOrderAlternateId> for NewPurchaseOrderAlternateIdModel {
     fn from(id: PurchaseOrderAlternateId) -> Self {
         Self {

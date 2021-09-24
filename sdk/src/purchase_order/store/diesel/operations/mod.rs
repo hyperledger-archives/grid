@@ -18,6 +18,7 @@ mod add_purchase_order_version;
 mod add_purchase_order_version_revision;
 pub(super) mod get_purchase_order;
 pub(super) mod get_purchase_order_version;
+pub(super) mod get_purchase_order_version_revision;
 pub(super) mod list_alternate_ids_for_purchase_order;
 pub(super) mod list_purchase_order_versions;
 pub(super) mod list_purchase_orders;
