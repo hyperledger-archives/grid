@@ -37,7 +37,8 @@ message CreatePurchaseOrderPayload {
   uint64 created_at = 2;
   string buyer_org_id = 3;
   string seller_org_id = 4;
-  CreateVersionPayload create_version_payload = 5;
+  string workflow_status = 5;
+  CreateVersionPayload create_version_payload = 6;
 }
 
 message UpdatePurchaseOrderPayload {
