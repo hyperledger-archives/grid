@@ -40,6 +40,7 @@ CREATE TABLE purchase_order_version (
 
 CREATE TABLE purchase_order_version_revision (
     id INTEGER PRIMARY KEY,
+    purchase_order_uid TEXT NOT NULL,
     version_id TEXT NOT NULL,
     revision_id TEXT NOT NULL,
     order_xml_v3_4 TEXT NOT NULL,
