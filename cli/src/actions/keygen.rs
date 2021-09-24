@@ -209,3 +209,298 @@ pub fn generate_keys(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempdir::TempDir;
+
+    fn validate_key(result: Vec<u8>, public_key_path: PathBuf) {
+        let mut public_key = String::new();
+        File::open(public_key_path)
+            .unwrap()
+            .read_to_string(&mut public_key)
+            .unwrap();
+
+        assert_eq!(
+            public_key,
+            result
+                .iter()
+                .map(|b| format!("{:01$x}", b, 2))
+                .collect::<Vec<String>>()
+                .join("")
+                + "\n"
+        );
+    }
+
+    #[test]
+    fn create_keypair_mode_skip_skips_existing_keypairs() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        File::create(public_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(b"test-privkey")
+            .expect("Could not write file");
+
+        File::create(private_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(b"test-privkey")
+            .expect("Could not write file");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path,
+            public_key_path,
+            false,
+            true,
+            true,
+        )
+        .expect("Could not create keypair");
+
+        assert_eq!(result, b"test-privkey");
+    }
+
+    #[test]
+    fn create_keypair_mode_skip_fails_missing_private_key() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        File::create(public_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(b"test-privkey")
+            .expect("Could not write file");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path.clone(),
+            public_key_path.clone(),
+            false,
+            true,
+            true,
+        );
+
+        assert!(result.is_err());
+
+        let expected = format!(
+            "Cannot skip, public key exists but not the private key: {:?}",
+            public_key_path,
+        );
+
+        match result.unwrap_err() {
+            CliError::UserError(message) => {
+                assert_eq!(message, expected);
+            }
+            clierror => panic!(
+                "received unexpected result {}, expected {}",
+                clierror, expected
+            ),
+        }
+    }
+
+    #[test]
+    fn create_keypair_mode_skip_fails_missing_public_key() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        File::create(private_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(b"test-privkey")
+            .expect("Could not write file");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path.clone(),
+            public_key_path.clone(),
+            false,
+            true,
+            true,
+        );
+
+        assert!(result.is_err());
+
+        let expected = format!(
+            "Cannot skip, private key exists but not the public key: {:?}",
+            private_key_path,
+        );
+
+        match result.unwrap_err() {
+            CliError::UserError(message) => {
+                assert_eq!(message, expected);
+            }
+            clierror => panic!(
+                "received unexpected result {}, expected CliError::UserError({})",
+                clierror, expected
+            ),
+        }
+    }
+
+    #[test]
+    fn create_keypair_mode_skip_successfully_writes_new_keys() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path.clone(),
+            public_key_path.clone(),
+            false,
+            true,
+            true,
+        )
+        .unwrap();
+
+        validate_key(result, public_key_path);
+    }
+
+    #[test]
+    fn create_keypair_mode_force_returns_different_pubkey() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        let public_key_content = b"test-privkey";
+
+        File::create(public_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(public_key_content)
+            .expect("Could not write file");
+
+        File::create(private_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(b"test-privkey")
+            .expect("Could not write file");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path.clone(),
+            public_key_path.clone(),
+            true,
+            false,
+            true,
+        )
+        .unwrap();
+
+        assert_ne!(
+            result, public_key_content,
+            "result must not be equal to existing pubkey"
+        );
+    }
+
+    #[test]
+    fn create_keypair_mode_force_successfully_writes_new_keys() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path.clone(),
+            public_key_path.clone(),
+            true,
+            false,
+            true,
+        )
+        .unwrap();
+
+        validate_key(result, public_key_path);
+    }
+
+    #[test]
+    fn create_keypair_mode_fail_fails_on_existing_keypairs() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        let public_key_content = b"test-privkey";
+
+        File::create(public_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(public_key_content)
+            .expect("Could not write file");
+
+        File::create(private_key_path.clone())
+            .expect("Failed to create file")
+            .write_all(b"test-privkey")
+            .expect("Could not write file");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path.clone(),
+            public_key_path.clone(),
+            false,
+            false,
+            true,
+        );
+
+        assert!(
+            result.is_err(),
+            "result must be an error if one of the keypairs exists"
+        );
+
+        let expected = format!(
+            "Files already exists: private_key: {:?}, public_key: {:?}",
+            private_key_path, public_key_path
+        );
+
+        match result.unwrap_err() {
+            CliError::UserError(message) => {
+                assert_eq!(message, expected);
+            }
+            clierror => panic!(
+                "received unexpected result {}, expected CliError::UserError({})",
+                clierror, expected
+            ),
+        }
+    }
+
+    #[test]
+    fn create_keypair_mode_fail_successfully_writes_new_keys() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("public_key");
+        let private_key_path = temp_dir.path().join("private_key");
+
+        let result = create_key_pair(
+            &temp_dir.path(),
+            private_key_path.clone(),
+            public_key_path.clone(),
+            false,
+            false,
+            true,
+        )
+        .unwrap();
+
+        validate_key(result, public_key_path);
+    }
+
+    #[test]
+    fn generate_keys_succeeds() {
+        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+
+        let public_key_path = temp_dir.path().join("grid_key.pub");
+        let private_key_path = temp_dir.path().join("grid_key.priv");
+
+        generate_keys(
+            "grid_key".to_string(),
+            false,
+            false,
+            temp_dir.path().to_path_buf(),
+        )
+        .unwrap();
+
+        assert!(public_key_path.exists());
+        assert!(private_key_path.exists());
+    }
+}
