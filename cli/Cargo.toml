@@ -49,6 +49,9 @@ serde_yaml = "0.8"
 diesel_migrations = "1.4"
 whoami = "1"
 
+[dev-dependencies]
+tempdir = "0.3"
+
 [features]
 default = [
     "sawtooth",
