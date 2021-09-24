@@ -447,6 +447,19 @@ impl PurchaseOrderVersionBuilder {
     }
 }
 
+/// Represents a list of Grid Purchase Order Revisions
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct PurchaseOrderVersionRevisionList {
+    pub data: Vec<PurchaseOrderVersionRevision>,
+    pub paging: Paging,
+}
+
+impl PurchaseOrderVersionRevisionList {
+    pub fn new(data: Vec<PurchaseOrderVersionRevision>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
+}
+
 /// Represents a Grid Purchase Order Version Revision
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderVersionRevision {
@@ -854,6 +867,24 @@ pub trait PurchaseOrderStore {
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError>;
 
+    /// Lists purchase order revisions from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `po_uid`    - The uid of the purchase order the revisions belongs to
+    ///  * `version_id` - The ID of the version the revisions are for
+    ///  * `service_id` - The service ID
+    ///  * `offset` - The index of the first in storage to retrieve
+    ///  * `limit` - The number of items to retrieve from the offset
+    fn list_purchase_order_revisions(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<PurchaseOrderVersionRevisionList, PurchaseOrderStoreError>;
+
     /// Adds an alternate id to the underlying storage
     ///
     /// # Arguments
@@ -937,6 +968,17 @@ where
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         (**self).get_purchase_order_revision(po_uid, version_id, revision_id, service_id)
+    }
+
+    fn list_purchase_order_revisions(
+        &self,
+        po_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<PurchaseOrderVersionRevisionList, PurchaseOrderStoreError> {
+        (**self).list_purchase_order_revisions(po_uid, version_id, service_id, offset, limit)
     }
 
     fn add_alternate_id(
