@@ -113,7 +113,7 @@ struct PikeRoleDto {
     pub description: String,
     pub active: bool,
     pub permissions: Vec<String>,
-    pub inherit_from: Vec<InheritFromDto>,
+    pub inherit_from: Vec<String>,
     pub allowed_organizations: Vec<String>,
 }
 
@@ -125,23 +125,28 @@ impl From<&PikeRoleDto> for PikeRole {
             description: d.description.to_string(),
             active: d.active,
             permissions: d.permissions.iter().map(String::from).collect(),
-            inherit_from: d.inherit_from.iter().map(InheritFrom::from).collect(),
+            inherit_from: d
+                .inherit_from
+                .iter()
+                .map(|i| InheritFrom::from((i, &d.org_id)))
+                .collect(),
             allowed_organizations: d.allowed_organizations.iter().map(String::from).collect(),
         }
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct InheritFromDto {
-    pub role_name: String,
-    pub org_id: String,
-}
-
-impl From<&InheritFromDto> for InheritFrom {
-    fn from(d: &InheritFromDto) -> Self {
+impl From<(&String, &String)> for InheritFrom {
+    fn from((role, org): (&String, &String)) -> Self {
+        let mut ifoid = org.to_string();
+        let mut ifname = role.to_string();
+        if role.contains('.') {
+            let inherit_from: Vec<&str> = role.split('.').collect();
+            ifoid = inherit_from[0].to_string();
+            ifname = inherit_from[1].to_string();
+        }
         Self {
-            role_name: d.role_name.to_string(),
-            org_id: d.org_id.to_string(),
+            role_name: ifname,
+            org_id: ifoid,
         }
     }
 }
