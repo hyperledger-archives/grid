@@ -405,7 +405,7 @@ pub struct PurchaseOrder {
     uid: String,
     workflow_status: String,
     versions: Vec<PurchaseOrderVersion>,
-    accepted_version_number: String,
+    accepted_version_number: Option<String>,
     created_at: u64,
     is_closed: bool,
     buyer_org_id: String,
@@ -425,8 +425,8 @@ impl PurchaseOrder {
         &self.versions
     }
 
-    pub fn accepted_version_number(&self) -> &str {
-        &self.accepted_version_number
+    pub fn accepted_version_number(&self) -> Option<&str> {
+        self.accepted_version_number.as_deref()
     }
 
     pub fn created_at(&self) -> u64 {
@@ -446,15 +446,20 @@ impl PurchaseOrder {
     }
 
     pub fn into_builder(self) -> PurchaseOrderBuilder {
-        PurchaseOrderBuilder::new()
+        let mut builder = PurchaseOrderBuilder::new()
             .with_uid(self.uid)
             .with_workflow_status(self.workflow_status)
             .with_versions(self.versions)
-            .with_accepted_version_number(self.accepted_version_number)
             .with_created_at(self.created_at)
             .with_is_closed(self.is_closed)
             .with_buyer_org_id(self.buyer_org_id)
-            .with_seller_org_id(self.seller_org_id)
+            .with_seller_org_id(self.seller_org_id);
+
+        if let Some(accepted_version) = self.accepted_version_number {
+            builder = builder.with_accepted_version_number(accepted_version);
+        }
+
+        builder
     }
 }
 
@@ -462,6 +467,14 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
     fn from_proto(
         mut order: purchase_order_state::PurchaseOrder,
     ) -> Result<Self, ProtoConversionError> {
+        let accepted_version_number = {
+            let accepted_version = order.take_accepted_version_number();
+            if accepted_version.is_empty() {
+                None
+            } else {
+                Some(accepted_version)
+            }
+        };
         Ok(PurchaseOrder {
             uid: order.take_uid(),
             workflow_status: order.take_workflow_status(),
@@ -470,7 +483,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
                 .into_iter()
                 .map(PurchaseOrderVersion::from_proto)
                 .collect::<Result<_, _>>()?,
-            accepted_version_number: order.take_accepted_version_number(),
+            accepted_version_number,
             created_at: order.get_created_at(),
             is_closed: order.get_is_closed(),
             buyer_org_id: order.take_buyer_org_id(),
@@ -492,7 +505,9 @@ impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
                 .map(|version| version.into_proto())
                 .collect::<Result<_, _>>()?,
         ));
-        proto.set_accepted_version_number(order.accepted_version_number().to_string());
+        if let Some(accepted_version) = order.accepted_version_number() {
+            proto.set_accepted_version_number(accepted_version.to_string());
+        }
         proto.set_created_at(order.created_at());
         proto.set_is_closed(order.is_closed());
         proto.set_buyer_org_id(order.buyer_org_id().to_string());
@@ -615,11 +630,7 @@ impl PurchaseOrderBuilder {
             PurchaseOrderBuildError::EmptyVec("'versions' field is required".to_string())
         })?;
 
-        let accepted_version_number = self.accepted_version_number.ok_or_else(|| {
-            PurchaseOrderBuildError::MissingField(
-                "'accepted_version_number' field is required".to_string(),
-            )
-        })?;
+        let accepted_version_number = self.accepted_version_number;
 
         let created_at = self.created_at.ok_or_else(|| {
             PurchaseOrderBuildError::MissingField("'created_at' field is required".to_string())
