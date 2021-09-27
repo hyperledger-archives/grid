@@ -51,6 +51,8 @@ pub enum CliError {
         feature = "schema",
     ))]
     DaemonError(String),
+    #[cfg(any(feature = "location", feature = "product",))]
+    YamlProcessingError(Vec<String>),
 }
 
 impl StdError for CliError {
@@ -86,6 +88,8 @@ impl StdError for CliError {
                 feature = "schema",
             ))]
             CliError::DaemonError(_) => None,
+            #[cfg(any(feature = "location", feature = "product",))]
+            CliError::YamlProcessingError(_) => None,
         }
     }
 }
@@ -125,6 +129,10 @@ impl std::fmt::Display for CliError {
                 feature = "schema",
             ))]
             CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
+            #[cfg(any(feature = "location", feature = "product",))]
+            CliError::YamlProcessingError(ref list) => {
+                write!(f, "Errors occurred while proccessing yaml: {:?}", list)
+            }
         }
     }
 }
