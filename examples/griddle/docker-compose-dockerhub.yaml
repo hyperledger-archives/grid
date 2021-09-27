@@ -233,7 +233,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-0
+        grid -vv keygen --skip --system griddle-alpha-0
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-alpha/grid &&
         griddle -vv --connect splinter:http://splinterd-alpha:8085
@@ -260,7 +260,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-1
+        grid -vv keygen --skip --system griddle-alpha-1
         griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
@@ -285,7 +285,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-2
+        grid -vv keygen --skip --system griddle-alpha-2
         griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
@@ -310,7 +310,7 @@ services:
             >&2 echo \"Database alpha is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-alpha-3
+        grid -vv keygen --skip --system griddle-alpha-3
         griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
@@ -438,7 +438,7 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-0
+        grid -vv keygen --skip --system griddle-beta-0
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-beta/grid &&
         griddle -vv --connect splinter:http://splinterd-beta:8085
@@ -465,7 +465,7 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-1
+        grid -vv keygen --skip --system griddle-beta-1
         griddle -vv --connect splinter:http://splinterd-beta:8085
       "
 
@@ -490,7 +490,7 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-2
+        grid -vv keygen --skip --system griddle-beta-2
         griddle -vv --connect splinter:http://splinterd-beta:8085
       "
 
@@ -515,6 +515,6 @@ services:
             >&2 echo \"Database beta is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv keygen --system griddle-beta-3
+        grid -vv keygen --skip --system griddle-beta-3
         griddle -vv --connect splinter:http://splinterd-beta:8085
       "
