@@ -46,6 +46,7 @@ pub struct PurchaseOrder {
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
     created_at: i64,
+    workflow_type: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -92,6 +93,11 @@ impl PurchaseOrder {
         &self.created_at
     }
 
+    /// Returns the created_at timestamp for the PO
+    pub fn workflow_type(&self) -> &str {
+        &self.workflow_type
+    }
+
     /// Returns the start_commit_num for the PO
     pub fn start_commit_num(&self) -> &i64 {
         &self.start_commit_num
@@ -118,6 +124,7 @@ pub struct PurchaseOrderBuilder {
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
     created_at: i64,
+    workflow_type: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -172,6 +179,12 @@ impl PurchaseOrderBuilder {
         self
     }
 
+    /// Sets the workflow type for this PO
+    pub fn with_workflow_type(mut self, workflow_type: String) -> Self {
+        self.workflow_type = workflow_type;
+        self
+    }
+
     /// Sets the start commit number for this PO
     pub fn with_start_commit_number(mut self, start_commit_num: i64) -> Self {
         self.start_commit_num = start_commit_num;
@@ -200,6 +213,7 @@ impl PurchaseOrderBuilder {
             accepted_version_id,
             versions,
             created_at,
+            workflow_type,
             start_commit_num,
             end_commit_num,
             service_id,
@@ -229,6 +243,12 @@ impl PurchaseOrderBuilder {
             ));
         };
 
+        if workflow_type.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "workflow_type".to_string(),
+            ));
+        };
+
         if start_commit_num >= end_commit_num {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
                 "start_commit_number must be less than end_commit_num".to_string(),
@@ -250,6 +270,7 @@ impl PurchaseOrderBuilder {
             accepted_version_id,
             versions,
             created_at,
+            workflow_type,
             start_commit_num,
             end_commit_num,
             service_id,

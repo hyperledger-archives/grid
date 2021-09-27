@@ -734,6 +734,7 @@ fn state_change_to_db_operation(
                                 .with_is_closed(po.is_closed())
                                 .with_buyer_org_id(po.buyer_org_id().to_string())
                                 .with_seller_org_id(po.seller_org_id().to_string())
+                                .with_workflow_type(po.workflow_type().to_string())
                                 .with_start_commit_number(commit_num)
                                 .with_end_commit_number(MAX_COMMIT_NUM);
 

@@ -25,6 +25,7 @@ pub struct PurchaseOrderSlice {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version_numbers: Option<Vec<String>>,
     pub is_closed: bool,
+    pub workflow_type: String,
 }
 
 impl From<PurchaseOrder> for PurchaseOrderSlice {
@@ -41,6 +42,7 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
                     .collect(),
             ),
             is_closed: purchase_order.is_closed(),
+            workflow_type: purchase_order.workflow_type().to_string(),
         }
     }
 }

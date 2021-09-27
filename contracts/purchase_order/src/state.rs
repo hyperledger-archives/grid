@@ -265,8 +265,9 @@ mod tests {
         PurchaseOrder, PurchaseOrderBuilder, PurchaseOrderRevision, PurchaseOrderRevisionBuilder,
         PurchaseOrderVersion, PurchaseOrderVersionBuilder,
     };
-
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
+
+    use crate::workflow::POWorkflow;
 
     const AGENT_PUB_KEY: &str = "test_agent_pub_key";
 
@@ -440,6 +441,7 @@ mod tests {
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
             .with_versions(vec![purchase_order_version(PO_VERSION_ID_1)])
+            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
             .with_is_closed(false)
             .build()
             .expect("Unable to build purchase order")
@@ -452,6 +454,7 @@ mod tests {
             .with_created_at(2)
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
+            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
             .with_versions(vec![
                 purchase_order_version(PO_VERSION_ID_1),
                 purchase_order_version(PO_VERSION_ID_2),

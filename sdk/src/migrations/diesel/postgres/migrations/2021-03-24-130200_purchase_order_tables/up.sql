@@ -20,6 +20,7 @@ CREATE TABLE purchase_order (
     workflow_status TEXT NOT NULL,
     is_closed BOOLEAN NOT NULL,
     accepted_version_id TEXT,
+    workflow_type TEXT NOT NULL,
     service_id TEXT
 ) INHERITS (chain_record);
 
