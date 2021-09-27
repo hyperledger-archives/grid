@@ -437,7 +437,6 @@ mod tests {
             .with_uid(PO_UID.to_string())
             .with_workflow_status("Issued".to_string())
             .with_created_at(1)
-            .with_accepted_version_number("".to_string())
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
             .with_versions(vec![purchase_order_version(PO_VERSION_ID_1)])
@@ -451,7 +450,6 @@ mod tests {
             .with_uid(PO_UID.to_string())
             .with_workflow_status("Issued".to_string())
             .with_created_at(2)
-            .with_accepted_version_number("".to_string())
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
             .with_versions(vec![
