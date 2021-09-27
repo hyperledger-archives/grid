@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt;
+
 use grid_sdk::workflow::{
     PermissionAlias, SubWorkflow, SubWorkflowBuilder, Workflow, WorkflowStateBuilder,
 };
@@ -397,4 +399,13 @@ fn collaborative_sub_workflow() -> SubWorkflow {
         .add_state(accepted)
         .add_starting_state("create")
         .build()
+}
+
+impl fmt::Display for POWorkflow {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            POWorkflow::SystemOfRecord => write!(f, "system_of_record"),
+            POWorkflow::Collaborative => write!(f, "collaborative"),
+        }
+    }
 }

@@ -294,6 +294,7 @@ fn create_purchase_order(
         .with_is_closed(false)
         .with_buyer_org_id(buyer_org_id)
         .with_seller_org_id(seller_org_id)
+        .with_workflow_type(workflow.to_string())
         .build()
         .map_err(|err| {
             ApplyError::InvalidTransaction(format!("Cannot build purchase order: {}", err))
@@ -665,6 +666,7 @@ mod tests {
             .with_is_closed(false)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
+            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build purchase order")
     }
