@@ -65,7 +65,7 @@ OPTIONS
 : Specify the organization that owns the purchase order. This option is required.
 
 `--po`
-: Either a UUID or an alternate ID of a purchase order.
+: Either a UID or an alternate ID of a purchase order.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
