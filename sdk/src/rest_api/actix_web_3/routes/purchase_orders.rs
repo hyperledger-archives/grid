@@ -90,10 +90,10 @@ pub async fn get_purchase_order(
     }
 }
 
-#[get("/purchase-order/{uuid}/versions")]
+#[get("/purchase-order/{uid}/versions")]
 pub async fn list_purchase_order_versions(
     store_state: web::Data<StoreState>,
-    uuid: web::Path<String>,
+    uid: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
@@ -105,7 +105,7 @@ pub async fn list_purchase_order_versions(
             let paging = query_paging.into_inner();
             match v1::list_purchase_order_versions(
                 store,
-                uuid.into_inner(),
+                uid.into_inner(),
                 query_service_id.into_inner().service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),

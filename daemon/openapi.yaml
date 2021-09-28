@@ -527,14 +527,14 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uuid}/versions:
+  /purchase-order/{uid}/versions:
     get:
       tags:
         - Purchase Order
       summary: Lists all purchase order versions for a purchase order
       operationId: list_purchase_order_versions
       parameters:
-        - name: uuid
+        - name: uid
           in: path
           description: ID of the PO to fetch versions for
           required: true
