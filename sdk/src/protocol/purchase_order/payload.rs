@@ -183,6 +183,7 @@ pub struct CreatePurchaseOrderPayload {
     created_at: u64,
     buyer_org_id: String,
     seller_org_id: String,
+    workflow_status: String,
     create_version_payload: Option<CreateVersionPayload>,
 }
 
@@ -203,6 +204,10 @@ impl CreatePurchaseOrderPayload {
         &self.seller_org_id
     }
 
+    pub fn workflow_status(&self) -> &str {
+        &self.workflow_status
+    }
+
     pub fn create_version_payload(&self) -> Option<CreateVersionPayload> {
         self.create_version_payload.clone()
     }
@@ -219,6 +224,7 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
             created_at: proto.get_created_at(),
             buyer_org_id: proto.take_buyer_org_id(),
             seller_org_id: proto.take_seller_org_id(),
+            workflow_status: proto.take_workflow_status(),
             create_version_payload,
         })
     }
@@ -231,6 +237,7 @@ impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
         proto.set_created_at(native.created_at());
         proto.set_buyer_org_id(native.buyer_org_id().to_string());
         proto.set_seller_org_id(native.seller_org_id().to_string());
+        proto.set_workflow_status(native.workflow_status().to_string());
 
         if let Some(payload) = native.create_version_payload() {
             let proto_payload: purchase_order_payload::CreateVersionPayload =
@@ -276,6 +283,7 @@ pub struct CreatePurchaseOrderPayloadBuilder {
     created_at: Option<u64>,
     buyer_org_id: Option<String>,
     seller_org_id: Option<String>,
+    workflow_status: Option<String>,
     create_version_payload: Option<CreateVersionPayload>,
 }
 
@@ -304,6 +312,11 @@ impl CreatePurchaseOrderPayloadBuilder {
         self
     }
 
+    pub fn with_workflow_status(mut self, value: String) -> Self {
+        self.workflow_status = Some(value);
+        self
+    }
+
     pub fn with_create_version_payload(mut self, payload: CreateVersionPayload) -> Self {
         self.create_version_payload = Some(payload);
         self
@@ -326,6 +339,10 @@ impl CreatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'seller_org_id' field is required".to_string())
         })?;
 
+        let workflow_status = self.workflow_status.ok_or_else(|| {
+            BuilderError::MissingField("'workflow_status' field is required".to_string())
+        })?;
+
         let create_version_payload = self.create_version_payload;
 
         Ok(CreatePurchaseOrderPayload {
@@ -333,6 +350,7 @@ impl CreatePurchaseOrderPayloadBuilder {
             created_at,
             buyer_org_id,
             seller_org_id,
+            workflow_status,
             create_version_payload,
         })
     }
