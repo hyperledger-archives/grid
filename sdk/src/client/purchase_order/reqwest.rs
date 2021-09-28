@@ -141,7 +141,7 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         &self,
         _id: String,
         _version_id: String,
-        _revision_id: String,
+        _revision_id: u64,
     ) -> Result<Option<PurchaseOrderRevision>, ClientError> {
         unimplemented!()
     }

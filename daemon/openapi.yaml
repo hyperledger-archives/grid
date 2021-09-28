@@ -1054,8 +1054,8 @@ components:
           type: boolean
           example: true
         current_revision_id:
-          type: string
-          example: daae9b58726f4c9364b6cae2fa7c9c24
+          type: number
+          example: 1
         revisions:
           type: array
           items:
@@ -1074,8 +1074,8 @@ components:
     PurchaseOrderRevision:
       properties:
         revision_id:
-          type: string
-          example: daae9b58726f4c9364b6cae2fa7c9c24
+          type: number
+          example: 1
         submitter:
           type: string
           example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612

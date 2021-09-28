@@ -469,7 +469,7 @@ mod tests {
             .with_version_id(version_id.to_string())
             .with_workflow_status("Editable".to_string())
             .with_is_draft(true)
-            .with_current_revision_id("1".to_string())
+            .with_current_revision_id(1)
             .with_revisions(purchase_order_revision())
             .build()
             .expect("Unable to build first purchase order version")
@@ -477,7 +477,7 @@ mod tests {
 
     fn purchase_order_revision() -> Vec<PurchaseOrderRevision> {
         vec![PurchaseOrderRevisionBuilder::new()
-            .with_revision_id("1".to_string())
+            .with_revision_id(1)
             .with_submitter(AGENT_PUB_KEY.to_string())
             .with_created_at(1)
             .with_order_xml_v3_4("xml_purchase_order".to_string())

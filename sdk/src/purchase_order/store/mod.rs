@@ -296,7 +296,7 @@ impl PurchaseOrderVersionList {
 pub struct PurchaseOrderVersion {
     version_id: String,
     is_draft: bool,
-    current_revision_id: String,
+    current_revision_id: i64,
     revisions: Vec<PurchaseOrderVersionRevision>,
     start_commit_num: i64,
     end_commit_num: i64,
@@ -315,7 +315,7 @@ impl PurchaseOrderVersion {
     }
 
     /// Returns the current revision ID for the PO version
-    pub fn current_revision_id(&self) -> &str {
+    pub fn current_revision_id(&self) -> &i64 {
         &self.current_revision_id
     }
 
@@ -344,7 +344,7 @@ impl PurchaseOrderVersion {
 pub struct PurchaseOrderVersionBuilder {
     version_id: String,
     is_draft: bool,
-    current_revision_id: String,
+    current_revision_id: i64,
     revisions: Vec<PurchaseOrderVersionRevision>,
     start_commit_num: i64,
     end_commit_num: i64,
@@ -365,7 +365,7 @@ impl PurchaseOrderVersionBuilder {
     }
 
     /// Sets the current revision ID for this PO version
-    pub fn with_current_revision_id(mut self, revision_id: String) -> Self {
+    pub fn with_current_revision_id(mut self, revision_id: i64) -> Self {
         self.current_revision_id = revision_id;
         self
     }
@@ -411,9 +411,9 @@ impl PurchaseOrderVersionBuilder {
             ));
         };
 
-        if current_revision_id.is_empty() {
+        if current_revision_id <= 0 {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
-                "current_revision_id".to_string(),
+                "current_revision_id must be greater than 0".to_string(),
             ));
         };
 
@@ -463,7 +463,7 @@ impl PurchaseOrderVersionRevisionList {
 /// Represents a Grid Purchase Order Version Revision
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderVersionRevision {
-    pub revision_id: String,
+    pub revision_id: i64,
     pub order_xml_v3_4: String,
     pub submitter: String,
     pub created_at: i64,
@@ -474,7 +474,7 @@ pub struct PurchaseOrderVersionRevision {
 
 impl PurchaseOrderVersionRevision {
     /// Returns the revision ID for the revision
-    pub fn revision_id(&self) -> &str {
+    pub fn revision_id(&self) -> &i64 {
         &self.revision_id
     }
 
@@ -511,7 +511,7 @@ impl PurchaseOrderVersionRevision {
 
 #[derive(Default, Clone)]
 pub struct PurchaseOrderVersionRevisionBuilder {
-    revision_id: String,
+    revision_id: i64,
     order_xml_v3_4: String,
     submitter: String,
     created_at: i64,
@@ -522,7 +522,7 @@ pub struct PurchaseOrderVersionRevisionBuilder {
 
 impl PurchaseOrderVersionRevisionBuilder {
     /// Sets the revision ID for this revision
-    pub fn with_revision_id(mut self, revision_id: String) -> Self {
+    pub fn with_revision_id(mut self, revision_id: i64) -> Self {
         self.revision_id = revision_id;
         self
     }
@@ -574,9 +574,9 @@ impl PurchaseOrderVersionRevisionBuilder {
             service_id,
         } = self;
 
-        if revision_id.is_empty() {
+        if revision_id <= 0 {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
-                "revision_id".to_string(),
+                "revision_id must be greater than 0".to_string(),
             ));
         };
 
@@ -863,7 +863,7 @@ pub trait PurchaseOrderStore {
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError>;
 
@@ -964,7 +964,7 @@ where
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         (**self).get_purchase_order_revision(po_uid, version_id, revision_id, service_id)

@@ -57,7 +57,7 @@ pub struct NewPurchaseOrderVersionModel {
     pub purchase_order_uid: String,
     pub version_id: String,
     pub is_draft: bool,
-    pub current_revision_id: String,
+    pub current_revision_id: i64,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
@@ -70,7 +70,7 @@ pub struct PurchaseOrderVersionModel {
     pub purchase_order_uid: String,
     pub version_id: String,
     pub is_draft: bool,
-    pub current_revision_id: String,
+    pub current_revision_id: i64,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
@@ -81,7 +81,7 @@ pub struct PurchaseOrderVersionModel {
 pub struct NewPurchaseOrderVersionRevisionModel {
     pub purchase_order_uid: String,
     pub version_id: String,
-    pub revision_id: String,
+    pub revision_id: i64,
     pub order_xml_v3_4: String,
     pub submitter: String,
     pub created_at: i64,
@@ -96,7 +96,7 @@ pub struct PurchaseOrderVersionRevisionModel {
     pub id: i64,
     pub purchase_order_uid: String,
     pub version_id: String,
-    pub revision_id: String,
+    pub revision_id: i64,
     pub order_xml_v3_4: String,
     pub submitter: String,
     pub created_at: i64,
@@ -216,7 +216,7 @@ impl
         Self {
             version_id: version.version_id.to_string(),
             is_draft: version.is_draft,
-            current_revision_id: version.current_revision_id.to_string(),
+            current_revision_id: version.current_revision_id,
             revisions: revisions
                 .iter()
                 .filter(|r| r.version_id == version.version_id)
@@ -229,19 +229,15 @@ impl
     }
 }
 
-impl From<(PurchaseOrderVersionModel, &String, &i64)> for NewPurchaseOrderVersionModel {
+impl From<(PurchaseOrderVersionModel, &i64, &i64)> for NewPurchaseOrderVersionModel {
     fn from(
-        (version, current_revision_id, start_commit_num): (
-            PurchaseOrderVersionModel,
-            &String,
-            &i64,
-        ),
+        (version, current_revision_id, start_commit_num): (PurchaseOrderVersionModel, &i64, &i64),
     ) -> Self {
         Self {
             purchase_order_uid: version.purchase_order_uid,
             version_id: version.version_id,
             is_draft: version.is_draft,
-            current_revision_id: current_revision_id.to_string(),
+            current_revision_id: *current_revision_id,
             start_commit_num: *start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
             service_id: version.service_id,
@@ -252,7 +248,7 @@ impl From<(PurchaseOrderVersionModel, &String, &i64)> for NewPurchaseOrderVersio
 impl From<&PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
     fn from(revision: &PurchaseOrderVersionRevisionModel) -> Self {
         Self {
-            revision_id: revision.revision_id.to_string(),
+            revision_id: revision.revision_id,
             order_xml_v3_4: revision.order_xml_v3_4.to_string(),
             submitter: revision.submitter.to_string(),
             created_at: revision.created_at,
@@ -266,7 +262,7 @@ impl From<&PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
 impl From<PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
     fn from(revision: PurchaseOrderVersionRevisionModel) -> Self {
         Self {
-            revision_id: revision.revision_id.to_string(),
+            revision_id: revision.revision_id,
             order_xml_v3_4: revision.order_xml_v3_4.to_string(),
             submitter: revision.submitter.to_string(),
             created_at: revision.created_at,
@@ -298,7 +294,7 @@ pub fn make_purchase_order_versions(order: &PurchaseOrder) -> Vec<NewPurchaseOrd
             purchase_order_uid: order.purchase_order_uid.to_string(),
             version_id: version.version_id.to_string(),
             is_draft: version.is_draft,
-            current_revision_id: version.current_revision_id.to_string(),
+            current_revision_id: version.current_revision_id,
             start_commit_num: version.start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
             service_id: version.service_id.clone(),
@@ -319,7 +315,7 @@ pub fn make_purchase_order_version_revisions(
             let model = NewPurchaseOrderVersionRevisionModel {
                 purchase_order_uid: order.purchase_order_uid.to_string(),
                 version_id: version.version_id.to_string(),
-                revision_id: revision.revision_id.to_string(),
+                revision_id: revision.revision_id,
                 order_xml_v3_4: revision.order_xml_v3_4.to_string(),
                 submitter: revision.submitter.to_string(),
                 created_at: revision.created_at,

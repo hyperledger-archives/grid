@@ -32,7 +32,7 @@ CREATE TABLE purchase_order_version (
     purchase_order_uid TEXT NOT NULL,
     version_id TEXT NOT NULL,
     is_draft BOOLEAN NOT NULL,
-    current_revision_id TEXT NOT NULL,
+    current_revision_id BIGINT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
@@ -42,7 +42,7 @@ CREATE TABLE purchase_order_version_revision (
     id INTEGER PRIMARY KEY,
     purchase_order_uid TEXT NOT NULL,
     version_id TEXT NOT NULL,
-    revision_id TEXT NOT NULL,
+    revision_id BIGINT NOT NULL,
     order_xml_v3_4 TEXT NOT NULL,
     submitter TEXT NOT NULL,
     created_at BIGINT NOT NULL,
