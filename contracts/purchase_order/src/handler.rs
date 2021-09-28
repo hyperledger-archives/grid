@@ -178,7 +178,7 @@ fn create_purchase_order(
                 .with_revisions(vec![revision]);
             let perm_string = Permission::CanCreatePoVersion.to_string();
             if payload.is_draft() {
-                let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
+                let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
                     ApplyError::InternalError("Cannot build PO Workflow".to_string())
                 })?;
                 let version_subworkflow =
@@ -214,7 +214,7 @@ fn create_purchase_order(
                 }
                 version_builder = version_builder.with_workflow_status("editable".to_string());
             } else {
-                let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
+                let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
                     ApplyError::InternalError("Cannot build PO Workflow".to_string())
                 })?;
                 let version_subworkflow =
@@ -263,7 +263,7 @@ fn create_purchase_order(
             vec![]
         }
     };
-    let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
+    let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
         ApplyError::InternalError("Cannot build System Of Record PO workflow".to_string())
     })?;
     let po_subworkflow = beginning_workflow
