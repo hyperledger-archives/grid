@@ -851,10 +851,14 @@ pub trait PurchaseOrderStore {
     /// # Arguments
     ///
     ///  * `purchase_order_uid`   - The uid of the purchase order
+    ///  * `version_id` - Optional filter for version
+    ///  * `revision_number` - Optional filter for version revision
     ///  * `service_id` - The service id
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError>;
 
@@ -967,9 +971,11 @@ where
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
-        (**self).get_purchase_order(purchase_order_uid, service_id)
+        (**self).get_purchase_order(purchase_order_uid, version_id, revision_number, service_id)
     }
 
     fn get_purchase_order_version(

@@ -28,6 +28,8 @@ pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreGetPurchase
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError>;
 }
@@ -39,6 +41,8 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
@@ -76,6 +80,10 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
+            if let Some(version_id) = version_id {
+                query = query.filter(purchase_order_version::version_id.eq(version_id));
+            }
+
             if let Some(service_id) = service_id {
                 query = query.filter(purchase_order_version::service_id.eq(service_id));
             } else {
@@ -104,6 +112,11 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                                 purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
                             ),
                     );
+
+                if let Some(revision_number) = revision_number {
+                    query = query
+                        .filter(purchase_order_version_revision::revision_id.eq(revision_number));
+                }
 
                 if let Some(service_id) = service_id {
                     query =
@@ -135,6 +148,8 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
@@ -172,6 +187,10 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
+            if let Some(version_id) = version_id {
+                query = query.filter(purchase_order_version::version_id.eq(version_id));
+            }
+
             if let Some(service_id) = service_id {
                 query = query.filter(purchase_order_version::service_id.eq(service_id));
             } else {
@@ -200,6 +219,11 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                                 purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
                             ),
                     );
+
+                if let Some(revision_number) = revision_number {
+                    query = query
+                        .filter(purchase_order_version_revision::revision_id.eq(revision_number));
+                }
 
                 if let Some(service_id) = service_id {
                     query =

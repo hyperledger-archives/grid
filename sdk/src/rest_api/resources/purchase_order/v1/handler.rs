@@ -67,10 +67,12 @@ pub fn list_purchase_orders<'a>(
 pub fn get_purchase_order<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
+    version_id: Option<&str>,
+    revision_number: Option<i64>,
     service_id: Option<&str>,
 ) -> Result<PurchaseOrderSlice, ErrorResponse> {
     let purchase_order = store
-        .get_purchase_order(&purchase_order_uid, service_id)
+        .get_purchase_order(&purchase_order_uid, version_id, revision_number, service_id)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))

@@ -106,6 +106,8 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
@@ -113,7 +115,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .get_purchase_order(purchase_order_uid, service_id)
+        .get_purchase_order(purchase_order_uid, version_id, revision_number, service_id)
     }
 
     fn get_purchase_order_version(
@@ -245,6 +247,8 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
@@ -252,7 +256,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .get_purchase_order(purchase_order_uid, service_id)
+        .get_purchase_order(purchase_order_uid, version_id, revision_number, service_id)
     }
 
     fn get_purchase_order_version(
@@ -394,10 +398,16 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(self.connection)
-            .get_purchase_order(purchase_order_uid, service_id)
+        PurchaseOrderStoreOperations::new(self.connection).get_purchase_order(
+            purchase_order_uid,
+            version_id,
+            revision_number,
+            service_id,
+        )
     }
 
     fn get_purchase_order_version(
@@ -505,10 +515,16 @@ impl<'a> PurchaseOrderStore
     fn get_purchase_order(
         &self,
         purchase_order_uid: &str,
+        version_id: Option<&str>,
+        revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(self.connection)
-            .get_purchase_order(purchase_order_uid, service_id)
+        PurchaseOrderStoreOperations::new(self.connection).get_purchase_order(
+            purchase_order_uid,
+            version_id,
+            revision_number,
+            service_id,
+        )
     }
 
     fn get_purchase_order_version(

@@ -27,6 +27,16 @@ pub struct QueryOrgId {
     pub org_id: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryVersionId {
+    pub version_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryRevisionNumber {
+    pub revision_number: Option<i64>,
+}
+
 #[get("/purchase_order")]
 pub async fn list_purchase_orders(
     store_state: web::Data<StoreState>,
@@ -67,6 +77,8 @@ pub async fn list_purchase_orders(
 pub async fn get_purchase_order(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
+    version_id: web::Query<QueryVersionId>,
+    revision_number: web::Query<QueryRevisionNumber>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
@@ -77,6 +89,8 @@ pub async fn get_purchase_order(
             match v1::get_purchase_order(
                 store,
                 uid.into_inner(),
+                version_id.into_inner().version_id.as_deref(),
+                revision_number.into_inner().revision_number,
                 query_service_id.into_inner().service_id.as_deref(),
             ) {
                 Ok(res) => HttpResponse::Ok().json(res),
