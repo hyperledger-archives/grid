@@ -88,7 +88,7 @@ pub fn get_purchase_order<'a>(
         || {
             ErrorResponse::new(
                 404,
-                &format!("PurchaseOrder {} not found", purchase_order_uid),
+                &format!("Purchase order {} not found", purchase_order_uid),
             )
         },
     )?))
