@@ -183,10 +183,10 @@ pub async fn list_purchase_order_version_revisions(
     }
 }
 
-#[get("/purchase-order/{uuid}/version/{version_id}/revision/{revision_number}")]
+#[get("/purchase-order/{uid}/version/{version_id}/revision/{revision_number}")]
 pub async fn get_purchase_order_version_revision(
     store_state: web::Data<StoreState>,
-    uuid: web::Path<String>,
+    uid: web::Path<String>,
     version_id: web::Path<String>,
     revision_number: web::Path<i64>,
     query_service_id: web::Query<QueryServiceId>,
@@ -198,7 +198,7 @@ pub async fn get_purchase_order_version_revision(
         ProtocolVersion::V1 => {
             match v1::get_purchase_order_revision(
                 store,
-                uuid.into_inner(),
+                uid.into_inner(),
                 version_id.into_inner(),
                 revision_number.into_inner(),
                 query_service_id.into_inner().service_id.as_deref(),
