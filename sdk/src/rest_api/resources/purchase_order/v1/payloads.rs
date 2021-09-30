@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    purchase_order::store::{PurchaseOrder, PurchaseOrderVersion},
+    purchase_order::store::{PurchaseOrder, PurchaseOrderVersion, PurchaseOrderVersionRevision},
     rest_api::resources::paging::v1::Paging,
 };
 
@@ -89,8 +89,25 @@ pub struct PurchaseOrderVersionListSlice {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderRevisionSlice {
-    revision_number: u64,
+    revision_number: i64,
     submitter: String,
-    created_at: u64,
+    created_at: i64,
     order_xml_v3_4: String,
+}
+
+impl From<PurchaseOrderVersionRevision> for PurchaseOrderRevisionSlice {
+    fn from(purchase_order_revision: PurchaseOrderVersionRevision) -> Self {
+        Self {
+            revision_number: *purchase_order_revision.revision_id(),
+            submitter: purchase_order_revision.submitter().to_string(),
+            created_at: purchase_order_revision.created_at(),
+            order_xml_v3_4: purchase_order_revision.order_xml_v3_4().to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PurchaseOrderRevisionListSlice {
+    pub data: Vec<PurchaseOrderRevisionSlice>,
+    pub paging: Paging,
 }
