@@ -45,6 +45,7 @@ table! {
 table! {
     purchase_order_version_revision (id) {
         id -> Int8,
+        purchase_order_uid -> Text,
         version_id -> Text,
         revision_id -> Text,
         order_xml_v3_4 -> Text,

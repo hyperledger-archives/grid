@@ -79,6 +79,7 @@ pub struct PurchaseOrderVersionModel {
 #[derive(Insertable, PartialEq, Queryable, Debug)]
 #[table_name = "purchase_order_version_revision"]
 pub struct NewPurchaseOrderVersionRevisionModel {
+    pub purchase_order_uid: String,
     pub version_id: String,
     pub revision_id: String,
     pub order_xml_v3_4: String,
@@ -93,6 +94,7 @@ pub struct NewPurchaseOrderVersionRevisionModel {
 #[table_name = "purchase_order_version_revision"]
 pub struct PurchaseOrderVersionRevisionModel {
     pub id: i64,
+    pub purchase_order_uid: String,
     pub version_id: String,
     pub revision_id: String,
     pub order_xml_v3_4: String,
@@ -261,6 +263,20 @@ impl From<&PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
     }
 }
 
+impl From<PurchaseOrderVersionRevisionModel> for PurchaseOrderVersionRevision {
+    fn from(revision: PurchaseOrderVersionRevisionModel) -> Self {
+        Self {
+            revision_id: revision.revision_id.to_string(),
+            order_xml_v3_4: revision.order_xml_v3_4.to_string(),
+            submitter: revision.submitter.to_string(),
+            created_at: revision.created_at,
+            start_commit_num: revision.start_commit_num,
+            end_commit_num: revision.end_commit_num,
+            service_id: revision.service_id,
+        }
+    }
+}
+
 impl From<PurchaseOrderAlternateId> for NewPurchaseOrderAlternateIdModel {
     fn from(id: PurchaseOrderAlternateId) -> Self {
         Self {
@@ -301,6 +317,7 @@ pub fn make_purchase_order_version_revisions(
     for version in &order.versions {
         for revision in &version.revisions {
             let model = NewPurchaseOrderVersionRevisionModel {
+                purchase_order_uid: order.purchase_order_uid.to_string(),
                 version_id: version.version_id.to_string(),
                 revision_id: revision.revision_id.to_string(),
                 order_xml_v3_4: revision.order_xml_v3_4.to_string(),
