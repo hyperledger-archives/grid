@@ -132,10 +132,17 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
 
         let seller = PermissionAlias::new("po::seller");
 
+        let mut draft = PermissionAlias::new("po::draft");
+        draft.add_permission(&Permission::CanCreatePoVersion.to_string());
+        draft.add_permission(&Permission::CanTransitionEditable.to_string());
+        draft.add_transition("editable");
+
         WorkflowStateBuilder::new("create")
             .add_transition("proposed")
+            .add_transition("editable")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_permission_alias(draft)
             .build()
     };
 
@@ -233,14 +240,20 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     let editable = {
         let mut draft = PermissionAlias::new("po::draft");
         draft.add_permission(&Permission::CanUpdatePoVersion.to_string());
+        draft.add_permission(&Permission::CanTransitionEditable.to_string());
         draft.add_permission(&Permission::CanTransitionCancelled.to_string());
+        draft.add_permission(&Permission::CanTransitionDeclined.to_string());
         draft.add_permission(&Permission::CanTransitionReview.to_string());
         draft.add_transition("cancelled");
         draft.add_transition("review");
+        draft.add_transition("editable");
+        draft.add_transition("declined");
 
         WorkflowStateBuilder::new("editable")
-            .add_transition("review")
             .add_transition("cancelled")
+            .add_transition("review")
+            .add_transition("editable")
+            .add_transition("declined")
             .add_permission_alias(draft)
             .build()
     };
