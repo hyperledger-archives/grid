@@ -134,7 +134,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
@@ -273,7 +273,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
@@ -414,7 +414,7 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(self.connection).get_purchase_order_revision(
@@ -525,7 +525,7 @@ impl<'a> PurchaseOrderStore
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(self.connection).get_purchase_order_revision(

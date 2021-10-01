@@ -35,12 +35,12 @@ message PurchaseOrderVersion {
   string version_id = 1;
   string workflow_status = 2;
   bool is_draft = 3;
-  string current_revision_id = 4;
+  uint64 current_revision_id = 4;
   repeated PurchaseOrderRevision revisions = 5;
 }
 
 message PurchaseOrderRevision {
-  string revision_id = 1;
+  uint64 revision_id = 1;
   string submitter = 2;
   uint64 created_at = 3;
 

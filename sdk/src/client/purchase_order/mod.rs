@@ -80,7 +80,7 @@ pub trait PurchaseOrderClient: Client {
         &self,
         id: String,
         version_id: String,
-        revision_id: String,
+        revision_id: u64,
     ) -> Result<Option<PurchaseOrderRevision>, ClientError>;
 
     /// lists purchase orders.

@@ -1025,7 +1025,12 @@ fn make_po_versions(
             PurchaseOrderVersionBuilder::default()
                 .with_version_id(version.version_id().to_string())
                 .with_is_draft(version.is_draft())
-                .with_current_revision_id(version.current_revision_id().to_string())
+                .with_current_revision_id(
+                    version
+                        .current_revision_id()
+                        .try_into()
+                        .map_err(|err| PurchaseOrderBuilderError::BuildError(Box::new(err)))?,
+                )
                 .with_revisions(
                     make_po_revisions(version.revisions().to_vec(), start_commit_num, service_id)
                         .map_err(|err| PurchaseOrderBuilderError::BuildError(Box::new(err)))?,
@@ -1051,7 +1056,12 @@ fn make_po_revisions(
         .iter()
         .map(|revision| {
             PurchaseOrderVersionRevisionBuilder::default()
-                .with_revision_id(revision.revision_id().to_string())
+                .with_revision_id(
+                    revision
+                        .revision_id()
+                        .try_into()
+                        .map_err(|err| PurchaseOrderBuilderError::BuildError(Box::new(err)))?,
+                )
                 .with_order_xml_v3_4(revision.order_xml_v3_4().to_string())
                 .with_submitter(revision.submitter().to_string())
                 .with_created_at(

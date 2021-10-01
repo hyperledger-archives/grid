@@ -29,15 +29,15 @@ use crate::protos::{
 /// The purchase order revision contains the editable fields of a purchase order
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderRevision {
-    revision_id: String,
+    revision_id: u64,
     submitter: String,
     created_at: u64,
     order_xml_v3_4: String,
 }
 
 impl PurchaseOrderRevision {
-    pub fn revision_id(&self) -> &str {
-        &self.revision_id
+    pub fn revision_id(&self) -> u64 {
+        self.revision_id
     }
 
     pub fn submitter(&self) -> &str {
@@ -66,7 +66,7 @@ impl FromProto<purchase_order_state::PurchaseOrderRevision> for PurchaseOrderRev
         mut revision: purchase_order_state::PurchaseOrderRevision,
     ) -> Result<Self, ProtoConversionError> {
         Ok(PurchaseOrderRevision {
-            revision_id: revision.take_revision_id(),
+            revision_id: revision.get_revision_id(),
             submitter: revision.take_submitter(),
             created_at: revision.get_created_at(),
             order_xml_v3_4: revision.take_order_xml_v3_4(),
@@ -77,7 +77,7 @@ impl FromProto<purchase_order_state::PurchaseOrderRevision> for PurchaseOrderRev
 impl FromNative<PurchaseOrderRevision> for purchase_order_state::PurchaseOrderRevision {
     fn from_native(revision: PurchaseOrderRevision) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_state::PurchaseOrderRevision::new();
-        proto.set_revision_id(revision.revision_id().to_string());
+        proto.set_revision_id(revision.revision_id());
         proto.set_submitter(revision.submitter().to_string());
         proto.set_created_at(revision.created_at());
         proto.set_order_xml_v3_4(revision.order_xml_v3_4().to_string());
@@ -130,7 +130,7 @@ impl std::fmt::Display for PurchaseOrderRevisionBuildError {
 /// Builder used to create a `PurchaseOrderRevision`
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderRevisionBuilder {
-    revision_id: Option<String>,
+    revision_id: Option<u64>,
     submitter: Option<String>,
     created_at: Option<u64>,
     order_xml_v3_4: Option<String>,
@@ -141,7 +141,7 @@ impl PurchaseOrderRevisionBuilder {
         PurchaseOrderRevisionBuilder::default()
     }
 
-    pub fn with_revision_id(mut self, revision_id: String) -> Self {
+    pub fn with_revision_id(mut self, revision_id: u64) -> Self {
         self.revision_id = Some(revision_id);
         self
     }
@@ -204,7 +204,7 @@ pub struct PurchaseOrderVersion {
     version_id: String,
     workflow_status: String,
     is_draft: bool,
-    current_revision_id: String,
+    current_revision_id: u64,
     revisions: Vec<PurchaseOrderRevision>,
 }
 
@@ -221,8 +221,8 @@ impl PurchaseOrderVersion {
         self.is_draft
     }
 
-    pub fn current_revision_id(&self) -> &str {
-        &self.current_revision_id
+    pub fn current_revision_id(&self) -> u64 {
+        self.current_revision_id
     }
 
     pub fn revisions(&self) -> &[PurchaseOrderRevision] {
@@ -247,7 +247,7 @@ impl FromProto<purchase_order_state::PurchaseOrderVersion> for PurchaseOrderVers
             version_id: version.take_version_id(),
             workflow_status: version.take_workflow_status(),
             is_draft: version.get_is_draft(),
-            current_revision_id: version.take_current_revision_id(),
+            current_revision_id: version.get_current_revision_id(),
             revisions: version
                 .take_revisions()
                 .into_iter()
@@ -263,7 +263,7 @@ impl FromNative<PurchaseOrderVersion> for purchase_order_state::PurchaseOrderVer
         proto.set_version_id(version.version_id().to_string());
         proto.set_workflow_status(version.workflow_status().to_string());
         proto.set_is_draft(version.is_draft());
-        proto.set_current_revision_id(version.current_revision_id().to_string());
+        proto.set_current_revision_id(version.current_revision_id());
         proto.set_revisions(RepeatedField::from_vec(
             version
                 .revisions()
@@ -324,7 +324,7 @@ pub struct PurchaseOrderVersionBuilder {
     version_id: Option<String>,
     workflow_status: Option<String>,
     is_draft: Option<bool>,
-    current_revision_id: Option<String>,
+    current_revision_id: Option<u64>,
     revisions: Option<Vec<PurchaseOrderRevision>>,
 }
 
@@ -348,7 +348,7 @@ impl PurchaseOrderVersionBuilder {
         self
     }
 
-    pub fn with_current_revision_id(mut self, current_revision_id: String) -> Self {
+    pub fn with_current_revision_id(mut self, current_revision_id: u64) -> Self {
         self.current_revision_id = Some(current_revision_id);
         self
     }

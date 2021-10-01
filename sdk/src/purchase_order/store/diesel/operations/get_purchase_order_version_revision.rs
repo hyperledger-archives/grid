@@ -29,7 +29,7 @@ pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreGetPurchase
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError>;
 }
@@ -42,7 +42,7 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderRevisionOperation
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
@@ -85,7 +85,7 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderRevisionOperation
         &self,
         po_uid: &str,
         version_id: &str,
-        revision_id: &str,
+        revision_id: &i64,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersionRevision>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {

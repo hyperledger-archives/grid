@@ -159,7 +159,7 @@ fn create_purchase_order(
         Some(payload) => {
             let payload_revision = payload.revision();
             let revision = PurchaseOrderRevisionBuilder::new()
-                .with_revision_id(payload_revision.revision_id().to_string())
+                .with_revision_id(payload_revision.revision_id())
                 .with_submitter(signer.to_string())
                 .with_created_at(payload_revision.created_at())
                 .with_order_xml_v3_4(payload_revision.order_xml_v3_4().to_string())
@@ -173,7 +173,7 @@ fn create_purchase_order(
             let mut version_builder = PurchaseOrderVersionBuilder::new()
                 .with_version_id(payload.version_id().to_string())
                 .with_is_draft(payload.is_draft())
-                .with_current_revision_id(revision.revision_id().to_string())
+                .with_current_revision_id(revision.revision_id())
                 .with_revisions(vec![revision]);
             let perm_string = Permission::CanCreatePoVersion.to_string();
             if payload.is_draft() {
@@ -681,7 +681,7 @@ mod tests {
             .with_version_id(version_id.to_string())
             .with_workflow_status("Editable".to_string())
             .with_is_draft(true)
-            .with_current_revision_id("1".to_string())
+            .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())
             .build()
             .expect("Unable to build first purchase order version")
@@ -689,7 +689,7 @@ mod tests {
 
     fn purchase_order_revisions() -> Vec<PurchaseOrderRevision> {
         vec![PurchaseOrderRevisionBuilder::new()
-            .with_revision_id("1".to_string())
+            .with_revision_id(1)
             .with_submitter(BUYER_PUB_KEY.to_string())
             .with_created_at(1)
             .with_order_xml_v3_4("xml_purchase_order".to_string())

@@ -42,6 +42,11 @@ mod yaml_parser;
 
 use std::path::PathBuf;
 
+#[cfg(any(feature = "purchase-order"))]
+use std::convert::TryInto;
+#[cfg(any(feature = "purchase-order"))]
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use std::env;
 #[cfg(any(feature = "location", feature = "product",))]
 use std::{collections::HashMap, fs::File, io::prelude::*};
@@ -61,8 +66,6 @@ use grid_sdk::client::{create_client_factory, ClientType};
 #[cfg(feature = "schema")]
 use grid_sdk::client::{schema, schema::SchemaClient};
 
-#[cfg(any(feature = "purchase-order"))]
-use grid_sdk::data_validation::validate_order_xml_3_4;
 #[cfg(feature = "location")]
 use grid_sdk::protocol::location::payload::{
     LocationCreateActionBuilder, LocationDeleteActionBuilder, LocationNamespace,
@@ -84,6 +87,11 @@ use grid_sdk::protocol::product::{
 };
 #[cfg(any(feature = "location", feature = "product",))]
 use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder};
+#[cfg(any(feature = "purchase-order"))]
+use grid_sdk::{
+    data_validation::validate_order_xml_3_4,
+    protocol::purchase_order::payload::{CreateVersionPayloadBuilder, PayloadRevisionBuilder},
+};
 
 use log::Record;
 
@@ -96,6 +104,8 @@ use actions::keygen;
 use actions::locations;
 #[cfg(feature = "product")]
 use actions::products;
+#[cfg(feature = "purchase-order")]
+use actions::purchase_orders;
 #[cfg(feature = "schema")]
 use actions::schemas;
 #[cfg(feature = "pike")]
@@ -1240,18 +1250,11 @@ fn run() -> Result<(), CliError> {
                             .help("Identifier for this Purchase Order version"),
                     )
                     .arg(
-                        Arg::with_name("org")
-                            .value_name("org_id")
-                            .long("org")
-                            .takes_value(true)
-                            .required(true)
-                            .help("ID of the organization that owns the Purchase Order version"),
-                    )
-                    .arg(
                         Arg::with_name("po")
                             .value_name("order_id")
                             .long("po")
                             .takes_value(true)
+                            .required(true)
                             .help(
                                 "ID of the Purchase Order this version belongs to. \
                         May be the Purchase Order's UUID or an Alternate ID \
@@ -2496,16 +2499,18 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "purchase-order")]
         ("po", Some(m)) => {
-            let _url = m
+            let url = m
                 .value_of("url")
                 .map(String::from)
                 .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
                 .unwrap_or_else(|| String::from("http://localhost:8000"));
 
-            let _service_id = m
+            let service_id = m
                 .value_of("service_id")
                 .map(String::from)
                 .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+            let purchase_order_client = client_factory.get_purchase_order_client(url);
 
             match m.subcommand() {
                 ("create", Some(_)) => unimplemented!(),
@@ -2514,11 +2519,81 @@ fn run() -> Result<(), CliError> {
                 ("show", Some(_)) => unimplemented!(),
                 ("version", Some(m)) => match m.subcommand() {
                     ("create", Some(m)) => {
+                        let key = m
+                            .value_of("key")
+                            .map(String::from)
+                            .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                        let signer = signing::load_signer(key)?;
+
+                        let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
                         let order_xml_path = m.value_of("order_xml").unwrap();
                         let mut xml_str = String::new();
                         std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
                         validate_order_xml_3_4(&xml_str, false)?;
                         info!("Purchase order was valid.");
+
+                        let version_id = m.value_of("version_id").unwrap();
+
+                        let po = m.value_of("po").unwrap();
+
+                        let workflow_status = m.value_of("workflow_status").unwrap();
+
+                        let revision_id = purchase_orders::get_latest_revision_id(
+                            &*purchase_order_client,
+                            po,
+                            version_id,
+                            service_id.as_deref(),
+                        )? + 1;
+
+                        let draft = !m.is_present("not_draft");
+
+                        let action = CreateVersionPayloadBuilder::new()
+                            .with_version_id(version_id.to_string())
+                            .with_po_uid(po.to_string())
+                            .with_workflow_status(workflow_status.to_string())
+                            .with_is_draft(draft)
+                            .with_revision(
+                                PayloadRevisionBuilder::new()
+                                    .with_revision_id(revision_id.try_into().map_err(|err| {
+                                        CliError::PayloadError(format!("{}", err))
+                                    })?)
+                                    .with_submitter(
+                                        signer
+                                            .public_key()
+                                            .map_err(|err| CliError::UserError(format!("{}", err)))?
+                                            .as_hex(),
+                                    )
+                                    .with_created_at(
+                                        SystemTime::now()
+                                            .duration_since(UNIX_EPOCH)
+                                            .map(|d| d.as_secs())
+                                            .map_err(|err| {
+                                                CliError::PayloadError(format!("{}", err))
+                                            })?,
+                                    )
+                                    .with_order_xml_v3_4(xml_str)
+                                    .build()
+                                    .map_err(|err| {
+                                        CliError::UserError(format!(
+                                            "Could not build PO revision: {}",
+                                            err
+                                        ))
+                                    })?,
+                            )
+                            .build()
+                            .map_err(|err| {
+                                CliError::UserError(format!("Could not build PO version: {}", err))
+                            })?;
+
+                        info!("Submitting request to create purchase order version...");
+                        purchase_orders::do_create_version(
+                            &*purchase_order_client,
+                            signer,
+                            wait,
+                            action,
+                            service_id.as_deref(),
+                        )?;
                     }
                     ("update", Some(_)) => unimplemented!(),
                     ("list", Some(_)) => unimplemented!(),
