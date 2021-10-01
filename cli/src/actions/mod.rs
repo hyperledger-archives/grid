@@ -36,22 +36,22 @@ fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
 }
 
 #[cfg(feature = "pike")]
-pub mod agents;
+pub mod agent;
 #[cfg(feature = "database")]
 pub mod database;
 pub mod keygen;
 #[cfg(feature = "location")]
-pub mod locations;
+pub mod location;
 #[cfg(feature = "pike")]
-pub mod organizations;
+pub mod organization;
 #[cfg(feature = "product")]
-pub mod products;
+pub mod product;
 #[cfg(any(feature = "purchase-order"))]
-pub mod purchase_orders;
+pub mod purchase_order;
 #[cfg(feature = "pike")]
-pub mod roles;
+pub mod role;
 #[cfg(feature = "schema")]
-pub mod schemas;
+pub mod schema;
 
 #[cfg(any(feature = "purchase-order", feature = "product"))]
 pub const DEFAULT_SCHEMA_DIR: &str = "/etc/grid/schemas";

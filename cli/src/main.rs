@@ -62,7 +62,7 @@ use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use grid_sdk::client::{reqwest::ReqwestClientFactory, ClientFactory};
 
 #[cfg(feature = "schema")]
-use grid_sdk::client::{schema, schema::SchemaClient};
+use grid_sdk::client::{schema as grid_schema_client, schema::SchemaClient};
 
 #[cfg(feature = "location")]
 use grid_sdk::protocol::location::payload::{
@@ -105,18 +105,18 @@ use crate::error::CliError;
 use actions::database;
 use actions::keygen;
 #[cfg(feature = "location")]
-use actions::locations;
+use actions::location;
 #[cfg(feature = "product")]
-use actions::products;
+use actions::product;
 #[cfg(feature = "purchase-order")]
-use actions::purchase_orders;
+use actions::purchase_order;
 #[cfg(feature = "schema")]
-use actions::schemas;
+use actions::schema;
 #[cfg(feature = "pike")]
-use actions::{agents, organizations as orgs, roles};
+use actions::{agent, organization as orgs, role};
 
 #[cfg(feature = "purchase-order")]
-use actions::{purchase_orders::GRID_ORDER_SCHEMA_DIR, DEFAULT_SCHEMA_DIR};
+use actions::{purchase_order::GRID_ORDER_SCHEMA_DIR, DEFAULT_SCHEMA_DIR};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -1787,7 +1787,7 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to create agent...");
-                agents::do_create_agent(pike_client, signer, wait, create_agent, service_id)?;
+                agent::do_create_agent(pike_client, signer, wait, create_agent, service_id)?;
             }
             ("update", Some(m)) => {
                 let url = value_of_url(m)?;
@@ -1824,14 +1824,14 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to update agent...");
-                agents::do_update_agent(pike_client, signer, wait, update_agent, service_id)?;
+                agent::do_update_agent(pike_client, signer, wait, update_agent, service_id)?;
             }
             ("list", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let pike_client = client_factory.get_pike_client(url);
-                agents::do_list_agents(
+                agent::do_list_agents(
                     pike_client,
                     service_id,
                     m.value_of("format").unwrap(),
@@ -1843,7 +1843,7 @@ fn run() -> Result<(), CliError> {
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let pike_client = client_factory.get_pike_client(url);
-                agents::do_show_agents(pike_client, m.value_of("public_key").unwrap(), service_id)?
+                agent::do_show_agents(pike_client, m.value_of("public_key").unwrap(), service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
@@ -1960,7 +1960,7 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to create role...");
-                roles::do_create_role(pike_client, signer, wait, create_role, service_id)?;
+                role::do_create_role(pike_client, signer, wait, create_role, service_id)?;
             }
             ("update", Some(m)) => {
                 let url = value_of_url(m)?;
@@ -2004,7 +2004,7 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to update role...");
-                roles::do_update_role(pike_client, signer, wait, update_role, service_id)?;
+                role::do_update_role(pike_client, signer, wait, update_role, service_id)?;
             }
             ("delete", Some(m)) => {
                 let url = value_of_url(m)?;
@@ -2022,14 +2022,14 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to delete role...");
-                roles::do_delete_role(pike_client, signer, wait, delete_role, service_id)?;
+                role::do_delete_role(pike_client, signer, wait, delete_role, service_id)?;
             }
             ("show", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let pike_client = client_factory.get_pike_client(url);
-                roles::do_show_role(
+                role::do_show_role(
                     pike_client,
                     m.value_of("org_id").unwrap().into(),
                     m.value_of("name").unwrap().into(),
@@ -2041,7 +2041,7 @@ fn run() -> Result<(), CliError> {
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let pike_client = client_factory.get_pike_client(url);
-                roles::do_list_roles(
+                role::do_list_roles(
                     pike_client,
                     m.value_of("org_id").unwrap().into(),
                     service_id,
@@ -2061,7 +2061,7 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 info!("Submitting request to create schema...");
-                schemas::do_create_schemas(
+                schema::do_create_schemas(
                     schema_client,
                     signer,
                     wait,
@@ -2079,7 +2079,7 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 info!("Submitting request to update schema...");
-                schemas::do_update_schemas(
+                schema::do_update_schemas(
                     schema_client,
                     signer,
                     wait,
@@ -2092,14 +2092,14 @@ fn run() -> Result<(), CliError> {
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let schema_client = client_factory.get_schema_client(url);
-                schemas::do_list_schemas(schema_client, service_id)?
+                schema::do_list_schemas(schema_client, service_id)?
             }
             ("show", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let schema_client = client_factory.get_schema_client(url);
-                schemas::do_show_schema(
+                schema::do_show_schema(
                     schema_client,
                     m.value_of("name").unwrap().into(),
                     service_id,
@@ -2159,7 +2159,7 @@ fn run() -> Result<(), CliError> {
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                let actions = products::create_product_payloads_from_file(
+                let actions = product::create_product_payloads_from_file(
                     m.values_of("file").unwrap().collect(),
                     schema_client,
                     service_id.as_deref(),
@@ -2167,7 +2167,7 @@ fn run() -> Result<(), CliError> {
                 )?;
 
                 info!("Submitting request to create product...");
-                products::do_create_products(product_client, signer, wait, actions, service_id)?;
+                product::do_create_products(product_client, signer, wait, actions, service_id)?;
             }
             ("create", Some(m)) => {
                 let url = value_of_url(m)?;
@@ -2205,7 +2205,7 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to create product...");
-                products::do_create_products(
+                product::do_create_products(
                     product_client,
                     signer,
                     wait,
@@ -2223,14 +2223,14 @@ fn run() -> Result<(), CliError> {
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                let actions = products::update_product_payloads_from_file(
+                let actions = product::update_product_payloads_from_file(
                     m.values_of("file").unwrap().collect(),
                     schema_client,
                     service_id.as_deref(),
                 )?;
 
                 info!("Submitting request to update product...");
-                products::do_update_products(product_client, signer, wait, actions, service_id)?;
+                product::do_update_products(product_client, signer, wait, actions, service_id)?;
             }
             ("update", Some(m)) => {
                 let url = value_of_url(m)?;
@@ -2267,7 +2267,7 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to update product...");
-                products::do_update_products(
+                product::do_update_products(
                     product_client,
                     signer,
                     wait,
@@ -2301,21 +2301,21 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to delete product...");
-                products::do_delete_products(product_client, signer, wait, action, service_id)?;
+                product::do_delete_products(product_client, signer, wait, action, service_id)?;
             }
             ("list", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let product_client = client_factory.get_product_client(url);
-                products::do_list_products(product_client, service_id)?
+                product::do_list_products(product_client, service_id)?
             }
             ("show", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let product_client = client_factory.get_product_client(url);
-                products::do_show_products(
+                product::do_show_products(
                     product_client,
                     m.value_of("product_id").unwrap().into(),
                     service_id,
@@ -2335,14 +2335,14 @@ fn run() -> Result<(), CliError> {
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                let actions = locations::create_location_payloads_from_file(
+                let actions = location::create_location_payloads_from_file(
                     m.value_of("file").unwrap(),
                     schema_client,
                     service_id.as_deref(),
                 )?;
 
                 info!("Submitting request to create location...");
-                locations::do_create_location(location_client, signer, wait, actions, service_id)?;
+                location::do_create_location(location_client, signer, wait, actions, service_id)?;
             }
             ("create", Some(m)) => {
                 let url = value_of_url(m)?;
@@ -2380,7 +2380,7 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to create location...");
-                locations::do_create_location(
+                location::do_create_location(
                     location_client,
                     signer,
                     wait,
@@ -2398,14 +2398,14 @@ fn run() -> Result<(), CliError> {
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                let actions = locations::update_location_payloads_from_file(
+                let actions = location::update_location_payloads_from_file(
                     m.value_of("file").unwrap(),
                     schema_client,
                     service_id.as_deref(),
                 )?;
 
                 info!("Submitting request to update location...");
-                locations::do_update_location(location_client, signer, wait, actions, service_id)?;
+                location::do_update_location(location_client, signer, wait, actions, service_id)?;
             }
             ("update", Some(m)) => {
                 let url = value_of_url(m)?;
@@ -2442,7 +2442,7 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to update location...");
-                locations::do_update_location(
+                location::do_update_location(
                     location_client,
                     signer,
                     wait,
@@ -2476,21 +2476,21 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 info!("Submitting request to delete location...");
-                locations::do_delete_location(location_client, signer, wait, action, service_id)?;
+                location::do_delete_location(location_client, signer, wait, action, service_id)?;
             }
             ("list", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let location_client = client_factory.get_location_client(url);
-                locations::do_list_locations(location_client, service_id)?
+                location::do_list_locations(location_client, service_id)?
             }
             ("show", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let location_client = client_factory.get_location_client(url);
-                locations::do_show_location(
+                location::do_show_location(
                     location_client,
                     m.value_of("location_id").unwrap(),
                     service_id,
@@ -2511,7 +2511,7 @@ fn run() -> Result<(), CliError> {
                 let uid = m
                     .value_of("uid")
                     .map(String::from)
-                    .unwrap_or_else(purchase_orders::generate_purchase_order_uid);
+                    .unwrap_or_else(purchase_order::generate_purchase_order_uid);
 
                 let alternate_ids: Vec<String> = m
                     .values_of("alternate_id")
@@ -2520,7 +2520,7 @@ fn run() -> Result<(), CliError> {
                     .collect();
 
                 if !alternate_ids.is_empty() {
-                    purchase_orders::do_check_alternate_ids_are_unique(
+                    purchase_order::do_check_alternate_ids_are_unique(
                         &*purchase_order_client,
                         alternate_ids.to_vec(),
                         service_id.as_deref(),
@@ -2529,7 +2529,7 @@ fn run() -> Result<(), CliError> {
 
                 let client_alternate_ids: Vec<POClientAlternateId> = alternate_ids
                     .iter()
-                    .map(|id| purchase_orders::make_alternate_id_from_str(&uid, id))
+                    .map(|id| purchase_order::make_alternate_id_from_str(&uid, id))
                     .collect::<Result<_, _>>()?;
 
                 let protocol_alternate_ids: Vec<POProtocolAlternateId> = client_alternate_ids
@@ -2555,7 +2555,7 @@ fn run() -> Result<(), CliError> {
                     })?;
 
                 info!("Submitting request to create purchase order...");
-                purchase_orders::do_create_purchase_order(
+                purchase_order::do_create_purchase_order(
                     &*purchase_order_client,
                     signer,
                     wait,
@@ -2573,7 +2573,7 @@ fn run() -> Result<(), CliError> {
 
                 let uid = m.value_of("id").map(String::from).unwrap();
 
-                let po = purchase_orders::do_fetch_purchase_order(
+                let po = purchase_order::do_fetch_purchase_order(
                     &*purchase_order_client,
                     &uid,
                     service_id.as_deref(),
@@ -2603,7 +2603,7 @@ fn run() -> Result<(), CliError> {
                         let adds: Vec<String> =
                             m.values_of("add_id").unwrap().map(String::from).collect();
 
-                        purchase_orders::do_check_alternate_ids_are_unique(
+                        purchase_order::do_check_alternate_ids_are_unique(
                             &*purchase_order_client,
                             adds.to_vec(),
                             service_id.as_deref(),
@@ -2611,7 +2611,7 @@ fn run() -> Result<(), CliError> {
 
                         for a in adds {
                             alternate_ids
-                                .push(purchase_orders::make_alternate_id_from_str(&uid, &a)?);
+                                .push(purchase_order::make_alternate_id_from_str(&uid, &a)?);
                         }
                     }
 
@@ -2619,7 +2619,7 @@ fn run() -> Result<(), CliError> {
                         let rms: Vec<&str> = m.values_of("rm_id").unwrap().collect();
 
                         for r in rms {
-                            let converted = purchase_orders::make_alternate_id_from_str(&uid, r)?;
+                            let converted = purchase_order::make_alternate_id_from_str(&uid, r)?;
                             alternate_ids.retain(|i| {
                                 i.alternate_id_type != converted.alternate_id_type
                                     || i.alternate_id != converted.alternate_id
@@ -2650,7 +2650,7 @@ fn run() -> Result<(), CliError> {
                         })?;
 
                     info!("Submitting request to update purchase order...");
-                    purchase_orders::do_update_purchase_order(
+                    purchase_order::do_update_purchase_order(
                         &*purchase_order_client,
                         signer,
                         wait,
@@ -2695,7 +2695,7 @@ fn run() -> Result<(), CliError> {
                 };
                 let format = m.value_of("format");
 
-                purchase_orders::do_list_purchase_orders(
+                purchase_order::do_list_purchase_orders(
                     &*purchase_order_client,
                     Some(filter),
                     service_id,
@@ -2708,7 +2708,7 @@ fn run() -> Result<(), CliError> {
                 let purchase_order_client = client_factory.get_purchase_order_client(url);
                 let purchase_order_id = m.value_of("id").unwrap();
                 let format = m.value_of("format");
-                purchase_orders::do_show_purchase_order(
+                purchase_order::do_show_purchase_order(
                     &*purchase_order_client,
                     purchase_order_id.to_string(),
                     service_id,
@@ -2738,7 +2738,7 @@ fn run() -> Result<(), CliError> {
 
                     let workflow_state = m.value_of("workflow_state").unwrap();
 
-                    let revision_id = purchase_orders::get_latest_revision_id(
+                    let revision_id = purchase_order::get_latest_revision_id(
                         &*purchase_order_client,
                         po,
                         version_id,
@@ -2787,7 +2787,7 @@ fn run() -> Result<(), CliError> {
                             })?;
 
                     info!("Submitting request to create purchase order version...");
-                    purchase_orders::do_create_version(
+                    purchase_order::do_create_version(
                         &*purchase_order_client,
                         signer,
                         wait,
@@ -2819,7 +2819,7 @@ fn run() -> Result<(), CliError> {
 
                     let format = Some(m.value_of("format").unwrap());
 
-                    purchase_orders::do_list_versions(
+                    purchase_order::do_list_versions(
                         &*purchase_order_client,
                         po_uid,
                         accepted_filter,
@@ -2837,7 +2837,7 @@ fn run() -> Result<(), CliError> {
 
                     let version = m.value_of("version_id").unwrap();
 
-                    purchase_orders::do_show_version(
+                    purchase_order::do_show_version(
                         &*purchase_order_client,
                         po_uid,
                         version,
@@ -2857,14 +2857,14 @@ fn run() -> Result<(), CliError> {
 
                     let po = m.value_of("po").unwrap();
 
-                    let version = purchase_orders::get_purchase_order_version(
+                    let version = purchase_order::get_purchase_order_version(
                         &*purchase_order_client,
                         po,
                         version_id,
                         service_id.as_deref(),
                     )?;
 
-                    let current_revision = purchase_orders::get_current_revision_for_version(
+                    let current_revision = purchase_order::get_current_revision_for_version(
                         &*purchase_order_client,
                         po,
                         &version,
@@ -2890,7 +2890,7 @@ fn run() -> Result<(), CliError> {
                         info!("Purchase order was valid.");
 
                         current_revision_id = u64::try_from(
-                            purchase_orders::get_latest_revision_id(
+                            purchase_order::get_latest_revision_id(
                                 &*purchase_order_client,
                                 po,
                                 version_id,
@@ -2957,7 +2957,7 @@ fn run() -> Result<(), CliError> {
                         })?;
 
                     info!("Submitting request to update purchase order version...");
-                    purchase_orders::do_update_version(
+                    purchase_order::do_update_version(
                         &*purchase_order_client,
                         signer,
                         wait,
@@ -2977,7 +2977,7 @@ fn run() -> Result<(), CliError> {
 
                     let version = m.value_of("version_id").unwrap();
 
-                    purchase_orders::do_list_revisions(
+                    purchase_order::do_list_revisions(
                         &*purchase_order_client,
                         po_uid,
                         version,
@@ -2999,7 +2999,7 @@ fn run() -> Result<(), CliError> {
                         .parse::<u64>()
                         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    purchase_orders::do_show_revision(
+                    purchase_order::do_show_revision(
                         &*purchase_order_client,
                         po_uid,
                         version,
@@ -3170,7 +3170,7 @@ fn parse_properties(
         };
 
         match property.data_type {
-            schema::DataType::Number => {
+            grid_schema_client::DataType::Number => {
                 let number = if let Ok(i) = value.parse::<i64>() {
                     i
                 } else {
@@ -3186,7 +3186,7 @@ fn parse_properties(
 
                 property_values.push(property_value);
             }
-            schema::DataType::Enum => {
+            grid_schema_client::DataType::Enum => {
                 let enum_idx = if let Ok(i) = value.parse::<u32>() {
                     i
                 } else {
@@ -3202,7 +3202,7 @@ fn parse_properties(
 
                 property_values.push(property_value);
             }
-            schema::DataType::String => {
+            grid_schema_client::DataType::String => {
                 let property_value = PropertyValueBuilder::new()
                     .with_name(property.name)
                     .with_data_type(property.data_type.into())
@@ -3212,7 +3212,7 @@ fn parse_properties(
 
                 property_values.push(property_value);
             }
-            schema::DataType::LatLong => {
+            grid_schema_client::DataType::LatLong => {
                 let lat_long = value
                     .split(',')
                     .map(|x| {
@@ -3242,7 +3242,7 @@ fn parse_properties(
 
                 property_values.push(property_value);
             }
-            schema::DataType::Boolean => {
+            grid_schema_client::DataType::Boolean => {
                 let boolean = if let Ok(i) = value.parse::<bool>() {
                     i
                 } else {
@@ -3258,7 +3258,7 @@ fn parse_properties(
 
                 property_values.push(property_value);
             }
-            schema::DataType::Bytes => {
+            grid_schema_client::DataType::Bytes => {
                 let mut f = File::open(&value)?;
                 let mut buffer = Vec::new();
                 f.read_to_end(&mut buffer)?;
@@ -3272,7 +3272,7 @@ fn parse_properties(
 
                 property_values.push(property_value);
             }
-            schema::DataType::Struct => {
+            grid_schema_client::DataType::Struct => {
                 return Err(CliError::UserError(
                     "Structs cannot be added via command line, use --file option".into(),
                 ))
