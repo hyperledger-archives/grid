@@ -19,7 +19,7 @@ use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
 };
 
-use super::payloads::{PurchaseOrderListSlice, PurchaseOrderSlice};
+use super::payloads::{PurchaseOrderListSlice, PurchaseOrderSlice, PurchaseOrderVersionSlice};
 
 pub fn list_purchase_orders<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
@@ -88,8 +88,42 @@ pub fn get_purchase_order<'a>(
         || {
             ErrorResponse::new(
                 404,
-                &format!("PurchaseOrder {} not found", purchase_order_uid),
+                &format!("Purchase order {} not found", purchase_order_uid),
             )
         },
     )?))
+}
+
+pub fn get_purchase_order_version<'a>(
+    store: Box<dyn PurchaseOrderStore + 'a>,
+    purchase_order_uid: String,
+    version_id: &str,
+    service_id: Option<&str>,
+) -> Result<PurchaseOrderVersionSlice, ErrorResponse> {
+    let purchase_order_version = store
+        .get_purchase_order_version(&purchase_order_uid, version_id, service_id)
+        .map_err(|err| match err {
+            PurchaseOrderStoreError::InternalError(err) => {
+                ErrorResponse::internal_error(Box::new(err))
+            }
+            PurchaseOrderStoreError::ConstraintViolationError(err) => {
+                ErrorResponse::new(400, &format!("{}", err))
+            }
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(_) => {
+                ErrorResponse::new(503, "Service Unavailable")
+            }
+            PurchaseOrderStoreError::NotFoundError(_) => ErrorResponse::new(
+                404,
+                &format!("Purchase order {} not found", purchase_order_uid),
+            ),
+        })?;
+
+    Ok(PurchaseOrderVersionSlice::from(
+        purchase_order_version.ok_or_else(|| {
+            ErrorResponse::new(
+                404,
+                &format!("Purchase order {} not found", purchase_order_uid),
+            )
+        })?,
+    ))
 }

@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{purchase_order::store::PurchaseOrder, rest_api::resources::paging::v1::Paging};
+use crate::{
+    purchase_order::store::{PurchaseOrder, PurchaseOrderVersion},
+    rest_api::resources::paging::v1::Paging,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderSlice {
@@ -56,10 +59,26 @@ pub struct PurchaseOrderListSlice {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderVersionSlice {
     version_id: String,
-    workflow_status: String,
     is_draft: bool,
-    current_revision_number: u64,
-    revisions: Vec<u64>,
+    current_revision_id: String,
+    revisions: Vec<String>,
+    service_id: Option<String>,
+}
+
+impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
+    fn from(purchase_order_version: PurchaseOrderVersion) -> Self {
+        Self {
+            version_id: purchase_order_version.version_id().to_string(),
+            is_draft: purchase_order_version.is_draft(),
+            current_revision_id: purchase_order_version.current_revision_id().to_string(),
+            revisions: purchase_order_version
+                .revisions()
+                .into_iter()
+                .map(|version| version.revision_id().to_string())
+                .collect(),
+            service_id: purchase_order_version.service_id().map(str::to_owned),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

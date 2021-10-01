@@ -560,7 +560,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uuid}/versions/{version_id}:
+  /purchase-order/{uid}/versions/{version_id}:
     get:
       tags:
         - Purchase Order
@@ -573,7 +573,7 @@ paths:
           required: true
           schema:
             type: string
-        - name: uuid
+        - name: uid
           in: path
           description: ID of the PO to fetch
           required: true

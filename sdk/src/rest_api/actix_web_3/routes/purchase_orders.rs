@@ -103,17 +103,32 @@ pub async fn list_purchase_order_versions(
     }
 }
 
-#[get("/purchase-order/{uuid}/versions/{version_id}")]
+#[get("/purchase-order/{uid}/versions/{version_id}")]
 pub async fn get_purchase_order_version(
-    _store_state: web::Data<StoreState>,
-    _uuid: web::Path<String>,
-    _version_id: web::Path<String>,
-    _query: web::Query<QueryServiceId>,
+    store_state: web::Data<StoreState>,
+    uid: web::Path<String>,
+    version_id: web::Path<String>,
+    query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_purchase_order_store();
     match version {
-        ProtocolVersion::V1 => unimplemented!(),
+        ProtocolVersion::V1 => {
+            match v1::get_purchase_order_version(
+                store,
+                uid.into_inner(),
+                &version_id.into_inner(),
+                query_service_id.into_inner().service_id.as_deref(),
+            ) {
+                Ok(res) => HttpResponse::Ok().json(res),
+                Err(err) => HttpResponse::build(
+                    StatusCode::from_u16(err.status_code())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(err),
+            }
+        }
     }
 }
 
