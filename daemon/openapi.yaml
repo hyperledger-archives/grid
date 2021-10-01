@@ -472,7 +472,7 @@ paths:
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
   # Purchase Order
-  /purchase-order:
+  /purchase_order:
     get:
       tags:
         - Purchase Order
@@ -497,7 +497,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uuid}:
+  /purchase_order/{uuid}:
     get:
       tags:
         - Purchase Order
@@ -527,7 +527,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uid}/version:
+  /purchase_order/{uid}/version:
     get:
       tags:
         - Purchase Order
@@ -560,7 +560,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uid}/version/{version_id}:
+  /purchase_order/{uid}/version/{version_id}:
     get:
       tags:
         - Purchase Order
@@ -599,7 +599,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uid}/version/{version_id}/revision:
+  /purchase_order/{uid}/version/{version_id}/revision:
     get:
       tags:
         - Purchase Order
@@ -638,7 +638,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uid}/version/{version_id}/revision/{revision_id}:
+  /purchase_order/{uid}/version/{version_id}/revision/{revision_id}:
     get:
       tags:
         - Purchase Order

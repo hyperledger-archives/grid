@@ -59,7 +59,7 @@ pub fn list_purchase_orders<'a>(
         .map(PurchaseOrderSlice::from)
         .collect();
 
-    let paging = Paging::new("/purchase-order", purchase_order_list.paging, service_id);
+    let paging = Paging::new("/purchase_order", purchase_order_list.paging, service_id);
 
     Ok(PurchaseOrderListSlice { data, paging })
 }
@@ -167,7 +167,7 @@ pub fn list_purchase_order_versions<'a>(
         .collect();
 
     let paging = Paging::new(
-        &format!("/purchase-order/{}/versions", purchase_order_uid),
+        &format!("/purchase_order/{}/versions", purchase_order_uid),
         purchase_order_version_list.paging,
         service_id,
     );
@@ -216,7 +216,7 @@ pub fn list_purchase_order_revisions<'a>(
 
     let paging = Paging::new(
         &format!(
-            "/purchase-order/{}/versions/{}/revisions",
+            "/purchase_order/{}/versions/{}/revisions",
             purchase_order_uid, version_id
         ),
         purchase_order_revision_list.paging,
