@@ -804,6 +804,14 @@ impl PurchaseOrderAlternateIdBuilder {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListPOFilters {
+    pub buyer_org_id: Option<String>,
+    pub seller_org_id: Option<String>,
+    pub has_accepted_version: Option<bool>,
+    pub is_open: Option<bool>,
+}
+
 pub trait PurchaseOrderStore {
     /// Adds a purchase order to the underlying storage
     ///
@@ -816,15 +824,14 @@ pub trait PurchaseOrderStore {
     ///
     /// # Arguments
     ///
-    ///  * `buyer_org_id` - The buyer organization to fetch for
-    ///  * `seller_org_id` - The seller organization to fetch for
+    ///  * `filters` - Optional filters for the POs: `buyer_org_id`,
+    ///    `seller_org_id`, `has_accepted_version`, and `is_open`
     ///  * `service_id` - The service ID
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -949,13 +956,12 @@ where
 
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
-        (**self).list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
+        (**self).list_purchase_orders(filters, service_id, offset, limit)
     }
 
     fn list_purchase_order_versions(

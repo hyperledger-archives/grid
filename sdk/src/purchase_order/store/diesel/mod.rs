@@ -20,9 +20,9 @@ use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{
-    PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderAlternateIdList, PurchaseOrderList,
-    PurchaseOrderStore, PurchaseOrderStoreError, PurchaseOrderVersion, PurchaseOrderVersionList,
-    PurchaseOrderVersionRevision, PurchaseOrderVersionRevisionList,
+    ListPOFilters, PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderAlternateIdList,
+    PurchaseOrderList, PurchaseOrderStore, PurchaseOrderStoreError, PurchaseOrderVersion,
+    PurchaseOrderVersionList, PurchaseOrderVersionRevision, PurchaseOrderVersionRevisionList,
 };
 
 use models::{make_purchase_order_version_revisions, make_purchase_order_versions};
@@ -74,8 +74,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
 
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -85,7 +84,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
+        .list_purchase_orders(filters, service_id, offset, limit)
     }
 
     fn list_purchase_order_versions(
@@ -215,8 +214,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
 
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -226,7 +224,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
+        .list_purchase_orders(filters, service_id, offset, limit)
     }
 
     fn list_purchase_order_versions(
@@ -369,19 +367,13 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
 
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(self.connection).list_purchase_orders(
-            buyer_org_id,
-            seller_org_id,
-            service_id,
-            offset,
-            limit,
-        )
+        PurchaseOrderStoreOperations::new(self.connection)
+            .list_purchase_orders(filters, service_id, offset, limit)
     }
 
     fn list_purchase_order_versions(
@@ -486,19 +478,13 @@ impl<'a> PurchaseOrderStore
 
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(self.connection).list_purchase_orders(
-            buyer_org_id,
-            seller_org_id,
-            service_id,
-            offset,
-            limit,
-        )
+        PurchaseOrderStoreOperations::new(self.connection)
+            .list_purchase_orders(filters, service_id, offset, limit)
     }
 
     fn list_purchase_order_versions(

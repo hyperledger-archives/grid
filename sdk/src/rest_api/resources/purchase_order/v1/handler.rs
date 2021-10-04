@@ -15,7 +15,7 @@
 use std::convert::TryFrom;
 
 use crate::{
-    purchase_order::store::{PurchaseOrderStore, PurchaseOrderStoreError},
+    purchase_order::store::{ListPOFilters, PurchaseOrderStore, PurchaseOrderStoreError},
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
 };
 
@@ -26,8 +26,7 @@ use super::payloads::{
 
 pub fn list_purchase_orders<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
-    buyer_org_id: Option<String>,
-    seller_org_id: Option<String>,
+    filters: ListPOFilters,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -37,7 +36,7 @@ pub fn list_purchase_orders<'a>(
     let limit = i64::try_from(limit).unwrap_or(10);
 
     let purchase_order_list = store
-        .list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
+        .list_purchase_orders(filters, service_id, offset, limit)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))

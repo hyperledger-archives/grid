@@ -20,6 +20,8 @@ use crate::rest_api::{
     resources::purchase_order::v1,
 };
 
+use crate::purchase_order::store::ListPOFilters;
+
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,8 +42,7 @@ pub struct QueryRevisionNumber {
 #[get("/purchase_order")]
 pub async fn list_purchase_orders(
     store_state: web::Data<StoreState>,
-    query_buyer_org_id: web::Query<QueryOrgId>,
-    query_seller_org_id: web::Query<QueryOrgId>,
+    query_filters: web::Query<ListPOFilters>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
@@ -50,14 +51,12 @@ pub async fn list_purchase_orders(
     let store = store_state.store_factory.get_grid_purchase_order_store();
     match version {
         ProtocolVersion::V1 => {
+            let filters = query_filters.into_inner();
             let paging = query_paging.into_inner();
-            let buyer_org_id = query_buyer_org_id.into_inner().org_id;
-            let seller_org_id = query_seller_org_id.into_inner().org_id;
             let service_id = query_service_id.into_inner().service_id;
             match v1::list_purchase_orders(
                 store,
-                buyer_org_id,
-                seller_org_id,
+                filters,
                 service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),

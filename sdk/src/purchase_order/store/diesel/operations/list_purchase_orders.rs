@@ -19,7 +19,7 @@ use crate::paging::Paging;
 use crate::purchase_order::store::diesel::{
     models::{PurchaseOrderModel, PurchaseOrderVersionModel, PurchaseOrderVersionRevisionModel},
     schema::{purchase_order, purchase_order_version, purchase_order_version_revision},
-    PurchaseOrder, PurchaseOrderList, PurchaseOrderVersion,
+    ListPOFilters, PurchaseOrder, PurchaseOrderList, PurchaseOrderVersion,
 };
 
 use crate::purchase_order::store::PurchaseOrderStoreError;
@@ -28,8 +28,7 @@ use diesel::prelude::*;
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchaseOrdersOperation {
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -42,19 +41,37 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
 {
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let ListPOFilters {
+                buyer_org_id,
+                seller_org_id,
+                has_accepted_version,
+                is_open,
+            } = filters;
+
             let mut query = purchase_order::table
                 .into_boxed()
                 .select(purchase_order::all_columns)
                 .offset(offset)
                 .limit(limit)
                 .filter(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM));
+
+            if let Some(has_accepted_version) = has_accepted_version {
+                if has_accepted_version {
+                    query = query.filter(purchase_order::accepted_version_id.is_not_null())
+                } else {
+                    query = query.filter(purchase_order::accepted_version_id.is_null())
+                }
+            }
+
+            if let Some(is_open) = is_open {
+                query = query.filter(purchase_order::is_closed.eq(!is_open))
+            }
 
             if let Some(buyer_org_id) = buyer_org_id {
                 query = query.filter(purchase_order::buyer_org_id.eq(buyer_org_id))
@@ -166,19 +183,37 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
 {
     fn list_purchase_orders(
         &self,
-        buyer_org_id: Option<String>,
-        seller_org_id: Option<String>,
+        filters: ListPOFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderList, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let ListPOFilters {
+                buyer_org_id,
+                seller_org_id,
+                has_accepted_version,
+                is_open,
+            } = filters;
+
             let mut query = purchase_order::table
                 .into_boxed()
                 .select(purchase_order::all_columns)
                 .offset(offset)
                 .limit(limit)
                 .filter(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM));
+
+            if let Some(has_accepted_version) = has_accepted_version {
+                if has_accepted_version {
+                    query = query.filter(purchase_order::accepted_version_id.is_not_null())
+                } else {
+                    query = query.filter(purchase_order::accepted_version_id.is_null())
+                }
+            }
+
+            if let Some(is_open) = is_open {
+                query = query.filter(purchase_order::is_closed.eq(!is_open))
+            }
 
             if let Some(buyer_org_id) = buyer_org_id {
                 query = query.filter(purchase_order::buyer_org_id.eq(buyer_org_id))
