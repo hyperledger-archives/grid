@@ -1266,6 +1266,7 @@ fn run() -> Result<(), CliError> {
                             .value_name("status")
                             .long("workflow-status")
                             .takes_value(true)
+                            .required(true)
                             .help("Workflow status of this Purchase Order version"),
                     )
                     .arg(
@@ -1291,6 +1292,7 @@ fn run() -> Result<(), CliError> {
                             .value_name("file")
                             .long("order-xml")
                             .takes_value(true)
+                            .required(true)
                             .help(
                                 "Specify the path to a Purchase Order XML file. \
                                     (Formatting must abide by GS1 XML standards 3.4)",
@@ -1333,6 +1335,7 @@ fn run() -> Result<(), CliError> {
                             .value_name("status")
                             .long("workflow-status")
                             .takes_value(true)
+                            .required(true)
                             .help("The updated workflow status of this Purchase Order version"),
                     )
                     .arg(
