@@ -527,14 +527,14 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uuid}/versions:
+  /purchase-order/{uid}/version:
     get:
       tags:
         - Purchase Order
       summary: Lists all purchase order versions for a purchase order
       operationId: list_purchase_order_versions
       parameters:
-        - name: uuid
+        - name: uid
           in: path
           description: ID of the PO to fetch versions for
           required: true
@@ -560,7 +560,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uid}/versions/{version_id}:
+  /purchase-order/{uid}/version/{version_id}:
     get:
       tags:
         - Purchase Order
@@ -599,7 +599,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uuid}/versions/{version_id}/revisions:
+  /purchase-order/{uuid}/version/{version_id}/revisions:
     get:
       tags:
         - Purchase Order
@@ -638,7 +638,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uuid}/versions/{version_id}/revisions/{revision_id}:
+  /purchase-order/{uuid}/version/{version_id}/revisions/{revision_id}:
     get:
       tags:
         - Purchase Order
