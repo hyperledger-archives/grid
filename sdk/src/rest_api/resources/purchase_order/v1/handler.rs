@@ -20,8 +20,8 @@ use crate::{
 };
 
 use super::payloads::{
-    PurchaseOrderListSlice, PurchaseOrderSlice, PurchaseOrderVersionListSlice,
-    PurchaseOrderVersionSlice,
+    PurchaseOrderListSlice, PurchaseOrderRevisionListSlice, PurchaseOrderRevisionSlice,
+    PurchaseOrderSlice, PurchaseOrderVersionListSlice, PurchaseOrderVersionSlice,
 };
 
 pub fn list_purchase_orders<'a>(
@@ -173,4 +173,55 @@ pub fn list_purchase_order_versions<'a>(
     );
 
     Ok(PurchaseOrderVersionListSlice { data, paging })
+}
+
+pub fn list_purchase_order_revisions<'a>(
+    store: Box<dyn PurchaseOrderStore + 'a>,
+    purchase_order_uid: String,
+    version_id: String,
+    service_id: Option<&str>,
+    offset: u64,
+    limit: u16,
+) -> Result<PurchaseOrderRevisionListSlice, ErrorResponse> {
+    let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+
+    let limit = i64::try_from(limit).unwrap_or(10);
+
+    let purchase_order_revision_list = store
+        .list_purchase_order_revisions(&purchase_order_uid, &version_id, service_id, offset, limit)
+        .map_err(|err| match err {
+            PurchaseOrderStoreError::InternalError(err) => {
+                ErrorResponse::internal_error(Box::new(err))
+            }
+            PurchaseOrderStoreError::ConstraintViolationError(err) => {
+                ErrorResponse::new(400, &format!("{}", err))
+            }
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(_) => {
+                ErrorResponse::new(503, "Service Unavailable")
+            }
+            PurchaseOrderStoreError::NotFoundError(_) => ErrorResponse::new(
+                404,
+                &format!(
+                    "Purchase order {} version {} not found",
+                    purchase_order_uid, version_id
+                ),
+            ),
+        })?;
+
+    let data = purchase_order_revision_list
+        .data
+        .into_iter()
+        .map(PurchaseOrderRevisionSlice::from)
+        .collect();
+
+    let paging = Paging::new(
+        &format!(
+            "/purchase-order/{}/versions/{}/revisions",
+            purchase_order_uid, version_id
+        ),
+        purchase_order_revision_list.paging,
+        service_id,
+    );
+
+    Ok(PurchaseOrderRevisionListSlice { data, paging })
 }
