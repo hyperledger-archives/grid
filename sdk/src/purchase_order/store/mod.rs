@@ -812,6 +812,12 @@ pub struct ListPOFilters {
     pub is_open: Option<bool>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListVersionFilters {
+    pub is_accepted: Option<bool>,
+    pub is_draft: Option<bool>,
+}
+
 pub trait PurchaseOrderStore {
     /// Adds a purchase order to the underlying storage
     ///
@@ -842,12 +848,15 @@ pub trait PurchaseOrderStore {
     /// # Arguments
     ///
     ///  * `po_uid`   - The uid of the purchase order to get versions for
+    ///  * `filters` - Optional filters for the PO versions: `is_accepted` and
+    ///    `is_draft`
     ///  * `service_id` - The service ID
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -967,11 +976,12 @@ where
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderVersionList, PurchaseOrderStoreError> {
-        (**self).list_purchase_order_versions(po_uid, service_id, offset, limit)
+        (**self).list_purchase_order_versions(po_uid, filters, service_id, offset, limit)
     }
 
     fn get_purchase_order(

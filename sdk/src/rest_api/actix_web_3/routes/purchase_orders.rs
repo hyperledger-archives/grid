@@ -20,7 +20,7 @@ use crate::rest_api::{
     resources::purchase_order::v1,
 };
 
-use crate::purchase_order::store::ListPOFilters;
+use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
@@ -107,18 +107,21 @@ pub async fn get_purchase_order(
 pub async fn list_purchase_order_versions(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
+    query_filters: web::Query<ListVersionFilters>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     let store = store_state.store_factory.get_grid_purchase_order_store();
+    let filters = query_filters.into_inner();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             match v1::list_purchase_order_versions(
                 store,
                 uid.into_inner(),
+                filters,
                 query_service_id.into_inner().service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),

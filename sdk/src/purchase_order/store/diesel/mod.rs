@@ -20,9 +20,10 @@ use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use super::{
-    ListPOFilters, PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderAlternateIdList,
-    PurchaseOrderList, PurchaseOrderStore, PurchaseOrderStoreError, PurchaseOrderVersion,
-    PurchaseOrderVersionList, PurchaseOrderVersionRevision, PurchaseOrderVersionRevisionList,
+    ListPOFilters, ListVersionFilters, PurchaseOrder, PurchaseOrderAlternateId,
+    PurchaseOrderAlternateIdList, PurchaseOrderList, PurchaseOrderStore, PurchaseOrderStoreError,
+    PurchaseOrderVersion, PurchaseOrderVersionList, PurchaseOrderVersionRevision,
+    PurchaseOrderVersionRevisionList,
 };
 
 use models::{make_purchase_order_version_revisions, make_purchase_order_versions};
@@ -90,6 +91,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -99,7 +101,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_purchase_order_versions(po_uid, service_id, offset, limit)
+        .list_purchase_order_versions(po_uid, filters, service_id, offset, limit)
     }
 
     fn get_purchase_order(
@@ -230,6 +232,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -239,7 +242,7 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .list_purchase_order_versions(po_uid, service_id, offset, limit)
+        .list_purchase_order_versions(po_uid, filters, service_id, offset, limit)
     }
 
     fn get_purchase_order(
@@ -379,12 +382,13 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderVersionList, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(self.connection)
-            .list_purchase_order_versions(po_uid, service_id, offset, limit)
+            .list_purchase_order_versions(po_uid, filters, service_id, offset, limit)
     }
 
     fn get_purchase_order(
@@ -490,12 +494,13 @@ impl<'a> PurchaseOrderStore
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderVersionList, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(self.connection)
-            .list_purchase_order_versions(po_uid, service_id, offset, limit)
+            .list_purchase_order_versions(po_uid, filters, service_id, offset, limit)
     }
 
     fn get_purchase_order(

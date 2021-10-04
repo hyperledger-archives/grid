@@ -15,7 +15,9 @@
 use std::convert::TryFrom;
 
 use crate::{
-    purchase_order::store::{ListPOFilters, PurchaseOrderStore, PurchaseOrderStoreError},
+    purchase_order::store::{
+        ListPOFilters, ListVersionFilters, PurchaseOrderStore, PurchaseOrderStoreError,
+    },
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
 };
 
@@ -135,6 +137,7 @@ pub fn get_purchase_order_version<'a>(
 pub fn list_purchase_order_versions<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
+    filters: ListVersionFilters,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -144,7 +147,7 @@ pub fn list_purchase_order_versions<'a>(
     let limit = i64::try_from(limit).unwrap_or(10);
 
     let purchase_order_version_list = store
-        .list_purchase_order_versions(&purchase_order_uid, service_id, offset, limit)
+        .list_purchase_order_versions(&purchase_order_uid, filters, service_id, offset, limit)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))
