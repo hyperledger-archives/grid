@@ -599,7 +599,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uid}/version/{version_id}/revisions:
+  /purchase-order/{uid}/version/{version_id}/revision:
     get:
       tags:
         - Purchase Order
@@ -638,7 +638,7 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase-order/{uuid}/version/{version_id}/revisions/{revision_id}:
+  /purchase-order/{uuid}/version/{version_id}/revision/{revision_id}:
     get:
       tags:
         - Purchase Order

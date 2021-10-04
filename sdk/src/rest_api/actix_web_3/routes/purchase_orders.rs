@@ -150,7 +150,7 @@ pub async fn get_purchase_order_version(
     }
 }
 
-#[get("/purchase-order/{uid}/version/{version_id}/revisions")]
+#[get("/purchase-order/{uid}/version/{version_id}/revision")]
 pub async fn list_purchase_order_version_revisions(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
@@ -183,7 +183,7 @@ pub async fn list_purchase_order_version_revisions(
     }
 }
 
-#[get("/purchase-order/{uuid}/version/{version_id}/revisions/{revision_number}")]
+#[get("/purchase-order/{uuid}/version/{version_id}/revision/{revision_number}")]
 pub async fn get_purchase_order_version_revision(
     _store_state: web::Data<StoreState>,
     _uuid: web::Path<String>,
