@@ -346,7 +346,7 @@ fn create_version(
         .to_string();
     // Validate this version does not already exist
     if state
-        ._get_purchase_order_version(po_uid, version_id)?
+        .get_purchase_order_version(po_uid, version_id)?
         .is_some()
     {
         return Err(ApplyError::InvalidTransaction(format!(
@@ -427,7 +427,7 @@ fn create_version(
             ApplyError::InvalidTransaction(format!("Cannot build purchase order version: {}", err))
         })?;
     // Set the purchase order version in state
-    state._set_purchase_order_version(po_uid, new_version)?;
+    state.set_purchase_order_version(po_uid, new_version)?;
 
     Ok(())
 }
