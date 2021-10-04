@@ -47,6 +47,7 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
 diesel_migrations = "1.4"
 whoami = "1"
+rand = { version = "0.7", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
@@ -88,7 +89,7 @@ sqlite = [
 location = ["pike", "schema"]
 pike = []
 product = ["pike", "schema"]
-purchase-order = ["grid-sdk/purchase-order"]
+purchase-order = ["grid-sdk/purchase-order", "rand"]
 sawtooth = []
 schema = ["pike"]
 splinter = []

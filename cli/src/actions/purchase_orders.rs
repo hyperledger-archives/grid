@@ -18,16 +18,47 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use grid_sdk::{
     client::purchase_order::{PurchaseOrderClient, PurchaseOrderRevision},
     protocol::purchase_order::payload::{
-        Action, CreateVersionPayload, PurchaseOrderPayloadBuilder,
+        Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayloadBuilder,
     },
     protos::IntoProto,
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
 };
 
 use cylinder::Signer;
+use rand::{distributions::Alphanumeric, Rng};
 
 use crate::error::CliError;
 use crate::transaction::purchase_order_batch_builder;
+
+pub fn do_create_purchase_order(
+    client: Box<dyn PurchaseOrderClient>,
+    signer: Box<dyn Signer>,
+    wait: u64,
+    create_purchase_order: CreatePurchaseOrderPayload,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+    let payload = PurchaseOrderPayloadBuilder::new()
+        .with_action(Action::CreatePo(create_purchase_order))
+        .with_timestamp(timestamp)
+        .build()
+        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+    let batch_list = purchase_order_batch_builder(signer)
+        .add_transaction(
+            &payload.into_proto()?,
+            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+        )?
+        .create_batch_list();
+
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
+}
 
 pub fn do_create_version(
     client: &dyn PurchaseOrderClient,
@@ -92,4 +123,19 @@ pub fn get_latest_revision_id(
     } else {
         Ok(0)
     }
+}
+
+pub fn generate_purchase_order_uid() -> String {
+    format!(
+        "PO-{}-{}",
+        generate_random_base62_string(5),
+        generate_random_base62_string(4),
+    )
+}
+
+fn generate_random_base62_string(len: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(Alphanumeric)
+        .take(len)
+        .collect()
 }

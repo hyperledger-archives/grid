@@ -1,4 +1,5 @@
 % GRID-PO-CREATE(1) Cargill, Incorporated | Grid
+
 <!--
   Copyright 2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
@@ -13,13 +14,14 @@ NAME
 SYNOPSIS
 ========
 
-**grid po create** \[**FLAGS**\] \[**OPTIONS**\] <**--org** ORGANIZATION>
+**grid po create** \[**FLAGS**\] \[**OPTIONS**\] <**--buyer-org** BUYER> <**--seller-org** SELLER>
 
 DESCRIPTION
 ===========
 
 This command allows for the creation of Grid Purchase Orders. It submits a
-Sabre transaction to create the purchase order. `--org` is required.
+Sabre transaction to create the purchase order. `--buyer-org` and
+`--seller-org` is required.
 
 FLAGS
 =====
@@ -35,32 +37,35 @@ FLAGS
 
 `-v`
 : Increases verbosity (the opposite of `-q`). Specify multiple times for more
-  output.
+output.
 
 OPTIONS
 =======
 
 `--id`
-: Optionally include an alternate ID. This may be specified multiple times. 
-  An ID is of the format `alternate_id_type:alternate_id`.
-  Examples: `po_number:12348959` and/or `internal_po_id:a8f9fke`.
+: Optionally include an alternate ID. This may be specified multiple times.
+An ID is of the format `alternate_id_type:alternate_id`.
+Examples: `po_number:12348959` and/or `internal_po_id:a8f9fke`.
 
 `-k`, `--key`
 : base name or path to a private signing key file
 
-`--org`
-: Specify the organization that owns the purchase order. This option is required.
+`--buyer-org`
+: Specify the organization that is buying the purchase order. This option is required.
+
+`--seller-org`
+: Specify the organization that is selling the purchase order. This option is required.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
-  Splinter. Format: `<circuit-id>::<service-id>`.
+Splinter. Format: `<circuit-id>::<service-id>`.
 
 `--url`
 : URL for the REST API
 
 `--uuid`
 : Optionally specify the UUID of the purchase order. Must conform to the UUID
-  spec. If not specified, will be randomly generated.
+spec. If not specified, will be randomly generated.
 
 `--wait`
 : Maximum number of seconds to wait for the batch to be committed.
@@ -75,7 +80,8 @@ The command
 
 ```
 $ grid po create \
-    --org=crgl \
+    --buyer-org=crgl \
+    --seller-org=crgl2 \
     --workflow-status=Issued \
     --id=po_number:8329173 \
     --wait=0
@@ -99,21 +105,22 @@ ENVIRONMENT VARIABLES
 
 **`CYLINDER_PATH`**
 : Colon-separated path used to search for the key which will be used
-  to sign transactions
+to sign transactions
 
 **`GRID_DAEMON_ENDPOINT`**
 : Specifies a default value for `--url`
 
 **`GRID_DAEMON_KEY`**
-: Specifies a default value for  `-k`, `--key`
+: Specifies a default value for `-k`, `--key`
 
 **`GRID_SERVICE_ID`**
 : Specifies a default value for `--service-id`
 
 SEE ALSO
 ========
-| `grid-po-create(1)`
+
 | `grid-po-list(1)`
+| `grid-po-revision(1)`
 | `grid-po-show(1)`
 | `grid-po-update(1)`
 | `grid-po-version(1)`
