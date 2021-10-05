@@ -21,6 +21,8 @@ use crate::{
 pub struct PurchaseOrderSlice {
     pub purchase_order_uid: String,
     pub workflow_status: String,
+    pub buyer_org_id: String,
+    pub seller_org_id: String,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepted_version_id: Option<String>,
@@ -29,6 +31,9 @@ pub struct PurchaseOrderSlice {
     pub version_numbers: Option<Vec<String>>,
     pub is_closed: bool,
     pub workflow_type: String,
+    pub created_at: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 }
 
 impl From<PurchaseOrder> for PurchaseOrderSlice {
@@ -36,6 +41,8 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
         Self {
             purchase_order_uid: purchase_order.purchase_order_uid().to_string(),
             workflow_status: purchase_order.workflow_status().to_string(),
+            buyer_org_id: purchase_order.buyer_org_id().to_string(),
+            seller_org_id: purchase_order.seller_org_id().to_string(),
             accepted_version_id: purchase_order.accepted_version_id().map(ToOwned::to_owned),
             version_numbers: Some(
                 purchase_order
@@ -46,6 +53,9 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
             ),
             is_closed: purchase_order.is_closed(),
             workflow_type: purchase_order.workflow_type().to_string(),
+            created_at: *purchase_order.created_at(),
+            start_commit_num: *purchase_order.start_commit_num(),
+            end_commit_num: *purchase_order.end_commit_num(),
         }
     }
 }
@@ -62,6 +72,8 @@ pub struct PurchaseOrderVersionSlice {
     is_draft: bool,
     current_revision_id: String,
     revisions: Vec<String>,
+    start_commit_num: i64,
+    end_commit_num: i64,
     service_id: Option<String>,
 }
 
@@ -76,6 +88,8 @@ impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
                 .into_iter()
                 .map(|version| version.revision_id().to_string())
                 .collect(),
+            start_commit_num: *purchase_order_version.start_commit_num(),
+            end_commit_num: *purchase_order_version.end_commit_num(),
             service_id: purchase_order_version.service_id().map(str::to_owned),
         }
     }
