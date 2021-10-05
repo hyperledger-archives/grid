@@ -33,6 +33,7 @@ CREATE TABLE purchase_order_version (
     version_id TEXT NOT NULL,
     is_draft BOOLEAN NOT NULL,
     current_revision_id BIGINT NOT NULL,
+    workflow_status TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
