@@ -90,7 +90,9 @@ use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyV
 #[cfg(any(feature = "purchase-order"))]
 use grid_sdk::{
     data_validation::validate_order_xml_3_4,
-    protocol::purchase_order::payload::{CreateVersionPayloadBuilder, PayloadRevisionBuilder},
+    protocol::purchase_order::payload::{
+        CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder, PayloadRevisionBuilder,
+    },
 };
 
 use log::Record;
@@ -1434,12 +1436,22 @@ fn run() -> Result<(), CliError> {
                     SubCommand::with_name("create")
                         .about("Create a Purchase Order")
                         .arg(
-                            Arg::with_name("org")
-                                .value_name("org_id")
-                                .long("org")
+                            Arg::with_name("buyer_org_id")
+                                .value_name("buyer_org_id")
+                                .long("buyer-org")
+                                .short("buyer")
                                 .takes_value(true)
                                 .required(true)
-                                .help("ID of the organization which owns the Purchase Order"),
+                                .help("ID of the organization which is buying the Purchase Order"),
+                        )
+                        .arg(
+                            Arg::with_name("seller_org_id")
+                                .value_name("seller_org_id")
+                                .long("seller-org")
+                                .short("seller")
+                                .takes_value(true)
+                                .required(true)
+                                .help("ID of the organization which is selling the Purchase Order"),
                         )
                         .arg(Arg::with_name("uuid").long("uuid").takes_value(true).help(
                             "UUID for Purchase Order. \
@@ -2516,7 +2528,46 @@ fn run() -> Result<(), CliError> {
             let purchase_order_client = client_factory.get_purchase_order_client(url);
 
             match m.subcommand() {
-                ("create", Some(_)) => unimplemented!(),
+                ("create", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let signer = signing::load_signer(key)?;
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let uid = m
+                        .value_of("uid")
+                        .map(String::from)
+                        .unwrap_or_else(purchase_orders::generate_purchase_order_uid);
+
+                    let payload = CreatePurchaseOrderPayloadBuilder::new()
+                        .with_uid(uid)
+                        .with_created_at(
+                            SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .map(|d| d.as_secs())
+                                .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
+                        )
+                        .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
+                        .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
+                        .with_workflow_status(m.value_of("workflow_status").unwrap().into())
+                        .build()
+                        .map_err(|err| {
+                            CliError::UserError(format!("Could not build Purchase Order: {}", err))
+                        })?;
+
+                    info!("Submitting request to create purchase order...");
+                    purchase_orders::do_create_purchase_order(
+                        purchase_order_client,
+                        signer,
+                        wait,
+                        payload,
+                        service_id.as_deref(),
+                    )?;
+                }
                 ("update", Some(_)) => unimplemented!(),
                 ("list", Some(_)) => unimplemented!(),
                 ("show", Some(_)) => unimplemented!(),
