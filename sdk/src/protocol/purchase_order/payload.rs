@@ -217,8 +217,18 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
     fn from_proto(
         mut proto: purchase_order_payload::CreatePurchaseOrderPayload,
     ) -> Result<Self, ProtoConversionError> {
-        let create_version_payload =
-            CreateVersionPayload::from_proto(proto.take_create_version_payload()).ok();
+        let create_version_payload = if proto
+            .get_create_version_payload()
+            .get_version_id()
+            .is_empty()
+        {
+            None
+        } else {
+            Some(CreateVersionPayload::from_proto(
+                proto.take_create_version_payload(),
+            )?)
+        };
+
         Ok(CreatePurchaseOrderPayload {
             uid: proto.take_uid(),
             created_at: proto.get_created_at(),
