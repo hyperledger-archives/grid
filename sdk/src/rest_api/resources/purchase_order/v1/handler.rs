@@ -225,3 +225,41 @@ pub fn list_purchase_order_revisions<'a>(
 
     Ok(PurchaseOrderRevisionListSlice { data, paging })
 }
+
+pub fn get_purchase_order_revision<'a>(
+    store: Box<dyn PurchaseOrderStore + 'a>,
+    purchase_order_uid: String,
+    version_id: String,
+    revision_id: i64,
+    service_id: Option<&str>,
+) -> Result<PurchaseOrderRevisionSlice, ErrorResponse> {
+    let purchase_order_revision = store
+        .get_purchase_order_revision(&purchase_order_uid, &version_id, &revision_id, service_id)
+        .map_err(|err| match err {
+            PurchaseOrderStoreError::InternalError(err) => {
+                ErrorResponse::internal_error(Box::new(err))
+            }
+            PurchaseOrderStoreError::ConstraintViolationError(err) => {
+                ErrorResponse::new(400, &format!("{}", err))
+            }
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(_) => {
+                ErrorResponse::new(503, "Service Unavailable")
+            }
+            PurchaseOrderStoreError::NotFoundError(_) => ErrorResponse::new(
+                404,
+                &format!(
+                    "Purchase order {} version {} revision {} not found",
+                    purchase_order_uid, version_id, revision_id
+                ),
+            ),
+        })?;
+
+    Ok(PurchaseOrderRevisionSlice::from(
+        purchase_order_revision.ok_or_else(|| {
+            ErrorResponse::new(
+                404,
+                &format!("Purchase order {} not found", purchase_order_uid),
+            )
+        })?,
+    ))
+}

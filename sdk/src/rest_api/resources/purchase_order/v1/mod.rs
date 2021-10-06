@@ -16,8 +16,8 @@ pub mod handler;
 pub mod payloads;
 
 pub use handler::{
-    get_purchase_order, get_purchase_order_version, list_purchase_order_revisions,
-    list_purchase_order_versions, list_purchase_orders,
+    get_purchase_order, get_purchase_order_revision, get_purchase_order_version,
+    list_purchase_order_revisions, list_purchase_order_versions, list_purchase_orders,
 };
 pub use payloads::{
     PurchaseOrderListSlice, PurchaseOrderRevisionSlice, PurchaseOrderSlice,
