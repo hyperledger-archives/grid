@@ -16,9 +16,9 @@ table! {
     purchase_order (id) {
         id -> Int8,
         purchase_order_uid -> Text,
+        workflow_status -> Text,
         buyer_org_id -> Varchar,
         seller_org_id -> Varchar,
-        workflow_status -> Text,
         is_closed -> Bool,
         accepted_version_id -> Nullable<Text>,
         created_at -> Int8,
