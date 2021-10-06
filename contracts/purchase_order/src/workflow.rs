@@ -404,8 +404,8 @@ fn collaborative_sub_workflow() -> SubWorkflow {
 impl fmt::Display for POWorkflow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            POWorkflow::SystemOfRecord => write!(f, "system_of_record"),
-            POWorkflow::Collaborative => write!(f, "collaborative"),
+            POWorkflow::SystemOfRecord => write!(f, "built-in::system_of_record::v1"),
+            POWorkflow::Collaborative => write!(f, "built-in::collaborative::v1"),
         }
     }
 }
