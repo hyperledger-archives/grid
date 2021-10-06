@@ -27,7 +27,7 @@ pub struct QueryOrgId {
     pub org_id: Option<String>,
 }
 
-#[get("/purchase-order")]
+#[get("/purchase_order")]
 pub async fn list_purchase_orders(
     store_state: web::Data<StoreState>,
     query_buyer_org_id: web::Query<QueryOrgId>,
@@ -63,10 +63,10 @@ pub async fn list_purchase_orders(
     }
 }
 
-#[get("/purchase-order/{uuid}")]
+#[get("/purchase_order/{uid}")]
 pub async fn get_purchase_order(
     store_state: web::Data<StoreState>,
-    uuid: web::Path<String>,
+    uid: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
@@ -76,7 +76,7 @@ pub async fn get_purchase_order(
         ProtocolVersion::V1 => {
             match v1::get_purchase_order(
                 store,
-                uuid.into_inner(),
+                uid.into_inner(),
                 query_service_id.into_inner().service_id.as_deref(),
             ) {
                 Ok(res) => HttpResponse::Ok().json(res),
@@ -90,7 +90,7 @@ pub async fn get_purchase_order(
     }
 }
 
-#[get("/purchase-order/{uid}/version")]
+#[get("/purchase_order/{uid}/version")]
 pub async fn list_purchase_order_versions(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
@@ -121,7 +121,7 @@ pub async fn list_purchase_order_versions(
     }
 }
 
-#[get("/purchase-order/{uid}/version/{version_id}")]
+#[get("/purchase_order/{uid}/version/{version_id}")]
 pub async fn get_purchase_order_version(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
@@ -150,7 +150,7 @@ pub async fn get_purchase_order_version(
     }
 }
 
-#[get("/purchase-order/{uid}/version/{version_id}/revision")]
+#[get("/purchase_order/{uid}/version/{version_id}/revision")]
 pub async fn list_purchase_order_version_revisions(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
@@ -183,7 +183,7 @@ pub async fn list_purchase_order_version_revisions(
     }
 }
 
-#[get("/purchase-order/{uid}/version/{version_id}/revision/{revision_number}")]
+#[get("/purchase_order/{uid}/version/{version_id}/revision/{revision_number}")]
 pub async fn get_purchase_order_version_revision(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
