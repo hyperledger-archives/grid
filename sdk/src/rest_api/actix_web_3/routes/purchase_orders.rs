@@ -63,10 +63,10 @@ pub async fn list_purchase_orders(
     }
 }
 
-#[get("/purchase_order/{uuid}")]
+#[get("/purchase_order/{uid}")]
 pub async fn get_purchase_order(
     store_state: web::Data<StoreState>,
-    uuid: web::Path<String>,
+    uid: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
@@ -76,7 +76,7 @@ pub async fn get_purchase_order(
         ProtocolVersion::V1 => {
             match v1::get_purchase_order(
                 store,
-                uuid.into_inner(),
+                uid.into_inner(),
                 query_service_id.into_inner().service_id.as_deref(),
             ) {
                 Ok(res) => HttpResponse::Ok().json(res),

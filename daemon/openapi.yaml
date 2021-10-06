@@ -497,13 +497,13 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
-  /purchase_order/{uuid}:
+  /purchase_order/{uid}:
     get:
       tags:
         - Purchase Order
-      summary: Fetches a single purchase order with the given UUID
+      summary: Fetches a single purchase order with the given UID
       parameters:
-        - name: uuid
+        - name: uid
           in: path
           description: ID of the PO to fetch
           required: true
@@ -1016,7 +1016,7 @@ components:
     PurchaseOrder:
       type: object
       properties:
-        uuid:
+        uid:
           type: string
           example: 0099474000005
         workflow_status:
