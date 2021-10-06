@@ -1035,6 +1035,7 @@ fn make_po_versions(
                     make_po_revisions(version.revisions().to_vec(), start_commit_num, service_id)
                         .map_err(|err| PurchaseOrderBuilderError::BuildError(Box::new(err)))?,
                 )
+                .with_workflow_status(version.workflow_status().to_string())
                 .with_start_commit_number(start_commit_num)
                 .with_end_commit_number(MAX_COMMIT_NUM)
                 .with_service_id(service_id.cloned())

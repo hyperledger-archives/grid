@@ -36,6 +36,7 @@ table! {
         version_id -> Text,
         is_draft -> Bool,
         current_revision_id -> Int8,
+        workflow_status -> Text,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,

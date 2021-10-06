@@ -174,6 +174,7 @@ fn create_purchase_order(
                 .with_version_id(payload.version_id().to_string())
                 .with_is_draft(payload.is_draft())
                 .with_current_revision_id(revision.revision_id())
+                .with_workflow_status(payload.workflow_status().to_string())
                 .with_revisions(vec![revision]);
             let perm_string = Permission::CanCreatePoVersion.to_string();
             if payload.is_draft() {

@@ -298,6 +298,7 @@ pub struct PurchaseOrderVersion {
     is_draft: bool,
     current_revision_id: i64,
     revisions: Vec<PurchaseOrderVersionRevision>,
+    workflow_status: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -324,6 +325,11 @@ impl PurchaseOrderVersion {
         self.revisions.to_vec()
     }
 
+    /// Returns the workflow status of the PO version
+    pub fn workflow_status(&self) -> &str {
+        &self.workflow_status
+    }
+
     /// Returns the start_commit_num for the PO version
     pub fn start_commit_num(&self) -> &i64 {
         &self.start_commit_num
@@ -346,6 +352,7 @@ pub struct PurchaseOrderVersionBuilder {
     is_draft: bool,
     current_revision_id: i64,
     revisions: Vec<PurchaseOrderVersionRevision>,
+    workflow_status: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -376,6 +383,12 @@ impl PurchaseOrderVersionBuilder {
         self
     }
 
+    /// Sets the workflow status for this PO version
+    pub fn with_workflow_status(mut self, workflow_status: String) -> Self {
+        self.workflow_status = workflow_status;
+        self
+    }
+
     /// Sets the start commit number for this PO version
     pub fn with_start_commit_number(mut self, start_commit_num: i64) -> Self {
         self.start_commit_num = start_commit_num;
@@ -400,6 +413,7 @@ impl PurchaseOrderVersionBuilder {
             is_draft,
             current_revision_id,
             revisions,
+            workflow_status,
             start_commit_num,
             end_commit_num,
             service_id,
@@ -423,6 +437,12 @@ impl PurchaseOrderVersionBuilder {
             ));
         };
 
+        if workflow_status.is_empty() {
+            return Err(PurchaseOrderBuilderError::MissingRequiredField(
+                "workflow_status".to_string(),
+            ));
+        };
+
         if start_commit_num >= end_commit_num {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
                 "start_commit_number must be less than end_commit_num".to_string(),
@@ -440,6 +460,7 @@ impl PurchaseOrderVersionBuilder {
             is_draft,
             current_revision_id,
             revisions,
+            workflow_status,
             start_commit_num,
             end_commit_num,
             service_id,
