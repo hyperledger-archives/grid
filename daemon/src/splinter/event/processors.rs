@@ -47,6 +47,7 @@ impl EventProcessors {
         circuit_id: &str,
         service_id: &str,
         last_seen_id: Option<&str>,
+        #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
         handlers_factory_fn: F,
     ) -> Result<(), InternalError>
     where
@@ -55,7 +56,14 @@ impl EventProcessors {
         let mut inner = self.inner.lock().map_err(|_| {
             InternalError::with_message("EventProcessors inner mutex was poisoned".into())
         })?;
-        inner.add_once(circuit_id, service_id, last_seen_id, handlers_factory_fn)
+        inner.add_once(
+            circuit_id,
+            service_id,
+            last_seen_id,
+            #[cfg(feature = "cylinder-jwt-support")]
+            authorization,
+            handlers_factory_fn,
+        )
     }
 }
 
@@ -77,6 +85,7 @@ impl Inner {
         circuit_id: &str,
         service_id: &str,
         last_seen_id: Option<&str>,
+        #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
         factory_fn: F,
     ) -> Result<(), InternalError>
     where
@@ -86,7 +95,12 @@ impl Inner {
         if let Entry::Vacant(entry) = self.processors.entry(key) {
             let event_connection = self
                 .event_connection_factory
-                .create_connection(circuit_id, service_id)
+                .create_connection(
+                    circuit_id,
+                    service_id,
+                    #[cfg(feature = "cylinder-jwt-support")]
+                    authorization,
+                )
                 .map_err(|err| InternalError::from_source(Box::new(err)))?;
 
             let evt_processor = EventProcessor::start(event_connection, last_seen_id, factory_fn())
