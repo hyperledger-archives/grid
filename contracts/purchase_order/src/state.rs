@@ -116,7 +116,7 @@ impl<'a> PurchaseOrderState<'a> {
         Ok(())
     }
 
-    pub fn _get_purchase_order_version(
+    pub fn get_purchase_order_version(
         &self,
         po_uid: &str,
         version_id: &str,
@@ -148,7 +148,7 @@ impl<'a> PurchaseOrderState<'a> {
         }
     }
 
-    pub fn _set_purchase_order_version(
+    pub fn set_purchase_order_version(
         &self,
         po_uid: &str,
         purchase_order_version: PurchaseOrderVersion,
@@ -359,7 +359,7 @@ mod tests {
         }
 
         let result = state
-            ._get_purchase_order_version(PO_UID, "does_not_exist")
+            .get_purchase_order_version(PO_UID, "does_not_exist")
             .unwrap();
         assert!(result.is_none());
     }
@@ -384,7 +384,7 @@ mod tests {
         }
 
         let version_result = state
-            ._get_purchase_order_version(PO_UID, PO_VERSION_ID_1)
+            .get_purchase_order_version(PO_UID, PO_VERSION_ID_1)
             .unwrap();
         assert_eq!(
             version_result,
@@ -392,7 +392,7 @@ mod tests {
         );
 
         let version_result = state
-            ._get_purchase_order_version(PO_UID, PO_VERSION_ID_2)
+            .get_purchase_order_version(PO_UID, PO_VERSION_ID_2)
             .unwrap();
         assert_eq!(
             version_result,

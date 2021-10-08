@@ -178,7 +178,7 @@ fn create_purchase_order(
                 .with_revisions(vec![revision]);
             let perm_string = Permission::CanCreatePoVersion.to_string();
             if payload.is_draft() {
-                let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
+                let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
                     ApplyError::InternalError("Cannot build PO Workflow".to_string())
                 })?;
                 let version_subworkflow =
@@ -214,7 +214,7 @@ fn create_purchase_order(
                 }
                 version_builder = version_builder.with_workflow_status("editable".to_string());
             } else {
-                let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
+                let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
                     ApplyError::InternalError("Cannot build PO Workflow".to_string())
                 })?;
                 let version_subworkflow =
@@ -263,7 +263,7 @@ fn create_purchase_order(
             vec![]
         }
     };
-    let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
+    let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
         ApplyError::InternalError("Cannot build System Of Record PO workflow".to_string())
     })?;
     let po_subworkflow = beginning_workflow
@@ -316,12 +316,120 @@ fn update_purchase_order(
 }
 
 fn create_version(
-    _payload: &CreateVersionPayload,
-    _signer: &str,
-    _state: &mut PurchaseOrderState,
-    _perm_checker: &PermissionChecker,
+    payload: &CreateVersionPayload,
+    signer: &str,
+    state: &mut PurchaseOrderState,
+    perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
-    unimplemented!();
+    // Validate the signer exists as an agent
+    let agent_org_id = state
+        .get_agent(signer)?
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction(format!("Signer {} does not exist as an agent", signer))
+        })?
+        .org_id()
+        .to_string();
+    let po_uid = payload.po_uid();
+    let version_id = payload.version_id();
+    let existing_po_workflow_type = state
+        .get_purchase_order(po_uid)
+        .map_err(|err| {
+            ApplyError::InternalError(format!(
+                "Unable to retrieve purchase order {}: {}",
+                po_uid, err
+            ))
+        })?
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction(format!("Purchase order {} does not exist", po_uid))
+        })?
+        .workflow_type()
+        .to_string();
+    // Validate this version does not already exist
+    if state
+        .get_purchase_order_version(po_uid, version_id)?
+        .is_some()
+    {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Version {} already exists for Purchase Order {}",
+            version_id, po_uid,
+        )));
+    }
+
+    let desired_state = payload.workflow_status().to_string();
+    // Validate the intended state for the new version
+    if payload.is_draft() && desired_state != "editable"
+        || !payload.is_draft() && desired_state != "proposed"
+    {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Version draft status {} does not match intended workflow state {}",
+            payload.is_draft(),
+            &desired_state,
+        )));
+    }
+    // Get the workflow specific to the purchase order the version is to be added to
+    let workflow = get_workflow(&existing_po_workflow_type).ok_or_else(|| {
+        ApplyError::InternalError(format!(
+            "Unable to get `{}` workflow",
+            &existing_po_workflow_type
+        ))
+    })?;
+    let version_subworkflow = workflow.subworkflow("version").ok_or_else(|| {
+        ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
+    })?;
+    let workflow_state = version_subworkflow.state("create").ok_or_else(|| {
+        ApplyError::InternalError("Unable to get state from `version` subworkflow".to_string())
+    })?;
+    // Validate the agent is able to create the purchase order version
+    let perm_string = Permission::CanCreatePoVersion.to_string();
+    let perm_result = perm_checker
+        .check_permission_with_workflow(
+            &perm_string,
+            signer,
+            &agent_org_id,
+            workflow_state,
+            &desired_state,
+        )
+        .map_err(|err| {
+            ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
+        })?;
+
+    if !perm_result {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Agent {} does not have the correct permissions for organization {} to create purchase \
+             order version {} with a status of {}",
+            signer,
+            &agent_org_id,
+            payload.version_id(),
+            desired_state,
+        )));
+    }
+
+    // Create the PurchaseOrderRevision to be added to the version
+    let payload_revision = payload.revision();
+    let revision = PurchaseOrderRevisionBuilder::new()
+        .with_revision_id(payload_revision.revision_id())
+        .with_submitter(signer.to_string())
+        .with_created_at(payload_revision.created_at())
+        .with_order_xml_v3_4(payload_revision.order_xml_v3_4().to_string())
+        .build()
+        .map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Cannot build purchase order revision: {}", err))
+        })?;
+    // Create the PurchaseOrderVersion to be added to state
+    let new_version = PurchaseOrderVersionBuilder::new()
+        .with_version_id(payload.version_id().to_string())
+        .with_workflow_status(desired_state)
+        .with_is_draft(payload.is_draft())
+        .with_current_revision_id(revision.revision_id())
+        .with_revisions(vec![revision])
+        .build()
+        .map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Cannot build purchase order version: {}", err))
+        })?;
+    // Set the purchase order version in state
+    state.set_purchase_order_version(po_uid, new_version)?;
+
+    Ok(())
 }
 
 fn update_version(
@@ -349,7 +457,10 @@ mod tests {
             RoleBuilder, RoleListBuilder,
         },
         protocol::purchase_order::{
-            payload::CreatePurchaseOrderPayloadBuilder,
+            payload::{
+                CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder,
+                PayloadRevisionBuilder,
+            },
             state::{
                 PurchaseOrder, PurchaseOrderBuilder, PurchaseOrderListBuilder,
                 PurchaseOrderRevision, PurchaseOrderRevisionBuilder, PurchaseOrderVersion,
@@ -364,15 +475,23 @@ mod tests {
 
     const BUYER_PUB_KEY: &str = "buyer_agent_pub_key";
     const SELLER_PUB_KEY: &str = "seller_agent_pub_key";
+    const PARTNER_PUB_KEY: &str = "partner_agent_pub_key";
 
     const PO_UID: &str = "test_po_1";
     const PO_VERSION_ID_1: &str = "01";
+    const PO_VERSION_ID_2: &str = "02";
 
     const ROLE_BUYER: &str = "buyer";
     const PERM_ALIAS_BUYER: &str = "po::buyer";
 
     const ROLE_SELLER: &str = "seller";
     const PERM_ALIAS_SELLER: &str = "po::seller";
+
+    const ROLE_DRAFT: &str = "draft";
+    const PERM_ALIAS_DRAFT: &str = "po::draft";
+
+    const ROLE_PARTNER: &str = "partner";
+    const PERM_ALIAS_PARTNER: &str = "po::partner";
 
     const ORG_ID_1: &str = "test_org_1";
     const ORG_ID_2: &str = "test_org_2";
@@ -502,8 +621,86 @@ mod tests {
                 .expect("Unable to build agent list");
             let agent_bytes = agent_list
                 .into_bytes()
-                .expect("Unable to convert agent list toy bytes");
+                .expect("Unable to convert agent list to bytes");
             let agent_address = compute_agent_address(SELLER_PUB_KEY);
+            self.set_state_entry(agent_address, agent_bytes)
+                .expect("Unable to set agent in state");
+        }
+
+        fn add_draft_role(&self) {
+            let draft_role = RoleBuilder::new()
+                .with_org_id(ORG_ID_1.to_string())
+                .with_name(ROLE_DRAFT.to_string())
+                .with_description("Purchase Order drafting role".to_string())
+                .with_permissions(vec![PERM_ALIAS_DRAFT.to_string()])
+                .build()
+                .expect("Unable to build role");
+            let role_list = RoleListBuilder::new()
+                .with_roles(vec![draft_role])
+                .build()
+                .expect("Unable to build role list");
+            let role_bytes = role_list
+                .into_bytes()
+                .expect("Unable to convert role list to bytes");
+            let role_address = compute_role_address(ROLE_DRAFT, ORG_ID_1);
+            self.set_state_entry(role_address, role_bytes)
+                .expect("Unable to set role in state");
+        }
+
+        fn add_drafting_agent(&self) {
+            let agent = AgentBuilder::new()
+                .with_org_id(ORG_ID_1.to_string())
+                .with_public_key(BUYER_PUB_KEY.to_string())
+                .with_active(true)
+                .with_roles(vec![ROLE_DRAFT.to_string()])
+                .build()
+                .expect("Unable to build agent");
+            let agent_list = AgentListBuilder::new()
+                .with_agents(vec![agent])
+                .build()
+                .expect("Unable to build agent list");
+            let agent_bytes = agent_list
+                .into_bytes()
+                .expect("Unable to convert agent list to bytes");
+            let agent_address = compute_agent_address(BUYER_PUB_KEY);
+            self.set_state_entry(agent_address, agent_bytes)
+                .expect("Unable to set agent in state");
+        }
+
+        fn add_partner_role(&self) {
+            let role = RoleBuilder::new()
+                .with_org_id(ORG_ID_1.to_string())
+                .with_name(ROLE_PARTNER.to_string())
+                .with_description("Purchase Order seller role".to_string())
+                .with_permissions(vec![PERM_ALIAS_PARTNER.to_string()])
+                .build()
+                .expect("Unable to build role");
+            let role_list = RoleListBuilder::new()
+                .with_roles(vec![role])
+                .build()
+                .expect("Unable to build role list");
+            let role_bytes = role_list.into_bytes().unwrap();
+            let role_address = compute_role_address(ROLE_PARTNER, ORG_ID_1);
+            self.set_state_entry(role_address, role_bytes)
+                .expect("Unable to add role to state");
+        }
+
+        fn add_partner_agent(&self) {
+            let agent = AgentBuilder::new()
+                .with_org_id(ORG_ID_1.to_string())
+                .with_public_key(PARTNER_PUB_KEY.to_string())
+                .with_active(true)
+                .with_roles(vec![ROLE_PARTNER.to_string()])
+                .build()
+                .expect("Unable to build agent");
+            let agent_list = AgentListBuilder::new()
+                .with_agents(vec![agent])
+                .build()
+                .expect("Unable to build agent list");
+            let agent_bytes = agent_list
+                .into_bytes()
+                .expect("Unable to convert agent list to bytes");
+            let agent_address = compute_agent_address(PARTNER_PUB_KEY);
             self.set_state_entry(agent_address, agent_bytes)
                 .expect("Unable to set agent in state");
         }
@@ -526,8 +723,8 @@ mod tests {
                 .expect("Unable to add organization to state");
         }
 
-        fn add_purchase_order(&self) {
-            let po = purchase_order();
+        fn add_purchase_order(&self, po: PurchaseOrder) {
+            let po_uid = po.uid().to_string();
             let list = PurchaseOrderListBuilder::new()
                 .with_purchase_orders(vec![po])
                 .build()
@@ -535,7 +732,7 @@ mod tests {
             let po_bytes = list
                 .into_bytes()
                 .expect("Unable to convert purchase order list to bytes");
-            let po_address = compute_purchase_order_address(PO_UID);
+            let po_address = compute_purchase_order_address(&po_uid);
             self.set_state_entry(po_address, po_bytes)
                 .expect("Unable to add purchase order to state");
         }
@@ -546,7 +743,7 @@ mod tests {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
-        ctx.add_purchase_order();
+        ctx.add_purchase_order(purchase_order());
         let create_po_payload = CreatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_created_at(1)
@@ -570,6 +767,7 @@ mod tests {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
         ctx.add_org(ORG_ID_1);
         ctx.add_buyer_agent();
         let create_po_payload = CreatePurchaseOrderPayloadBuilder::new()
@@ -593,6 +791,7 @@ mod tests {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
         ctx.add_org(ORG_ID_1);
         ctx.add_org(ORG_ID_2);
         let create_po_payload = CreatePurchaseOrderPayloadBuilder::new()
@@ -616,6 +815,7 @@ mod tests {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
         ctx.add_org(ORG_ID_1);
         ctx.add_org(ORG_ID_2);
         ctx.add_seller_role();
@@ -663,10 +863,381 @@ mod tests {
         }
     }
 
+    #[test]
+    /// Validates the `create_version` function returns an error in the case that the submitting
+    /// agent does not have the correct permissions to create a purchase order version.
+    /// The test follows these steps:
+    ///
+    /// 1. Create the necessary organizations and create an agent with the "draft" role
+    /// 2. Add a Purchase Order to state with versions (This will issue the purchase order
+    ///    within the System of Record version subworkflow)
+    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a
+    ///    `workflow_status` of `proposed`
+    /// 4. Assert the `create_version` function returns an error
+    ///
+    /// This test validates an agent is unable to create a "proposed" purchase order version with
+    /// the "draft" workflow permission.
+    fn test_create_po_vers_invalid_agent_perms() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_draft_role();
+        ctx.add_drafting_agent();
+        let payload_revision = PayloadRevisionBuilder::new()
+            .with_revision_id(1)
+            .with_submitter(BUYER_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_v3_4_string".to_string())
+            .build()
+            .expect("Unable to build payload revision");
+        let create_po_vers_payload = CreateVersionPayloadBuilder::new()
+            .with_version_id(PO_VERSION_ID_1.to_string())
+            .with_po_uid(PO_UID.to_string())
+            .with_is_draft(true)
+            .with_workflow_status("editable".to_string())
+            .with_revision(payload_revision)
+            .build()
+            .expect("Unable to build CreateVersionPayload");
+
+        if let Ok(()) = create_version(
+            &create_po_vers_payload,
+            BUYER_PUB_KEY,
+            &mut state,
+            &perm_checker,
+        ) {
+            panic!(
+                "New purchase order version should be invalid because one with the same ID \
+                already exists"
+            )
+        }
+    }
+
+    #[test]
+    /// Validates the `create_version` function returns an error in the case that a purchase order
+    /// version with the same version ID already exists in state. The test follows these steps:
+    ///
+    /// 1. Create the necessary organizations and create an agent with the "draft" role
+    /// 2. Add a Purchase Order to state with versions (This will issue the purchase order
+    ///    within the System of Record version subworkflow)
+    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    ///    of `editable`
+    /// 4. Assert the `create_version` function returns an error
+    ///
+    /// This test validates a purchase order version is unable to be created if a version already
+    /// exists in state with the same version ID.
+    fn test_create_po_vers_already_exists() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_draft_role();
+        ctx.add_drafting_agent();
+        let payload_revision = PayloadRevisionBuilder::new()
+            .with_revision_id(1)
+            .with_submitter(BUYER_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_v3_4_string".to_string())
+            .build()
+            .expect("Unable to build payload revision");
+        let create_po_vers_payload = CreateVersionPayloadBuilder::new()
+            .with_version_id(PO_VERSION_ID_1.to_string())
+            .with_po_uid(PO_UID.to_string())
+            .with_is_draft(true)
+            .with_workflow_status("editable".to_string())
+            .with_revision(payload_revision)
+            .build()
+            .expect("Unable to build CreateVersionPayload");
+
+        if let Ok(()) = create_version(
+            &create_po_vers_payload,
+            BUYER_PUB_KEY,
+            &mut state,
+            &perm_checker,
+        ) {
+            panic!(
+                "New purchase order version should be invalid because one with the same ID \
+                already exists"
+            )
+        }
+    }
+
+    #[test]
+    /// Validates the `create_version` function returns an error in the case that the
+    /// payload's `workflow_status` does not match the purchase order version's state within a
+    /// `Collaborative` version subworkflow. The test follows these steps:
+    ///
+    /// 1. Create the necessary organizations and create an agent with the "partner" role
+    /// 2. Add a Purchase Order to state without versions (This will issue the purchase order
+    ///    within the `Collaborative` version subworkflow)
+    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    ///    of `modified`
+    /// 4. Assert the `create_version` function returns an error
+    ///
+    /// This test validates a purchase order version is unable to be created with a
+    /// `workflow_status` of `modified` within the `Collaborative` version subworkflow
+    /// although the agent had the correct workflow permission to create a version, "partner".
+    /// Purchase order versions must first be `proposed` before they are able to be `modified`
+    /// within both the Collaborative and System of Record subworkflows.
+    fn test_col_create_po_vers_invalid_transition() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_partner_role();
+        ctx.add_partner_agent();
+        ctx.add_purchase_order(purchase_order_wo_versions());
+        let payload_revision = PayloadRevisionBuilder::new()
+            .with_revision_id(1)
+            .with_submitter(PARTNER_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_v3_4_string".to_string())
+            .build()
+            .expect("Unable to build payload revision");
+        let create_po_vers_payload = CreateVersionPayloadBuilder::new()
+            .with_version_id(PO_VERSION_ID_1.to_string())
+            .with_po_uid(PO_UID.to_string())
+            .with_is_draft(true)
+            .with_workflow_status("modified".to_string())
+            .with_revision(payload_revision)
+            .build()
+            .expect("Unable to build CreateVersionPayload");
+
+        if let Ok(()) = create_version(
+            &create_po_vers_payload,
+            PARTNER_PUB_KEY,
+            &mut state,
+            &perm_checker,
+        ) {
+            panic!(
+                "New purchase order version should be invalid because \
+                the desired workflow status is invalid"
+            )
+        }
+    }
+
+    #[test]
+    /// Validates the `create_version` function returns successfully when given a valid payload.
+    /// Specifically, this test creates a scenario where the purchase order version is created
+    /// within the Collaborative subworkflow and is successfully transitioned to the "proposed"
+    /// workflow state. The test follows these steps:
+    ///
+    /// 1. Create the necessary organizations and create an agent with the "partner" role
+    /// 2. Add a Purchase Order to state without versions (This will issue the purchase order
+    ///    within the Collaborative version subworkflow)
+    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a
+    ///    `workflow_status` of `proposed`
+    /// 4. Assert the `create_version` function returns succesfully
+    ///
+    /// This test validates a purchase order version is able to be created with a
+    /// `workflow_status` of `proposed` within the `Collaborative` version subworkflow
+    /// as the agent had the correct workflow permission to create a version, "partner".
+    fn test_col_create_po_vers_valid() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_partner_role();
+        ctx.add_partner_agent();
+        ctx.add_purchase_order(purchase_order_wo_versions());
+        let payload_revision = PayloadRevisionBuilder::new()
+            .with_revision_id(1)
+            .with_submitter(PARTNER_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_v3_4_string".to_string())
+            .build()
+            .expect("Unable to build payload revision");
+        let create_po_vers_payload = CreateVersionPayloadBuilder::new()
+            .with_version_id(PO_VERSION_ID_1.to_string())
+            .with_po_uid(PO_UID.to_string())
+            .with_is_draft(false)
+            .with_workflow_status("proposed".to_string())
+            .with_revision(payload_revision)
+            .build()
+            .expect("Unable to build CreateVersionPayload");
+
+        if let Err(err) = create_version(
+            &create_po_vers_payload,
+            PARTNER_PUB_KEY,
+            &mut state,
+            &perm_checker,
+        ) {
+            panic!("New purchase order version should be valid: {}", err,)
+        }
+    }
+
+    #[test]
+    /// Validates the `create_version` function returns succesfully with a valid payload. This test
+    /// specifically tests the scenario where a purchase order version is created not as a draft
+    /// and moved into the "proposed" workflow state within the System of Record version
+    /// subworkflow. The test follows these steps:
+    ///
+    /// 1. Add the buyer and seller organizations to state
+    /// 2. Create an agent with the "buyer" role
+    /// 3. Add a Purchase Order to state with versions (This will issue the purchase order
+    ///    within the System of Record version subworkflow)
+    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a `workflow_status`
+    ///    of `proposed`
+    /// 5. Assert the `create_version` function returns successfully
+    ///
+    /// This test validates a purchase order version is able to be created with a
+    /// `workflow_status` of `proposed` within the System of Record version subworkflow as the
+    /// agent has the "buyer" role, which enables the agent to create the version and transition
+    /// it to the "proposed" workflow state.
+    fn test_sys_create_po_vers_valid_transition_proposed() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_buyer_role();
+        ctx.add_buyer_agent();
+        let payload_revision = PayloadRevisionBuilder::new()
+            .with_revision_id(1)
+            .with_submitter(BUYER_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_v3_4_string".to_string())
+            .build()
+            .expect("Unable to build payload revision");
+        let create_po_vers_payload = CreateVersionPayloadBuilder::new()
+            .with_version_id(PO_VERSION_ID_2.to_string())
+            .with_po_uid(PO_UID.to_string())
+            .with_is_draft(false)
+            .with_workflow_status("proposed".to_string())
+            .with_revision(payload_revision)
+            .build()
+            .expect("Unable to build CreateVersionPayload");
+
+        if let Err(err) = create_version(
+            &create_po_vers_payload,
+            BUYER_PUB_KEY,
+            &mut state,
+            &perm_checker,
+        ) {
+            panic!("New purchase order version should be valid: {}", err)
+        }
+    }
+
+    #[test]
+    /// Validates the `create_version` function returns succesfully with a valid payload. This test
+    /// specifically tests the scenario where a purchase order version is created as a draft and
+    /// moved into the "editable" workflow state within the System of Record version subworkflow.
+    /// The test follows these steps:
+    ///
+    /// 1. Add the buyer and seller organizations to state
+    /// 2. Create an agent with the "draft" role
+    /// 3. Add a Purchase Order to state with versions (This will issue the purchase order
+    ///    within the System of Record version subworkflow)
+    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    ///    of `editable`
+    /// 5. Assert the `create_version` function returns successfully
+    ///
+    /// This test validates a purchase order version is able to be created with a
+    /// `workflow_status` of `editable` within the System of Record version subworkflow as the
+    /// agent has the "draft" role, which enables the agent to create the version and transition
+    /// it to the "editable" workflow state.
+    fn test_sys_create_po_vers_valid_transition_editable() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_draft_role();
+        ctx.add_drafting_agent();
+        let payload_revision = PayloadRevisionBuilder::new()
+            .with_revision_id(1)
+            .with_submitter(BUYER_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_v3_4_string".to_string())
+            .build()
+            .expect("Unable to build payload revision");
+        let create_po_vers_payload = CreateVersionPayloadBuilder::new()
+            .with_version_id(PO_VERSION_ID_2.to_string())
+            .with_po_uid(PO_UID.to_string())
+            .with_is_draft(true)
+            .with_workflow_status("editable".to_string())
+            .with_revision(payload_revision)
+            .build()
+            .expect("Unable to build CreateVersionPayload");
+
+        if let Err(err) = create_version(
+            &create_po_vers_payload,
+            BUYER_PUB_KEY,
+            &mut state,
+            &perm_checker,
+        ) {
+            panic!("New purchase order version should be valid: {}", err)
+        }
+    }
+
+    #[test]
+    /// Validates the `create_version` function returns an error if the version to be created
+    /// contains state that invalidates the workflow state it is to be transitioned to.
+    /// This test specifically tests the scenario where a purchase order version is created as a
+    /// draft and moved into the "proposed" workflow state within the System of Record version
+    /// subworkflow. The test follows these steps:
+    ///
+    /// 1. Add the buyer and seller organizations to state
+    /// 2. Create an agent with the "buyer" role
+    /// 3. Add a Purchase Order to state with versions (This will issue the purchase order
+    ///    within the System of Record version subworkflow)
+    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    ///    of `proposed`
+    /// 5. Assert the `create_version` function returns an error
+    ///
+    /// This test validates a draft purchase order version is not able to be created with a
+    /// `workflow_status` of `proposed` within the System of Record version subworkflow. Draft
+    /// versions are moved into the draft workflow state, "editable", upon creation.
+    fn test_sys_create_po_vers_invalid_transition_proposed() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_buyer_role();
+        ctx.add_buyer_agent();
+        let payload_revision = PayloadRevisionBuilder::new()
+            .with_revision_id(1)
+            .with_submitter(BUYER_PUB_KEY.to_string())
+            .with_created_at(1)
+            .with_order_xml_v3_4("xml_v3_4_string".to_string())
+            .build()
+            .expect("Unable to build payload revision");
+        let create_po_vers_payload = CreateVersionPayloadBuilder::new()
+            .with_version_id(PO_VERSION_ID_2.to_string())
+            .with_po_uid(PO_UID.to_string())
+            .with_is_draft(true)
+            .with_workflow_status("proposed".to_string())
+            .with_revision(payload_revision)
+            .build()
+            .expect("Unable to build CreateVersionPayload");
+
+        if let Ok(()) = create_version(
+            &create_po_vers_payload,
+            BUYER_PUB_KEY,
+            &mut state,
+            &perm_checker,
+        ) {
+            panic!(
+                "New purchase order version should be invalid because draft versions are \
+            unable to be transitioned to the `proposed` workflow state"
+            )
+        }
+    }
+
     fn purchase_order() -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
-            .with_workflow_status("Issued".to_string())
+            .with_workflow_status("issued".to_string())
             .with_created_at(1)
             .with_versions(vec![purchase_order_version(PO_VERSION_ID_1)])
             .with_is_closed(false)
@@ -677,10 +1248,24 @@ mod tests {
             .expect("Unable to build purchase order")
     }
 
+    fn purchase_order_wo_versions() -> PurchaseOrder {
+        PurchaseOrderBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_workflow_status("issued".to_string())
+            .with_created_at(1)
+            .with_is_closed(false)
+            .with_versions(vec![])
+            .with_buyer_org_id(ORG_ID_1.to_string())
+            .with_seller_org_id(ORG_ID_2.to_string())
+            .with_workflow_type(POWorkflow::Collaborative.to_string())
+            .build()
+            .expect("Unable to build purchase order")
+    }
+
     fn purchase_order_version(version_id: &str) -> PurchaseOrderVersion {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
-            .with_workflow_status("Editable".to_string())
+            .with_workflow_status("editable".to_string())
             .with_is_draft(true)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())
