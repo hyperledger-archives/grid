@@ -62,10 +62,14 @@ pub fn run(
     handler: Box<dyn EventHandler>,
     igniter: Igniter,
     scabbard_admin_key: String,
+    #[cfg(feature = "cylinder-jwt-support")] authorization: String,
 ) -> Result<(), AppAuthHandlerError> {
     let registration_route = format!("{}/ws/admin/register/grid", &splinterd_url);
-
-    let node_id = get_node_id(splinterd_url.clone())?;
+    let node_id = get_node_id(
+        splinterd_url.clone(),
+        #[cfg(feature = "cylinder-jwt-support")]
+        &authorization,
+    )?;
 
     let ws_handler = Arc::new(Mutex::new(handler));
     let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
@@ -91,6 +95,9 @@ pub fn run(
         }
         WsResponse::Empty
     });
+
+    #[cfg(feature = "cylinder-jwt-support")]
+    ws.header("Authorization", authorization);
 
     ws.set_reconnect(RECONNECT);
     ws.set_reconnect_limit(RECONNECT_LIMIT);

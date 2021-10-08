@@ -209,6 +209,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         chan_event_handler,
         reactor.igniter(),
         scabbard_admin_key.to_string(),
+        #[cfg(feature = "cylinder-jwt-support")]
+        authorization.clone(),
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
