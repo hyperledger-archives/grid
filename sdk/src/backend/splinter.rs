@@ -139,9 +139,16 @@ impl BackendClient for SplinterBackendClient {
         url.push_str("ids=");
         url.push_str(&msg.batch_ids.join(","));
 
-        let client = reqwest::Client::new();
+        let mut client = reqwest::Client::new().get(&url);
+
+        client = client.header("GridProtocolVersion", "1");
+
+        #[cfg(feature = "cylinder-jwt-support")]
+        {
+            client = client.header("Authorization", &self.authorization.to_string());
+        }
+
         client
-            .get(&url)
             .send()
             .then(|res| match res {
                 Ok(res) => res.json().boxed(),
