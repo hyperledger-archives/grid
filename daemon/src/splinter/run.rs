@@ -20,8 +20,6 @@ use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::process;
-#[cfg(feature = "cylinder-jwt-support")]
-use std::sync::Mutex;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -29,7 +27,7 @@ use std::sync::{
 
 use cylinder::load_key;
 #[cfg(feature = "cylinder-jwt-support")]
-use cylinder::{secp256k1::Secp256k1Context, Context};
+use cylinder::{jwt::JsonWebTokenBuilder, secp256k1::Secp256k1Context, Context};
 use grid_sdk::backend::SplinterBackendClient;
 use grid_sdk::commits::store::Commit;
 use grid_sdk::commits::{CommitStore, DieselCommitStore};
@@ -78,12 +76,22 @@ impl EventHandler for ChannelEventHandler {
 pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let splinter_endpoint = Endpoint::from(config.endpoint());
     let reactor = Reactor::new();
-
     let gridd_key = load_key("gridd", &[PathBuf::from(config.admin_key_dir())])
         .map_err(|err| DaemonError::from_source(Box::new(err)))?
         .ok_or_else(|| DaemonError::with_message("no private key found"))?;
 
     let scabbard_admin_key = &gridd_key.as_hex();
+
+    #[cfg(feature = "cylinder-jwt-support")]
+    let signer = Secp256k1Context::new().new_signer(gridd_key);
+
+    #[cfg(feature = "cylinder-jwt-support")]
+    let authorization = {
+        let jwt = JsonWebTokenBuilder::new()
+            .build(&*signer)
+            .map_err(|err| DaemonError::from_source(Box::new(err)))?;
+        format!("Bearer Cylinder:{}", jwt)
+    };
 
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&splinter_endpoint.url(), reactor.igniter());
@@ -198,14 +206,11 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-    #[cfg(feature = "cylinder-jwt-support")]
-    let signer = Secp256k1Context::new().new_signer(gridd_key);
-
-    #[cfg(feature = "cylinder-jwt-support")]
-    let backend_client =
-        SplinterBackendClient::new(splinter_endpoint.url(), Arc::new(Mutex::new(signer)));
-    #[cfg(not(feature = "cylinder-jwt-support"))]
-    let backend_client = SplinterBackendClient::new(splinter_endpoint.url());
+    let backend_client = SplinterBackendClient::new(
+        splinter_endpoint.url(),
+        #[cfg(feature = "cylinder-jwt-support")]
+        authorization,
+    );
     let backend_state = BackendState::new(Arc::new(backend_client));
 
     #[cfg(feature = "integration")]
