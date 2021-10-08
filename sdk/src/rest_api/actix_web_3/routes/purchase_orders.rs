@@ -20,6 +20,8 @@ use crate::rest_api::{
     resources::purchase_order::v1,
 };
 
+use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
+
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,11 +29,20 @@ pub struct QueryOrgId {
     pub org_id: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryVersionId {
+    pub version_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryRevisionNumber {
+    pub revision_number: Option<i64>,
+}
+
 #[get("/purchase_order")]
 pub async fn list_purchase_orders(
     store_state: web::Data<StoreState>,
-    query_buyer_org_id: web::Query<QueryOrgId>,
-    query_seller_org_id: web::Query<QueryOrgId>,
+    query_filters: web::Query<ListPOFilters>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
@@ -40,14 +51,12 @@ pub async fn list_purchase_orders(
     let store = store_state.store_factory.get_grid_purchase_order_store();
     match version {
         ProtocolVersion::V1 => {
+            let filters = query_filters.into_inner();
             let paging = query_paging.into_inner();
-            let buyer_org_id = query_buyer_org_id.into_inner().org_id;
-            let seller_org_id = query_seller_org_id.into_inner().org_id;
             let service_id = query_service_id.into_inner().service_id;
             match v1::list_purchase_orders(
                 store,
-                buyer_org_id,
-                seller_org_id,
+                filters,
                 service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),
@@ -67,6 +76,8 @@ pub async fn list_purchase_orders(
 pub async fn get_purchase_order(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
+    version_id: web::Query<QueryVersionId>,
+    revision_number: web::Query<QueryRevisionNumber>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
@@ -77,6 +88,8 @@ pub async fn get_purchase_order(
             match v1::get_purchase_order(
                 store,
                 uid.into_inner(),
+                version_id.into_inner().version_id.as_deref(),
+                revision_number.into_inner().revision_number,
                 query_service_id.into_inner().service_id.as_deref(),
             ) {
                 Ok(res) => HttpResponse::Ok().json(res),
@@ -94,18 +107,21 @@ pub async fn get_purchase_order(
 pub async fn list_purchase_order_versions(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
+    query_filters: web::Query<ListVersionFilters>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     let store = store_state.store_factory.get_grid_purchase_order_store();
+    let filters = query_filters.into_inner();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             match v1::list_purchase_order_versions(
                 store,
                 uid.into_inner(),
+                filters,
                 query_service_id.into_inner().service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),

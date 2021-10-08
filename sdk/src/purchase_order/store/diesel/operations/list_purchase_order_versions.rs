@@ -17,9 +17,9 @@ use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::paging::Paging;
 use crate::purchase_order::store::diesel::{
-    models::{PurchaseOrderVersionModel, PurchaseOrderVersionRevisionModel},
-    schema::{purchase_order_version, purchase_order_version_revision},
-    PurchaseOrderVersion, PurchaseOrderVersionList,
+    models::{PurchaseOrderModel, PurchaseOrderVersionModel, PurchaseOrderVersionRevisionModel},
+    schema::{purchase_order, purchase_order_version, purchase_order_version_revision},
+    ListVersionFilters, PurchaseOrderVersion, PurchaseOrderVersionList,
 };
 
 use crate::purchase_order::store::PurchaseOrderStoreError;
@@ -30,6 +30,7 @@ pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchas
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -43,11 +44,17 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderVersionList, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let ListVersionFilters {
+                is_accepted,
+                is_draft,
+            } = filters;
+
             let mut query = purchase_order_version::table
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
@@ -56,6 +63,53 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                         .eq(&po_uid)
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
+
+            if let Some(is_accepted) = is_accepted {
+                let mut po_query = purchase_order::table
+                    .into_boxed()
+                    .select(purchase_order::all_columns)
+                    .filter(
+                        purchase_order::purchase_order_uid
+                            .eq(&po_uid)
+                            .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
+
+                if let Some(service_id) = service_id {
+                    po_query = po_query.filter(purchase_order::service_id.eq(service_id));
+                } else {
+                    po_query = po_query.filter(purchase_order::service_id.is_null());
+                }
+
+                let po_model = po_query
+                    .first::<PurchaseOrderModel>(self.conn)
+                    .map(Some)
+                    .map_err(|err| {
+                        PurchaseOrderStoreError::InternalError(InternalError::from_source(
+                            Box::new(err),
+                        ))
+                    })?;
+
+                if let Some(po_model) = po_model {
+                    if let Some(accepted_version_id) = po_model.accepted_version_id {
+                        if is_accepted {
+                            query = query
+                                .filter(purchase_order_version::version_id.eq(accepted_version_id))
+                        } else {
+                            query = query
+                                .filter(purchase_order_version::version_id.ne(accepted_version_id))
+                        }
+                    }
+                } else {
+                    return Err(PurchaseOrderStoreError::NotFoundError(format!(
+                        "could not find purchase order with id: {}",
+                        &po_uid
+                    )));
+                }
+            }
+
+            if let Some(is_draft) = is_draft {
+                query = query.filter(purchase_order_version::is_draft.eq(is_draft))
+            }
 
             if let Some(service_id) = service_id {
                 query = query.filter(purchase_order_version::service_id.eq(service_id));
@@ -131,11 +185,17 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
     fn list_purchase_order_versions(
         &self,
         po_uid: &str,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderVersionList, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let ListVersionFilters {
+                is_accepted,
+                is_draft,
+            } = filters;
+
             let mut query = purchase_order_version::table
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
@@ -144,6 +204,53 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                         .eq(&po_uid)
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
+
+            if let Some(is_accepted) = is_accepted {
+                let mut po_query = purchase_order::table
+                    .into_boxed()
+                    .select(purchase_order::all_columns)
+                    .filter(
+                        purchase_order::purchase_order_uid
+                            .eq(&po_uid)
+                            .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
+
+                if let Some(service_id) = service_id {
+                    po_query = po_query.filter(purchase_order::service_id.eq(service_id));
+                } else {
+                    po_query = po_query.filter(purchase_order::service_id.is_null());
+                }
+
+                let po_model = po_query
+                    .first::<PurchaseOrderModel>(self.conn)
+                    .map(Some)
+                    .map_err(|err| {
+                        PurchaseOrderStoreError::InternalError(InternalError::from_source(
+                            Box::new(err),
+                        ))
+                    })?;
+
+                if let Some(po_model) = po_model {
+                    if let Some(accepted_version_id) = po_model.accepted_version_id {
+                        if is_accepted {
+                            query = query
+                                .filter(purchase_order_version::version_id.eq(accepted_version_id))
+                        } else {
+                            query = query
+                                .filter(purchase_order_version::version_id.ne(accepted_version_id))
+                        }
+                    }
+                } else {
+                    return Err(PurchaseOrderStoreError::NotFoundError(format!(
+                        "could not find purchase order with id: {}",
+                        &po_uid
+                    )));
+                }
+            }
+
+            if let Some(is_draft) = is_draft {
+                query = query.filter(purchase_order_version::is_draft.eq(is_draft))
+            }
 
             if let Some(service_id) = service_id {
                 query = query.filter(purchase_order_version::service_id.eq(service_id));

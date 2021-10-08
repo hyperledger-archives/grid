@@ -15,7 +15,9 @@
 use std::convert::TryFrom;
 
 use crate::{
-    purchase_order::store::{PurchaseOrderStore, PurchaseOrderStoreError},
+    purchase_order::store::{
+        ListPOFilters, ListVersionFilters, PurchaseOrderStore, PurchaseOrderStoreError,
+    },
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
 };
 
@@ -26,8 +28,7 @@ use super::payloads::{
 
 pub fn list_purchase_orders<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
-    buyer_org_id: Option<String>,
-    seller_org_id: Option<String>,
+    filters: ListPOFilters,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -37,7 +38,7 @@ pub fn list_purchase_orders<'a>(
     let limit = i64::try_from(limit).unwrap_or(10);
 
     let purchase_order_list = store
-        .list_purchase_orders(buyer_org_id, seller_org_id, service_id, offset, limit)
+        .list_purchase_orders(filters, service_id, offset, limit)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))
@@ -67,10 +68,12 @@ pub fn list_purchase_orders<'a>(
 pub fn get_purchase_order<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
+    version_id: Option<&str>,
+    revision_number: Option<i64>,
     service_id: Option<&str>,
 ) -> Result<PurchaseOrderSlice, ErrorResponse> {
     let purchase_order = store
-        .get_purchase_order(&purchase_order_uid, service_id)
+        .get_purchase_order(&purchase_order_uid, version_id, revision_number, service_id)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))
@@ -134,6 +137,7 @@ pub fn get_purchase_order_version<'a>(
 pub fn list_purchase_order_versions<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
+    filters: ListVersionFilters,
     service_id: Option<&str>,
     offset: u64,
     limit: u16,
@@ -143,7 +147,7 @@ pub fn list_purchase_order_versions<'a>(
     let limit = i64::try_from(limit).unwrap_or(10);
 
     let purchase_order_version_list = store
-        .list_purchase_order_versions(&purchase_order_uid, service_id, offset, limit)
+        .list_purchase_order_versions(&purchase_order_uid, filters, service_id, offset, limit)
         .map_err(|err| match err {
             PurchaseOrderStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))
