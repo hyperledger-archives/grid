@@ -724,17 +724,31 @@ mod tests {
     }
 
     #[test]
+    /// Validate a Purchase Order is unable to be created if one with the same UID already exists
+    /// in state. The test follows these steps:
+    ///
+    /// 1. Create the necessary organizations and buyer agent with the correct permissions to
+    ///    create a purchase order
+    /// 2. Add a Purchase Order to state, with UID `test_po_1`
+    /// 3. Build a `CreatePurchaseOrderPayload` with a `uid` field of `test_po_1`
+    /// 4. Validate an error is returned when attempting to submit the payload
+    ///
+    /// This test validates a purchase order must have a unique ID to be added to state.
     fn test_create_po_already_exists() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
         ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_buyer_role();
+        ctx.add_buyer_agent();
         let create_po_payload = CreatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_status("issued".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -748,19 +762,29 @@ mod tests {
     }
 
     #[test]
+    /// Validate a Purchase Order is unable to be created if one of the specified organizations
+    /// does not exist in state. The test follows these steps:
+    ///
+    /// 1. Add an organization to state
+    /// 2. Add the buyer agent with the correct permissions to create a purchase order to state
+    /// 3. Build a `CreatePurchaseOrderPayload`, which references two different organizations
+    /// 4. Validate an error is returned when attempting to submit the payload
+    ///
+    /// This test validates a purchase order is unable to be created if one of the organizations
+    /// referenced by the payload does not exist in state.
     fn test_create_po_org_does_not_exist() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
-        ctx.add_purchase_order(purchase_order());
         ctx.add_org(ORG_ID_1);
+        ctx.add_buyer_role();
         ctx.add_buyer_agent();
         let create_po_payload = CreatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_status("issued".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -772,19 +796,28 @@ mod tests {
     }
 
     #[test]
+    /// Validate a Purchase Order is unable to be created if the signer does not exist as an Agent.
+    /// The test follows these steps:
+    ///
+    /// 1. Add the necessary organizations and the roles to create a purchase order to state
+    /// 2. Build a `CreatePurchaseOrderPayload`
+    /// 3. Validate an error is returned when attempting to submit the payload
+    ///
+    /// This test validates a purchase order is unable to be created if the signer submitting the
+    /// payload does not already exist as an agent in state.
     fn test_create_po_agent_does_not_exist() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
-        ctx.add_purchase_order(purchase_order());
         ctx.add_org(ORG_ID_1);
         ctx.add_org(ORG_ID_2);
+        ctx.add_buyer_role();
         let create_po_payload = CreatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_status("issued".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -796,11 +829,22 @@ mod tests {
     }
 
     #[test]
+    /// Validate a Purchase Order is unable to be created if the signing agent does not have the
+    /// correct workflow permissions. The test follows these steps:
+    ///
+    /// 1. Add the necessary organizations to state
+    /// 2. Add a seller agent, with the `po::seller` workflow permissions
+    /// 3. Build a `CreatePurchaseOrderPayload`
+    /// 4. Validate an error is returned when attempting to submit the payload
+    ///
+    /// This test validates a purchase order is unable to be created if the signer submitting the
+    /// payload does not have the correct workflow permissions to create a purchase order.
+    /// A seller is not able to create a purchase order, but is able to update with the correct
+    /// permissions.
     fn test_create_po_invalid_agent_role() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
-        ctx.add_purchase_order(purchase_order());
         ctx.add_org(ORG_ID_1);
         ctx.add_org(ORG_ID_2);
         ctx.add_seller_role();
@@ -810,7 +854,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_status("issued".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -825,6 +869,15 @@ mod tests {
     }
 
     #[test]
+    /// Validate a Purchase Order is able to be issued. The test follows these steps:
+    ///
+    /// 1. Add the necessary organizations and buyer agent to state
+    /// 2. Build a `CreatePurchaseOrderPayload`
+    /// 3. Validate the payload is submitted successfully
+    /// 4. Validate the purchase order in state is returned as expected
+    ///
+    /// This test validates a purchase order is able to be created within the Purchase Order
+    /// workflow.
     fn test_create_po_valid() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
@@ -838,14 +891,19 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_status("issued".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         if let Err(err) =
             create_purchase_order(&create_po_payload, BUYER_PUB_KEY, &mut state, &perm_checker)
         {
             panic!("Should be valid: {}", err)
-        }
+        };
+
+        let state_po = state
+            .get_purchase_order(PO_UID)
+            .expect("Unable to get purchase order from state");
+        assert_eq!(state_po, Some(purchase_order_wo_versions()));
     }
 
     #[test]
