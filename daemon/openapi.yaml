@@ -1220,7 +1220,7 @@ components:
           oneOf:
             - type: string
             - type: boolean
-            - type: number
+            - type: integer
               format: int64
             - type: integer
               format: int32
@@ -1328,7 +1328,7 @@ components:
           oneOf:
             - type: string
             - type: boolean
-            - type: number
+            - type: integer
               format: int64
             - type: integer
               format: int32

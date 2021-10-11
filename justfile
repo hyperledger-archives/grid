@@ -58,6 +58,7 @@ build-experimental:
     echo "\n\033[92mBuild Success\033[0m\n"
 
 ci:
+    just ci-lint-openapi
     just ci-lint-ui
     just ci-test-ui
     just ci-lint
@@ -76,6 +77,8 @@ ci-lint:
     docker-compose -f docker/compose/run-lint.yaml build lint-grid
     docker-compose -f docker/compose/run-lint.yaml up \
       --abort-on-container-exit lint-grid
+
+ci-lint-openapi: lint-openapi
 
 ci-lint-ui: ci-build-ui-test-deps
     #!/usr/bin/env sh
@@ -161,6 +164,12 @@ lint-grid-ui:
     cd ui/grid-ui
     yarn lint
     echo "\n\033[92mLint Grid UI Success\033[0m\n"
+
+lint-openapi:
+    #!/usr/bin/env sh
+    set -e
+    docker run --volume "$PWD":/data jamescooke/openapi-validator:0.46.0 -e daemon/openapi.yaml
+    echo "\n\033[92mLint Grid OpenAPI Success\033[0m\n"
 
 lint-product-sapling:
     #!/usr/bin/env sh
