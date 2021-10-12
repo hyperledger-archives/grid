@@ -369,12 +369,17 @@ impl CreatePurchaseOrderPayloadBuilder {
 /// Native representation of the "update purchase order" payload
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdatePurchaseOrderPayload {
+    uid: String,
     workflow_status: String,
     is_closed: bool,
-    accepted_version_number: String,
+    accepted_version_number: Option<String>,
 }
 
 impl UpdatePurchaseOrderPayload {
+    pub fn uid(&self) -> &str {
+        &self.uid
+    }
+
     pub fn workflow_status(&self) -> &str {
         &self.workflow_status
     }
@@ -383,8 +388,8 @@ impl UpdatePurchaseOrderPayload {
         self.is_closed
     }
 
-    pub fn accepted_version_number(&self) -> &str {
-        &self.accepted_version_number
+    pub fn accepted_version_number(&self) -> Option<&str> {
+        self.accepted_version_number.as_deref()
     }
 }
 
@@ -393,9 +398,13 @@ impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePur
         mut proto: purchase_order_payload::UpdatePurchaseOrderPayload,
     ) -> Result<Self, ProtoConversionError> {
         Ok(UpdatePurchaseOrderPayload {
+            uid: proto.take_po_uid(),
             workflow_status: proto.take_workflow_status(),
             is_closed: proto.get_is_closed(),
-            accepted_version_number: proto.take_accepted_version_number(),
+            accepted_version_number: match proto.get_accepted_version_number().is_empty() {
+                false => Some(proto.take_accepted_version_number()),
+                true => None,
+            },
         })
     }
 }
@@ -403,9 +412,12 @@ impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePur
 impl FromNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePurchaseOrderPayload {
     fn from_native(native: UpdatePurchaseOrderPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::UpdatePurchaseOrderPayload::new();
+        proto.set_po_uid(native.uid().to_string());
         proto.set_workflow_status(native.workflow_status().to_string());
         proto.set_is_closed(native.is_closed());
-        proto.set_accepted_version_number(native.accepted_version_number().to_string());
+        proto.set_accepted_version_number(
+            native.accepted_version_number().unwrap_or("").to_string(),
+        );
 
         Ok(proto)
     }
@@ -441,6 +453,7 @@ impl IntoNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
 /// Builder used to create the "update purchase order" payload
 #[derive(Default, Debug)]
 pub struct UpdatePurchaseOrderPayloadBuilder {
+    uid: Option<String>,
     workflow_status: Option<String>,
     is_closed: Option<bool>,
     accepted_version_number: Option<String>,
@@ -449,6 +462,11 @@ pub struct UpdatePurchaseOrderPayloadBuilder {
 impl UpdatePurchaseOrderPayloadBuilder {
     pub fn new() -> Self {
         UpdatePurchaseOrderPayloadBuilder::default()
+    }
+
+    pub fn with_uid(mut self, value: String) -> Self {
+        self.uid = Some(value);
+        self
     }
 
     pub fn with_workflow_status(mut self, value: String) -> Self {
@@ -467,6 +485,10 @@ impl UpdatePurchaseOrderPayloadBuilder {
     }
 
     pub fn build(self) -> Result<UpdatePurchaseOrderPayload, BuilderError> {
+        let uid = self
+            .uid
+            .ok_or_else(|| BuilderError::MissingField("'uid' field is required".to_string()))?;
+
         let workflow_status = self.workflow_status.ok_or_else(|| {
             BuilderError::MissingField("'workflow_status' field is required".to_string())
         })?;
@@ -475,14 +497,11 @@ impl UpdatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'is_closed' field is required".to_string())
         })?;
 
-        let accepted_version_number = self.accepted_version_number.ok_or_else(|| {
-            BuilderError::MissingField("'accepted_version_number' field is required".to_string())
-        })?;
-
         Ok(UpdatePurchaseOrderPayload {
+            uid,
             workflow_status,
             is_closed,
-            accepted_version_number,
+            accepted_version_number: self.accepted_version_number,
         })
     }
 }
@@ -955,5 +974,70 @@ impl UpdateVersionPayloadBuilder {
             current_revision_id,
             revision,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// Validate UpdatePurchaseOrderPayload protobuf translates to native
+    #[test]
+    fn update_po_transforms_to_update_po_protobuf_correctly() {
+        // Validate with all fields filled out
+        let proto_update_po = UpdatePurchaseOrderPayload {
+            uid: "uid".to_string(),
+            workflow_status: "status".to_string(),
+            is_closed: true,
+            accepted_version_number: Some("version".to_string()),
+        }
+        .into_proto()
+        .expect("could not transform into proto");
+        assert_eq!(proto_update_po.get_po_uid(), "uid");
+        assert_eq!(proto_update_po.get_workflow_status(), "status");
+        assert!(proto_update_po.get_is_closed());
+        assert_eq!(proto_update_po.get_accepted_version_number(), "version");
+
+        // Validate with optional fields not filled out
+        let proto_update_po = UpdatePurchaseOrderPayload {
+            uid: "uid".to_string(),
+            workflow_status: "status".to_string(),
+            is_closed: true,
+            accepted_version_number: None,
+        }
+        .into_proto()
+        .expect("could not transform into proto");
+        assert_eq!(proto_update_po.get_accepted_version_number(), "");
+    }
+
+    /// Validate UpdatePurchaseOrderPayload native translates to protobuf
+    #[test]
+    fn update_po_protobuf_transforms_to_update_po_correctly() {
+        // Validate with all fields filled out
+        let mut proto_update_po = purchase_order_payload::UpdatePurchaseOrderPayload::new();
+        proto_update_po.set_po_uid("uid".to_string());
+        proto_update_po.set_workflow_status("status".to_string());
+        proto_update_po.set_is_closed(true);
+        proto_update_po.set_accepted_version_number("version".to_string());
+
+        let update_po = proto_update_po
+            .into_native()
+            .expect("could not transform into native");
+        assert_eq!(update_po.uid(), "uid");
+        assert_eq!(update_po.workflow_status(), "status");
+        assert!(update_po.is_closed());
+        assert_eq!(update_po.accepted_version_number(), Some("version"));
+
+        // Validate with optional fields not filled out
+        let mut proto_update_po = purchase_order_payload::UpdatePurchaseOrderPayload::new();
+        proto_update_po.set_po_uid("uid".to_string());
+        proto_update_po.set_workflow_status("status".to_string());
+        proto_update_po.set_is_closed(true);
+        proto_update_po.set_accepted_version_number("".to_string());
+
+        let update_po = proto_update_po
+            .into_native()
+            .expect("could not transform into native");
+        assert_eq!(update_po.accepted_version_number(), None);
     }
 }
