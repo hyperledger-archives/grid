@@ -653,7 +653,7 @@ mod tests {
         protocol::purchase_order::{
             payload::{
                 CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder,
-                PayloadRevisionBuilder,
+                PayloadRevisionBuilder, UpdatePurchaseOrderPayloadBuilder,
             },
             state::{
                 PurchaseOrder, PurchaseOrderBuilder, PurchaseOrderListBuilder,
@@ -1058,6 +1058,416 @@ mod tests {
     }
 
     #[test]
+    // Test that the update po action fails if the uid does not exist
+    fn test_update_po_does_not_exist() {
+        let ctx = MockTransactionContext::default();
+        ctx.add_buyer_agent();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_workflow_status("proposed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!("No purchase order exists: {}", PO_UID);
+        match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po action fails if the agent does not exist
+    fn test_update_po_agent_does_not_exist() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_workflow_status("proposed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!("The signer is not an agent: {}", BUYER_PUB_KEY);
+        match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po action fails if the agent does not have the correct role
+    fn test_update_po_invalid_agent_role() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_purchase_order(purchase_order());
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        // Do not add the role
+        //ctx.add_seller_role();
+        ctx.add_seller_agent();
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_workflow_status("closed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = "Agent seller_agent_pub_key does not have the \
+            correct permissions to update purchase order test_po_1 from a state of issued \
+            to closed";
+        match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po closed status will fail when there is an incorrect workflow state
+    fn test_update_po_closed_status_fails_incorrect_status() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_buyer_agent();
+        ctx.add_buyer_role();
+        ctx.add_purchase_order(purchase_order_confirmed(vec![
+            purchase_order_version_accepted(PO_VERSION_ID_1),
+        ]));
+
+        let to_workflow = "issued";
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(true)
+            .with_workflow_status(to_workflow.to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Workflow state '{}' set for closed purchase order {}. \
+                Expected workflow state to be closed when the purchase order is closed",
+            to_workflow, PO_UID
+        );
+        match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po closed workflow will fail when there is an incorrect po state
+    fn test_update_po_closed_workflow_fails_incorrect_state() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_buyer_agent();
+        ctx.add_buyer_role();
+        ctx.add_purchase_order(purchase_order());
+
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_workflow_status("closed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Workflow state 'closed' set for closed purchase order {}. \
+                Expected workflow state to be closed when the purchase order is closed",
+            PO_UID
+        );
+        match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po closed status will fail when there's an accepted version number
+    fn test_update_po_closed_status_fails_with_accepted_version_number() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_seller_agent();
+        ctx.add_seller_role();
+        ctx.add_purchase_order(purchase_order());
+
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(true)
+            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_workflow_status("confirmed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Accepted version number {} set for closed purchase order {}. \
+                Expected accepted version number to be empty",
+            PO_VERSION_ID_1, PO_UID
+        );
+        match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po closed status succeeds
+    fn test_update_po_closed_status_succeeds() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_buyer_role();
+        ctx.add_buyer_agent();
+        ctx.add_purchase_order(purchase_order());
+
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(true)
+            .with_workflow_status("closed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        if let Err(err) = update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            panic!("Should be valid: {}", err)
+        }
+    }
+
+    #[test]
+    // Test that the update po checks the existence of accepted versions
+    fn test_update_po_accepted_version_number_checks_existence() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_seller_agent();
+        ctx.add_seller_role();
+        ctx.add_purchase_order(purchase_order());
+
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_accepted_version_number(PO_VERSION_ID_2.to_string())
+            .with_workflow_status("confirmed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "No version {} exists for purchase order {}",
+            PO_VERSION_ID_2, PO_UID
+        );
+        match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po checks the status of accepted versions
+    fn test_update_po_accepted_version_number_validates_version_workflow_accepted() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_seller_agent();
+        ctx.add_seller_role();
+        ctx.add_purchase_order(purchase_order());
+
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_workflow_status("confirmed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Workflow state '{}' set for accepted version number {} of purchase \
+            order {}. Expected version workflow state to be accepted when accepted \
+            version number is set",
+            "editable", PO_VERSION_ID_1, PO_UID
+        );
+        match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po checks the state of the po when accepted versions are set
+    fn test_update_po_accepted_version_number_validates_po_workflow_accepted() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_buyer_agent();
+        ctx.add_buyer_role();
+        ctx.add_purchase_order(purchase_order_confirmed(vec![
+            purchase_order_version_accepted(PO_VERSION_ID_1),
+        ]));
+
+        let to_workflow = "issued";
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_workflow_status(to_workflow.to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Workflow state '{}' set for purchase order {}. Expected workflow state \
+            to be accepted when accepted version number is set",
+            to_workflow, PO_UID
+        );
+        match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po complete that is closed fails
+    fn test_update_po_complete_closed_fails() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_seller_agent();
+        ctx.add_seller_role();
+        ctx.add_purchase_order(purchase_order());
+
+        let to_workflow = "confirmed";
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(true)
+            .with_workflow_status(to_workflow.to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Workflow state '{}' set for closed purchase order {}. Expected workflow \
+                state not to be closed for a complete purchase order",
+            to_workflow, PO_UID
+        );
+        match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po accepted without accepted version number fails
+    fn test_update_po_accepted_without_accepted_version_number_fails() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_seller_role();
+        ctx.add_seller_agent();
+        ctx.add_purchase_order(purchase_order());
+        let to_workflow = "confirmed";
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_workflow_status(to_workflow.to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Workflow state '{}' set for purchase order {}. Expected purchase order \
+                accepted version for an accepted purchase order",
+            to_workflow, PO_UID
+        );
+        match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
+    // Test that the update po works when everything is set
+    fn test_update_po_valid() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_seller_agent();
+        ctx.add_seller_role();
+        ctx.add_purchase_order(purchase_order_with_versions(vec![
+            purchase_order_version_accepted(PO_VERSION_ID_1),
+        ]));
+
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_workflow_status("confirmed".to_string())
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        if let Err(err) = update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker)
+        {
+            panic!("Should be valid: {}", err)
+        }
+    }
+
+    #[test]
     /// Validates the `create_version` function returns an error in the case that the submitting
     /// agent does not have the correct permissions to create a purchase order version.
     /// The test follows these steps:
@@ -1442,6 +1852,34 @@ mod tests {
             .expect("Unable to build purchase order")
     }
 
+    fn purchase_order_with_versions(versions: Vec<PurchaseOrderVersion>) -> PurchaseOrder {
+        PurchaseOrderBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_workflow_status("issued".to_string())
+            .with_created_at(1)
+            .with_versions(versions)
+            .with_is_closed(false)
+            .with_buyer_org_id(ORG_ID_1.to_string())
+            .with_seller_org_id(ORG_ID_2.to_string())
+            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
+            .build()
+            .expect("Unable to build purchase order")
+    }
+
+    fn purchase_order_confirmed(versions: Vec<PurchaseOrderVersion>) -> PurchaseOrder {
+        PurchaseOrderBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_workflow_status("confirmed".to_string())
+            .with_created_at(1)
+            .with_versions(versions)
+            .with_is_closed(false)
+            .with_buyer_org_id(ORG_ID_1.to_string())
+            .with_seller_org_id(ORG_ID_2.to_string())
+            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
+            .build()
+            .expect("Unable to build purchase order")
+    }
+
     fn purchase_order_wo_versions() -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
@@ -1460,6 +1898,17 @@ mod tests {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
             .with_workflow_status("editable".to_string())
+            .with_is_draft(true)
+            .with_current_revision_id(1)
+            .with_revisions(purchase_order_revisions())
+            .build()
+            .expect("Unable to build first purchase order version")
+    }
+
+    fn purchase_order_version_accepted(version_id: &str) -> PurchaseOrderVersion {
+        PurchaseOrderVersionBuilder::new()
+            .with_version_id(version_id.to_string())
+            .with_workflow_status("accepted".to_string())
             .with_is_draft(true)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())
