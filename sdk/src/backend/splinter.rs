@@ -14,11 +14,7 @@
 
 use std::pin::Pin;
 use std::str::FromStr;
-#[cfg(feature = "cylinder-jwt-support")]
-use std::sync::{Arc, Mutex};
 
-#[cfg(feature = "cylinder-jwt-support")]
-use cylinder::{jwt::JsonWebTokenBuilder, Signer};
 use futures::prelude::*;
 use protobuf::Message;
 use sawtooth_sdk::messages::batch::Batch;
@@ -37,32 +33,25 @@ macro_rules! try_fut {
     };
 }
 
-#[cfg(feature = "cylinder-jwt-support")]
-pub fn create_cylinder_jwt_auth(signer: &dyn Signer) -> Result<String, BackendClientError> {
-    let encoded_token = JsonWebTokenBuilder::new().build(&*signer).map_err(|err| {
-        BackendClientError::BadRequestError(format!("failed to build json web token: {}", err))
-    })?;
-    Ok(format!("Bearer Cylinder:{}", encoded_token))
-}
-
 #[derive(Clone)]
 pub struct SplinterBackendClient {
     node_url: String,
     #[cfg(feature = "cylinder-jwt-support")]
-    signer: Arc<Mutex<Box<dyn Signer>>>,
+    authorization: String,
 }
 
 impl SplinterBackendClient {
     /// Constructs a new splinter BackendClient instance, using the given url for the node's REST
     /// API.
-    #[cfg(not(feature = "cylinder-jwt-support"))]
-    pub fn new(node_url: String) -> Self {
-        Self { node_url }
-    }
-
-    #[cfg(feature = "cylinder-jwt-support")]
-    pub fn new(node_url: String, signer: Arc<Mutex<Box<dyn Signer>>>) -> Self {
-        Self { node_url, signer }
+    pub fn new(
+        node_url: String,
+        #[cfg(feature = "cylinder-jwt-support")] authorization: String,
+    ) -> Self {
+        Self {
+            node_url,
+            #[cfg(feature = "cylinder-jwt-support")]
+            authorization,
+        }
     }
 }
 
@@ -76,18 +65,6 @@ impl BackendClient for SplinterBackendClient {
         }));
 
         let service_info = try_fut!(SplinterService::from_str(&service_arg));
-
-        #[cfg(feature = "cylinder-jwt-support")]
-        let signer = try_fut!(self
-            .signer
-            .lock()
-            .map_err(|err| BackendClientError::InternalError(format!(
-                "Could not get signer: {}",
-                err
-            ))));
-
-        #[cfg(feature = "cylinder-jwt-support")]
-        let auth = try_fut!(create_cylinder_jwt_auth(&**signer));
 
         let url = format!(
             "{}/scabbard/{}/{}/batches",
@@ -117,7 +94,7 @@ impl BackendClient for SplinterBackendClient {
 
         #[cfg(feature = "cylinder-jwt-support")]
         {
-            client = client.header("Authorization", auth);
+            client = client.header("Authorization", &self.authorization.to_string());
         }
 
         client
@@ -162,9 +139,16 @@ impl BackendClient for SplinterBackendClient {
         url.push_str("ids=");
         url.push_str(&msg.batch_ids.join(","));
 
-        let client = reqwest::Client::new();
+        let mut client = reqwest::Client::new().get(&url);
+
+        client = client.header("GridProtocolVersion", "1");
+
+        #[cfg(feature = "cylinder-jwt-support")]
+        {
+            client = client.header("Authorization", &self.authorization.to_string());
+        }
+
         client
-            .get(&url)
             .send()
             .then(|res| match res {
                 Ok(res) => res.json().boxed(),

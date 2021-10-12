@@ -62,12 +62,18 @@ pub fn run(
     handler: Box<dyn EventHandler>,
     igniter: Igniter,
     scabbard_admin_key: String,
+    #[cfg(feature = "cylinder-jwt-support")] authorization: String,
 ) -> Result<(), AppAuthHandlerError> {
     let registration_route = format!("{}/ws/admin/register/grid", &splinterd_url);
-
-    let node_id = get_node_id(splinterd_url.clone())?;
+    let node_id = get_node_id(
+        splinterd_url.clone(),
+        #[cfg(feature = "cylinder-jwt-support")]
+        &authorization,
+    )?;
 
     let ws_handler = Arc::new(Mutex::new(handler));
+    #[cfg(feature = "cylinder-jwt-support")]
+    let ws_auth = authorization.clone();
     let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
         let handler = {
             match ws_handler.lock() {
@@ -86,11 +92,16 @@ pub fn run(
             &node_id,
             &scabbard_admin_key,
             &splinterd_url,
+            #[cfg(feature = "cylinder-jwt-support")]
+            &ws_auth,
         ) {
             error!("Failed to process admin event: {}", err);
         }
         WsResponse::Empty
     });
+
+    #[cfg(feature = "cylinder-jwt-support")]
+    ws.header("Authorization", authorization);
 
     ws.set_reconnect(RECONNECT);
     ws.set_reconnect_limit(RECONNECT_LIMIT);
@@ -123,6 +134,7 @@ fn process_admin_event(
     node_id: &str,
     scabbard_admin_key: &str,
     splinterd_url: &str,
+    #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
 ) -> Result<(), AppAuthHandlerError> {
     debug!("Received the event at {}", event.timestamp);
     match event.admin_event {
@@ -163,9 +175,14 @@ fn process_admin_event(
                 })?;
 
             event_processors
-                .add_once(&msg_proposal.circuit_id, &service.service_id, None, || {
-                    vec![handler.cloned_box()]
-                })
+                .add_once(
+                    &msg_proposal.circuit_id,
+                    &service.service_id,
+                    None,
+                    #[cfg(feature = "cylinder-jwt-support")]
+                    authorization,
+                    || vec![handler.cloned_box()],
+                )
                 .map_err(|err| AppAuthHandlerError::from_source(Box::new(err)))?;
 
             setup_grid(
