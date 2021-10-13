@@ -26,11 +26,13 @@ use super::{
     PurchaseOrderVersionRevisionList,
 };
 
-use models::{make_purchase_order_version_revisions, make_purchase_order_versions};
+use models::{
+    make_purchase_order_version_revisions, make_purchase_order_versions,
+    NewPurchaseOrderAlternateIdModel,
+};
 
 use crate::error::ResourceTemporarilyUnavailableError;
 
-use operations::add_alternate_id::PurchaseOrderStoreAddAlternateIdOperation as _;
 use operations::add_purchase_order::PurchaseOrderStoreAddPurchaseOrderOperation as _;
 use operations::get_purchase_order::PurchaseOrderStoreGetPurchaseOrderOperation as _;
 use operations::get_purchase_order_version::PurchaseOrderStoreGetPurchaseOrderVersionOperation as _;
@@ -70,6 +72,11 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
             order.clone().into(),
             make_purchase_order_versions(&order),
             make_purchase_order_version_revisions(&order),
+            order
+                .alternate_ids
+                .iter()
+                .map(NewPurchaseOrderAlternateIdModel::from)
+                .collect(),
         )
     }
 
@@ -164,22 +171,9 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
         .list_purchase_order_revisions(po_uid, version_id, service_id, offset, limit)
     }
 
-    fn add_alternate_id(
-        &self,
-        alternate_id: PurchaseOrderAlternateId,
-    ) -> Result<(), PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .add_alternate_id(alternate_id.into())
-    }
-
     fn list_alternate_ids_for_purchase_order(
         &self,
         purchase_order_uid: &str,
-        org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -191,7 +185,6 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
         })?)
         .list_alternate_ids_for_purchase_order(
             purchase_order_uid,
-            org_id,
             service_id,
             offset,
             limit,
@@ -211,6 +204,11 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
             order.clone().into(),
             make_purchase_order_versions(&order),
             make_purchase_order_version_revisions(&order),
+            order
+                .alternate_ids
+                .iter()
+                .map(NewPurchaseOrderAlternateIdModel::from)
+                .collect(),
         )
     }
 
@@ -305,22 +303,9 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
         .list_purchase_order_revisions(po_uid, version_id, service_id, offset, limit)
     }
 
-    fn add_alternate_id(
-        &self,
-        alternate_id: PurchaseOrderAlternateId,
-    ) -> Result<(), PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
-            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(
-                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-            )
-        })?)
-        .add_alternate_id(alternate_id.into())
-    }
-
     fn list_alternate_ids_for_purchase_order(
         &self,
         purchase_order_uid: &str,
-        org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -332,7 +317,6 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
         })?)
         .list_alternate_ids_for_purchase_order(
             purchase_order_uid,
-            org_id,
             service_id,
             offset,
             limit,
@@ -365,6 +349,11 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
             order.clone().into(),
             make_purchase_order_versions(&order),
             make_purchase_order_version_revisions(&order),
+            order
+                .alternate_ids
+                .iter()
+                .map(NewPurchaseOrderAlternateIdModel::from)
+                .collect(),
         )
     }
 
@@ -443,24 +432,15 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
             .list_purchase_order_revisions(po_uid, version_id, service_id, offset, limit)
     }
 
-    fn add_alternate_id(
-        &self,
-        alternate_id: PurchaseOrderAlternateId,
-    ) -> Result<(), PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(self.connection).add_alternate_id(alternate_id.into())
-    }
-
     fn list_alternate_ids_for_purchase_order(
         &self,
         purchase_order_uid: &str,
-        org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(self.connection).list_alternate_ids_for_purchase_order(
             purchase_order_uid,
-            org_id,
             service_id,
             offset,
             limit,
@@ -477,6 +457,11 @@ impl<'a> PurchaseOrderStore
             order.clone().into(),
             make_purchase_order_versions(&order),
             make_purchase_order_version_revisions(&order),
+            order
+                .alternate_ids
+                .iter()
+                .map(NewPurchaseOrderAlternateIdModel::from)
+                .collect(),
         )
     }
 
@@ -555,24 +540,15 @@ impl<'a> PurchaseOrderStore
             .list_purchase_order_revisions(po_uid, version_id, service_id, offset, limit)
     }
 
-    fn add_alternate_id(
-        &self,
-        alternate_id: PurchaseOrderAlternateId,
-    ) -> Result<(), PurchaseOrderStoreError> {
-        PurchaseOrderStoreOperations::new(self.connection).add_alternate_id(alternate_id.into())
-    }
-
     fn list_alternate_ids_for_purchase_order(
         &self,
         purchase_order_uid: &str,
-        org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError> {
         PurchaseOrderStoreOperations::new(self.connection).list_alternate_ids_for_purchase_order(
             purchase_order_uid,
-            org_id,
             service_id,
             offset,
             limit,

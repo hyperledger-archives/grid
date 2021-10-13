@@ -16,9 +16,15 @@ use super::PurchaseOrderStoreOperations;
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::purchase_order::store::diesel::{
-    models::{PurchaseOrderModel, PurchaseOrderVersionModel, PurchaseOrderVersionRevisionModel},
-    schema::{purchase_order, purchase_order_version, purchase_order_version_revision},
-    PurchaseOrder, PurchaseOrderVersion,
+    models::{
+        PurchaseOrderAlternateIdModel, PurchaseOrderModel, PurchaseOrderVersionModel,
+        PurchaseOrderVersionRevisionModel,
+    },
+    schema::{
+        purchase_order, purchase_order_alternate_id, purchase_order_version,
+        purchase_order_version_revision,
+    },
+    PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderVersion,
 };
 
 use crate::purchase_order::store::PurchaseOrderStoreError;
@@ -136,7 +142,36 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                 versions.push(PurchaseOrderVersion::from((&v, &revision_models)))
             }
 
-            Ok(order.map(|order| PurchaseOrder::from((order, versions))))
+            let mut alternate_ids = Vec::new();
+
+            let mut query = purchase_order_alternate_id::table
+                .into_boxed()
+                .select(purchase_order_alternate_id::all_columns)
+                .filter(
+                    purchase_order_alternate_id::purchase_order_uid
+                        .eq(&purchase_order_uid)
+                        .and(purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(purchase_order_alternate_id::service_id.eq(service_id));
+            } else {
+                query = query.filter(purchase_order_alternate_id::service_id.is_null());
+            }
+
+            let alt_id_models = query
+                .load::<PurchaseOrderAlternateIdModel>(self.conn)
+                .map_err(|err| {
+                    PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(
+                        err,
+                    )))
+                })?;
+
+            alt_id_models.iter().for_each(|id| {
+                alternate_ids.push(PurchaseOrderAlternateId::from(id));
+            });
+
+            Ok(order.map(|order| PurchaseOrder::from((order, versions, alternate_ids))))
         })
     }
 }
@@ -243,7 +278,36 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
                 versions.push(PurchaseOrderVersion::from((&v, &revision_models)))
             }
 
-            Ok(order.map(|order| PurchaseOrder::from((order, versions))))
+            let mut alternate_ids = Vec::new();
+
+            let mut query = purchase_order_alternate_id::table
+                .into_boxed()
+                .select(purchase_order_alternate_id::all_columns)
+                .filter(
+                    purchase_order_alternate_id::purchase_order_uid
+                        .eq(&purchase_order_uid)
+                        .and(purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(purchase_order_alternate_id::service_id.eq(service_id));
+            } else {
+                query = query.filter(purchase_order_alternate_id::service_id.is_null());
+            }
+
+            let alt_id_models = query
+                .load::<PurchaseOrderAlternateIdModel>(self.conn)
+                .map_err(|err| {
+                    PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(
+                        err,
+                    )))
+                })?;
+
+            alt_id_models.iter().for_each(|id| {
+                alternate_ids.push(PurchaseOrderAlternateId::from(id));
+            });
+
+            Ok(order.map(|order| PurchaseOrder::from((order, versions, alternate_ids))))
         })
     }
 }

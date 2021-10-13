@@ -13,14 +13,22 @@
 // limitations under the License.
 
 use super::PurchaseOrderStoreOperations;
-use crate::purchase_order::store::diesel::{PurchaseOrderAlternateIdList, PurchaseOrderStoreError};
+use crate::commits::MAX_COMMIT_NUM;
+use crate::error::InternalError;
+use crate::paging::Paging;
+use crate::purchase_order::store::diesel::{
+    models::PurchaseOrderAlternateIdModel, schema::purchase_order_alternate_id,
+    PurchaseOrderAlternateId, PurchaseOrderAlternateIdList,
+};
+
+use crate::purchase_order::store::PurchaseOrderStoreError;
+use diesel::prelude::*;
 
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
 {
     fn list_alternate_ids_for_purchase_order(
         &self,
         purchase_order_uid: &str,
-        org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -33,13 +41,58 @@ impl<'a> PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
 {
     fn list_alternate_ids_for_purchase_order(
         &self,
-        _purchase_order_uid: &str,
-        _org_id: &str,
-        _service_id: Option<&str>,
-        _offset: i64,
-        _limit: i64,
+        purchase_order_uid: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
     ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError> {
-        unimplemented!()
+        self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let mut query = purchase_order_alternate_id::table
+                .into_boxed()
+                .select(purchase_order_alternate_id::all_columns)
+                .filter(
+                    purchase_order_alternate_id::purchase_order_uid
+                        .eq(&purchase_order_uid)
+                        .and(purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(purchase_order_alternate_id::service_id.eq(service_id));
+            } else {
+                query = query.filter(purchase_order_alternate_id::service_id.is_null());
+            }
+
+            let alt_id_models = query
+                .load::<PurchaseOrderAlternateIdModel>(self.conn)
+                .map_err(|err| {
+                    PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(
+                        err,
+                    )))
+                })?;
+
+            let mut count_query = purchase_order_alternate_id::table
+                .into_boxed()
+                .select(purchase_order_alternate_id::all_columns);
+
+            if let Some(service_id) = service_id {
+                count_query =
+                    count_query.filter(purchase_order_alternate_id::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(purchase_order_alternate_id::service_id.is_null());
+            }
+
+            let total = count_query.count().get_result(self.conn)?;
+
+            let ids = alt_id_models
+                .iter()
+                .map(PurchaseOrderAlternateId::from)
+                .collect();
+
+            Ok(PurchaseOrderAlternateIdList::new(
+                ids,
+                Paging::new(offset, limit, total),
+            ))
+        })
     }
 }
 
@@ -49,12 +102,57 @@ impl<'a> PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
 {
     fn list_alternate_ids_for_purchase_order(
         &self,
-        _purchase_order_uid: &str,
-        _org_id: &str,
-        _service_id: Option<&str>,
-        _offset: i64,
-        _limit: i64,
+        purchase_order_uid: &str,
+        service_id: Option<&str>,
+        offset: i64,
+        limit: i64,
     ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError> {
-        unimplemented!()
+        self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let mut query = purchase_order_alternate_id::table
+                .into_boxed()
+                .select(purchase_order_alternate_id::all_columns)
+                .filter(
+                    purchase_order_alternate_id::purchase_order_uid
+                        .eq(&purchase_order_uid)
+                        .and(purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+            if let Some(service_id) = service_id {
+                query = query.filter(purchase_order_alternate_id::service_id.eq(service_id));
+            } else {
+                query = query.filter(purchase_order_alternate_id::service_id.is_null());
+            }
+
+            let alt_id_models = query
+                .load::<PurchaseOrderAlternateIdModel>(self.conn)
+                .map_err(|err| {
+                    PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(
+                        err,
+                    )))
+                })?;
+
+            let mut count_query = purchase_order_alternate_id::table
+                .into_boxed()
+                .select(purchase_order_alternate_id::all_columns);
+
+            if let Some(service_id) = service_id {
+                count_query =
+                    count_query.filter(purchase_order_alternate_id::service_id.eq(service_id));
+            } else {
+                count_query = count_query.filter(purchase_order_alternate_id::service_id.is_null());
+            }
+
+            let total = count_query.count().get_result(self.conn)?;
+
+            let ids = alt_id_models
+                .iter()
+                .map(PurchaseOrderAlternateId::from)
+                .collect();
+
+            Ok(PurchaseOrderAlternateIdList::new(
+                ids,
+                Paging::new(offset, limit, total),
+            ))
+        })
     }
 }

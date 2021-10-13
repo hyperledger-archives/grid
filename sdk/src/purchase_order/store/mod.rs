@@ -45,6 +45,7 @@ pub struct PurchaseOrder {
     is_closed: bool,
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
     created_at: i64,
     workflow_type: String,
     start_commit_num: i64,
@@ -88,6 +89,11 @@ impl PurchaseOrder {
         self.versions.to_vec()
     }
 
+    /// Returns the alternate IDs list for the PO
+    pub fn alternate_ids(&self) -> Vec<PurchaseOrderAlternateId> {
+        self.alternate_ids.to_vec()
+    }
+
     /// Returns the created_at timestamp for the PO
     pub fn created_at(&self) -> &i64 {
         &self.created_at
@@ -123,6 +129,7 @@ pub struct PurchaseOrderBuilder {
     is_closed: bool,
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
     created_at: i64,
     workflow_type: String,
     start_commit_num: i64,
@@ -173,6 +180,12 @@ impl PurchaseOrderBuilder {
         self
     }
 
+    /// Sets the alternate IDs list for this PO
+    pub fn with_alternate_ids(mut self, alternate_ids: Vec<PurchaseOrderAlternateId>) -> Self {
+        self.alternate_ids = alternate_ids;
+        self
+    }
+
     /// Sets the created_at timestamp for this PO
     pub fn with_created_at(mut self, created_at: i64) -> Self {
         self.created_at = created_at;
@@ -212,6 +225,7 @@ impl PurchaseOrderBuilder {
             is_closed,
             accepted_version_id,
             versions,
+            alternate_ids,
             created_at,
             workflow_type,
             start_commit_num,
@@ -269,6 +283,7 @@ impl PurchaseOrderBuilder {
             is_closed,
             accepted_version_id,
             versions,
+            alternate_ids,
             created_at,
             workflow_type,
             start_commit_num,
@@ -640,14 +655,20 @@ impl PurchaseOrderVersionRevisionBuilder {
 /// Represents a list of Grid Purchase Order Alternate IDs
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderAlternateIdList {
-    pub alternate_ids: Vec<PurchaseOrderAlternateId>,
+    pub data: Vec<PurchaseOrderAlternateId>,
+    pub paging: Paging,
+}
+
+impl PurchaseOrderAlternateIdList {
+    pub fn new(data: Vec<PurchaseOrderAlternateId>, paging: Paging) -> Self {
+        Self { data, paging }
+    }
 }
 
 /// Represents a Grid Purchase Order Alternate ID
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrderAlternateId {
     purchase_order_uid: String,
-    org_id: String,
     id_type: String,
     id: String,
     start_commit_num: i64,
@@ -659,11 +680,6 @@ impl PurchaseOrderAlternateId {
     /// Returns the purchase order UID for the PO alternate ID
     pub fn purchase_order_uid(&self) -> &str {
         &self.purchase_order_uid
-    }
-
-    /// Returns the organization ID for the PO alternate ID
-    pub fn org_id(&self) -> &str {
-        &self.org_id
     }
 
     /// Returns the ID type for the PO alternate ID
@@ -694,7 +710,6 @@ impl PurchaseOrderAlternateId {
 
 pub struct PurchaseOrderAlternateIdBuilder {
     purchase_order_uid: String,
-    org_id: String,
     id_type: String,
     id: String,
     start_commit_num: i64,
@@ -706,12 +721,6 @@ impl PurchaseOrderAlternateIdBuilder {
     /// Sets the purchase order UID for this alternate ID
     pub fn with_purchase_order_uid(mut self, uid: String) -> Self {
         self.purchase_order_uid = uid;
-        self
-    }
-
-    /// Sets the organization ID for this alternate ID
-    pub fn with_org_id(mut self, org_id: String) -> Self {
-        self.org_id = org_id;
         self
     }
 
@@ -748,7 +757,6 @@ impl PurchaseOrderAlternateIdBuilder {
     pub fn build(self) -> Result<PurchaseOrderAlternateId, PurchaseOrderBuilderError> {
         let PurchaseOrderAlternateIdBuilder {
             purchase_order_uid,
-            org_id,
             id_type,
             id,
             start_commit_num,
@@ -759,12 +767,6 @@ impl PurchaseOrderAlternateIdBuilder {
         if purchase_order_uid.is_empty() {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
                 "purchase_order_uid".to_string(),
-            ));
-        };
-
-        if org_id.is_empty() {
-            return Err(PurchaseOrderBuilderError::MissingRequiredField(
-                "org_id".to_string(),
             ));
         };
 
@@ -794,7 +796,6 @@ impl PurchaseOrderAlternateIdBuilder {
 
         Ok(PurchaseOrderAlternateId {
             purchase_order_uid,
-            org_id,
             id_type,
             id,
             start_commit_num,
@@ -926,29 +927,17 @@ pub trait PurchaseOrderStore {
         limit: i64,
     ) -> Result<PurchaseOrderVersionRevisionList, PurchaseOrderStoreError>;
 
-    /// Adds an alternate id to the underlying storage
-    ///
-    /// # Arguments
-    ///
-    ///  * `alternate_id` - The alternate_id to be added
-    fn add_alternate_id(
-        &self,
-        alternate_id: PurchaseOrderAlternateId,
-    ) -> Result<(), PurchaseOrderStoreError>;
-
     /// Lists alternate IDs for a purchase order from the underlying storage
     ///
     /// # Arguments
     ///
     ///  * `purchase_order_uid` - The purchase order to fetch alternate IDs for
-    ///  * `org_id` - The organization to fetch for
     ///  * `service_id` - The service id
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
     fn list_alternate_ids_for_purchase_order(
         &self,
         purchase_order_uid: &str,
-        org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
@@ -1024,24 +1013,15 @@ where
         (**self).list_purchase_order_revisions(po_uid, version_id, service_id, offset, limit)
     }
 
-    fn add_alternate_id(
-        &self,
-        alternate_id: PurchaseOrderAlternateId,
-    ) -> Result<(), PurchaseOrderStoreError> {
-        (**self).add_alternate_id(alternate_id)
-    }
-
     fn list_alternate_ids_for_purchase_order(
         &self,
         purchase_order_uid: &str,
-        org_id: &str,
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError> {
         (**self).list_alternate_ids_for_purchase_order(
             purchase_order_uid,
-            org_id,
             service_id,
             offset,
             limit,

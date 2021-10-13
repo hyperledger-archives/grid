@@ -62,7 +62,6 @@ table! {
     purchase_order_alternate_id (id) {
         id -> Int8,
         purchase_order_uid -> Text,
-        org_id -> Varchar,
         alternate_id_type -> Text,
         alternate_id -> Text,
         start_commit_num -> Int8,
