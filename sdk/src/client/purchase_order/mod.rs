@@ -88,8 +88,13 @@ pub trait PurchaseOrderClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `id` - The uuid of the `PurchaseOrder` to be retrieved
-    fn get_purchase_order(&self, id: String) -> Result<Option<PurchaseOrder>, ClientError>;
+    /// * `id` - The UID of the `PurchaseOrder` to be retrieved
+    /// * `service_id` - Filter by service ID on the list of `PurchaseOrder`s
+    fn get_purchase_order(
+        &self,
+        id: String,
+        service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrder>, ClientError>;
 
     /// Retrieves the purchase order version with the given `version_id` of the purchase
     /// order with the given `id`
@@ -153,4 +158,15 @@ pub trait PurchaseOrderClient: Client {
         version_id: String,
         filter: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError>;
+
+    /// Lists the purchase order's alternate IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The uid of the `PurchaseOrder` for the `AlternateId`s to be listed
+    fn list_alternate_ids(
+        &self,
+        id: String,
+        service_id: Option<&str>,
+    ) -> Result<Vec<AlternateId>, ClientError>;
 }
