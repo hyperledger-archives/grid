@@ -14,9 +14,11 @@
 
 //! Protocol structs for Purchase Order transaction payloads
 
-use protobuf::Message;
+use protobuf::{Message, RepeatedField};
 
 use crate::protocol::errors::BuilderError;
+use crate::protocol::purchase_order::state::PurchaseOrderAlternateId;
+use crate::protos;
 use crate::protos::purchase_order_payload;
 use crate::protos::{
     FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
@@ -184,6 +186,7 @@ pub struct CreatePurchaseOrderPayload {
     buyer_org_id: String,
     seller_org_id: String,
     workflow_status: String,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
     create_version_payload: Option<CreateVersionPayload>,
 }
 
@@ -206,6 +209,10 @@ impl CreatePurchaseOrderPayload {
 
     pub fn workflow_status(&self) -> &str {
         &self.workflow_status
+    }
+
+    pub fn alternate_ids(&self) -> &[PurchaseOrderAlternateId] {
+        &self.alternate_ids
     }
 
     pub fn create_version_payload(&self) -> Option<CreateVersionPayload> {
@@ -235,6 +242,12 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
             buyer_org_id: proto.take_buyer_org_id(),
             seller_org_id: proto.take_seller_org_id(),
             workflow_status: proto.take_workflow_status(),
+            alternate_ids: proto
+                .get_alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(PurchaseOrderAlternateId::from_proto)
+                .collect::<Result<Vec<PurchaseOrderAlternateId>, ProtoConversionError>>()?,
             create_version_payload,
         })
     }
@@ -247,6 +260,17 @@ impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
         proto.set_created_at(native.created_at());
         proto.set_buyer_org_id(native.buyer_org_id().to_string());
         proto.set_seller_org_id(native.seller_org_id().to_string());
+        proto.set_alternate_ids(RepeatedField::from_vec(
+            native
+                .alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(PurchaseOrderAlternateId::into_proto)
+                .collect::<Result<
+                    Vec<protos::purchase_order_state::PurchaseOrderAlternateId>,
+                    ProtoConversionError,
+                >>()?,
+        ));
         proto.set_workflow_status(native.workflow_status().to_string());
 
         if let Some(payload) = native.create_version_payload() {
@@ -294,6 +318,7 @@ pub struct CreatePurchaseOrderPayloadBuilder {
     buyer_org_id: Option<String>,
     seller_org_id: Option<String>,
     workflow_status: Option<String>,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
     create_version_payload: Option<CreateVersionPayload>,
 }
 
@@ -327,6 +352,11 @@ impl CreatePurchaseOrderPayloadBuilder {
         self
     }
 
+    pub fn with_alternate_ids(mut self, alternate_ids: Vec<PurchaseOrderAlternateId>) -> Self {
+        self.alternate_ids = alternate_ids;
+        self
+    }
+
     pub fn with_create_version_payload(mut self, payload: CreateVersionPayload) -> Self {
         self.create_version_payload = Some(payload);
         self
@@ -353,6 +383,8 @@ impl CreatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'workflow_status' field is required".to_string())
         })?;
 
+        let alternate_ids = self.alternate_ids;
+
         let create_version_payload = self.create_version_payload;
 
         Ok(CreatePurchaseOrderPayload {
@@ -361,6 +393,7 @@ impl CreatePurchaseOrderPayloadBuilder {
             buyer_org_id,
             seller_org_id,
             workflow_status,
+            alternate_ids,
             create_version_payload,
         })
     }
@@ -373,6 +406,7 @@ pub struct UpdatePurchaseOrderPayload {
     workflow_status: String,
     is_closed: bool,
     accepted_version_number: Option<String>,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
 }
 
 impl UpdatePurchaseOrderPayload {
@@ -391,6 +425,10 @@ impl UpdatePurchaseOrderPayload {
     pub fn accepted_version_number(&self) -> Option<&str> {
         self.accepted_version_number.as_deref()
     }
+
+    pub fn alternate_ids(&self) -> &[PurchaseOrderAlternateId] {
+        &self.alternate_ids
+    }
 }
 
 impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePurchaseOrderPayload {
@@ -405,6 +443,12 @@ impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePur
                 false => Some(proto.take_accepted_version_number()),
                 true => None,
             },
+            alternate_ids: proto
+                .get_alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(PurchaseOrderAlternateId::from_proto)
+                .collect::<Result<Vec<PurchaseOrderAlternateId>, ProtoConversionError>>()?,
         })
     }
 }
@@ -418,7 +462,17 @@ impl FromNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
         proto.set_accepted_version_number(
             native.accepted_version_number().unwrap_or("").to_string(),
         );
-
+        proto.set_alternate_ids(RepeatedField::from_vec(
+            native
+                .alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(PurchaseOrderAlternateId::into_proto)
+                .collect::<Result<
+                    Vec<protos::purchase_order_state::PurchaseOrderAlternateId>,
+                    ProtoConversionError,
+                >>()?,
+        ));
         Ok(proto)
     }
 }
@@ -457,6 +511,7 @@ pub struct UpdatePurchaseOrderPayloadBuilder {
     workflow_status: Option<String>,
     is_closed: Option<bool>,
     accepted_version_number: Option<String>,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
 }
 
 impl UpdatePurchaseOrderPayloadBuilder {
@@ -479,8 +534,13 @@ impl UpdatePurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_accepted_version_number(mut self, value: String) -> Self {
-        self.accepted_version_number = Some(value);
+    pub fn with_accepted_version_number(mut self, value: Option<String>) -> Self {
+        self.accepted_version_number = value;
+        self
+    }
+
+    pub fn with_alternate_ids(mut self, value: Vec<PurchaseOrderAlternateId>) -> Self {
+        self.alternate_ids = value;
         self
     }
 
@@ -497,11 +557,14 @@ impl UpdatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'is_closed' field is required".to_string())
         })?;
 
+        let alternate_ids = self.alternate_ids;
+
         Ok(UpdatePurchaseOrderPayload {
             uid,
             workflow_status,
             is_closed,
             accepted_version_number: self.accepted_version_number,
+            alternate_ids,
         })
     }
 }
@@ -990,6 +1053,7 @@ mod test {
             workflow_status: "status".to_string(),
             is_closed: true,
             accepted_version_number: Some("version".to_string()),
+            alternate_ids: Vec::new(),
         }
         .into_proto()
         .expect("could not transform into proto");
@@ -1004,6 +1068,7 @@ mod test {
             workflow_status: "status".to_string(),
             is_closed: true,
             accepted_version_number: None,
+            alternate_ids: Vec::new(),
         }
         .into_proto()
         .expect("could not transform into proto");

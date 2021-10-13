@@ -14,6 +14,7 @@
 // -----------------------------------------------------------------------------
 
 syntax = "proto3";
+import "purchase_order_state.proto";
 
 message PurchaseOrderPayload {
   enum Action {
@@ -38,7 +39,8 @@ message CreatePurchaseOrderPayload {
   string buyer_org_id = 3;
   string seller_org_id = 4;
   string workflow_status = 5;
-  CreateVersionPayload create_version_payload = 6;
+  repeated PurchaseOrderAlternateId alternate_ids = 6;
+  CreateVersionPayload create_version_payload = 7;
 }
 
 message UpdatePurchaseOrderPayload {
@@ -46,6 +48,7 @@ message UpdatePurchaseOrderPayload {
   string workflow_status = 2;
   bool is_closed = 3;
   string accepted_version_number = 4;
+  repeated PurchaseOrderAlternateId alternate_ids = 5;
 }
 
 message CreateVersionPayload {
