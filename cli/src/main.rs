@@ -92,6 +92,7 @@ use grid_sdk::{
     data_validation::validate_order_xml_3_4,
     protocol::purchase_order::payload::{
         CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder, PayloadRevisionBuilder,
+        UpdatePurchaseOrderPayloadBuilder,
     },
 };
 
@@ -1539,28 +1540,13 @@ fn run() -> Result<(), CliError> {
                 .subcommand(
                     SubCommand::with_name("update")
                         .about("Update a Purchase Order")
-                        .arg(
-                            Arg::with_name("id")
-                                .value_name("order")
-                                .takes_value(true)
-                                .required(true)
-                                .help(
-                                    "ID of the Purchase Order. \
-                                    May be the Purchase Order's UUID or an Alternate ID \
+                        .arg(Arg::with_name("id").takes_value(true).required(true).help(
+                            "ID of the Purchase Order. \
+                                    May be the Purchase Order's UID or an Alternate ID \
                                     (Alternate ID format: <alternate_id_type>:<alternate_id>)",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("org")
-                                .value_name("org_id")
-                                .long("org")
-                                .required(true)
-                                .takes_value(true)
-                                .help("ID of the organization which owns the Purchase Order"),
-                        )
+                        ))
                         .arg(
                             Arg::with_name("add_id")
-                                .value_name("alternate_id")
                                 .long("add-id")
                                 .takes_value(true)
                                 .help(
@@ -1570,7 +1556,6 @@ fn run() -> Result<(), CliError> {
                         )
                         .arg(
                             Arg::with_name("rm_id")
-                                .value_name("alternate_id")
                                 .long("rm-id")
                                 .takes_value(true)
                                 .help(
@@ -2568,7 +2553,120 @@ fn run() -> Result<(), CliError> {
                         service_id.as_deref(),
                     )?;
                 }
-                ("update", Some(_)) => unimplemented!(),
+                ("update", Some(m)) => {
+                    let url = m
+                        .value_of("url")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                        .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+                    let service_id = m
+                        .value_of("service_id")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let signer = signing::load_signer(key)?;
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let uid = m.value_of("id").map(String::from).unwrap();
+
+                    let po = purchase_orders::do_fetch_purchase_order(
+                        &*purchase_order_client,
+                        &uid,
+                        service_id.as_deref(),
+                    )?;
+
+                    if let Some(po) = po {
+                        let workflow_status =
+                            m.value_of("workflow_status").unwrap_or(&po.workflow_status);
+
+                        let mut is_closed = po.is_closed;
+                        if m.is_present("is_closed") {
+                            is_closed = true;
+                        }
+
+                        let mut accepted_version = po.accepted_version_id;
+
+                        if m.is_present("accepted_version") {
+                            accepted_version = m
+                                .value_of("accepted_version")
+                                .map(String::from)
+                                .map(Some)
+                                .unwrap();
+                        }
+
+                        let mut alternate_ids = purchase_orders::do_fetch_alternate_ids(
+                            &*purchase_order_client,
+                            &uid,
+                            service_id.as_deref(),
+                        )?;
+
+                        if m.is_present("add_id") {
+                            let adds: Vec<&str> = m.values_of("add_id").unwrap().collect();
+                            for a in adds {
+                                alternate_ids
+                                    .push(purchase_orders::make_alternate_id_from_str(&uid, a)?);
+                            }
+                        }
+
+                        if m.is_present("rm_id") {
+                            let rms: Vec<&str> = m.values_of("rm_id").unwrap().collect();
+
+                            for r in rms {
+                                let converted =
+                                    purchase_orders::make_alternate_id_from_str(&uid, r)?;
+                                alternate_ids.retain(|i| {
+                                    i.alternate_id_type != converted.alternate_id_type
+                                        || i.alternate_id != converted.alternate_id
+                                });
+                            }
+                        }
+
+                        let mut converted_ids = Vec::new();
+
+                        for id in alternate_ids {
+                            let converted = id
+                                .try_into()
+                                .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                            converted_ids.push(converted);
+                        }
+
+                        let payload = UpdatePurchaseOrderPayloadBuilder::new()
+                            .with_uid(uid)
+                            .with_workflow_status(workflow_status.to_string())
+                            .with_is_closed(is_closed)
+                            .with_accepted_version_number(
+                                accepted_version.as_deref().map(|s| s.to_string()),
+                            )
+                            .with_alternate_ids(converted_ids)
+                            .build()
+                            .map_err(|err| {
+                                CliError::UserError(format!(
+                                    "Could not build Purchase Order: {}",
+                                    err
+                                ))
+                            })?;
+
+                        info!("Submitting request to update purchase order...");
+                        purchase_orders::do_update_purchase_order(
+                            purchase_order_client,
+                            signer,
+                            wait,
+                            payload,
+                            service_id.as_deref(),
+                        )?;
+                    } else {
+                        CliError::UserError(format!("Could not fetch Purchase Order {}", &uid));
+                    }
+                }
                 ("list", Some(_)) => unimplemented!(),
                 ("show", Some(_)) => unimplemented!(),
                 ("version", Some(m)) => match m.subcommand() {
