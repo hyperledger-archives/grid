@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::convert::TryFrom;
 use std::time::SystemTime;
 
 use crate::error::ClientError;
+use crate::protocol::purchase_order::state::{
+    PurchaseOrderAlternateId, PurchaseOrderAlternateIdBuilder,
+};
 
 use super::Client;
 
@@ -44,6 +48,39 @@ pub struct PurchaseOrderRevision {
     pub order_xml_v3_4: String,
     pub submitter: String,
     pub created_at: u64,
+}
+
+pub struct AlternateId {
+    pub purchase_order_uid: String,
+    pub alternate_id_type: String,
+    pub alternate_id: String,
+}
+
+impl AlternateId {
+    pub fn new(purchase_order_uid: &str, alternate_id_type: &str, alternate_id: &str) -> Self {
+        Self {
+            purchase_order_uid: purchase_order_uid.to_string(),
+            alternate_id_type: alternate_id_type.to_string(),
+            alternate_id: alternate_id.to_string(),
+        }
+    }
+}
+
+impl TryFrom<AlternateId> for PurchaseOrderAlternateId {
+    type Error = ClientError;
+
+    fn try_from(id: AlternateId) -> Result<PurchaseOrderAlternateId, Self::Error> {
+        let po = PurchaseOrderAlternateIdBuilder::new()
+            .with_id_type(id.alternate_id_type.to_string())
+            .with_id(id.alternate_id.to_string())
+            .with_purchase_order_uid(id.purchase_order_uid)
+            .build()
+            .map_err(|err| {
+                Self::Error::DaemonError(format!("Could not convert Alternate ID: {}", err))
+            })?;
+
+        Ok(po)
+    }
 }
 
 pub trait PurchaseOrderClient: Client {

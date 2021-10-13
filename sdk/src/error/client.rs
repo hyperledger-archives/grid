@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //! Module containing ClientError implementation.
+use std::fmt;
 use std::io;
 
 /// An error which is returned from a Client Implementation.
@@ -35,5 +36,14 @@ impl From<io::Error> for ClientError {
 impl From<reqwest::Error> for ClientError {
     fn from(err: reqwest::Error) -> Self {
         ClientError::DaemonError(format!("Request Failed: {}", err))
+    }
+}
+
+impl fmt::Display for ClientError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            ClientError::IoError(err) => write!(f, "{:?}", err),
+            ClientError::DaemonError(err) => write!(f, "{}", err),
+        }
     }
 }
