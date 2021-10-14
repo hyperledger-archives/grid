@@ -16,9 +16,9 @@
 CREATE TABLE purchase_order (
     id INTEGER PRIMARY KEY,
     purchase_order_uid TEXT NOT NULL,
+    workflow_status TEXT NOT NULL,
     buyer_org_id VARCHAR(256) NOT NULL,
     seller_org_id VARCHAR(256) NOT NULL,
-    workflow_status TEXT NOT NULL,
     is_closed BOOLEAN NOT NULL,
     accepted_version_id TEXT,
     created_at BIGINT NOT NULL,
