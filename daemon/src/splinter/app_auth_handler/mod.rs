@@ -42,6 +42,9 @@ const RECONNECT_LIMIT: u64 = 10;
 /// default timeout in seconds if no message is received from server
 const CONNECTION_TIMEOUT: u64 = 60;
 
+/// Supported splinter protocol version
+const SPLINTER_PROTOCOL_VERSION: &str = "1";
+
 #[derive(Deserialize, Debug, Clone)]
 struct AdminEvent {
     timestamp: u64,
@@ -102,6 +105,10 @@ pub fn run(
 
     #[cfg(feature = "cylinder-jwt-support")]
     ws.header("Authorization", authorization);
+    ws.header(
+        "SplinterProtocolVersion",
+        SPLINTER_PROTOCOL_VERSION.to_string(),
+    );
 
     ws.set_reconnect(RECONNECT);
     ws.set_reconnect_limit(RECONNECT_LIMIT);
