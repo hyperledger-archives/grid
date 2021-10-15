@@ -26,7 +26,7 @@ use super::{
 
 use sawtooth_sdk::messages::batch::BatchList;
 
-const PURCHASE_ORDER_ROUTE: &str = "purchase-order";
+const PURCHASE_ORDER_ROUTE: &str = "purchase_order";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct PurchaseOrderDto {

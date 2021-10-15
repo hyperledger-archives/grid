@@ -25,6 +25,7 @@ pub enum CliError {
         feature = "location",
         feature = "pike",
         feature = "product",
+        feature = "purchase-order",
         feature = "schema",
         feature = "database",
     ))]
@@ -35,6 +36,7 @@ pub enum CliError {
         feature = "location",
         feature = "pike",
         feature = "product",
+        feature = "purchase-order",
         feature = "schema",
     ))]
     PayloadError(String),
@@ -48,6 +50,7 @@ pub enum CliError {
         feature = "location",
         feature = "pike",
         feature = "product",
+        feature = "purchase-order",
         feature = "schema",
     ))]
     DaemonError(String),
@@ -60,6 +63,7 @@ impl StdError for CliError {
                 feature = "location",
                 feature = "pike",
                 feature = "product",
+                feature = "purchase-order",
                 feature = "schema",
                 feature = "database",
             ))]
@@ -70,6 +74,7 @@ impl StdError for CliError {
                 feature = "location",
                 feature = "pike",
                 feature = "product",
+                feature = "purchase-order",
                 feature = "schema",
             ))]
             CliError::PayloadError(_) => None,
@@ -83,6 +88,7 @@ impl StdError for CliError {
                 feature = "location",
                 feature = "pike",
                 feature = "product",
+                feature = "purchase-order",
                 feature = "schema",
             ))]
             CliError::DaemonError(_) => None,
@@ -97,6 +103,7 @@ impl std::fmt::Display for CliError {
                 feature = "location",
                 feature = "pike",
                 feature = "product",
+                feature = "purchase-order",
                 feature = "schema",
                 feature = "database",
             ))]
@@ -107,6 +114,7 @@ impl std::fmt::Display for CliError {
                 feature = "location",
                 feature = "pike",
                 feature = "product",
+                feature = "purchase-order",
                 feature = "schema",
             ))]
             CliError::PayloadError(ref err) => write!(f, "PayloadError: {}", err),
@@ -122,6 +130,7 @@ impl std::fmt::Display for CliError {
                 feature = "location",
                 feature = "pike",
                 feature = "product",
+                feature = "purchase-order",
                 feature = "schema",
             ))]
             CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
@@ -180,6 +189,7 @@ impl From<grid_sdk::product::gdsn::ProductGdsnError> for CliError {
     feature = "location",
     feature = "pike",
     feature = "product",
+    feature = "purchase-order",
     feature = "schema",
 ))]
 impl From<grid_sdk::error::ClientError> for CliError {

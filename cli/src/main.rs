@@ -89,6 +89,7 @@ use grid_sdk::protocol::product::{
 use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder};
 #[cfg(any(feature = "purchase-order"))]
 use grid_sdk::{
+    client::purchase_order::PurchaseOrderFilter,
     data_validation::validate_order_xml_3_4,
     protocol::purchase_order::payload::{
         CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder, PayloadRevisionBuilder,
@@ -1474,6 +1475,7 @@ fn run() -> Result<(), CliError> {
                                 .value_name("status")
                                 .long("workflow-status")
                                 .takes_value(true)
+                                .required(true)
                                 .help("Workflow status of the Purchase Order"),
                         )
                         .arg(
@@ -2569,8 +2571,43 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(_)) => unimplemented!(),
-                ("list", Some(_)) => unimplemented!(),
-                ("show", Some(_)) => unimplemented!(),
+                ("list", Some(_)) => {
+                    let filter = PurchaseOrderFilter {
+                        is_closed: if m.is_present("closed") {
+                            Some(true)
+                        } else if m.is_present("open") {
+                            Some(false)
+                        } else {
+                            None
+                        },
+                        is_accepted: if m.is_present("accepted") {
+                            Some(true)
+                        } else if m.is_present("not_accepted") {
+                            Some(false)
+                        } else {
+                            None
+                        },
+                        org_id: m.value_of("org_id").map(String::from),
+                    };
+                    let format = m.value_of("format");
+
+                    purchase_orders::do_list_purchase_orders(
+                        purchase_order_client,
+                        Some(filter),
+                        service_id,
+                        format,
+                    )?
+                }
+                ("show", Some(_)) => {
+                    let purchase_order_id = m.value_of("id").map(String::from).unwrap();
+                    let format = m.value_of("format");
+                    purchase_orders::do_show_purchase_order(
+                        purchase_order_client,
+                        purchase_order_id,
+                        service_id,
+                        format,
+                    )?
+                }
                 ("version", Some(m)) => match m.subcommand() {
                     ("create", Some(m)) => {
                         let key = m
