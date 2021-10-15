@@ -63,6 +63,10 @@ impl WorkflowState {
         aliases
     }
 
+    pub fn has_constraint(&self, constraint: &str) -> bool {
+        self.constraints.contains(&constraint.to_string())
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
