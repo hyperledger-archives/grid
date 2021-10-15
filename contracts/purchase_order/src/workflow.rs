@@ -25,6 +25,13 @@ pub enum POWorkflow {
     Collaborative,
 }
 
+pub enum WorkflowConstraint {
+    Accepted,
+    Closed,
+    Draft,
+    Complete,
+}
+
 pub fn get_workflow(name: &str) -> Option<Workflow> {
     match name {
         "built-in::system_of_record::v1" => Some(system_of_record_workflow()),
@@ -420,6 +427,17 @@ impl fmt::Display for POWorkflow {
         match *self {
             POWorkflow::SystemOfRecord => write!(f, "built-in::system_of_record::v1"),
             POWorkflow::Collaborative => write!(f, "built-in::collaborative::v1"),
+        }
+    }
+}
+
+impl fmt::Display for WorkflowConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            WorkflowConstraint::Accepted => write!(f, "accepted"),
+            WorkflowConstraint::Complete => write!(f, "complete"),
+            WorkflowConstraint::Closed => write!(f, "closed"),
+            WorkflowConstraint::Draft => write!(f, "draft"),
         }
     }
 }
