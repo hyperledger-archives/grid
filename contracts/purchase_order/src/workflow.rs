@@ -101,7 +101,7 @@ fn default_sub_workflow() -> SubWorkflow {
         let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission(&Permission::CanCreatePoVersion.to_string());
         seller.add_permission(&Permission::CanTransitionClosed.to_string());
-        seller.add_transition("confirmed");
+        seller.add_transition("closed");
 
         WorkflowStateBuilder::new("confirmed")
             .add_transition("issued")
