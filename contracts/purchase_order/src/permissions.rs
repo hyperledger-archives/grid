@@ -61,3 +61,25 @@ impl fmt::Display for Permission {
         }
     }
 }
+
+impl Permission {
+    /// Get the relevant permission for transitioning to a workflow status
+    pub fn can_transition(to_status: &str) -> Option<Permission> {
+        match to_status {
+            "issued" => Some(Permission::CanTransitionIssued),
+            "closed" => Some(Permission::CanTransitionClosed),
+            "confirmed" => Some(Permission::CanTransitionConfirmed),
+            "composed" => Some(Permission::CanTransitionComposed),
+            "proposed" => Some(Permission::CanTransitionProposed),
+            "obsolete" => Some(Permission::CanTransitionObsolete),
+            "rejected" => Some(Permission::CanTransitionRejected),
+            "accepted" => Some(Permission::CanTransitionAccepted),
+            "declined" => Some(Permission::CanTransitionDeclined),
+            "modified" => Some(Permission::CanTransitionModified),
+            "editable" => Some(Permission::CanTransitionEditable),
+            "review" => Some(Permission::CanTransitionReview),
+            "cancelled" => Some(Permission::CanTransitionCancelled),
+            _ => None,
+        }
+    }
+}
