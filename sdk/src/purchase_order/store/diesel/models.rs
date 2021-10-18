@@ -136,9 +136,9 @@ impl From<PurchaseOrder> for NewPurchaseOrderModel {
     fn from(order: PurchaseOrder) -> Self {
         Self {
             purchase_order_uid: order.purchase_order_uid.to_string(),
+            workflow_status: order.workflow_status.to_string(),
             buyer_org_id: order.buyer_org_id.to_string(),
             seller_org_id: order.seller_org_id.to_string(),
-            workflow_status: order.workflow_status.to_string(),
             is_closed: order.is_closed,
             accepted_version_id: order.accepted_version_id,
             created_at: order.created_at,
@@ -154,9 +154,9 @@ impl From<(PurchaseOrderModel, Vec<PurchaseOrderVersion>)> for PurchaseOrder {
     fn from((order, versions): (PurchaseOrderModel, Vec<PurchaseOrderVersion>)) -> Self {
         Self {
             purchase_order_uid: order.purchase_order_uid.to_string(),
+            workflow_status: order.workflow_status.to_string(),
             buyer_org_id: order.buyer_org_id.to_string(),
             seller_org_id: order.seller_org_id.to_string(),
-            workflow_status: order.workflow_status.to_string(),
             is_closed: order.is_closed,
             accepted_version_id: order.accepted_version_id,
             versions,
@@ -185,9 +185,9 @@ impl
     ) -> Self {
         Self {
             purchase_order_uid: order.purchase_order_uid.to_string(),
+            workflow_status: order.workflow_status.to_string(),
             buyer_org_id: order.buyer_org_id.to_string(),
             seller_org_id: order.seller_org_id.to_string(),
-            workflow_status: order.workflow_status.to_string(),
             is_closed: order.is_closed,
             accepted_version_id: order.accepted_version_id,
             versions: versions
