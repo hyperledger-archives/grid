@@ -76,11 +76,13 @@ pub trait PurchaseOrderClient: Client {
     /// * `version_id` - The version id of the `PurchaseOrderVersion` containing the
     ///   `PurchaseOrderRevision` to be retrieved
     /// * `revision_id` - The revision number of the `PurchaseOrderRevision` to be retrieved
+    /// * `service_id` - The service ID to fetch the revision from
     fn get_purchase_order_revision(
         &self,
         id: String,
         version_id: String,
         revision_id: u64,
+        service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderRevision>, ClientError>;
 
     /// lists purchase orders.
