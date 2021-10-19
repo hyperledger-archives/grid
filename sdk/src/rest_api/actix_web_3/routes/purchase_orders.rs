@@ -140,19 +140,19 @@ pub async fn list_purchase_order_versions(
 #[get("/purchase_order/{uid}/version/{version_id}")]
 pub async fn get_purchase_order_version(
     store_state: web::Data<StoreState>,
-    uid: web::Path<String>,
-    version_id: web::Path<String>,
+    path: web::Path<(String, String)>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     let store = store_state.store_factory.get_grid_purchase_order_store();
+    let (uid, version_id) = path.into_inner();
     match version {
         ProtocolVersion::V1 => {
             match v1::get_purchase_order_version(
                 store,
-                uid.into_inner(),
-                &version_id.into_inner(),
+                uid,
+                &version_id,
                 query_service_id.into_inner().service_id.as_deref(),
             ) {
                 Ok(res) => HttpResponse::Ok().json(res),
@@ -169,21 +169,21 @@ pub async fn get_purchase_order_version(
 #[get("/purchase_order/{uid}/version/{version_id}/revision")]
 pub async fn list_purchase_order_version_revisions(
     store_state: web::Data<StoreState>,
-    uid: web::Path<String>,
-    version_id: web::Path<String>,
+    path: web::Path<(String, String)>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     let store = store_state.store_factory.get_grid_purchase_order_store();
+    let (uid, version_id) = path.into_inner();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             match v1::list_purchase_order_revisions(
                 store,
-                uid.into_inner(),
-                version_id.into_inner(),
+                uid,
+                version_id,
                 query_service_id.into_inner().service_id.as_deref(),
                 paging.offset(),
                 paging.limit(),
@@ -202,21 +202,20 @@ pub async fn list_purchase_order_version_revisions(
 #[get("/purchase_order/{uid}/version/{version_id}/revision/{revision_number}")]
 pub async fn get_purchase_order_version_revision(
     store_state: web::Data<StoreState>,
-    uid: web::Path<String>,
-    version_id: web::Path<String>,
-    revision_number: web::Path<i64>,
+    path: web::Path<(String, String, i64)>,
     query_service_id: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
 ) -> HttpResponse {
     let store = store_state.store_factory.get_grid_purchase_order_store();
+    let (uid, version_id, revision_number) = path.into_inner();
     match version {
         ProtocolVersion::V1 => {
             match v1::get_purchase_order_revision(
                 store,
-                uid.into_inner(),
-                version_id.into_inner(),
-                revision_number.into_inner(),
+                uid,
+                version_id,
+                revision_number,
                 query_service_id.into_inner().service_id.as_deref(),
             ) {
                 Ok(res) => HttpResponse::Ok().json(res),
