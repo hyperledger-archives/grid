@@ -139,10 +139,17 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// with the given `id`
     fn get_purchase_order_version(
         &self,
-        _id: String,
-        _version_id: String,
+        id: String,
+        version_id: String,
+        service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersion>, ClientError> {
-        unimplemented!()
+        let dto = fetch_entity::<PurchaseOrderVersionDto>(
+            &self.url,
+            format!("{}/{}/{}/{}", PO_ROUTE, id, VERSION_ROUTE, version_id),
+            service_id,
+        )?;
+
+        Ok(Some(PurchaseOrderVersion::from(&dto)))
     }
 
     /// Retrieves the purchase order revision with the given `revision_id` of the purchase
