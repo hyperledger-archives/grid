@@ -89,7 +89,7 @@ pub struct PurchaseOrderVersionListSlice {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderRevisionSlice {
-    revision_number: i64,
+    revision_id: i64,
     submitter: String,
     created_at: i64,
     order_xml_v3_4: String,
@@ -98,7 +98,7 @@ pub struct PurchaseOrderRevisionSlice {
 impl From<PurchaseOrderVersionRevision> for PurchaseOrderRevisionSlice {
     fn from(purchase_order_revision: PurchaseOrderVersionRevision) -> Self {
         Self {
-            revision_number: *purchase_order_revision.revision_id(),
+            revision_id: *purchase_order_revision.revision_id(),
             submitter: purchase_order_revision.submitter().to_string(),
             created_at: purchase_order_revision.created_at(),
             order_xml_v3_4: purchase_order_revision.order_xml_v3_4().to_string(),
