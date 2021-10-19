@@ -112,10 +112,11 @@ pub trait PurchaseOrderClient: Client {
     /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderRevision`s to be listed
     /// * `version_id` - The version id of the `PurchaseOrderVersion` containing
     ///   the `PurchaseOrderRevision`s to be listed
+    /// * `service_id` - The service ID to fetch the revisions from
     fn list_purchase_order_revisions(
         &self,
         id: String,
         version_id: String,
-        filter: Option<&str>,
+        service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError>;
 }

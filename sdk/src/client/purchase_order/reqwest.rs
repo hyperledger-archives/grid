@@ -14,7 +14,7 @@
 
 use std::time::SystemTime;
 
-use crate::client::reqwest::{fetch_entity, post_batches};
+use crate::client::reqwest::{fetch_entities_list, fetch_entity, post_batches};
 use crate::client::Client;
 use crate::error::ClientError;
 
@@ -180,10 +180,19 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// lists the purchase order revisions of a specific purchase order version.
     fn list_purchase_order_revisions(
         &self,
-        _id: String,
-        _version_id: String,
-        _filter: Option<&str>,
+        id: String,
+        version_id: String,
+        service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError> {
-        unimplemented!()
+        let dto = fetch_entities_list::<PurchaseOrderRevisionDto>(
+            &self.url,
+            format!(
+                "{}/{}/{}/{}/{}",
+                PO_ROUTE, id, VERSION_ROUTE, version_id, REVISION_ROUTE
+            ),
+            service_id,
+        )?;
+
+        Ok(dto.iter().map(PurchaseOrderRevision::from).collect())
     }
 }
