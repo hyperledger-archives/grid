@@ -25,6 +25,13 @@ pub enum POWorkflow {
     Collaborative,
 }
 
+pub enum WorkflowConstraint {
+    Accepted,
+    Closed,
+    Draft,
+    Complete,
+}
+
 pub fn get_workflow(name: &str) -> Option<Workflow> {
     match name {
         "built-in::system_of_record::v1" => Some(system_of_record_workflow()),
@@ -94,13 +101,15 @@ fn default_sub_workflow() -> SubWorkflow {
         let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission(&Permission::CanCreatePoVersion.to_string());
         seller.add_permission(&Permission::CanTransitionClosed.to_string());
-        seller.add_transition("confirmed");
+        seller.add_transition("closed");
 
         WorkflowStateBuilder::new("confirmed")
             .add_transition("issued")
             .add_transition("closed")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_constraint(&WorkflowConstraint::Accepted.to_string())
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -111,6 +120,7 @@ fn default_sub_workflow() -> SubWorkflow {
         WorkflowStateBuilder::new("closed")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_constraint(&WorkflowConstraint::Closed.to_string())
             .build()
     };
 
@@ -173,6 +183,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
             .add_permission_alias(buyer)
             .add_permission_alias(seller_confirm)
             .add_permission_alias(seller_modify)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -183,6 +194,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
         WorkflowStateBuilder::new("obsolete")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -193,6 +205,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
         WorkflowStateBuilder::new("rejected")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -220,6 +233,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
             .add_permission_alias(buyer)
             .add_permission_alias(seller_modify)
             .add_permission_alias(editor)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -234,6 +248,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
             .add_transition("obsolete")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_constraint(&WorkflowConstraint::Accepted.to_string())
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -255,6 +271,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
             .add_transition("editable")
             .add_transition("declined")
             .add_permission_alias(draft)
+            .add_constraint(&WorkflowConstraint::Draft.to_string())
             .build()
     };
 
@@ -273,6 +290,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
             .add_transition("declined")
             .add_transition("editable")
             .add_permission_alias(draft)
+            .add_constraint(&WorkflowConstraint::Draft.to_string())
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -287,6 +306,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
             .add_transition("editable")
             .add_transition("cancelled")
             .add_permission_alias(draft)
+            .add_constraint(&WorkflowConstraint::Draft.to_string())
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -295,6 +316,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
 
         WorkflowStateBuilder::new("composed")
             .add_permission_alias(draft)
+            .add_constraint(&WorkflowConstraint::Draft.to_string())
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -303,6 +326,8 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
 
         WorkflowStateBuilder::new("cancelled")
             .add_permission_alias(draft)
+            .add_constraint(&WorkflowConstraint::Draft.to_string())
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -354,6 +379,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
             .add_transition("accepted")
             .add_transition("modified")
             .add_permission_alias(partner)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -362,6 +388,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
 
         WorkflowStateBuilder::new("rejected")
             .add_permission_alias(partner)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -373,6 +400,8 @@ fn collaborative_sub_workflow() -> SubWorkflow {
         WorkflowStateBuilder::new("proposed")
             .add_transition("obsolete")
             .add_permission_alias(partner)
+            .add_constraint(&WorkflowConstraint::Accepted.to_string())
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -393,6 +422,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
             .add_transition("accepted")
             .add_transition("obsolete")
             .add_permission_alias(partner)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -401,6 +431,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
 
         WorkflowStateBuilder::new("obsolete")
             .add_permission_alias(partner)
+            .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
     };
 
@@ -420,6 +451,17 @@ impl fmt::Display for POWorkflow {
         match *self {
             POWorkflow::SystemOfRecord => write!(f, "built-in::system_of_record::v1"),
             POWorkflow::Collaborative => write!(f, "built-in::collaborative::v1"),
+        }
+    }
+}
+
+impl fmt::Display for WorkflowConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            WorkflowConstraint::Accepted => write!(f, "accepted"),
+            WorkflowConstraint::Complete => write!(f, "complete"),
+            WorkflowConstraint::Closed => write!(f, "closed"),
+            WorkflowConstraint::Draft => write!(f, "draft"),
         }
     }
 }
