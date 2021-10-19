@@ -184,10 +184,16 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// lists the purchase order versions of a specific purchase order.
     fn list_purchase_order_versions(
         &self,
-        _id: String,
-        _filter: Option<&str>,
+        id: String,
+        service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderVersion>, ClientError> {
-        unimplemented!()
+        let dto = fetch_entities_list::<PurchaseOrderVersionDto>(
+            &self.url,
+            format!("{}/{}/{}", PO_ROUTE, id, VERSION_ROUTE),
+            service_id,
+        )?;
+
+        Ok(dto.iter().map(PurchaseOrderVersion::from).collect())
     }
 
     /// lists the purchase order revisions of a specific purchase order version.

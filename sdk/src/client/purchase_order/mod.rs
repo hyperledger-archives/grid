@@ -142,11 +142,11 @@ pub trait PurchaseOrderClient: Client {
     /// # Arguments
     ///
     /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderVersion`s to be listed
-    /// * `filter` - Filter to apply to the list of purchase orders
+    /// * `service_id` - The service ID to fetch the versions from
     fn list_purchase_order_versions(
         &self,
         id: String,
-        filter: Option<&str>,
+        service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderVersion>, ClientError>;
 
     /// lists the purchase order revisions of a specific purchase order version.
