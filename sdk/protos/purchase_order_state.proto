@@ -22,9 +22,10 @@ message PurchaseOrder {
   string seller_org_id = 4;
   repeated PurchaseOrderVersion versions = 5;
   string accepted_version_number = 6;
-  uint64 created_at = 7;
-  bool is_closed = 8;
-  string workflow_type = 9;
+  repeated PurchaseOrderAlternateId alternate_ids = 7;
+  uint64 created_at = 8;
+  bool is_closed = 9;
+  string workflow_type = 10;
 }
 
 message PurchaseOrderList {
