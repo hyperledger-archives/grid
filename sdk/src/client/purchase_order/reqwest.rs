@@ -14,7 +14,7 @@
 
 use std::time::SystemTime;
 
-use crate::client::reqwest::post_batches;
+use crate::client::reqwest::{fetch_entities_list, fetch_entity, post_batches};
 use crate::client::Client;
 use crate::error::ClientError;
 
@@ -23,6 +23,10 @@ use super::{
 };
 
 use sawtooth_sdk::messages::batch::BatchList;
+
+const PO_ROUTE: &str = "purchase_order";
+const VERSION_ROUTE: &str = "version";
+const REVISION_ROUTE: &str = "revision";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct PurchaseOrderDto {
@@ -145,11 +149,21 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// order version with the given `version_id` of the purchase order with the given `id`
     fn get_purchase_order_revision(
         &self,
-        _id: String,
-        _version_id: String,
-        _revision_id: u64,
+        id: String,
+        version_id: String,
+        revision_id: u64,
+        service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderRevision>, ClientError> {
-        unimplemented!()
+        let dto = fetch_entity::<PurchaseOrderRevisionDto>(
+            &self.url,
+            format!(
+                "{}/{}/{}/{}/{}/{}",
+                PO_ROUTE, id, VERSION_ROUTE, version_id, REVISION_ROUTE, revision_id
+            ),
+            service_id,
+        )?;
+
+        Ok(Some(PurchaseOrderRevision::from(&dto)))
     }
 
     /// lists purchase orders.
@@ -172,11 +186,20 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// lists the purchase order revisions of a specific purchase order version.
     fn list_purchase_order_revisions(
         &self,
-        _id: String,
-        _version_id: String,
-        _filter: Option<&str>,
+        id: String,
+        version_id: String,
+        service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError> {
-        unimplemented!()
+        let dto = fetch_entities_list::<PurchaseOrderRevisionDto>(
+            &self.url,
+            format!(
+                "{}/{}/{}/{}/{}",
+                PO_ROUTE, id, VERSION_ROUTE, version_id, REVISION_ROUTE
+            ),
+            service_id,
+        )?;
+
+        Ok(dto.iter().map(PurchaseOrderRevision::from).collect())
     }
 
     /// Lists the purchase order's alternate IDs

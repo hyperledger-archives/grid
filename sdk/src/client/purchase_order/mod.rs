@@ -118,11 +118,13 @@ pub trait PurchaseOrderClient: Client {
     /// * `version_id` - The version id of the `PurchaseOrderVersion` containing the
     ///   `PurchaseOrderRevision` to be retrieved
     /// * `revision_id` - The revision number of the `PurchaseOrderRevision` to be retrieved
+    /// * `service_id` - The service ID to fetch the revision from
     fn get_purchase_order_revision(
         &self,
         id: String,
         version_id: String,
         revision_id: u64,
+        service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderRevision>, ClientError>;
 
     /// lists purchase orders.
@@ -152,11 +154,12 @@ pub trait PurchaseOrderClient: Client {
     /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderRevision`s to be listed
     /// * `version_id` - The version id of the `PurchaseOrderVersion` containing
     ///   the `PurchaseOrderRevision`s to be listed
+    /// * `service_id` - The service ID to fetch the revisions from
     fn list_purchase_order_revisions(
         &self,
         id: String,
         version_id: String,
-        filter: Option<&str>,
+        service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError>;
 
     /// Lists the purchase order's alternate IDs.
