@@ -1474,6 +1474,7 @@ fn run() -> Result<(), CliError> {
                                 .value_name("status")
                                 .long("workflow-status")
                                 .takes_value(true)
+                                .required(true)
                                 .help("Workflow status of the Purchase Order"),
                         )
                         .arg(
