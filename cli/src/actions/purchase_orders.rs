@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::cmp;
 use std::convert::TryInto;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -158,6 +159,18 @@ pub fn do_fetch_alternate_ids(
     Ok(alternate_ids)
 }
 
+pub fn do_list_revisions(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    version_id: &str,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let revisions = do_fetch_revisions(client, po_uid, version_id, service_id)?;
+
+    display_revisions(revisions);
+    Ok(())
+}
+
 pub fn get_latest_revision_id(
     client: &dyn PurchaseOrderClient,
     po_uid: &str,
@@ -203,4 +216,43 @@ pub fn make_alternate_id_from_str(uid: &str, id: &str) -> Result<AlternateId, Cl
     }
 
     Ok(AlternateId::new(uid, split[0], split[1]))
+}
+
+fn display_revisions(revisions: Vec<PurchaseOrderRevision>) {
+    let mut rows = vec![];
+    revisions.iter().for_each(|rev| {
+        let values = vec![
+            rev.revision_id.to_string(),
+            rev.created_at.to_string(),
+            rev.submitter.to_string(),
+        ];
+
+        rows.push(values);
+    });
+
+    let column_names = vec!["REVISION_ID", "CREATED_AT", "SUBMITTER"];
+
+    // Calculate max-widths for columns
+    let mut widths: Vec<usize> = column_names.iter().map(|name| name.len()).collect();
+    rows.iter().for_each(|row| {
+        for i in 0..widths.len() {
+            widths[i] = cmp::max(widths[i], row[i].to_string().len())
+        }
+    });
+
+    // print header row
+    let mut header_row = "".to_owned();
+    for i in 0..column_names.len() {
+        header_row += &format!("{:width$} ", column_names[i], width = widths[i]);
+    }
+    println!("{}", header_row);
+
+    // print each row
+    for row in rows {
+        let mut print_row = "".to_owned();
+        for i in 0..column_names.len() {
+            print_row += &format!("{:width$} ", row[i], width = widths[i]);
+        }
+        println!("{}", print_row);
+    }
 }

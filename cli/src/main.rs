@@ -1410,6 +1410,25 @@ fn run() -> Result<(), CliError> {
                     .after_help(AFTER_HELP_WITHOUT_KEY),
             );
 
+        let po_revision = SubCommand::with_name("revision")
+            .about("Show and list Purchase Order version revisions")
+            .subcommand(
+                SubCommand::with_name("list")
+                    .about("List revisions for a Purchase Order version")
+                    .arg(
+                        Arg::with_name("po_uid")
+                            .takes_value(true)
+                            .required(true)
+                            .help("Identifier for the Purchase Order the revision belongs to"),
+                    )
+                    .arg(
+                        Arg::with_name("version_id")
+                            .takes_value(true)
+                            .required(true)
+                            .help("Identifier for the Purchase Order version the revision is for"),
+                    ),
+            );
+
         app = app.subcommand(
             SubCommand::with_name("po")
                 .about("Create, update, list, or show Purchase Orders, Versions and Revisions")
@@ -1433,6 +1452,7 @@ fn run() -> Result<(), CliError> {
                         .help("URL for the REST API"),
                 )
                 .subcommand(po_version)
+                .subcommand(po_revision)
                 .subcommand(
                     SubCommand::with_name("create")
                         .about("Create a Purchase Order")
@@ -2765,7 +2785,31 @@ fn run() -> Result<(), CliError> {
                     _ => return Err(CliError::UserError("Subcommand not recognized".into())),
                 },
                 ("revision", Some(m)) => match m.subcommand() {
-                    ("list", Some(_)) => unimplemented!(),
+                    ("list", Some(m)) => {
+                        let url = m
+                            .value_of("url")
+                            .map(String::from)
+                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                            .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+                        let service_id = m
+                            .value_of("service_id")
+                            .map(String::from)
+                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+                        let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                        let po_uid = m.value_of("po_uid").unwrap();
+
+                        let version = m.value_of("version_id").unwrap();
+
+                        purchase_orders::do_list_revisions(
+                            &*purchase_order_client,
+                            po_uid,
+                            version,
+                            service_id.as_deref(),
+                        )?
+                    }
                     ("show", Some(_)) => unimplemented!(),
                     _ => return Err(CliError::UserError("Subcommand not recognized".into())),
                 },
