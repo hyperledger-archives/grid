@@ -171,6 +171,49 @@ pub fn do_list_revisions(
     Ok(())
 }
 
+pub fn do_show_revision(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    version_id: &str,
+    revision_num: u64,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let revision = client.get_purchase_order_revision(
+        po_uid.to_string(),
+        version_id.to_string(),
+        revision_num,
+        service_id,
+    )?;
+
+    if let Some(revision) = revision {
+        display_revision(revision);
+    } else {
+        println!(
+            "Could not find revision {}, for version {} for order {}",
+            revision_num, version_id, po_uid
+        );
+    }
+    Ok(())
+}
+
+pub fn do_list_versions(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    accepted_filter: Option<bool>,
+    draft_filter: Option<bool>,
+    _format: &str,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let revision = client.get_purchase_order_revision(po_uid.to_string(), version_id.to_string(), revision_num, service_id)?;
+
+    if let Some(revision) = revision {
+        display_revision(revision);
+    } else {
+        println!("Could not find revision {}, for version {} for order {}", revision_num, version_id, po_uid);
+    }
+    Ok(())
+}
+
 pub fn get_latest_revision_id(
     client: &dyn PurchaseOrderClient,
     po_uid: &str,
@@ -255,4 +298,39 @@ fn display_revisions(revisions: Vec<PurchaseOrderRevision>) {
         }
         println!("{}", print_row);
     }
+}
+
+fn display_revision(revision: PurchaseOrderRevision) {
+    let column_names = vec!["REVISION_ID", "CREATED_AT", "SUBMITTER"];
+    let table_values = vec![
+        revision.revision_id.to_string(),
+        revision.created_at.to_string(),
+        revision.submitter,
+    ];
+
+    // Calculate max-widths for columns
+    let mut widths: Vec<usize> = column_names.iter().map(|name| name.len()).collect();
+    for i in 0..widths.len() {
+        widths[i] = cmp::max(widths[i], table_values[i].to_string().len())
+    }
+
+    // print header row
+    let mut header_row = "".to_owned();
+    for i in 0..column_names.len() {
+        header_row += &format!("{:width$} ", column_names[i], width = widths[i]);
+    }
+    println!("{}", header_row);
+
+    // print revision
+    let mut print_row = "".to_owned();
+    for i in 0..column_names.len() {
+        print_row += &format!("{:width$} ", table_values[i], width = widths[i]);
+    }
+    println!("{}", print_row);
+
+    // print XML
+    println!("ORDER XML");
+    println!("{}", revision.order_xml_v3_4);
+}
+
 }
