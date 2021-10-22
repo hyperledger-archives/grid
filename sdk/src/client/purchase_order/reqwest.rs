@@ -18,7 +18,9 @@ use crate::client::reqwest::post_batches;
 use crate::client::Client;
 use crate::error::ClientError;
 
-use super::{PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision, PurchaseOrderVersion};
+use super::{
+    AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision, PurchaseOrderVersion,
+};
 
 use sawtooth_sdk::messages::batch::BatchList;
 
@@ -121,7 +123,11 @@ impl Client for ReqwestPurchaseOrderClient {
 
 impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// Retrieves the purchase order with the specified `id`.
-    fn get_purchase_order(&self, _id: String) -> Result<Option<PurchaseOrder>, ClientError> {
+    fn get_purchase_order(
+        &self,
+        _id: String,
+        _service_id: Option<&str>,
+    ) -> Result<Option<PurchaseOrder>, ClientError> {
         unimplemented!()
     }
 
@@ -170,6 +176,15 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         _version_id: String,
         _filter: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError> {
+        unimplemented!()
+    }
+
+    /// Lists the purchase order's alternate IDs
+    fn list_alternate_ids(
+        &self,
+        _id: String,
+        _service_id: Option<&str>,
+    ) -> Result<Vec<AlternateId>, ClientError> {
         unimplemented!()
     }
 }

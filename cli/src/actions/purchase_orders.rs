@@ -16,9 +16,12 @@ use std::convert::TryInto;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use grid_sdk::{
-    client::purchase_order::{PurchaseOrderClient, PurchaseOrderRevision},
+    client::purchase_order::{
+        AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision,
+    },
     protocol::purchase_order::payload::{
         Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayloadBuilder,
+        UpdatePurchaseOrderPayload,
     },
     protos::IntoProto,
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
@@ -44,6 +47,36 @@ pub fn do_create_purchase_order(
 
     let payload = PurchaseOrderPayloadBuilder::new()
         .with_action(Action::CreatePo(create_purchase_order))
+        .with_timestamp(timestamp)
+        .build()
+        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+    let batch_list = purchase_order_batch_builder(signer)
+        .add_transaction(
+            &payload.into_proto()?,
+            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+        )?
+        .create_batch_list();
+
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
+}
+
+pub fn do_update_purchase_order(
+    client: Box<dyn PurchaseOrderClient>,
+    signer: Box<dyn Signer>,
+    wait: u64,
+    update_purchase_order: UpdatePurchaseOrderPayload,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+    let payload = PurchaseOrderPayloadBuilder::new()
+        .with_action(Action::UpdatePo(update_purchase_order))
         .with_timestamp(timestamp)
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
@@ -90,6 +123,16 @@ pub fn do_create_version(
     Ok(())
 }
 
+pub fn do_fetch_purchase_order(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    service_id: Option<&str>,
+) -> Result<Option<PurchaseOrder>, CliError> {
+    let po = client.get_purchase_order(po_uid.to_string(), service_id)?;
+
+    Ok(po)
+}
+
 pub fn do_fetch_revisions(
     client: &dyn PurchaseOrderClient,
     po_uid: &str,
@@ -103,6 +146,16 @@ pub fn do_fetch_revisions(
     )?;
 
     Ok(revisions)
+}
+
+pub fn do_fetch_alternate_ids(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    service_id: Option<&str>,
+) -> Result<Vec<AlternateId>, CliError> {
+    let alternate_ids = client.list_alternate_ids(po_uid.to_string(), service_id)?;
+
+    Ok(alternate_ids)
 }
 
 pub fn get_latest_revision_id(
@@ -138,4 +191,16 @@ fn generate_random_base62_string(len: usize) -> String {
         .sample_iter(Alphanumeric)
         .take(len)
         .collect()
+}
+
+pub fn make_alternate_id_from_str(uid: &str, id: &str) -> Result<AlternateId, CliError> {
+    let split: Vec<&str> = id.split(':').collect();
+    if split.len() != 2 {
+        return Err(CliError::UserError(format!(
+            "Could not parse alternate ID: {}",
+            id
+        )));
+    }
+
+    Ok(AlternateId::new(uid, split[0], split[1]))
 }

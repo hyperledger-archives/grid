@@ -50,7 +50,7 @@ message PurchaseOrderRevision {
 message PurchaseOrderAlternateId {
   string id_type = 1;
   string id = 2;
-  string org_id = 3;
+  string po_uid = 3;
 }
 
 message PurchaseOrderAlternateIdList {

@@ -795,17 +795,25 @@ impl PurchaseOrderListBuilder {
 
 /// Native representation of a `PurchaseOrderAlternateId`
 ///
-/// An `AlternateId` is a separate identifier from the `PurchaseOrder`'s unique identifier and
-/// associated `org_id`. This enables certain smart contracts to identify a `PurchaseOrder` within
-/// its own context.
+/// An `AlternateId` is a separate identifier from the `PurchaseOrder`'s unique
+/// identifier. This enables certain smart contracts to identify a
+/// `PurchaseOrder` within its own context.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderAlternateId {
     id_type: String,
     id: String,
-    org_id: String,
+    purchase_order_uid: String,
 }
 
 impl PurchaseOrderAlternateId {
+    pub fn new(purchase_order_uid: &str, alternate_id_type: &str, alternate_id: &str) -> Self {
+        Self {
+            purchase_order_uid: purchase_order_uid.to_string(),
+            id_type: alternate_id_type.to_string(),
+            id: alternate_id.to_string(),
+        }
+    }
+
     pub fn id_type(&self) -> &str {
         &self.id_type
     }
@@ -814,15 +822,15 @@ impl PurchaseOrderAlternateId {
         &self.id
     }
 
-    pub fn org_id(&self) -> &str {
-        &self.org_id
+    pub fn purchase_order_uid(&self) -> &str {
+        &self.purchase_order_uid
     }
 
     pub fn into_builder(self) -> PurchaseOrderAlternateIdBuilder {
         PurchaseOrderAlternateIdBuilder::new()
             .with_id_type(self.id_type)
             .with_id(self.id)
-            .with_org_id(self.org_id)
+            .with_purchase_order_uid(self.purchase_order_uid)
     }
 }
 
@@ -833,7 +841,7 @@ impl FromProto<purchase_order_state::PurchaseOrderAlternateId> for PurchaseOrder
         Ok(PurchaseOrderAlternateId {
             id_type: alt_id.take_id_type(),
             id: alt_id.take_id(),
-            org_id: alt_id.take_org_id(),
+            purchase_order_uid: alt_id.take_po_uid(),
         })
     }
 }
@@ -843,7 +851,7 @@ impl FromNative<PurchaseOrderAlternateId> for purchase_order_state::PurchaseOrde
         let mut proto = purchase_order_state::PurchaseOrderAlternateId::new();
         proto.set_id_type(alt_id.id_type().to_string());
         proto.set_id(alt_id.id().to_string());
-        proto.set_org_id(alt_id.org_id().to_string());
+        proto.set_po_uid(alt_id.purchase_order_uid().to_string());
 
         Ok(proto)
     }
@@ -900,7 +908,7 @@ impl std::fmt::Display for PurchaseOrderAlternateIdBuildError {
 pub struct PurchaseOrderAlternateIdBuilder {
     id_type: Option<String>,
     id: Option<String>,
-    org_id: Option<String>,
+    purchase_order_uid: Option<String>,
 }
 
 impl PurchaseOrderAlternateIdBuilder {
@@ -918,8 +926,8 @@ impl PurchaseOrderAlternateIdBuilder {
         self
     }
 
-    pub fn with_org_id(mut self, org_id: String) -> Self {
-        self.org_id = Some(org_id);
+    pub fn with_purchase_order_uid(mut self, po_uid: String) -> Self {
+        self.purchase_order_uid = Some(po_uid);
         self
     }
 
@@ -934,16 +942,16 @@ impl PurchaseOrderAlternateIdBuilder {
             PurchaseOrderAlternateIdBuildError::MissingField("'id' field is required".to_string())
         })?;
 
-        let org_id = self.org_id.ok_or_else(|| {
+        let purchase_order_uid = self.purchase_order_uid.ok_or_else(|| {
             PurchaseOrderAlternateIdBuildError::MissingField(
-                "'org_id' field is required".to_string(),
+                "'purchase_order_uid' field is required".to_string(),
             )
         })?;
 
         Ok(PurchaseOrderAlternateId {
             id_type,
             id,
-            org_id,
+            purchase_order_uid,
         })
     }
 }

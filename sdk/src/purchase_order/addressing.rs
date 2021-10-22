@@ -35,12 +35,12 @@ pub fn compute_purchase_order_address(uuid: &str) -> String {
 
 /// Computes the Merkle address of a Alternate ID based on its type and id.
 pub fn compute_alternate_id_address(
-    org_id: &str,
+    po_uid: &str,
     alternate_id_type: &str,
     alternate_id: &str,
 ) -> String {
     let mut sha = Sha512::new();
-    sha.input(org_id.as_bytes());
+    sha.input(po_uid.as_bytes());
     sha.input(b":");
     sha.input(alternate_id_type.as_bytes());
     sha.input(b":");

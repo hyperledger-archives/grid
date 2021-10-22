@@ -16,24 +16,21 @@ use crate::error::InternalError;
 use crate::{
     commits::MAX_COMMIT_NUM,
     purchase_order::store::diesel::{
-        models::{NewPurchaseOrderAlternateIdModel, PurchaseOrderAlternateIdModel},
-        schema::purchase_order_alternate_id,
+        models::PurchaseOrderAlternateIdModel, schema::purchase_order_alternate_id,
         PurchaseOrderStoreError,
     },
 };
 
-use diesel::{
-    dsl::{insert_into, update},
-    prelude::*,
-};
+use diesel::{dsl::update, prelude::*};
 
 #[cfg(feature = "postgres")]
 pub(in crate) mod pg {
     use super::*;
 
-    pub fn add_alternate_id(
+    pub fn remove_alternate_id(
         conn: &diesel::pg::PgConnection,
-        alternate_id: &NewPurchaseOrderAlternateIdModel,
+        alternate_id: &PurchaseOrderAlternateIdModel,
+        end_commit_num: &i64,
     ) -> Result<(), PurchaseOrderStoreError> {
         conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
             let mut query = purchase_order_alternate_id::table
@@ -42,6 +39,14 @@ pub(in crate) mod pg {
                 .filter(
                     purchase_order_alternate_id::purchase_order_uid
                         .eq(&alternate_id.purchase_order_uid)
+                        .and(
+                            purchase_order_alternate_id::alternate_id_type
+                                .eq(&alternate_id.alternate_id_type),
+                        )
+                        .and(
+                            purchase_order_alternate_id::alternate_id
+                                .eq(&alternate_id.alternate_id),
+                        )
                         .and(purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -79,10 +84,7 @@ pub(in crate) mod pg {
                                     purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM),
                                 ),
                         )
-                        .set(
-                            purchase_order_alternate_id::end_commit_num
-                                .eq(&alternate_id.start_commit_num),
-                        )
+                        .set(purchase_order_alternate_id::end_commit_num.eq(&end_commit_num))
                         .execute(conn)
                         .map(|_| ())
                         .map_err(PurchaseOrderStoreError::from)?;
@@ -103,21 +105,12 @@ pub(in crate) mod pg {
                                     purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM),
                                 ),
                         )
-                        .set(
-                            purchase_order_alternate_id::end_commit_num
-                                .eq(&alternate_id.start_commit_num),
-                        )
+                        .set(purchase_order_alternate_id::end_commit_num.eq(&end_commit_num))
                         .execute(conn)
                         .map(|_| ())
                         .map_err(PurchaseOrderStoreError::from)?;
                 }
             }
-
-            insert_into(purchase_order_alternate_id::table)
-                .values(alternate_id)
-                .execute(conn)
-                .map(|_| ())
-                .map_err(PurchaseOrderStoreError::from)?;
 
             Ok(())
         })
@@ -128,9 +121,10 @@ pub(in crate) mod pg {
 pub(in crate) mod sqlite {
     use super::*;
 
-    pub fn add_alternate_id(
+    pub fn remove_alternate_id(
         conn: &diesel::sqlite::SqliteConnection,
-        alternate_id: &NewPurchaseOrderAlternateIdModel,
+        alternate_id: &PurchaseOrderAlternateIdModel,
+        end_commit_num: &i64,
     ) -> Result<(), PurchaseOrderStoreError> {
         conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
             let mut query = purchase_order_alternate_id::table
@@ -139,6 +133,14 @@ pub(in crate) mod sqlite {
                 .filter(
                     purchase_order_alternate_id::purchase_order_uid
                         .eq(&alternate_id.purchase_order_uid)
+                        .and(
+                            purchase_order_alternate_id::alternate_id_type
+                                .eq(&alternate_id.alternate_id_type),
+                        )
+                        .and(
+                            purchase_order_alternate_id::alternate_id
+                                .eq(&alternate_id.alternate_id),
+                        )
                         .and(purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -176,10 +178,7 @@ pub(in crate) mod sqlite {
                                     purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM),
                                 ),
                         )
-                        .set(
-                            purchase_order_alternate_id::end_commit_num
-                                .eq(&alternate_id.start_commit_num),
-                        )
+                        .set(purchase_order_alternate_id::end_commit_num.eq(&end_commit_num))
                         .execute(conn)
                         .map(|_| ())
                         .map_err(PurchaseOrderStoreError::from)?;
@@ -200,21 +199,12 @@ pub(in crate) mod sqlite {
                                     purchase_order_alternate_id::end_commit_num.eq(MAX_COMMIT_NUM),
                                 ),
                         )
-                        .set(
-                            purchase_order_alternate_id::end_commit_num
-                                .eq(&alternate_id.start_commit_num),
-                        )
+                        .set(purchase_order_alternate_id::end_commit_num.eq(&end_commit_num))
                         .execute(conn)
                         .map(|_| ())
                         .map_err(PurchaseOrderStoreError::from)?;
                 }
             }
-
-            insert_into(purchase_order_alternate_id::table)
-                .values(alternate_id)
-                .execute(conn)
-                .map(|_| ())
-                .map_err(PurchaseOrderStoreError::from)?;
 
             Ok(())
         })

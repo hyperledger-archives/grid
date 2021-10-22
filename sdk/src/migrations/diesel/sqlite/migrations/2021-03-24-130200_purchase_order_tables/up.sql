@@ -56,7 +56,6 @@ CREATE TABLE purchase_order_version_revision (
 CREATE TABLE purchase_order_alternate_id (
     id INTEGER PRIMARY KEY,
     purchase_order_uid TEXT NOT NULL,
-    org_id VARCHAR(256) NOT NULL,
     alternate_id_type TEXT NOT NULL,
     alternate_id TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,

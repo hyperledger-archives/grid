@@ -111,7 +111,6 @@ pub struct PurchaseOrderVersionRevisionModel {
 #[table_name = "purchase_order_alternate_id"]
 pub struct NewPurchaseOrderAlternateIdModel {
     pub purchase_order_uid: String,
-    pub org_id: String,
     pub alternate_id_type: String,
     pub alternate_id: String,
     pub start_commit_num: i64,
@@ -124,7 +123,6 @@ pub struct NewPurchaseOrderAlternateIdModel {
 pub struct PurchaseOrderAlternateIdModel {
     pub id: i64,
     pub purchase_order_uid: String,
-    pub org_id: String,
     pub alternate_id_type: String,
     pub alternate_id: String,
     pub start_commit_num: i64,
@@ -150,8 +148,20 @@ impl From<PurchaseOrder> for NewPurchaseOrderModel {
     }
 }
 
-impl From<(PurchaseOrderModel, Vec<PurchaseOrderVersion>)> for PurchaseOrder {
-    fn from((order, versions): (PurchaseOrderModel, Vec<PurchaseOrderVersion>)) -> Self {
+impl
+    From<(
+        PurchaseOrderModel,
+        Vec<PurchaseOrderVersion>,
+        Vec<PurchaseOrderAlternateId>,
+    )> for PurchaseOrder
+{
+    fn from(
+        (order, versions, alternate_ids): (
+            PurchaseOrderModel,
+            Vec<PurchaseOrderVersion>,
+            Vec<PurchaseOrderAlternateId>,
+        ),
+    ) -> Self {
         Self {
             purchase_order_uid: order.purchase_order_uid.to_string(),
             workflow_status: order.workflow_status.to_string(),
@@ -160,6 +170,7 @@ impl From<(PurchaseOrderModel, Vec<PurchaseOrderVersion>)> for PurchaseOrder {
             is_closed: order.is_closed,
             accepted_version_id: order.accepted_version_id,
             versions,
+            alternate_ids,
             created_at: order.created_at,
             workflow_type: order.workflow_type.to_string(),
             start_commit_num: order.start_commit_num,
@@ -174,13 +185,15 @@ impl
         PurchaseOrderModel,
         Vec<PurchaseOrderVersionModel>,
         Vec<PurchaseOrderVersionRevisionModel>,
+        Vec<PurchaseOrderAlternateIdModel>,
     )> for PurchaseOrder
 {
     fn from(
-        (order, versions, revisions): (
+        (order, versions, revisions, alternate_ids): (
             PurchaseOrderModel,
             Vec<PurchaseOrderVersionModel>,
             Vec<PurchaseOrderVersionRevisionModel>,
+            Vec<PurchaseOrderAlternateIdModel>,
         ),
     ) -> Self {
         Self {
@@ -193,6 +206,10 @@ impl
             versions: versions
                 .iter()
                 .map(|v| PurchaseOrderVersion::from((v, &revisions)))
+                .collect(),
+            alternate_ids: alternate_ids
+                .iter()
+                .map(PurchaseOrderAlternateId::from)
                 .collect(),
             created_at: order.created_at,
             workflow_type: order.workflow_type.to_string(),
@@ -281,12 +298,37 @@ impl From<PurchaseOrderAlternateId> for NewPurchaseOrderAlternateIdModel {
     fn from(id: PurchaseOrderAlternateId) -> Self {
         Self {
             purchase_order_uid: id.purchase_order_uid.to_string(),
-            org_id: id.org_id.to_string(),
             alternate_id_type: id.id_type.to_string(),
             alternate_id: id.id.to_string(),
             start_commit_num: id.start_commit_num,
             end_commit_num: id.end_commit_num,
             service_id: id.service_id,
+        }
+    }
+}
+
+impl From<&PurchaseOrderAlternateId> for NewPurchaseOrderAlternateIdModel {
+    fn from(id: &PurchaseOrderAlternateId) -> Self {
+        Self {
+            purchase_order_uid: id.purchase_order_uid.to_string(),
+            alternate_id_type: id.id_type.to_string(),
+            alternate_id: id.id.to_string(),
+            start_commit_num: id.start_commit_num,
+            end_commit_num: id.end_commit_num,
+            service_id: id.service_id.clone(),
+        }
+    }
+}
+
+impl From<&PurchaseOrderAlternateIdModel> for PurchaseOrderAlternateId {
+    fn from(id: &PurchaseOrderAlternateIdModel) -> Self {
+        Self {
+            purchase_order_uid: id.purchase_order_uid.to_string(),
+            id_type: id.alternate_id_type.to_string(),
+            id: id.alternate_id.to_string(),
+            start_commit_num: id.start_commit_num,
+            end_commit_num: id.end_commit_num,
+            service_id: id.service_id.clone(),
         }
     }
 }
