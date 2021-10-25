@@ -2529,6 +2529,16 @@ fn run() -> Result<(), CliError> {
                         .map(String::from)
                         .unwrap_or_else(purchase_orders::generate_purchase_order_uid);
 
+                    let alternate_ids = m
+                        .values_of("alternate_id")
+                        .unwrap_or_default()
+                        .map(|id| {
+                            purchase_orders::make_alternate_id_from_str(&uid, id)?
+                                .try_into()
+                                .map_err(|err| CliError::PayloadError(format!("{}", err)))
+                        })
+                        .collect::<Result<_, _>>()?;
+
                     let payload = CreatePurchaseOrderPayloadBuilder::new()
                         .with_uid(uid)
                         .with_created_at(
@@ -2540,6 +2550,7 @@ fn run() -> Result<(), CliError> {
                         .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
                         .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
                         .with_workflow_status(m.value_of("workflow_status").unwrap().into())
+                        .with_alternate_ids(alternate_ids)
                         .build()
                         .map_err(|err| {
                             CliError::UserError(format!("Could not build Purchase Order: {}", err))
