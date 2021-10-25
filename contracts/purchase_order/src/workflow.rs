@@ -75,12 +75,14 @@ fn default_sub_workflow() -> SubWorkflow {
         let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission(&Permission::CanCreatePoVersion.to_string());
         buyer.add_permission(&Permission::CanUpdatePoVersion.to_string());
+        buyer.add_permission(&Permission::CanUpdatePo.to_string());
         buyer.add_permission(&Permission::CanTransitionClosed.to_string());
         buyer.add_transition("closed");
 
         let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission(&Permission::CanCreatePoVersion.to_string());
         seller.add_permission(&Permission::CanUpdatePoVersion.to_string());
+        seller.add_permission(&Permission::CanUpdatePo.to_string());
         seller.add_permission(&Permission::CanTransitionConfirmed.to_string());
         seller.add_transition("confirmed");
 
@@ -95,11 +97,13 @@ fn default_sub_workflow() -> SubWorkflow {
     let confirmed = {
         let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission(&Permission::CanCreatePoVersion.to_string());
+        buyer.add_permission(&Permission::CanUpdatePo.to_string());
         buyer.add_permission(&Permission::CanTransitionIssued.to_string());
         buyer.add_transition("issued");
 
         let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission(&Permission::CanCreatePoVersion.to_string());
+        seller.add_permission(&Permission::CanUpdatePo.to_string());
         seller.add_permission(&Permission::CanTransitionClosed.to_string());
         seller.add_transition("closed");
 
