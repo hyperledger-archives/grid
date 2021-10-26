@@ -406,6 +406,7 @@ pub struct PurchaseOrder {
     workflow_status: String,
     versions: Vec<PurchaseOrderVersion>,
     accepted_version_number: Option<String>,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
     created_at: u64,
     is_closed: bool,
     buyer_org_id: String,
@@ -428,6 +429,10 @@ impl PurchaseOrder {
 
     pub fn accepted_version_number(&self) -> Option<&str> {
         self.accepted_version_number.as_deref()
+    }
+
+    pub fn alternate_ids(&self) -> &[PurchaseOrderAlternateId] {
+        &self.alternate_ids
     }
 
     pub fn created_at(&self) -> u64 {
@@ -456,6 +461,7 @@ impl PurchaseOrder {
             .with_workflow_status(self.workflow_status)
             .with_versions(self.versions)
             .with_created_at(self.created_at)
+            .with_alternate_ids(self.alternate_ids)
             .with_is_closed(self.is_closed)
             .with_buyer_org_id(self.buyer_org_id)
             .with_seller_org_id(self.seller_org_id)
@@ -491,6 +497,11 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
                 .collect::<Result<_, _>>()?,
             accepted_version_number,
             created_at: order.get_created_at(),
+            alternate_ids: order
+                .take_alternate_ids()
+                .into_iter()
+                .map(PurchaseOrderAlternateId::from_proto)
+                .collect::<Result<_, _>>()?,
             is_closed: order.get_is_closed(),
             buyer_org_id: order.take_buyer_org_id(),
             seller_org_id: order.take_seller_org_id(),
@@ -516,6 +527,14 @@ impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
             proto.set_accepted_version_number(accepted_version.to_string());
         }
         proto.set_created_at(order.created_at());
+        proto.set_alternate_ids(RepeatedField::from_vec(
+            order
+                .alternate_ids()
+                .to_vec()
+                .into_iter()
+                .map(|id| id.into_proto())
+                .collect::<Result<_, _>>()?,
+        ));
         proto.set_is_closed(order.is_closed());
         proto.set_buyer_org_id(order.buyer_org_id().to_string());
         proto.set_seller_org_id(order.seller_org_id().to_string());
@@ -575,6 +594,7 @@ pub struct PurchaseOrderBuilder {
     versions: Option<Vec<PurchaseOrderVersion>>,
     accepted_version_number: Option<String>,
     created_at: Option<u64>,
+    alternate_ids: Vec<PurchaseOrderAlternateId>,
     is_closed: Option<bool>,
     buyer_org_id: Option<String>,
     seller_org_id: Option<String>,
@@ -608,6 +628,11 @@ impl PurchaseOrderBuilder {
 
     pub fn with_created_at(mut self, created_at: u64) -> Self {
         self.created_at = Some(created_at);
+        self
+    }
+
+    pub fn with_alternate_ids(mut self, alternate_ids: Vec<PurchaseOrderAlternateId>) -> Self {
+        self.alternate_ids = alternate_ids;
         self
     }
 
@@ -650,6 +675,8 @@ impl PurchaseOrderBuilder {
             PurchaseOrderBuildError::MissingField("'created_at' field is required".to_string())
         })?;
 
+        let alternate_ids = self.alternate_ids;
+
         let is_closed = self.is_closed.ok_or_else(|| {
             PurchaseOrderBuildError::MissingField("'is_closed' field is required".to_string())
         })?;
@@ -672,6 +699,7 @@ impl PurchaseOrderBuilder {
             versions,
             accepted_version_number,
             created_at,
+            alternate_ids,
             is_closed,
             buyer_org_id,
             seller_org_id,
