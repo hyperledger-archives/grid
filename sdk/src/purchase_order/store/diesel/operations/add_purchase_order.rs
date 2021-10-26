@@ -96,16 +96,16 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 add_alternate_id::pg::add_alternate_id(self.conn, &id)?;
             }
 
+            for version in versions {
+                add_purchase_order_version::pg::add_purchase_order_version(self.conn, &version)?;
+            }
+
             for revision in revisions {
                 add_purchase_order_version_revision::pg::add_purchase_order_version_revision(
                     self.conn,
                     &revision,
                     &order.purchase_order_uid,
                 )?;
-            }
-
-            for version in versions {
-                add_purchase_order_version::pg::add_purchase_order_version(self.conn, &version)?;
             }
 
             let mut query = purchase_order::table.into_boxed().filter(
@@ -220,17 +220,17 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                 add_alternate_id::sqlite::add_alternate_id(self.conn, &id)?;
             }
 
+            for version in versions {
+                add_purchase_order_version::sqlite::add_purchase_order_version(
+                    self.conn, &version,
+                )?;
+            }
+
             for revision in revisions {
                 add_purchase_order_version_revision::sqlite::add_purchase_order_version_revision(
                     self.conn,
                     &revision,
                     &order.purchase_order_uid,
-                )?;
-            }
-
-            for version in versions {
-                add_purchase_order_version::sqlite::add_purchase_order_version(
-                    self.conn, &version,
                 )?;
             }
 
