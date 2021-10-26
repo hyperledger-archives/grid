@@ -1226,7 +1226,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(true)
-            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
             .with_workflow_status("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
@@ -1282,7 +1282,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_accepted_version_number(PO_VERSION_ID_2.to_string())
+            .with_accepted_version_number(Some(PO_VERSION_ID_2.to_string()))
             .with_workflow_status("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
@@ -1315,7 +1315,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
             .with_workflow_status("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
@@ -1353,7 +1353,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
             .with_workflow_status(to_workflow.to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
@@ -1456,7 +1456,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_accepted_version_number(PO_VERSION_ID_1.to_string())
+            .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
             .with_workflow_status("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
