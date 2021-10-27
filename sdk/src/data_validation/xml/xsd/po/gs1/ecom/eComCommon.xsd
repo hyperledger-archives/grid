@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ecom_common="urn:gs1:ecom:ecom_common:xsd:3" xmlns:shared_common="urn:gs1:shared:shared_common:xsd:3" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="urn:gs1:ecom:ecom_common:xsd:3" version="3.4">
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:shared_common="urn:gs1:shared:shared_common:xsd:3" xmlns:ecom_common="urn:gs1:ecom:ecom_common:xsd:3" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="urn:gs1:ecom:ecom_common:xsd:3" version="3.4">
     <xsd:annotation>
         <xsd:documentation><![CDATA[---------------------------
 © Copyright GS1, 2019
@@ -21,7 +21,7 @@ The schema and subsequent updates will be provided on the GS1 websites.
 ---------------------------
 ]]></xsd:documentation>
     </xsd:annotation>
-    <xsd:import namespace="urn:gs1:shared:shared_common:xsd:3" schemaLocation="../shared/SharedCommon.xsd"/>
+    <xsd:import namespace="urn:gs1:shared:shared_common:xsd:3" schemaLocation="src/data_validation/xml/xsd/po/gs1/shared/SharedCommon.xsd"/>
     <xsd:complexType name="AcceptableOverAllocationType">
         <xsd:sequence>
             <xsd:element minOccurs="0" name="overAllocationQuantity" type="shared_common:QuantityType"/>
