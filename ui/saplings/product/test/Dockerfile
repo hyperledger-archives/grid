@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Cargill Incorporated
+# Copyright 2018-2021 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Dockerfile for running unit tests and lint on the Grid UI
-FROM node:lts-alpine
+FROM node:14.18.1-alpine3.11
 
 WORKDIR /ui/saplings/product
 
