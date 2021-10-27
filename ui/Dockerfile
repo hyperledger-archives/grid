@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Cargill Incorporated
+# Copyright 2018-2021 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Canopy build stage
-FROM node:lts-alpine as canopy-app-build-stage
+FROM node:14.18.1-alpine3.11 as canopy-app-build-stage
 
 RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
 WORKDIR /ui
@@ -34,7 +34,7 @@ WORKDIR /tmp
 RUN git rev-parse HEAD > /commit-hash
 
 # Sapling build stage
-FROM node:lts-alpine as sapling-build-stage
+FROM node:14.18.1-alpine3.11 as sapling-build-stage
 
 RUN apk update && apk add git
 
