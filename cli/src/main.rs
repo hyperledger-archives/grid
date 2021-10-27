@@ -1411,6 +1411,32 @@ fn run() -> Result<(), CliError> {
                             .takes_value(true),
                     )
                     .after_help(AFTER_HELP_WITHOUT_KEY),
+            )
+            .subcommand(
+                SubCommand::with_name("show")
+                    .about("Show a Purchase Order version")
+                    .arg(
+                        Arg::with_name("po_uid")
+                            .takes_value(true)
+                            .required(true)
+                            .help("Identifier for the Purchase Order the version belongs to"),
+                    )
+                    .arg(
+                        Arg::with_name("version_id")
+                            .takes_value(true)
+                            .required(true)
+                            .help("Identifier for the Purchase Order version"),
+                    )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("F")
+                            .long("format")
+                            .help("Output format")
+                            .possible_values(&["human", "csv", "yaml", "json"])
+                            .default_value("human")
+                            .takes_value(true),
+                    )
+                    .after_help(AFTER_HELP_WITHOUT_KEY),
             );
 
         let po_revision = SubCommand::with_name("revision")
@@ -2838,6 +2864,31 @@ fn run() -> Result<(), CliError> {
                             format,
                             service_id.as_deref(),
                         )?
+                    }
+                    ("show", Some(m)) => {
+                        let url = m
+                            .value_of("url")
+                            .map(String::from)
+                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                            .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+                        let service_id = m
+                            .value_of("service_id")
+                            .map(String::from)
+                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+                        let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                        let po_uid = m.value_of("po_uid").unwrap();
+
+                        let version = m.value_of("version_id").unwrap();
+
+                        purchase_orders::do_show_version(
+                            &*purchase_order_client,
+                            po_uid,
+                            version,
+                            service_id.as_deref(),
+                        )?;
                     }
                     _ => return Err(CliError::UserError("Subcommand not recognized".into())),
                 },

@@ -206,27 +206,29 @@ pub fn do_list_versions(
     _format: &str,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let revision = client.get_purchase_order_revision(po_uid.to_string(), version_id.to_string(), revision_num, service_id)?;
-
-    if let Some(revision) = revision {
-        display_revision(revision);
-    } else {
-        println!("Could not find revision {}, for version {} for order {}", revision_num, version_id, po_uid);
-    }
-    Ok(())
-}
-
-pub fn do_list_versions(
-    client: &dyn PurchaseOrderClient,
-    po_uid: &str,
-    accepted_filter: Option<bool>,
-    draft_filter: Option<bool>,
-    _format: &str,
-    service_id: Option<&str>,
-) -> Result<(), CliError> {
     let versions = get_versions(client, po_uid, accepted_filter, draft_filter, service_id)?;
 
     display_versions(versions);
+    Ok(())
+}
+
+pub fn do_show_version(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    version_id: &str,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let version = client.get_purchase_order_version(
+        po_uid.to_string(),
+        version_id.to_string(),
+        service_id,
+    )?;
+
+    if let Some(version) = version {
+        display_version(version);
+    } else {
+        println!("Could not find version {} for order {}", version_id, po_uid);
+    }
     Ok(())
 }
 
@@ -411,4 +413,41 @@ fn display_versions(versions: Vec<PurchaseOrderVersion>) {
         }
         println!("{}", print_row);
     }
+}
+
+fn display_version(version: PurchaseOrderVersion) {
+    let column_names = vec![
+        "VERSION_ID",
+        "WORKFLOW_STATUS",
+        "IS_DRAFT",
+        "CURRENT_REVISION",
+        "REVISIONS",
+    ];
+    let table_values = vec![
+        version.version_id.to_string(),
+        version.workflow_status.to_string(),
+        version.is_draft.to_string(),
+        version.current_revision_id.to_string(),
+        version.revisions.len().to_string(),
+    ];
+
+    // Calculate max-widths for columns
+    let mut widths: Vec<usize> = column_names.iter().map(|name| name.len()).collect();
+    for i in 0..widths.len() {
+        widths[i] = cmp::max(widths[i], table_values[i].to_string().len())
+    }
+
+    // print header row
+    let mut header_row = "".to_owned();
+    for i in 0..column_names.len() {
+        header_row += &format!("{:width$} ", column_names[i], width = widths[i]);
+    }
+    println!("{}", header_row);
+
+    // print version
+    let mut print_row = "".to_owned();
+    for i in 0..column_names.len() {
+        print_row += &format!("{:width$} ", table_values[i], width = widths[i]);
+    }
+    println!("{}", print_row);
 }
