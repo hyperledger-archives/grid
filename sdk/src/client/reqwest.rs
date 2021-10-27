@@ -130,7 +130,11 @@ pub fn fetch_entities_list<T: DeserializeOwned>(
     let client = BlockingClient::new();
     let mut final_url = format!("{}/{}", url, route);
     if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
+        if route.contains('?') {
+            final_url = format!("{}&service_id={}", final_url, service_id)
+        } else {
+            final_url = format!("{}?service_id={}", final_url, service_id);
+        }
     }
 
     let mut entities: Vec<T> = Vec::new();
