@@ -1371,9 +1371,12 @@ fn run() -> Result<(), CliError> {
             .subcommand(
                 SubCommand::with_name("list")
                     .about("List Purchase Order versions")
-                    .arg(Arg::with_name("org").value_name("org_id").long("org").help(
-                        "List only Purchase Order versions belonging to the specified organization",
-                    ))
+                    .arg(
+                        Arg::with_name("po_uid")
+                            .takes_value(true)
+                            .required(true)
+                            .help("UID of the Purchase Order this version belongs to."),
+                    )
                     .arg(
                         Arg::with_name("accepted")
                             .long("accepted")
@@ -2802,8 +2805,40 @@ fn run() -> Result<(), CliError> {
                         )?;
                     }
                     ("update", Some(_)) => unimplemented!(),
-                    ("list", Some(_)) => unimplemented!(),
-                    ("show", Some(_)) => unimplemented!(),
+                    ("list", Some(m)) => {
+                        let service_id = m
+                            .value_of("service_id")
+                            .map(String::from)
+                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+                        let po_uid = m.value_of("po_uid").unwrap();
+
+                        let mut accepted_filter = None;
+                        let mut draft_filter = None;
+
+                        if m.is_present("accepted") {
+                            accepted_filter = Some(true);
+                        } else if m.is_present("not_accepted") {
+                            accepted_filter = Some(false);
+                        }
+
+                        if m.is_present("draft") {
+                            draft_filter = Some(true);
+                        } else if m.is_present("not_draft") {
+                            draft_filter = Some(false);
+                        }
+
+                        let format = m.value_of("format").unwrap();
+
+                        purchase_orders::do_list_versions(
+                            &*purchase_order_client,
+                            po_uid,
+                            accepted_filter,
+                            draft_filter,
+                            format,
+                            service_id.as_deref(),
+                        )?
+                    }
                     _ => return Err(CliError::UserError("Subcommand not recognized".into())),
                 },
                 ("revision", Some(m)) => match m.subcommand() {

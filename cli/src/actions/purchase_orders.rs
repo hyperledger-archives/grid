@@ -19,6 +19,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use grid_sdk::{
     client::purchase_order::{
         AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision,
+        PurchaseOrderVersion,
     },
     protocol::purchase_order::payload::{
         Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayloadBuilder,
@@ -26,6 +27,7 @@ use grid_sdk::{
     },
     protos::IntoProto,
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
+    purchase_order::store::ListVersionFilters,
 };
 
 use cylinder::Signer;
@@ -214,6 +216,20 @@ pub fn do_list_versions(
     Ok(())
 }
 
+pub fn do_list_versions(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    accepted_filter: Option<bool>,
+    draft_filter: Option<bool>,
+    _format: &str,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let versions = get_versions(client, po_uid, accepted_filter, draft_filter, service_id)?;
+
+    display_versions(versions);
+    Ok(())
+}
+
 pub fn get_latest_revision_id(
     client: &dyn PurchaseOrderClient,
     po_uid: &str,
@@ -232,6 +248,23 @@ pub fn get_latest_revision_id(
     } else {
         Ok(0)
     }
+}
+
+fn get_versions(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    accepted_filter: Option<bool>,
+    draft_filter: Option<bool>,
+    service_id: Option<&str>,
+) -> Result<Vec<PurchaseOrderVersion>, CliError> {
+    let filters = ListVersionFilters {
+        is_accepted: accepted_filter,
+        is_draft: draft_filter,
+    };
+
+    let versions = client.list_purchase_order_versions(po_uid.to_string(), filters, service_id)?;
+
+    Ok(versions)
 }
 
 pub fn generate_purchase_order_uid() -> String {
@@ -333,4 +366,49 @@ fn display_revision(revision: PurchaseOrderRevision) {
     println!("{}", revision.order_xml_v3_4);
 }
 
+fn display_versions(versions: Vec<PurchaseOrderVersion>) {
+    let mut rows = vec![];
+    versions.iter().for_each(|version| {
+        let values = vec![
+            version.version_id.to_string(),
+            version.workflow_status.to_string(),
+            version.is_draft.to_string(),
+            version.current_revision_id.to_string(),
+            version.revisions.len().to_string(),
+        ];
+
+        rows.push(values);
+    });
+
+    let column_names = vec![
+        "VERSION_ID",
+        "WORKFLOW_STATUS",
+        "IS_DRAFT",
+        "CURRENT_REVISION",
+        "REVISIONS",
+    ];
+
+    // Calculate max-widths for columns
+    let mut widths: Vec<usize> = column_names.iter().map(|name| name.len()).collect();
+    rows.iter().for_each(|row| {
+        for i in 0..widths.len() {
+            widths[i] = cmp::max(widths[i], row[i].to_string().len())
+        }
+    });
+
+    // print header row
+    let mut header_row = "".to_owned();
+    for i in 0..column_names.len() {
+        header_row += &format!("{:width$} ", column_names[i], width = widths[i]);
+    }
+    println!("{}", header_row);
+
+    // print each row
+    for row in rows {
+        let mut print_row = "".to_owned();
+        for i in 0..column_names.len() {
+            print_row += &format!("{:width$} ", row[i], width = widths[i]);
+        }
+        println!("{}", print_row);
+    }
 }
