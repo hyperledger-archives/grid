@@ -87,7 +87,7 @@ fn _validate_update_po_payload(payload: &UpdatePurchaseOrderPayload) -> Result<(
 }
 
 // Validate a `PayloadRevision` has all required fields defined
-fn _validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyError> {
+pub(crate) fn validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyError> {
     if revision.submitter().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`submitter` is required for a po revision".to_string(),
@@ -135,13 +135,15 @@ fn _validate_create_version_payload(payload: &CreateVersionPayload) -> Result<()
         ));
     }
 
-    _validate_payload_revision(payload.revision())?;
+    validate_payload_revision(payload.revision())?;
 
     Ok(())
 }
 
 // Validate a `UpdateVersionPayload` has all required fields defined
-fn _validate_update_version_payload(payload: &UpdateVersionPayload) -> Result<(), ApplyError> {
+pub(crate) fn validate_update_version_payload(
+    payload: &UpdateVersionPayload,
+) -> Result<(), ApplyError> {
     if payload.version_id().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`version_id` is required to update a purchase order version".to_string(),
@@ -167,7 +169,7 @@ fn _validate_update_version_payload(payload: &UpdateVersionPayload) -> Result<()
         ));
     }
 
-    _validate_payload_revision(payload.revision())?;
+    validate_payload_revision(payload.revision())?;
 
     Ok(())
 }
