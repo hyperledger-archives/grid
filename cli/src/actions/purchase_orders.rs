@@ -36,6 +36,8 @@ use rand::{distributions::Alphanumeric, Rng};
 use crate::error::CliError;
 use crate::transaction::purchase_order_batch_builder;
 
+pub const GRID_ORDER_SCHEMA_DIR: &str = "GRID_ORDER_SCHEMA_DIR";
+
 pub fn do_create_purchase_order(
     client: Box<dyn PurchaseOrderClient>,
     signer: Box<dyn Signer>,

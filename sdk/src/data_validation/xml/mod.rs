@@ -15,6 +15,8 @@
 mod xml_ffi;
 
 use std::cmp::Ordering;
+use std::fs;
+use std::path::PathBuf;
 
 use crate::data_validation::error::DataValidationError;
 use crate::error::{InternalError, InvalidArgumentError};
@@ -44,8 +46,9 @@ pub(super) fn validate_xml(
     data: &str,
     is_path: bool,
     schema_type: Schema,
+    schema_dir: &str,
 ) -> Result<(), DataValidationError> {
-    let mut schema = load_schema(schema_type)?;
+    let mut schema = load_schema(schema_type, schema_dir)?;
     if is_path {
         validate_xml_by_path(data, &mut schema)
     } else {
@@ -84,17 +87,30 @@ fn validate_xml_by_path(data: &str, schema: &mut XmlSchema) -> Result<(), DataVa
     }
 }
 
-fn load_schema(schema_type: Schema) -> Result<XmlSchema, DataValidationError> {
-    static ORDER_XML_V3_4_SCHEMA: &str = include_str!("xsd/po/gs1/ecom/Order.xsd");
-    static GRID_TRADE_ITEMS_SCHEMA: &str = include_str!("xsd/product/GridTradeItems.xsd");
-
-    let schema = match schema_type {
-        Schema::OrderXmlV3_4 => ORDER_XML_V3_4_SCHEMA,
-        Schema::GdsnXmlV3_1 => GRID_TRADE_ITEMS_SCHEMA,
+fn load_schema(schema_type: Schema, schema_dir: &str) -> Result<XmlSchema, DataValidationError> {
+    let mut schema_dir_path = PathBuf::from(schema_dir);
+    let schema: Vec<u8> = match schema_type {
+        Schema::OrderXmlV3_4 => {
+            schema_dir_path.push("Order.xsd");
+            fs::read_to_string(schema_dir_path.as_path())
+                .map_err(|err| {
+                    DataValidationError::Internal(InternalError::from_source(Box::new(err)))
+                })?
+                .into_bytes()
+        }
+        Schema::GdsnXmlV3_1 => {
+            schema_dir_path.push("GridTradeItems.xsd");
+            fs::read_to_string(schema_dir_path.as_path())
+                .map_err(|err| {
+                    DataValidationError::Internal(InternalError::from_source(Box::new(err)))
+                })?
+                .into_bytes()
+        }
     };
 
     let schema_parser_ctxt =
-        XmlSchemaParserCtxt::from_buffer(schema).map_err(DataValidationError::Internal)?;
+        XmlSchemaParserCtxt::from_buffer(&schema).map_err(DataValidationError::Internal)?;
 
-    XmlSchema::from_parser(schema_parser_ctxt).map_err(DataValidationError::Internal)
+    XmlSchema::from_parser(schema_parser_ctxt, &schema_type, schema_dir)
+        .map_err(DataValidationError::Internal)
 }

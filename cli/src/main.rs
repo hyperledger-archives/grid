@@ -114,6 +114,9 @@ use actions::schemas;
 #[cfg(feature = "pike")]
 use actions::{agents, organizations as orgs, roles};
 
+#[cfg(feature = "purchase-order")]
+use actions::{purchase_orders::GRID_ORDER_SCHEMA_DIR, DEFAULT_SCHEMA_DIR};
+
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -2763,9 +2766,11 @@ fn run() -> Result<(), CliError> {
                         let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                         let order_xml_path = m.value_of("order_xml").unwrap();
+                        let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
+                            .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
                         let mut xml_str = String::new();
                         std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
-                        validate_order_xml_3_4(&xml_str, false)?;
+                        validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
                         info!("Purchase order was valid.");
 
                         let version_id = m.value_of("version_id").unwrap();

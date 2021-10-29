@@ -35,9 +35,14 @@ use xml::{validate_xml, Schema};
 ///
 /// * `data` - A path to an XML file or an XML string to be validated.
 /// * `is_path` - Whether the data provided is a path or a string.
+/// * `schema_dir` - References a path to the directory containing schema files
 ///
-pub fn validate_order_xml_3_4(data: &str, is_path: bool) -> Result<(), DataValidationError> {
-    validate_xml(data, is_path, Schema::OrderXmlV3_4)?;
+pub fn validate_order_xml_3_4(
+    data: &str,
+    is_path: bool,
+    schema_dir: &str,
+) -> Result<(), DataValidationError> {
+    validate_xml(data, is_path, Schema::OrderXmlV3_4, schema_dir)?;
     Ok(())
 }
 
@@ -60,9 +65,14 @@ pub fn validate_order_xml_3_4(data: &str, is_path: bool) -> Result<(), DataValid
 /// # Arguments
 ///
 /// * `xml_path` - The path to an XML file containing GDSN trade item definitions
+/// * `schema_dir` - References a path to the directory containing schema files
 ///
-pub fn validate_gdsn_3_1(data: &str, is_path: bool) -> Result<(), DataValidationError> {
-    validate_xml(data, is_path, Schema::GdsnXmlV3_1)?;
+pub fn validate_gdsn_3_1(
+    data: &str,
+    is_path: bool,
+    schema_dir: &str,
+) -> Result<(), DataValidationError> {
+    validate_xml(data, is_path, Schema::GdsnXmlV3_1, schema_dir)?;
     Ok(())
 }
 
@@ -88,8 +98,14 @@ mod tests {
             .unwrap()
             .read_to_string(&mut data)
             .unwrap();
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/product");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert product schema dir to string");
 
-        let result = validate_gdsn_3_1(&data, false);
+        let result = validate_gdsn_3_1(&data, false, &schema_dir);
 
         assert!(result.is_ok());
     }
@@ -101,7 +117,14 @@ mod tests {
         test_gdsn_xml_path.push("src/data_validation/test_files/gdsn_product.xml");
 
         let path_str = test_gdsn_xml_path.to_str().unwrap();
-        let result = validate_gdsn_3_1(path_str, true);
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/product");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert product schema dir to string");
+
+        let result = validate_gdsn_3_1(path_str, true, &schema_dir);
 
         assert!(result.is_ok());
     }
@@ -118,8 +141,14 @@ mod tests {
             .unwrap()
             .read_to_string(&mut data)
             .unwrap();
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/product");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert product schema dir to string");
 
-        let result = validate_gdsn_3_1(&data, false);
+        let result = validate_gdsn_3_1(&data, false, &schema_dir);
 
         assert!(result.is_err());
 
@@ -135,7 +164,15 @@ mod tests {
         test_gdsn_xml_path.push("src/data_validation/test_files/gdsn_product_invalid.xml");
 
         let path_str = test_gdsn_xml_path.to_str().unwrap();
-        let result = validate_gdsn_3_1(path_str, true);
+
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/product");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert product schema dir to string");
+
+        let result = validate_gdsn_3_1(path_str, true, &schema_dir);
 
         assert!(result.is_err());
 
@@ -159,7 +196,13 @@ mod tests {
             .read_to_string(&mut data)
             .unwrap();
 
-        let result = validate_order_xml_3_4(&data, false);
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/po/gs1/ecom");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert po schema dir to string");
+        let result = validate_order_xml_3_4(&data, false, &schema_dir);
 
         assert!(result.is_ok());
     }
@@ -171,7 +214,15 @@ mod tests {
         test_gdsn_xml_path.push("src/data_validation/test_files/order.xml");
 
         let path_str = test_gdsn_xml_path.to_str().unwrap();
-        let result = validate_order_xml_3_4(path_str, true);
+
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/po/gs1/ecom");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert po schema dir to string");
+
+        let result = validate_order_xml_3_4(path_str, true, &schema_dir);
 
         assert!(result.is_ok());
     }
@@ -189,7 +240,14 @@ mod tests {
             .read_to_string(&mut data)
             .unwrap();
 
-        let result = validate_order_xml_3_4(&data, false);
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/po/gs1/ecom");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert po schema dir to string");
+
+        let result = validate_order_xml_3_4(&data, false, &schema_dir);
 
         assert!(result.is_err());
 
@@ -205,7 +263,15 @@ mod tests {
         test_gdsn_xml_path.push("src/data_validation/test_files/order_invalid.xml");
 
         let path_str = test_gdsn_xml_path.to_str().unwrap();
-        let result = validate_order_xml_3_4(path_str, true);
+
+        let mut schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        schema_dir.push("src/data_validation/xml/xsd/po/gs1/ecom");
+        let schema_dir = schema_dir
+            .into_os_string()
+            .into_string()
+            .expect("Unable to convert po schema dir to string");
+
+        let result = validate_order_xml_3_4(path_str, true, &schema_dir);
 
         assert!(result.is_err());
 

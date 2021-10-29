@@ -13,8 +13,10 @@
 // limitations under the License.
 
 use core::marker::{PhantomData, PhantomPinned};
+use std::env;
 use std::ffi::CString;
 
+use super::Schema;
 use crate::error::InternalError;
 
 use libc::{c_char, c_int, c_uint};
@@ -33,8 +35,24 @@ struct XmlSchemaPtr {
 pub(super) struct XmlSchema(*mut XmlSchemaPtr);
 
 impl XmlSchema {
-    pub(super) fn from_parser(mut parser: XmlSchemaParserCtxt) -> Result<Self, InternalError> {
-        let schema_ptr = unsafe { xmlSchemaParse(parser.as_ptr()) };
+    pub(super) fn from_parser(
+        mut parser: XmlSchemaParserCtxt,
+        schema_type: &Schema,
+        schema_dir: &str,
+    ) -> Result<Self, InternalError> {
+        let schema_ptr = match schema_type {
+            Schema::OrderXmlV3_4 => {
+                let cwd =
+                    env::current_dir().map_err(|err| InternalError::from_source(Box::new(err)))?;
+                env::set_current_dir(schema_dir)
+                    .map_err(|err| InternalError::from_source(Box::new(err)))?;
+                let schema_ptr = unsafe { xmlSchemaParse(parser.as_ptr()) };
+                env::set_current_dir(cwd)
+                    .map_err(|err| InternalError::from_source(Box::new(err)))?;
+                schema_ptr
+            }
+            Schema::GdsnXmlV3_1 => unsafe { xmlSchemaParse(parser.as_ptr()) },
+        };
         if schema_ptr.is_null() {
             return Err(InternalError::with_message(
                 "`xmlSchemaParse` returned a null pointer".to_string(),
@@ -70,7 +88,7 @@ struct XmlSchemaParserCtxtPtr {
 pub(super) struct XmlSchemaParserCtxt(*mut XmlSchemaParserCtxtPtr);
 
 impl XmlSchemaParserCtxt {
-    pub(super) fn from_buffer(schema: &'static str) -> Result<Self, InternalError> {
+    pub(super) fn from_buffer(schema: &[u8]) -> Result<Self, InternalError> {
         let buff = schema.as_ptr() as *const c_char;
         let size = schema.len() as *const i32;
 
