@@ -254,10 +254,11 @@ fn create_purchase_order(
         })?;
     if !perm_result {
         return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission {} for organization {}",
+            "Agent {} does not have permission {} for organization {} to create a purchase order with state {}",
             signer,
             &perm_string,
-            agent.org_id()
+            agent.org_id(),
+            payload.workflow_status()
         )));
     }
 
