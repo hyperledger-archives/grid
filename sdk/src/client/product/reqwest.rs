@@ -134,8 +134,12 @@ impl ProductClient for ReqwestProductClient {
     ///
     /// * `service_id`: the service id to fetch the products from
     fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ClientError> {
-        let dto_vec =
-            fetch_entities_list::<ProductDto>(&self.url, PRODUCT_ROUTE.to_string(), service_id)?;
+        let dto_vec = fetch_entities_list::<ProductDto>(
+            &self.url,
+            PRODUCT_ROUTE.to_string(),
+            service_id,
+            None,
+        )?;
         Ok(dto_vec.iter().map(Product::from).collect())
     }
 }

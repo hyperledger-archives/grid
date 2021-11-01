@@ -126,21 +126,21 @@ pub fn fetch_entities_list<T: DeserializeOwned>(
     url: &str,
     route: String,
     service_id: Option<&str>,
+    filters: Option<HashMap<&str, String>>,
 ) -> Result<Vec<T>, ClientError> {
     let client = BlockingClient::new();
     let mut final_url = format!("{}/{}", url, route);
-    if let Some(service_id) = service_id {
-        if route.contains('?') {
-            final_url = format!("{}&service_id={}", final_url, service_id)
-        } else {
-            final_url = format!("{}?service_id={}", final_url, service_id);
-        }
-    }
+
+    let mut query_params: Vec<(&str, String)> = service_id
+        .into_iter()
+        .map(|sid| ("service_id", sid.to_string()))
+        .chain(filters.unwrap_or_default().into_iter())
+        .collect();
 
     let mut entities: Vec<T> = Vec::new();
 
     loop {
-        let response = client.get(&final_url).send()?;
+        let response = client.get(&final_url).query(&query_params).send()?;
 
         if !response.status().is_success() {
             return Err(ClientError::DaemonError(response.text()?));
@@ -152,6 +152,7 @@ pub fn fetch_entities_list<T: DeserializeOwned>(
 
         if let Some(next) = entity_list_slice.paging.next {
             final_url = format!("{}{}", url, next);
+            query_params.clear();
         } else {
             break;
         }
@@ -173,12 +174,14 @@ pub fn fetch_entity<T: DeserializeOwned>(
     service_id: Option<&str>,
 ) -> Result<T, ClientError> {
     let client = BlockingClient::new();
-    let mut final_url = format!("{}/{}", url, route);
-    if let Some(service_id) = service_id {
-        final_url = format!("{}?service_id={}", final_url, service_id);
-    }
+    let final_url = format!("{}/{}", url, route);
 
-    let response = client.get(&final_url).send()?;
+    let query_params: Vec<(&str, String)> = service_id
+        .into_iter()
+        .map(|sid| ("service_id", sid.to_string()))
+        .collect();
+
+    let response = client.get(&final_url).query(&query_params).send()?;
 
     if !response.status().is_success() {
         return Err(ClientError::DaemonError(response.text()?));

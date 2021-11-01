@@ -144,8 +144,12 @@ impl SchemaClient for ReqwestSchemaClient {
     ///
     /// * `service_id` - optional - the service id to fetch the schemas from
     fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, ClientError> {
-        let dto_vec =
-            fetch_entities_list::<SchemaDto>(&self.url, SCHEMA_ROUTE.to_string(), service_id)?;
+        let dto_vec = fetch_entities_list::<SchemaDto>(
+            &self.url,
+            SCHEMA_ROUTE.to_string(),
+            service_id,
+            None,
+        )?;
         Ok(dto_vec.iter().map(Schema::from).collect())
     }
 }

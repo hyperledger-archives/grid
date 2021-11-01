@@ -13,13 +13,12 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
-use std::time::SystemTime;
 
 use crate::error::ClientError;
 use crate::protocol::purchase_order::state::{
     PurchaseOrderAlternateId, PurchaseOrderAlternateIdBuilder,
 };
-use crate::purchase_order::store::ListVersionFilters;
+use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 
 use super::Client;
 
@@ -34,7 +33,7 @@ pub struct PurchaseOrder {
     pub is_closed: bool,
     pub accepted_version_id: Option<String>,
     pub versions: Vec<PurchaseOrderVersion>,
-    pub created_at: SystemTime,
+    pub created_at: i64,
     pub workflow_type: String,
 }
 
@@ -42,7 +41,7 @@ pub struct PurchaseOrderVersion {
     pub version_id: String,
     pub workflow_status: String,
     pub is_draft: bool,
-    pub current_revision_id: i64,
+    pub current_revision_id: u64,
     pub revisions: Vec<PurchaseOrderRevision>,
 }
 
@@ -50,7 +49,7 @@ pub struct PurchaseOrderRevision {
     pub revision_id: u64,
     pub order_xml_v3_4: String,
     pub submitter: String,
-    pub created_at: u64,
+    pub created_at: i64,
 }
 
 pub struct AlternateId {
@@ -104,7 +103,7 @@ pub trait PurchaseOrderClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderVersion` to be retrieved
+    /// * `id` - The id of the `PurchaseOrder` containing the `PurchaseOrderVersion` to be retrieved
     /// * `version_id` - The version id of the `PurchaseOrderVersion` to be retrieved
     /// * `service_id` - The service ID to fetch the versions from
     fn get_purchase_order_version(
@@ -119,7 +118,7 @@ pub trait PurchaseOrderClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderRevision` to be retrieved
+    /// * `id` - The id of the `PurchaseOrder` containing the `PurchaseOrderRevision` to be retrieved
     /// * `version_id` - The version id of the `PurchaseOrderVersion` containing the
     ///   `PurchaseOrderRevision` to be retrieved
     /// * `revision_id` - The revision number of the `PurchaseOrderRevision` to be retrieved
@@ -137,8 +136,12 @@ pub trait PurchaseOrderClient: Client {
     /// # Arguments
     ///
     /// * `filter` - Filter to apply to the list of `PurchaseOrder`s
-    fn list_purchase_orders(&self, filter: Option<&str>)
-        -> Result<Vec<PurchaseOrder>, ClientError>;
+    /// * `service_id` - optional service id if running splinter
+    fn list_purchase_orders(
+        &self,
+        filters: Option<ListPOFilters>,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PurchaseOrder>, ClientError>;
 
     /// lists the purchase order versions of a specific purchase order.
     ///
@@ -150,7 +153,7 @@ pub trait PurchaseOrderClient: Client {
     fn list_purchase_order_versions(
         &self,
         id: String,
-        filters: ListVersionFilters,
+        filters: Option<ListVersionFilters>,
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderVersion>, ClientError>;
 
@@ -158,7 +161,7 @@ pub trait PurchaseOrderClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderRevision`s to be listed
+    /// * `id` - The id of the `PurchaseOrder` containing the `PurchaseOrderRevision`s to be listed
     /// * `version_id` - The version id of the `PurchaseOrderVersion` containing
     ///   the `PurchaseOrderRevision`s to be listed
     /// * `service_id` - The service ID to fetch the revisions from
