@@ -271,6 +271,7 @@ fn create_purchase_order(
         .with_uid(po_uid.to_string())
         .with_versions(versions)
         .with_workflow_status(payload.workflow_status().to_string())
+        .with_alternate_ids(payload.alternate_ids().to_vec())
         .with_created_at(payload.created_at())
         .with_is_closed(false)
         .with_buyer_org_id(buyer_org_id)
