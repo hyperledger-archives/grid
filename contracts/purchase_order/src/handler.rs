@@ -155,11 +155,49 @@ fn create_purchase_order(
             po_uid,
         )));
     }
+
     // Check if the payload contains a `PurchaseOrderVersion`
-    let mut workflow = POWorkflow::SystemOfRecord;
-    let versions = match payload.create_version_payload() {
-        Some(payload) => {
-            let payload_revision = payload.revision();
+    let (workflow, versions) = match payload.create_version_payload() {
+        Some(payload_version) => {
+            let workflow = POWorkflow::SystemOfRecord;
+
+            // Check the version permissions
+            let perm_string = Permission::CanCreatePoVersion.to_string();
+            let beginning_workflow = get_workflow(&POWorkflow::SystemOfRecord.to_string())
+                .ok_or_else(|| ApplyError::InternalError("Cannot build PO Workflow".to_string()))?;
+            let version_subworkflow =
+                beginning_workflow.subworkflow("version").ok_or_else(|| {
+                    ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
+                })?;
+            let start_state = version_subworkflow.state("create").ok_or_else(|| {
+                ApplyError::InternalError("Unable to get create state from subworkflow".to_string())
+            })?;
+            let perm_result = perm_checker
+                .check_permission_with_workflow(
+                    &perm_string,
+                    signer,
+                    agent.org_id(),
+                    start_state,
+                    payload_version.workflow_status(),
+                )
+                .map_err(|err| {
+                    ApplyError::InternalError(format!(
+                        "Unable to check agent's permission: {}",
+                        err
+                    ))
+                })?;
+            if !perm_result {
+                return Err(ApplyError::InvalidTransaction(format!(
+                        "Agent {} does not have permission {} for organization {} to create a version with state {}",
+                        signer,
+                        &perm_string,
+                        agent.org_id(),
+                        payload_version.workflow_status()
+                    )));
+            }
+
+            let payload_revision = payload_version.revision();
+
             let revision = PurchaseOrderRevisionBuilder::new()
                 .with_revision_id(payload_revision.revision_id())
                 .with_submitter(signer.to_string())
@@ -172,98 +210,26 @@ fn create_purchase_order(
                         err
                     ))
                 })?;
-            let mut version_builder = PurchaseOrderVersionBuilder::new()
-                .with_version_id(payload.version_id().to_string())
-                .with_is_draft(payload.is_draft())
-                .with_current_revision_id(revision.revision_id())
-                .with_workflow_status(payload.workflow_status().to_string())
-                .with_revisions(vec![revision]);
-            let perm_string = Permission::CanCreatePoVersion.to_string();
-            if payload.is_draft() {
-                let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
-                    ApplyError::InternalError("Cannot build PO Workflow".to_string())
-                })?;
-                let version_subworkflow =
-                    beginning_workflow.subworkflow("version").ok_or_else(|| {
-                        ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
-                    })?;
-                let start_state = version_subworkflow.state("editable").ok_or_else(|| {
-                    ApplyError::InternalError(
-                        "Unable to get create state from subworkflow".to_string(),
-                    )
-                })?;
-                let perm_result = perm_checker
-                    .check_permission_with_workflow(
-                        &perm_string,
-                        signer,
-                        agent.org_id(),
-                        start_state,
-                        "editable",
-                    )
-                    .map_err(|err| {
-                        ApplyError::InternalError(format!(
-                            "Unable to check agent's permission: {}",
-                            err
-                        ))
-                    })?;
-                if !perm_result {
-                    return Err(ApplyError::InvalidTransaction(format!(
-                        "Agent {} does not have permission {} for organization {}",
-                        signer,
-                        &perm_string,
-                        agent.org_id(),
-                    )));
-                }
-                version_builder = version_builder.with_workflow_status("editable".to_string());
-            } else {
-                let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
-                    ApplyError::InternalError("Cannot build PO Workflow".to_string())
-                })?;
-                let version_subworkflow =
-                    beginning_workflow.subworkflow("version").ok_or_else(|| {
-                        ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
-                    })?;
-                let start_state = version_subworkflow.state("create").ok_or_else(|| {
-                    ApplyError::InternalError(
-                        "Unable to get create state from subworkflow".to_string(),
-                    )
-                })?;
-                let perm_result = perm_checker
-                    .check_permission_with_workflow(
-                        &perm_string,
-                        signer,
-                        agent.org_id(),
-                        start_state,
-                        "proposed",
-                    )
-                    .map_err(|err| {
-                        ApplyError::InternalError(format!(
-                            "Unable to check agent's permission: {}",
-                            err
-                        ))
-                    })?;
-                if !perm_result {
-                    return Err(ApplyError::InvalidTransaction(format!(
-                        "Agent {} does not have permission {} for organization {}",
-                        signer,
-                        &perm_string,
-                        agent.org_id(),
-                    )));
-                }
-                version_builder = version_builder.with_workflow_status("proposed".to_string());
-            }
 
-            vec![version_builder.build().map_err(|err| {
-                ApplyError::InvalidTransaction(format!(
-                    "Cannot build purchase order version: {}",
-                    err
-                ))
-            })?]
+            (
+                workflow,
+                vec![PurchaseOrderVersionBuilder::new()
+                    .with_version_id(payload_version.version_id().to_string())
+                    .with_is_draft(payload_version.is_draft())
+                    .with_current_revision_id(revision.revision_id())
+                    .with_workflow_status(payload_version.workflow_status().to_string())
+                    .with_revisions(vec![revision])
+                    .with_workflow_status(payload_version.workflow_status().to_string())
+                    .build()
+                    .map_err(|err| {
+                        ApplyError::InvalidTransaction(format!(
+                            "Cannot build purchase order version: {}",
+                            err
+                        ))
+                    })?],
+            )
         }
-        None => {
-            workflow = POWorkflow::Collaborative;
-            vec![]
-        }
+        None => (POWorkflow::Collaborative, vec![]),
     };
     let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
         ApplyError::InternalError("Cannot build System Of Record PO workflow".to_string())
@@ -276,7 +242,13 @@ fn create_purchase_order(
     })?;
     let perm_string = Permission::CanCreatePo.to_string();
     let perm_result = perm_checker
-        .check_permission_with_workflow(&perm_string, signer, agent.org_id(), start_state, "issued")
+        .check_permission_with_workflow(
+            &perm_string,
+            signer,
+            agent.org_id(),
+            start_state,
+            payload.workflow_status(),
+        )
         .map_err(|err| {
             ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
         })?;
@@ -292,7 +264,7 @@ fn create_purchase_order(
     let purchase_order = PurchaseOrderBuilder::new()
         .with_uid(po_uid.to_string())
         .with_versions(versions)
-        .with_workflow_status("issued".to_string())
+        .with_workflow_status(payload.workflow_status().to_string())
         .with_created_at(payload.created_at())
         .with_is_closed(false)
         .with_buyer_org_id(buyer_org_id)
