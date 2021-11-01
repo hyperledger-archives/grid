@@ -136,6 +136,7 @@ fn create_purchase_order(
 ) -> Result<(), ApplyError> {
     let buyer_org_id = payload.buyer_org_id().to_string();
     let seller_org_id = payload.seller_org_id().to_string();
+
     // Check that the organizations owning the purchase order exist
     state.get_organization(&buyer_org_id)?.ok_or_else(|| {
         ApplyError::InvalidTransaction(format!("Organization {} does not exist", &buyer_org_id))
@@ -143,10 +144,12 @@ fn create_purchase_order(
     state.get_organization(&seller_org_id)?.ok_or_else(|| {
         ApplyError::InvalidTransaction(format!("Organization {} does not exist", &seller_org_id))
     })?;
+
     // Validate the signer exists
     let agent = state.get_agent(signer)?.ok_or_else(|| {
         ApplyError::InvalidTransaction(format!("The signer is not an Agent: {}", signer))
     })?;
+
     // Validate the purchase order does not already exist
     let po_uid = payload.uid();
     if state.get_purchase_order(po_uid)?.is_some() {
@@ -231,6 +234,8 @@ fn create_purchase_order(
         }
         None => (POWorkflow::Collaborative, vec![]),
     };
+
+    // Check the purchase order permissions
     let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
         ApplyError::InternalError("Cannot build System Of Record PO workflow".to_string())
     })?;
