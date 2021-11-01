@@ -1,4 +1,5 @@
 % GRID-PO-SHOW(1) Cargill, Incorporated | Grid
+
 <!--
   Copyright 2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
@@ -18,14 +19,14 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-Show the details of a specific purchase order.  This command displays the
+Show the details of a specific purchase order. This command displays the
 specified revision of a specified version of the purchase order.
 
 ARGS
 ====
 
 `IDENTIFIER`
-: Either a UUID or an alternate ID of a purchase order.
+: Either a UID or an alternate ID of a purchase order.
 
 FLAGS
 =====
@@ -41,32 +42,21 @@ FLAGS
 
 `-v`
 : Increases verbosity (the opposite of `-q`). Specify multiple times for more
-  output.
+output.
 
 OPTIONS
 =======
 
 `-F`, `--format=FORMAT`
 : Specifies the output format of the list. Possible values for formatting are
-  `human`, `csv`, `yaml`, and `json`. Defaults to `human`.
-
-`--org`
-: Specify the organization that owns the purchase order.
-
-`--revision`
-: Specify the revision number for the specified version. Defaults to the latest
-  revision.
+`human`, `csv`, `yaml`, and `json`. Defaults to `human`.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
-  Splinter. Format: `<circuit-id>::<service-id>`.
+Splinter. Format: `<circuit-id>::<service-id>`.
 
 `--url`
 : URL for the REST API
-
-`--version`
-: Specify the version ID of the purchase order to display. Defaults to the
-  accepted version.
 
 EXAMPLES
 ========
@@ -74,35 +64,37 @@ EXAMPLES
 The command
 
 ```
-$ grid po show --org=crgl 82urioz098aui3871uc
+$ grid po show --org=crgl 809832081
 ```
 
 will display the current revision of the accepted version of the purchase order
-with UUID `82urioz098aui3871uc` in human-readable format. It will display
+with UID `809832081` in human-readable format. It will display
 output like the following:
 
 ```
-Purchase Order:
-    organization     crgl (Cargill Incorporated)
-    uuid             82urioz098aui3871uc
-    purchase_order   809832081
-    workflow status  Confirmed
-    is closed        False
-    created          <datetime string>
+Purchase Order 809832081:
+    Buyer Org        crgl (Cargill Incorporated)
+    Seller Org       crgl2 (Cargill 2)
+    Workflow status  Confirmed
+    Created At       <datetime string>
+    Closed           false
 
 Accepted Version (v3):
     workflow_status  Editable
-    draft            False
-    latest revision  4
+    draft            false
+    Revisions        4
+    Current Revision 4
 
 Revision 4:
-    <summary fields from order_xml_3_4>
+    Created At       <datetime string>
+    Submitter        0200ef9ab9243baee...
+<Revision XML file>
 ```
 
 The command
 
 ```
-$ grid po show --org=crgl purchase_order:809832081
+$ grid po show purchase_order:809832081
 ```
 
 will display the current revision of the accepted version of the purchase order
@@ -110,21 +102,23 @@ with the alternate ID of `purchase_order:809832081` in human-readable format.
 It will display output like the following:
 
 ```
-Purchase Order:
-    organization     crgl (Cargill Incorporated)
-    uuid             82urioz098aui3871uc
-    purchase_order   809832081
-    workflow status  Confirmed
-    is closed        False
-    created          <datetime string>
+Purchase Order 809832081:
+    Buyer Org        crgl (Cargill Incorporated)
+    Seller Org       crgl2 (Cargill 2)
+    Workflow status  Confirmed
+    Created At       <datetime string>
+    Closed           false
 
 Accepted Version (v3):
     workflow_status  Editable
-    draft            False
-    latest revision  4
+    draft            false
+    Revisions        4
+    Current Revision 4
 
 Revision 4:
-    <summary fields from order_xml_3_4>
+    Created At       <datetime string>
+    Submitter        0200ef9ab9243baee...
+<Revision XML file>
 ```
 
 The command
@@ -138,21 +132,23 @@ with the alternate ID of `purchase_order:809832081` in human-readable format.
 It will display output like the following:
 
 ```
-Purchase Order:
-    organization     crgl (Cargill Incorporated)
-    uuid             82urioz098aui3871uc
-    purchase_order   809832081
-    workflow status  Confirmed
-    is closed        False
-    created          <datetime string>
+Purchase Order 809832081:
+    Buyer Org        crgl (Cargill Incorporated)
+    Seller Org       crgl2 (Cargill 2)
+    Workflow status  Confirmed
+    Created At       <datetime string>
+    Closed           false
 
-Accepted Version (v2):
+Accepted Version (v3):
     workflow_status  Editable
-    draft            False
-    latest revision  4
+    draft            false
+    Revisions        4
+    Current Revision 4
 
 Revision 2:
-    <summary fields from order_xml_3_4>
+    Created At       <datetime string>
+    Submitter        0200ef9ab9243baee...
+<Revision XML file>
 ```
 
 ENVIRONMENT VARIABLES
@@ -166,6 +162,7 @@ ENVIRONMENT VARIABLES
 
 SEE ALSO
 ========
+
 | `grid-po-create(1)`
 | `grid-po-list(1)`
 | `grid-po-show(1)`

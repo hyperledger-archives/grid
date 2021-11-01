@@ -1,4 +1,5 @@
 % GRID-PO-LIST(1) Cargill, Incorporated | Grid
+
 <!--
   Copyright 2021 Cargill Incorporated
   Licensed under Creative Commons Attribution 4.0 International License
@@ -20,7 +21,6 @@ DESCRIPTION
 
 List all purchase orders in grid.
 
-
 FLAGS
 =====
 
@@ -35,7 +35,7 @@ FLAGS
 
 `--accepted`
 : Filter on whether the purchase order has an accepted version. Conflicts with
-  `--not-accepted`.
+`--not-accepted`.
 
 `--not-accepted`
 : Filter on whether the purchase order does not have an accepted version.
@@ -56,17 +56,19 @@ OPTIONS
 
 `-F`, `--format=FORMAT`
 : Specifies the output format of the list. Possible values for formatting are
-  `human`, `csv`, `yaml`, and `json`. Defaults to `human`.
-  
-`--org`
-: Optionally, filter the purchase orders for the organization specified by
-  `ORG_ID`. 
+`human`, `csv`, `yaml`, and `json`. Defaults to `human`.
+
+`--buyer-org`
+: Optionally, filter the purchase orders by the buyer's organization ID.
+
+`--seller-org`
+: Optionally, filter the purchase orders by the seller's organization ID.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
   Splinter. Format: `<circuit-id>::<service-id>`.
 
-  `--url`
+`--url`
 : URL for the REST API.
 
 EXAMPLES
@@ -75,14 +77,14 @@ EXAMPLES
 The command
 
 ```
-$ grid po list --org=crgl
+$ grid po list --buyer-org=crgl
 ```
 
 will list all purchase orders for the org `crgl` in human-readable format:
 
 ```
-ORG   UUID                STATUS    ACCEPTED CLOSED
-crgl  82urioz098aui3871uc Confirmed v3       False
+BUYER SELLER   UID                 STATUS    ACCEPTED CLOSED
+crgl  tst      PO-1234-56789       Confirmed v3       False
 ```
 
 The command
@@ -95,11 +97,12 @@ will list all the purchase orders that have an accepted version in
 human-readable format:
 
 ```
-ORG    UUID                STATUS    ACCEPTED CLOSED
-crgl   82urioz098aui3871uc Confirmed v3       False
-tst    2389f7987d9s09df98f Issued    v1       False
-tst    f808u23hjiof09ufs0d Closed    v1       True
+BUYER SELLER   UID                 STATUS    ACCEPTED CLOSED
+crgl  tst      PO-1234-56789       Confirmed v3       False
+tst   crgl     PO-2345-67890       Issued    v1       False
+crgl  tst      PO-3456-78901       Closed    v1       True
 ```
+
 The command
 
 ```
@@ -110,12 +113,12 @@ The command
 ```
 
 will display all of the purchase orders that have an accepted version and are
-open.  The output is formatted in csv:
+open. The output is formatted in csv:
 
 ```
-ORG,UUID,STATUS,ACCEPTED,CLOSED
-crgl,82urioz098aui3871uc,Confirmed,v3,False
-tst,2389f7987d9s09df98f,Issued,v1,False
+BUYER,SELLER,UID,STATUS,ACCEPTED,CLOSED
+crgl,tst,PO-1234-56789,Confirmed,v3,False
+tst,crgl,PO-2345-67890,Issued,v1,False
 ```
 
 ENVIRONMENT VARIABLES
@@ -129,6 +132,7 @@ ENVIRONMENT VARIABLES
 
 SEE ALSO
 ========
+
 | `grid-po-show(1)`
 | `grid-po-list(1)`
 |
