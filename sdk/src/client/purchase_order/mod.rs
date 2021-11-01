@@ -19,6 +19,7 @@ use crate::error::ClientError;
 use crate::protocol::purchase_order::state::{
     PurchaseOrderAlternateId, PurchaseOrderAlternateIdBuilder,
 };
+use crate::purchase_order::store::ListVersionFilters;
 
 use super::Client;
 
@@ -26,20 +27,22 @@ use super::Client;
 pub mod reqwest;
 
 pub struct PurchaseOrder {
-    pub org_id: String,
-    pub uuid: String,
+    pub purchase_order_uid: String,
     pub workflow_status: String,
+    pub buyer_org_id: String,
+    pub seller_org_id: String,
     pub is_closed: bool,
     pub accepted_version_id: Option<String>,
     pub versions: Vec<PurchaseOrderVersion>,
     pub created_at: SystemTime,
+    pub workflow_type: String,
 }
 
 pub struct PurchaseOrderVersion {
     pub version_id: String,
     pub workflow_status: String,
     pub is_draft: bool,
-    pub current_revision_id: u64,
+    pub current_revision_id: i64,
     pub revisions: Vec<PurchaseOrderRevision>,
 }
 
@@ -142,10 +145,12 @@ pub trait PurchaseOrderClient: Client {
     /// # Arguments
     ///
     /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderVersion`s to be listed
+    /// * `filters` - Optional filters for for the versions
     /// * `service_id` - The service ID to fetch the versions from
     fn list_purchase_order_versions(
         &self,
         id: String,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderVersion>, ClientError>;
 

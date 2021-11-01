@@ -25,7 +25,7 @@ ARGS
 ====
 
 `PURCHASE_ORDER_ID`
-: Either a UUID or an alternate ID of a purchase order.
+: Either a UID or an alternate ID of a purchase order.
 
 `VERSION_ID`
 : The purchase order version identifier.
@@ -56,9 +56,6 @@ OPTIONS
 : Specifies the output format of the list. Possible values for formatting are
   `human`, `csv`, `yaml`, and `json`. Defaults to `human`.
 
-`--org`
-: Specify the organization that owns the purchase order.
-
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
   Splinter. Format `<circuit-id>::<service-id>`.
@@ -69,7 +66,7 @@ OPTIONS
 EXAMPLES
 ========
 
-The command 
+The command
 ```
 $ grid po revision show 82urioz098aui3871uc v3 3
 ```
@@ -86,7 +83,7 @@ Revision 3:
 
 In contrast, a summary view is available using the command
 ```
-$ grid po show --org=crgl 82urioz098aui3871uc --version v3 --revision 3
+$ grid po show 82urioz098aui3871uc --version v3 --revision 3
 ```
 with details provided in `grid-po-show(1)`.
 

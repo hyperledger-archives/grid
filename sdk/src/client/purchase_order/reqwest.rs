@@ -17,6 +17,7 @@ use std::time::SystemTime;
 use crate::client::reqwest::{fetch_entities_list, fetch_entity, post_batches};
 use crate::client::Client;
 use crate::error::ClientError;
+use crate::purchase_order::store::ListVersionFilters;
 
 use super::{
     AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision, PurchaseOrderVersion,
@@ -30,25 +31,29 @@ const REVISION_ROUTE: &str = "revision";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct PurchaseOrderDto {
-    org_id: String,
-    uuid: String,
+    purchase_order_uid: String,
     workflow_status: String,
+    buyer_org_id: String,
+    seller_org_id: String,
     is_closed: bool,
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersionDto>,
     created_at: SystemTime,
+    workflow_type: String,
 }
 
 impl From<&PurchaseOrderDto> for PurchaseOrder {
     fn from(d: &PurchaseOrderDto) -> Self {
         Self {
-            org_id: d.org_id.to_string(),
-            uuid: d.uuid.to_string(),
+            purchase_order_uid: d.purchase_order_uid.to_string(),
             workflow_status: d.workflow_status.to_string(),
+            buyer_org_id: d.buyer_org_id.to_string(),
+            seller_org_id: d.seller_org_id.to_string(),
             is_closed: d.is_closed,
             accepted_version_id: d.accepted_version_id.as_ref().map(String::from),
             versions: d.versions.iter().map(PurchaseOrderVersion::from).collect(),
             created_at: d.created_at,
+            workflow_type: d.workflow_type.to_string(),
         }
     }
 }
@@ -58,7 +63,7 @@ struct PurchaseOrderVersionDto {
     version_id: String,
     workflow_status: String,
     is_draft: bool,
-    current_revision_id: u64,
+    current_revision_id: i64,
     revisions: Vec<PurchaseOrderRevisionDto>,
 }
 
@@ -185,11 +190,15 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     fn list_purchase_order_versions(
         &self,
         id: String,
+        filters: ListVersionFilters,
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderVersion>, ClientError> {
         let dto = fetch_entities_list::<PurchaseOrderVersionDto>(
             &self.url,
-            format!("{}/{}/{}", PO_ROUTE, id, VERSION_ROUTE),
+            format!(
+                "{}/{}/{}?{:?}&{:?}",
+                PO_ROUTE, id, VERSION_ROUTE, filters.is_accepted, filters.is_draft
+            ),
             service_id,
         )?;
 

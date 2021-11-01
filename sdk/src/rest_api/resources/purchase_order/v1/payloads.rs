@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use crate::{
-    purchase_order::store::{PurchaseOrder, PurchaseOrderVersion, PurchaseOrderVersionRevision},
+    purchase_order::store::{
+        PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderVersion, PurchaseOrderVersionRevision,
+    },
     rest_api::resources::paging::v1::Paging,
 };
 
@@ -21,13 +23,19 @@ use crate::{
 pub struct PurchaseOrderSlice {
     pub purchase_order_uid: String,
     pub workflow_status: String,
+    pub buyer_org_id: String,
+    pub seller_org_id: String,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepted_version_id: Option<String>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version_numbers: Option<Vec<String>>,
+    pub versions: Option<Vec<PurchaseOrderVersionSlice>>,
     pub is_closed: bool,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alternate_ids: Option<Vec<PurchaseOrderAlternateIdSlice>>,
+    pub created_at: i64,
     pub workflow_type: String,
 }
 
@@ -36,15 +44,25 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
         Self {
             purchase_order_uid: purchase_order.purchase_order_uid().to_string(),
             workflow_status: purchase_order.workflow_status().to_string(),
+            buyer_org_id: purchase_order.buyer_org_id().to_string(),
+            seller_org_id: purchase_order.seller_org_id().to_string(),
             accepted_version_id: purchase_order.accepted_version_id().map(ToOwned::to_owned),
-            version_numbers: Some(
+            versions: Some(
                 purchase_order
                     .versions()
                     .into_iter()
-                    .map(|version| version.version_id().to_string())
+                    .map(PurchaseOrderVersionSlice::from)
                     .collect(),
             ),
             is_closed: purchase_order.is_closed(),
+            alternate_ids: Some(
+                purchase_order
+                    .alternate_ids()
+                    .into_iter()
+                    .map(PurchaseOrderAlternateIdSlice::from)
+                    .collect(),
+            ),
+            created_at: *purchase_order.created_at(),
             workflow_type: purchase_order.workflow_type().to_string(),
         }
     }
@@ -60,9 +78,9 @@ pub struct PurchaseOrderListSlice {
 pub struct PurchaseOrderVersionSlice {
     version_id: String,
     is_draft: bool,
-    current_revision_id: String,
-    revisions: Vec<String>,
-    service_id: Option<String>,
+    current_revision_id: i64,
+    revisions: Vec<PurchaseOrderRevisionSlice>,
+    workflow_status: String,
 }
 
 impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
@@ -70,13 +88,13 @@ impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
         Self {
             version_id: purchase_order_version.version_id().to_string(),
             is_draft: purchase_order_version.is_draft(),
-            current_revision_id: purchase_order_version.current_revision_id().to_string(),
+            current_revision_id: *purchase_order_version.current_revision_id(),
             revisions: purchase_order_version
                 .revisions()
                 .into_iter()
-                .map(|version| version.revision_id().to_string())
+                .map(PurchaseOrderRevisionSlice::from)
                 .collect(),
-            service_id: purchase_order_version.service_id().map(str::to_owned),
+            workflow_status: purchase_order_version.workflow_status().to_string(),
         }
     }
 }
@@ -110,4 +128,21 @@ impl From<PurchaseOrderVersionRevision> for PurchaseOrderRevisionSlice {
 pub struct PurchaseOrderRevisionListSlice {
     pub data: Vec<PurchaseOrderRevisionSlice>,
     pub paging: Paging,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PurchaseOrderAlternateIdSlice {
+    purchase_order_uid: String,
+    id_type: String,
+    id: String,
+}
+
+impl From<PurchaseOrderAlternateId> for PurchaseOrderAlternateIdSlice {
+    fn from(alternate_id: PurchaseOrderAlternateId) -> Self {
+        Self {
+            purchase_order_uid: alternate_id.purchase_order_uid().to_string(),
+            id_type: alternate_id.id_type().to_string(),
+            id: alternate_id.id().to_string(),
+        }
+    }
 }
