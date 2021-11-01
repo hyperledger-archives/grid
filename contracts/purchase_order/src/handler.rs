@@ -1028,7 +1028,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_status("issued".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         if let Err(err) =
