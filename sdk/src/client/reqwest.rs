@@ -79,6 +79,7 @@ impl ClientFactory for ReqwestClientFactory {
     }
 }
 
+/// Reqwest client representation of response paging
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Paging {
     current: String,
@@ -91,12 +92,14 @@ pub struct Paging {
     last: String,
 }
 
+/// Reqwest client representation of a slice of a list response
 #[derive(Debug, Deserialize)]
 pub struct ListSlice<T> {
     pub data: Vec<T>,
     pub paging: Paging,
 }
 
+/// Reqwest client representation of a link to a batch status
 #[derive(Deserialize, Debug)]
 pub struct BatchStatusLink {
     pub link: String,
@@ -192,6 +195,15 @@ pub fn fetch_entity<T: DeserializeOwned>(
     Ok(agent)
 }
 
+/// Submits a list of batches
+///
+/// # Arguments
+///
+/// * `url` - the base url of the request
+/// * `wait` - duration to wait for batch status response
+/// * `batch_list` - the list of batches to submit
+/// * `service_id` - optional - the service ID to submit batches to if running
+///   on splinter
 pub fn post_batches(
     url: &str,
     wait: u64,

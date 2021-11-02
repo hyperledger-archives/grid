@@ -20,6 +20,8 @@ use super::Client;
 #[cfg(feature = "client-reqwest")]
 pub mod reqwest;
 
+/// The client representation of a Grid Schema
+#[derive(Debug, PartialEq)]
 pub struct Schema {
     pub name: String,
     pub description: String,
@@ -27,6 +29,8 @@ pub struct Schema {
     pub properties: Vec<PropertyDefinition>,
 }
 
+/// The client representation of a Grid Schema property definition
+#[derive(Debug, PartialEq)]
 pub struct PropertyDefinition {
     pub name: String,
     pub schema_name: String,
@@ -38,7 +42,8 @@ pub struct PropertyDefinition {
     pub struct_properties: Vec<PropertyDefinition>,
 }
 
-#[derive(Debug)]
+/// Possible data types for a schema property
+#[derive(Debug, PartialEq, Eq)]
 pub enum DataType {
     Bytes,
     Boolean,

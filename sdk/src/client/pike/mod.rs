@@ -21,17 +21,23 @@ use super::Client;
 #[cfg(feature = "client-reqwest")]
 pub mod reqwest;
 
+/// The client representation of a Pike Alternate ID
+#[derive(Debug, PartialEq)]
 pub struct AlternateId {
     pub id_type: String,
     pub id: String,
 }
 
+/// The client representation of Grid Pike Organization metadata
+#[derive(Debug, PartialEq)]
 pub struct OrganizationMetadata {
     pub key: String,
     pub value: String,
     pub service_id: Option<String>,
 }
 
+/// The client representation of a Grid Pike Organization
+#[derive(Debug, PartialEq)]
 pub struct PikeOrganization {
     pub org_id: String,
     pub name: String,
@@ -41,6 +47,8 @@ pub struct PikeOrganization {
     pub service_id: Option<String>,
 }
 
+/// The client representation of a Grid Pike Agent
+#[derive(Debug, PartialEq)]
 pub struct PikeAgent {
     pub public_key: String,
     pub org_id: String,
@@ -50,6 +58,8 @@ pub struct PikeAgent {
     pub metadata: HashMap<String, String>,
 }
 
+/// The client representation of a Grid Pike Role
+#[derive(Debug, PartialEq)]
 pub struct PikeRole {
     pub org_id: String,
     pub name: String,
@@ -60,6 +70,8 @@ pub struct PikeRole {
     pub allowed_organizations: Vec<String>,
 }
 
+/// The client representation of an inherited role
+#[derive(Debug, PartialEq)]
 pub struct InheritFrom {
     pub role_name: String,
     pub org_id: String,

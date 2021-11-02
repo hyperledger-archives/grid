@@ -19,6 +19,8 @@ use super::{schema::DataType, Client};
 #[cfg(feature = "client-reqwest")]
 pub mod reqwest;
 
+/// The client representation of a Grid Location
+#[derive(Debug, PartialEq)]
 pub struct Location {
     pub location_id: String,
     pub location_namespace: String,
@@ -27,6 +29,8 @@ pub struct Location {
     pub service_id: Option<String>,
 }
 
+/// The client representation of a Grid Location property value
+#[derive(Debug, PartialEq)]
 pub struct LocationPropertyValue {
     pub name: String,
     pub data_type: DataType,
@@ -40,6 +44,8 @@ pub struct LocationPropertyValue {
     pub lat_long_value: Option<LatLong>,
 }
 
+/// The client representation of a Grid Location lat/long value
+#[derive(Debug, PartialEq)]
 pub struct LatLong {
     pub latitude: i64,
     pub longitude: i64,

@@ -97,6 +97,7 @@ impl From<&DataTypeDto> for DataType {
     }
 }
 
+/// The Reqwest implementation of the Schema client
 pub struct ReqwestSchemaClient {
     url: String,
 }

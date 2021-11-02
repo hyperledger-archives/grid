@@ -101,6 +101,7 @@ impl From<&LatLongDto> for LatLong {
     }
 }
 
+/// The Reqwest implementation of the Location client
 pub struct ReqwestLocationClient {
     url: String,
 }

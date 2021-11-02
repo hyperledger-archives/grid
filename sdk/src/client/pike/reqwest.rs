@@ -151,6 +151,7 @@ impl From<(&String, &String)> for InheritFrom {
     }
 }
 
+/// The Reqwest implementation of the Pike client
 pub struct ReqwestPikeClient {
     url: String,
 }

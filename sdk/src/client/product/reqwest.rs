@@ -87,6 +87,7 @@ impl From<&LatLongDto> for LatLong {
     }
 }
 
+/// The Reqwest implementation of the Product client
 pub struct ReqwestProductClient {
     url: String,
 }

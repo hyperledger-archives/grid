@@ -25,6 +25,8 @@ use super::Client;
 #[cfg(feature = "client-reqwest")]
 pub mod reqwest;
 
+/// The client representation of Grid Purchase Order
+#[derive(Debug, PartialEq)]
 pub struct PurchaseOrder {
     pub purchase_order_uid: String,
     pub workflow_status: String,
@@ -37,6 +39,8 @@ pub struct PurchaseOrder {
     pub workflow_type: String,
 }
 
+/// The client representation of Grid Purchase Order version
+#[derive(Debug, PartialEq)]
 pub struct PurchaseOrderVersion {
     pub version_id: String,
     pub workflow_status: String,
@@ -45,6 +49,8 @@ pub struct PurchaseOrderVersion {
     pub revisions: Vec<PurchaseOrderRevision>,
 }
 
+/// The client representation of Grid Purchase Order version revision
+#[derive(Debug, PartialEq)]
 pub struct PurchaseOrderRevision {
     pub revision_id: u64,
     pub order_xml_v3_4: String,
@@ -52,6 +58,8 @@ pub struct PurchaseOrderRevision {
     pub created_at: i64,
 }
 
+/// The client representation of Grid Purchase Order alternate ID
+#[derive(Debug, PartialEq)]
 pub struct AlternateId {
     pub purchase_order_uid: String,
     pub alternate_id_type: String,

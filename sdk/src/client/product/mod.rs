@@ -19,6 +19,8 @@ use super::Client;
 #[cfg(feature = "client-reqwest")]
 pub mod reqwest;
 
+/// The client representation of Grid Product
+#[derive(Debug, PartialEq)]
 pub struct Product {
     pub product_id: String,
     pub product_namespace: String,
@@ -26,6 +28,8 @@ pub struct Product {
     pub properties: Vec<PropertyValue>,
 }
 
+/// The client representation of Grid Product property value
+#[derive(Debug, PartialEq)]
 pub struct PropertyValue {
     pub name: String,
     pub data_type: String,
@@ -38,7 +42,8 @@ pub struct PropertyValue {
     pub lat_long_value: Option<LatLong>,
 }
 
-#[derive(Debug)]
+/// The client representation of Grid Product lat/long value
+#[derive(Debug, PartialEq)]
 pub struct LatLong {
     latitude: i64,
     longitude: i64,

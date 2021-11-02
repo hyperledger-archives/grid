@@ -102,6 +102,7 @@ impl From<&PurchaseOrderRevisionDto> for PurchaseOrderRevision {
     }
 }
 
+/// The Reqwest implementation of the Purchase Order client
 pub struct ReqwestPurchaseOrderClient {
     url: String,
 }
