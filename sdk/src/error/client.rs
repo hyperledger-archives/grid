@@ -17,6 +17,7 @@ use std::fmt;
 use std::io;
 
 /// An error which is returned from a Client Implementation.
+#[derive(Debug)]
 pub enum ClientError {
     IoError(io::Error),
     DaemonError(String),
