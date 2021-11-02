@@ -69,13 +69,13 @@ pub trait SchemaClient: Client {
     /// # Arguments
     ///
     /// * `name` - the name of the schema (identifier)
-    /// * `service_id` - optional - the service id to fetch the schema from
+    /// * `service_id` - optional - the service ID to fetch the schema from
     fn get_schema(&self, name: String, service_id: Option<&str>) -> Result<Schema, ClientError>;
 
     /// Fetches a list of schemas for the organization
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch the schemas from
+    /// * `service_id` - optional - the service ID to fetch the schemas from
     fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, ClientError>;
 }

@@ -115,13 +115,13 @@ struct BatchStatus {
     pub status: String,
 }
 
-/// Fetches and serializes T entities from REST API
+/// Fetches and serializes `T` entities from REST API
 ///
 /// # Arguments
 ///
 /// * `url` - The base url of the request
 /// * `route` - the route to find the entity
-/// * `service_id` - optional - the service id to fetch the entities from
+/// * `service_id` - optional - the service ID to fetch the entities from
 pub fn fetch_entities_list<T: DeserializeOwned>(
     url: &str,
     route: String,
@@ -161,13 +161,13 @@ pub fn fetch_entities_list<T: DeserializeOwned>(
     Ok(entities)
 }
 
-/// Fetches and serializes single T Entity from REST API
+/// Fetches and serializes single `T` Entity from REST API
 ///
 /// # Arguments
 ///
 /// * `url` - the base url of the request
 /// * `route` - the identifying route where to find the entity
-/// * `service_id` - optional - the service id to fetch the entity from
+/// * `service_id` - optional - the service ID to fetch the entity from
 pub fn fetch_entity<T: DeserializeOwned>(
     url: &str,
     route: String,

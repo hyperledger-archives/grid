@@ -168,7 +168,7 @@ impl Client for ReqwestPikeClient {
     ///
     /// * `wait` - wait time in seconds
     /// * `batch_list` - The `BatchList` to be submitted
-    /// * `service_id` - optional service id if running splinter
+    /// * `service_id` - optional - the service ID to post batches to if running splinter
     fn post_batches(
         &self,
         wait: u64,
@@ -180,23 +180,23 @@ impl Client for ReqwestPikeClient {
 }
 
 impl PikeClient for ReqwestPikeClient {
-    /// Fetches an agent based on its identified
+    /// Fetches an agent based on its identifier
     ///
     /// # Arguments
     ///
     /// * `id` - the agent identifier, also known as public key
-    /// * `service_id` - optional - the service id to fetch the agent from
+    /// * `service_id` - optional - the service ID to fetch the agent from
     fn get_agent(&self, id: String, service_id: Option<&str>) -> Result<PikeAgent, ClientError> {
         let dto =
             fetch_entity::<PikeAgentDto>(&self.url, format!("{}/{}", AGENT_ROUTE, id), service_id)?;
         Ok(PikeAgent::from(&dto))
     }
 
-    /// Fetches agents.
+    /// Fetches agents
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch the agents from
+    /// * `service_id` - optional - the service ID to fetch the agents from
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<PikeAgent>, ClientError> {
         let dto_vec = fetch_entities_list::<PikeAgentDto>(
             &self.url,
@@ -207,12 +207,12 @@ impl PikeClient for ReqwestPikeClient {
         Ok(dto_vec.iter().map(PikeAgent::from).collect())
     }
 
-    /// Fetches organization by id and service_id
+    /// Fetches an organization
     ///
     /// # Arguments
     ///
-    /// * `id` - the Organization Id
-    /// * `service_id` - identifies the service to which the organization belongs
+    /// * `id` - the Organization ID
+    /// * `service_id` - optional - the service ID to fetch the organization from
     fn get_organization(
         &self,
         id: String,
@@ -226,11 +226,11 @@ impl PikeClient for ReqwestPikeClient {
         Ok(PikeOrganization::from(&dto))
     }
 
-    /// Fetches all organizations that belong to the service_id
+    /// Fetches all organizations
     ///
     /// # Arguments
     ///
-    /// * `service_id` - identifies the service from which to filter organizations
+    /// * `service_id` - optional - the service ID to fetch the organizations from
     fn list_organizations(
         &self,
         service_id: Option<&str>,
@@ -250,7 +250,7 @@ impl PikeClient for ReqwestPikeClient {
     ///
     /// * `org_id` - identifier of the role's organization
     /// * `name` - the name of the role (identifier)
-    /// * `service_id` - optional - the service id to fetch the role from
+    /// * `service_id` - optional - the service ID to fetch the role from
     fn get_role(
         &self,
         org_id: String,
@@ -270,7 +270,7 @@ impl PikeClient for ReqwestPikeClient {
     /// # Arguments
     ///
     /// * `org_id` - identifier of the role's organization
-    /// * `service_id` - optional - the service id to fetch the roles from
+    /// * `service_id` - optional - the service ID to fetch the roles from
     fn list_roles(
         &self,
         org_id: String,

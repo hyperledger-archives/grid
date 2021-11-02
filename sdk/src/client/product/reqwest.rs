@@ -104,7 +104,7 @@ impl Client for ReqwestProductClient {
     ///
     /// * `wait` - wait time in seconds
     /// * `batch_list` - The `BatchList` to be submitted
-    /// * `service_id` - optional service id if running splinter
+    /// * `service_id` - optional - the service ID to post batches to if running splinter
     fn post_batches(
         &self,
         wait: u64,
@@ -120,8 +120,8 @@ impl ProductClient for ReqwestProductClient {
     ///
     /// # Arguments
     ///
-    /// * `product_id`: the product's identifier
-    /// * `service_id`: the service id to fetch the product from
+    /// * `product_id` - the product's identifier
+    /// * `service_id` - optional - the service ID to fetch the product from
     fn get_product(&self, id: String, service_id: Option<&str>) -> Result<Product, ClientError> {
         let dto =
             fetch_entity::<ProductDto>(&self.url, format!("{}/{}", PRODUCT_ROUTE, id), service_id)?;
@@ -132,7 +132,7 @@ impl ProductClient for ReqwestProductClient {
     ///
     /// # Arguments
     ///
-    /// * `service_id`: the service id to fetch the products from
+    /// * `service_id` - optional - the service ID to fetch the products from
     fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ClientError> {
         let dto_vec = fetch_entities_list::<ProductDto>(
             &self.url,

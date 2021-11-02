@@ -49,8 +49,8 @@ pub trait ProductClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `product_id`: the product's identifier
-    /// * `service_id`: the service id to fetch the product from
+    /// * `product_id` - the product's identifier
+    /// * `service_id` - optional - the service ID to fetch the product from
     fn get_product(
         &self,
         product_id: String,
@@ -61,6 +61,6 @@ pub trait ProductClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `service_id`: the service id to fetch the products from
+    /// * `service_id` - optional - the service ID to fetch the products from
     fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ClientError>;
 }

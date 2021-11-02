@@ -118,7 +118,7 @@ impl Client for ReqwestLocationClient {
     ///
     /// * `wait` - wait time in seconds
     /// * `batch_list` - The `BatchList` to be submitted
-    /// * `service_id` - optional service id if running splinter
+    /// * `service_id` - optional - the service ID to post batches to if running splinter
     fn post_batches(
         &self,
         wait: u64,
@@ -130,12 +130,12 @@ impl Client for ReqwestLocationClient {
 }
 
 impl LocationClient for ReqwestLocationClient {
-    /// Fetches an agent based on its identified
+    /// Fetches a location based on its identifier
     ///
     /// # Arguments
     ///
     /// * `id` - the location's identifier
-    /// * `service_id` - optional - the service id to fetch the location from
+    /// * `service_id` - optional - the service ID to fetch the location from
     fn get_location(&self, id: String, service_id: Option<&str>) -> Result<Location, ClientError> {
         let dto = fetch_entity::<LocationDto>(
             &self.url,
@@ -145,11 +145,11 @@ impl LocationClient for ReqwestLocationClient {
         Ok(Location::from(&dto))
     }
 
-    /// Fetches locations.
+    /// Fetches locations
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch locations from
+    /// * `service_id` - optional - the service ID to fetch locations from
     fn list_locations(&self, service_id: Option<&str>) -> Result<Vec<Location>, ClientError> {
         let dto_vec = fetch_entities_list::<LocationDto>(
             &self.url,

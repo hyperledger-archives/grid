@@ -119,7 +119,7 @@ impl Client for ReqwestPurchaseOrderClient {
     ///
     /// * `wait` - wait time in seconds
     /// * `batch_list` - The `BatchList` to be submitted
-    /// * `service_id` - optional service id if running splinter
+    /// * `service_id` - optional - the service ID to post batches to if running splinter
     fn post_batches(
         &self,
         wait: u64,
@@ -183,7 +183,7 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         Ok(Some(PurchaseOrderRevision::from(&dto)))
     }
 
-    /// lists purchase orders.
+    /// Lists purchase orders.
     fn list_purchase_orders(
         &self,
         filters: Option<ListPOFilters>,
@@ -213,7 +213,7 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         Ok(dto_vec.iter().map(PurchaseOrder::from).collect())
     }
 
-    /// lists the purchase order versions of a specific purchase order.
+    /// Lists the purchase order versions of a specific purchase order.
     fn list_purchase_order_versions(
         &self,
         id: String,
@@ -239,7 +239,7 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         Ok(dto.iter().map(PurchaseOrderVersion::from).collect())
     }
 
-    /// lists the purchase order revisions of a specific purchase order version.
+    /// Lists the purchase order revisions of a specific purchase order version.
     fn list_purchase_order_revisions(
         &self,
         id: String,

@@ -51,13 +51,13 @@ pub trait LocationClient: Client {
     /// # Arguments
     ///
     /// * `id` - the location's identifier
-    /// * `service_id` - optional - the service id to fetch the location from
+    /// * `service_id` - optional - the service ID to fetch the location from
     fn get_location(&self, id: String, service_id: Option<&str>) -> Result<Location, ClientError>;
 
-    /// Fetches locations.
+    /// Fetches locations
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch locations from
+    /// * `service_id` - optional - the service ID to fetch locations from
     fn list_locations(&self, service_id: Option<&str>) -> Result<Vec<Location>, ClientError>;
 }

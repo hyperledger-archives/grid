@@ -17,11 +17,6 @@ use std::fmt;
 use std::io;
 
 /// An error which is returned from a Client Implementation.
-///
-/// This error is produced when a failure occurred within the function but the failure is due to an
-/// internal implementation detail of the function. This generally means that there is no specific
-/// information which can be returned that would help the caller of the function recover or
-/// otherwise take action.
 pub enum ClientError {
     IoError(io::Error),
     DaemonError(String),

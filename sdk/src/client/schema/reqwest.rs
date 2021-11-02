@@ -114,7 +114,7 @@ impl Client for ReqwestSchemaClient {
     ///
     /// * `wait` - wait time in seconds
     /// * `batch_list` - The `BatchList` to be submitted
-    /// * `service_id` - optional service id if running splinter
+    /// * `service_id` - optional - the service ID to post batches to if running splinter
     fn post_batches(
         &self,
         wait: u64,
@@ -131,7 +131,7 @@ impl SchemaClient for ReqwestSchemaClient {
     /// # Arguments
     ///
     /// * `name` - the name of the schema (identifier)
-    /// * `service_id` - optional - the service id to fetch the schema from
+    /// * `service_id` - optional - the service ID to fetch the schema from
     fn get_schema(&self, name: String, service_id: Option<&str>) -> Result<Schema, ClientError> {
         let dto =
             fetch_entity::<SchemaDto>(&self.url, format!("{}/{}", SCHEMA_ROUTE, name), service_id)?;
@@ -142,7 +142,7 @@ impl SchemaClient for ReqwestSchemaClient {
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch the schemas from
+    /// * `service_id` - optional - the service ID to fetch the schemas from
     fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, ClientError> {
         let dto_vec = fetch_entities_list::<SchemaDto>(
             &self.url,

@@ -71,22 +71,22 @@ pub trait PikeClient: Client {
     /// # Arguments
     ///
     /// * `id` - the agent identifier, also known as public key
-    /// * `service_id` - optional - the service id to fetch the agent from
+    /// * `service_id` - optional - the service ID to fetch the agent from
     fn get_agent(&self, id: String, service_id: Option<&str>) -> Result<PikeAgent, ClientError>;
 
-    /// Fetches agents.
+    /// Fetches agents
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch the agents from
+    /// * `service_id` - optional - the service ID to fetch the agents from
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<PikeAgent>, ClientError>;
 
-    /// Fetches organization by id
+    /// Fetches organization by ID
     ///
     /// # Arguments
     ///
-    /// * `id` - the Organization Id
-    /// * `service_id` - identifies the service to fetch the organization from
+    /// * `id` - the Organization ID
+    /// * `service_id` - optional - the service ID to fetch the organization from
     fn get_organization(
         &self,
         id: String,
@@ -97,7 +97,7 @@ pub trait PikeClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `service_id` - identifies the service to fetch the organizations from
+    /// * `service_id` - optional - the service ID to fetch the organizations from
     fn list_organizations(
         &self,
         service_id: Option<&str>,
@@ -109,7 +109,7 @@ pub trait PikeClient: Client {
     ///
     /// * `org_id` - identifier of the role's organization
     /// * `name` - the name of the role (identifier)
-    /// * `service_id` - optional - the service id to fetch the role from
+    /// * `service_id` - optional - the service ID to fetch the role from
     fn get_role(
         &self,
         org_id: String,
@@ -122,7 +122,7 @@ pub trait PikeClient: Client {
     /// # Arguments
     ///
     /// * `org_id` - identifier of the role's organization
-    /// * `service_id` - optional - the service id to fetch the roles from
+    /// * `service_id` - optional - the service ID to fetch the roles from
     fn list_roles(
         &self,
         org_id: String,

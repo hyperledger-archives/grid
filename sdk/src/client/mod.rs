@@ -32,8 +32,8 @@ pub trait Client {
     /// # Arguments
     ///
     /// * `wait` - wait time in seconds
-    /// * `batch_list` - The `BatchList` to be submitted
-    /// * `service_id` - optional service id if running splinter
+    /// * `batch_list` - the `BatchList` to be submitted
+    /// * `service_id` - optional - the service ID to post batches to if running splinter
     fn post_batches(
         &self,
         wait: u64,
