@@ -125,6 +125,11 @@ ENVIRONMENT VARIABLES
 **`GRID_SERVICE_ID`**
 : Specifies a default value for `--service-id`
 
+**`GRID_ORDER_SCHEMA_DIR`**
+: Specifies the local path to the directory containing the `Order.xsd`
+  schema used to validate the purchase order. The default value is
+  "/etc/grid/schemas".
+
 SEE ALSO
 ========
 | `grid-po(1)`

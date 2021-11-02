@@ -25,9 +25,9 @@ The schema and subsequent updates will be provided on the GS1 websites.
 ---------------------------
 ]]>        </xsd:documentation>
     </xsd:annotation>
-    <xsd:import namespace="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader" schemaLocation="src/data_validation/xml/xsd/po/sbdh/StandardBusinessDocumentHeader.xsd"/>
-    <xsd:import namespace="urn:gs1:shared:shared_common:xsd:3" schemaLocation="src/data_validation/xml/xsd/po/gs1/shared/SharedCommon.xsd"/>
-    <xsd:import namespace="urn:gs1:ecom:ecom_common:xsd:3" schemaLocation="src/data_validation/xml/xsd/po/gs1/ecom/eComCommon.xsd"/>
+    <xsd:import namespace="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader" schemaLocation="../../sbdh/StandardBusinessDocumentHeader.xsd"/>
+    <xsd:import namespace="urn:gs1:shared:shared_common:xsd:3" schemaLocation="../shared/SharedCommon.xsd"/>
+    <xsd:import namespace="urn:gs1:ecom:ecom_common:xsd:3" schemaLocation="eComCommon.xsd"/>
     <xsd:element name="orderMessage" type="order:OrderMessageType"/>
     <xsd:complexType name="OrderLineItemDetailType">
         <xsd:sequence>

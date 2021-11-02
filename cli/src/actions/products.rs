@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::env;
+
 use crate::transaction::product_batch_builder;
 use cylinder::Signer;
 use grid_sdk::client::product::{
@@ -42,6 +44,10 @@ use std::{
     io::prelude::*,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+use super::DEFAULT_SCHEMA_DIR;
+
+const GRID_PRODUCT_SCHEMA_DIR: &str = "GRID_PRODUCT_SCHEMA_DIR";
 
 /**
  * Prints basic info for products
@@ -359,7 +365,9 @@ pub fn create_product_payloads_from_xml(
     owner: &str,
 ) -> Result<Vec<ProductCreateAction>, CliError> {
     let trade_items = get_trade_items_from_xml(path)?;
-    validate_gdsn_3_1(path, true)?;
+    let data_validation_dir =
+        env::var(GRID_PRODUCT_SCHEMA_DIR).unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+    validate_gdsn_3_1(path, true, &data_validation_dir)?;
 
     let mut payloads = Vec::new();
 
@@ -396,7 +404,9 @@ pub fn create_product_payloads_from_yaml(
 
 pub fn update_product_payloads_from_xml(path: &str) -> Result<Vec<ProductUpdateAction>, CliError> {
     let trade_items = get_trade_items_from_xml(path)?;
-    validate_gdsn_3_1(path, true)?;
+    let data_validation_dir =
+        env::var(GRID_PRODUCT_SCHEMA_DIR).unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+    validate_gdsn_3_1(path, true, &data_validation_dir)?;
 
     let mut payloads = Vec::new();
 

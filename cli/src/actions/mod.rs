@@ -52,3 +52,6 @@ pub mod purchase_orders;
 pub mod roles;
 #[cfg(feature = "schema")]
 pub mod schemas;
+
+#[cfg(any(feature = "purchase-order", feature = "product"))]
+pub const DEFAULT_SCHEMA_DIR: &str = "/etc/grid/schemas";
