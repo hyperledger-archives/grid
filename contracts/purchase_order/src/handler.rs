@@ -651,6 +651,7 @@ mod tests {
     const BUYER_PUB_KEY: &str = "buyer_agent_pub_key";
     const SELLER_PUB_KEY: &str = "seller_agent_pub_key";
     const PARTNER_PUB_KEY: &str = "partner_agent_pub_key";
+    const DRAFT_PUB_KEY: &str = "draft_agent_pub_key";
 
     const PO_UID: &str = "test_po_1";
     const PO_VERSION_ID_1: &str = "01";
@@ -825,7 +826,7 @@ mod tests {
         fn add_drafting_agent(&self) {
             let agent = AgentBuilder::new()
                 .with_org_id(ORG_ID_1.to_string())
-                .with_public_key(BUYER_PUB_KEY.to_string())
+                .with_public_key(DRAFT_PUB_KEY.to_string())
                 .with_active(true)
                 .with_roles(vec![ROLE_DRAFT.to_string()])
                 .build()
@@ -837,7 +838,7 @@ mod tests {
             let agent_bytes = agent_list
                 .into_bytes()
                 .expect("Unable to convert agent list to bytes");
-            let agent_address = compute_agent_address(BUYER_PUB_KEY);
+            let agent_address = compute_agent_address(DRAFT_PUB_KEY);
             self.set_state_entry(agent_address, agent_bytes)
                 .expect("Unable to set agent in state");
         }
@@ -1291,7 +1292,9 @@ mod tests {
         let perm_checker = PermissionChecker::new(&ctx);
         ctx.add_seller_agent();
         ctx.add_seller_role();
-        ctx.add_purchase_order(purchase_order());
+        ctx.add_purchase_order(purchase_order_with_versions(vec![
+            purchase_order_version_draft(PO_VERSION_ID_1),
+        ]));
 
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
@@ -1739,7 +1742,7 @@ mod tests {
         ctx.add_drafting_agent();
         let payload_revision = PayloadRevisionBuilder::new()
             .with_revision_id(1)
-            .with_submitter(BUYER_PUB_KEY.to_string())
+            .with_submitter(DRAFT_PUB_KEY.to_string())
             .with_created_at(1)
             .with_order_xml_v3_4("xml_v3_4_string".to_string())
             .build()
@@ -1755,7 +1758,7 @@ mod tests {
 
         if let Err(err) = create_version(
             &create_po_vers_payload,
-            BUYER_PUB_KEY,
+            DRAFT_PUB_KEY,
             &mut state,
             &perm_checker,
         ) {
@@ -1875,11 +1878,22 @@ mod tests {
             .expect("Unable to build purchase order")
     }
 
-    fn purchase_order_version(version_id: &str) -> PurchaseOrderVersion {
+    fn purchase_order_version_draft(version_id: &str) -> PurchaseOrderVersion {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
             .with_workflow_status("editable".to_string())
             .with_is_draft(true)
+            .with_current_revision_id(1)
+            .with_revisions(purchase_order_revisions())
+            .build()
+            .expect("Unable to build first purchase order version")
+    }
+
+    fn purchase_order_version(version_id: &str) -> PurchaseOrderVersion {
+        PurchaseOrderVersionBuilder::new()
+            .with_version_id(version_id.to_string())
+            .with_workflow_status("proposed".to_string())
+            .with_is_draft(false)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())
             .build()
