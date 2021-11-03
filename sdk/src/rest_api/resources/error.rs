@@ -108,3 +108,60 @@ impl fmt::Display for ErrorResponse {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use serde::Deserialize;
+    use serde_json::Result;
+
+    // Deny any unknown fields so we can test for data leaks
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Response {
+        status_code: u16,
+        message: String,
+    }
+
+    #[test]
+    fn test_error_response_internal_error_display() {
+        let error = "NaN".parse::<u32>().unwrap_err();
+        let response = ErrorResponse::internal_error(Box::new(error));
+        assert_eq!(response.to_string(), "invalid digit found in string");
+    }
+
+    #[test]
+    fn test_error_response_new_display() {
+        let response = ErrorResponse::new(501, "The endpoint is not implemented");
+        assert_eq!(
+            response.to_string(),
+            "Status Code 501: Message The endpoint is not implemented"
+        );
+    }
+
+    #[test]
+    fn test_error_response_new_json_serialization() -> Result<()> {
+        let response = ErrorResponse::new(501, "The endpoint is not implemented");
+        let json = serde_json::to_string(&response)?;
+        let deserialized: Response = serde_json::from_str(&json)?;
+
+        assert_eq!(deserialized.status_code, 501);
+        assert_eq!(deserialized.message, "The endpoint is not implemented");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_error_response_internal_error_json_serialization() -> Result<()> {
+        let err = "NaN".parse::<u32>().unwrap_err();
+        let response = ErrorResponse::internal_error(Box::new(err));
+        let json = serde_json::to_string(&response)?;
+        let deserialized: Response = serde_json::from_str(&json)?;
+
+        assert_eq!(deserialized.status_code, 500);
+        assert_eq!(deserialized.message, "An internal error occurred");
+
+        Ok(())
+    }
+}
