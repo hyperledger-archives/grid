@@ -64,7 +64,7 @@ mod tests {
         permission.add_permission("can-update-po");
         permission.add_transition("confirm");
 
-        let state = WorkflowStateBuilder::new("issued")
+        let state = WorkflowStateBuilder::new("create")
             .add_constraint("active=None")
             .add_transition("issued")
             .add_transition("confirm")
