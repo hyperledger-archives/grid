@@ -21,11 +21,18 @@ cfg_if! {
 }
 
 use grid_sdk::protocol::purchase_order::payload::{
-    CreatePurchaseOrderPayload, CreateVersionPayload, PayloadRevision, PurchaseOrderPayload,
-    UpdatePurchaseOrderPayload, UpdateVersionPayload,
+    Action, CreatePurchaseOrderPayload, CreateVersionPayload, PayloadRevision,
+    PurchaseOrderPayload, UpdatePurchaseOrderPayload, UpdateVersionPayload,
 };
 
-fn _validate_po_payload(payload: &PurchaseOrderPayload) -> Result<(), ApplyError> {
+pub(crate) fn validate_po_payload(payload: &PurchaseOrderPayload) -> Result<(), ApplyError> {
+    match payload.action() {
+        Action::CreatePo(payload) => validate_create_po_payload(payload)?,
+        Action::UpdatePo(payload) => validate_update_po_payload(payload)?,
+        Action::CreateVersion(payload) => validate_create_version_payload(payload)?,
+        Action::UpdateVersion(payload) => validate_update_version_payload(payload)?,
+    };
+
     match payload.timestamp() {
         0 => Err(ApplyError::InvalidTransaction(
             "Payload's `timestamp` field is unset".to_string(),
@@ -35,7 +42,9 @@ fn _validate_po_payload(payload: &PurchaseOrderPayload) -> Result<(), ApplyError
 }
 
 // Validate a `CreatePurchaseOrderPayload` has all required fields defined
-fn _validate_create_po_payload(payload: &CreatePurchaseOrderPayload) -> Result<(), ApplyError> {
+pub(crate) fn validate_create_po_payload(
+    payload: &CreatePurchaseOrderPayload,
+) -> Result<(), ApplyError> {
     if payload.uid().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`uid` is required to create a purchase order".to_string(),
@@ -67,14 +76,16 @@ fn _validate_create_po_payload(payload: &CreatePurchaseOrderPayload) -> Result<(
     }
 
     if let Some(create_version_payload) = payload.create_version_payload() {
-        _validate_create_version_payload(&create_version_payload)?;
+        validate_create_version_payload(&create_version_payload)?;
     }
 
     Ok(())
 }
 
 // Validate a `UpdatePurchaseOrderPayload` has all required fields defined
-fn _validate_update_po_payload(payload: &UpdatePurchaseOrderPayload) -> Result<(), ApplyError> {
+pub(crate) fn validate_update_po_payload(
+    payload: &UpdatePurchaseOrderPayload,
+) -> Result<(), ApplyError> {
     if payload.uid().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`uid` is required to update a purchase order".to_string(),
@@ -99,7 +110,7 @@ fn _validate_update_po_payload(payload: &UpdatePurchaseOrderPayload) -> Result<(
 }
 
 // Validate a `PayloadRevision` has all required fields defined
-fn _validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyError> {
+pub(crate) fn validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyError> {
     if revision.submitter().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`submitter` is required for a po revision".to_string(),
@@ -128,7 +139,9 @@ fn _validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyErr
 }
 
 // Validate a `CreateVersionPayload` has all required fields defined
-fn _validate_create_version_payload(payload: &CreateVersionPayload) -> Result<(), ApplyError> {
+pub(crate) fn validate_create_version_payload(
+    payload: &CreateVersionPayload,
+) -> Result<(), ApplyError> {
     if payload.version_id().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`version_id` is required to create a purchase order version".to_string(),
@@ -147,15 +160,14 @@ fn _validate_create_version_payload(payload: &CreateVersionPayload) -> Result<()
         ));
     }
 
-    _validate_payload_revision(payload.revision())?;
+    validate_payload_revision(payload.revision())?;
 
     Ok(())
 }
 
 // Validate a `UpdateVersionPayload` has all required fields defined
-fn _validate_update_version_payload(
+pub(crate) fn validate_update_version_payload(
     payload: &UpdateVersionPayload,
-    previous_current_revision_id: u64,
 ) -> Result<(), ApplyError> {
     if payload.version_id().is_empty() {
         return Err(ApplyError::InvalidTransaction(
@@ -175,17 +187,7 @@ fn _validate_update_version_payload(
         ));
     }
 
-    if payload.current_revision_id() != previous_current_revision_id
-        && payload.current_revision_id() != previous_current_revision_id + 1
-    {
-        return Err(ApplyError::InvalidTransaction(
-            "Updated `current_revision_id` must be incremented by 1 from \
-                the previous `current_revision_id`"
-                .to_string(),
-        ));
-    }
-
-    _validate_payload_revision(payload.revision())?;
+    validate_payload_revision(payload.revision())?;
 
     if payload.current_revision_id() != payload.revision().revision_id() {
         return Err(ApplyError::InvalidTransaction(
@@ -226,7 +228,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol PayloadRevision");
         // Validate the payload revision
-        assert!(_validate_payload_revision(&revision_native).is_ok());
+        assert!(validate_payload_revision(&revision_native).is_ok());
     }
 
     #[test]
@@ -248,7 +250,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol PayloadRevision");
         // Validate the payload revision will produce an error
-        assert!(_validate_payload_revision(&revision_native).is_err());
+        assert!(validate_payload_revision(&revision_native).is_err());
     }
 
     #[test]
@@ -270,7 +272,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol PayloadRevision");
         // Validate the payload revision will produce an error
-        assert!(_validate_payload_revision(&revision_native).is_err());
+        assert!(validate_payload_revision(&revision_native).is_err());
     }
 
     #[test]
@@ -292,7 +294,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol PayloadRevision");
         // Validate the payload revision will produce an error
-        assert!(_validate_payload_revision(&revision_native).is_err());
+        assert!(validate_payload_revision(&revision_native).is_err());
     }
 
     #[test]
@@ -315,7 +317,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol PayloadRevision");
         // Validate the payload revision will produce an error
-        assert!(_validate_payload_revision(&revision_native).is_err());
+        assert!(validate_payload_revision(&revision_native).is_err());
     }
 
     #[test]
@@ -346,7 +348,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_ok());
+        assert!(validate_update_version_payload(&version_native).is_ok());
     }
 
     #[test]
@@ -377,7 +379,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is not successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_err());
+        assert!(validate_update_version_payload(&version_native).is_err());
     }
 
     #[test]
@@ -408,7 +410,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is not successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_err());
+        assert!(validate_update_version_payload(&version_native).is_err());
     }
 
     #[test]
@@ -439,7 +441,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is not successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_err());
+        assert!(validate_update_version_payload(&version_native).is_err());
     }
 
     #[test]
@@ -470,7 +472,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is not successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_err());
+        assert!(validate_update_version_payload(&version_native).is_err());
     }
 
     #[test]
@@ -495,44 +497,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is not successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_err());
-    }
-
-    #[test]
-    /// Validates that an `UpdateVersionPayload` is invalid if the `current_revision_id` does not
-    /// match the `revision_id` of the revision submitted in the payload. The test follows these
-    /// steps:
-    ///
-    /// 1. Create a `PayloadRevision` protobuf message and define all fields, including a
-    ///    `revision_id` of `3`
-    /// 2. Create an `UpdateVersionPayload` protobuf message and define all fields, including
-    ///    the `current_revision_id` set to `3`
-    /// 3. Pass the `validate_update_version_payload` method this `UpdateVersionPayload` and
-    ///    set the `previous_current_revision_id` to `1`
-    /// 4. Assert this `UpdateVersionPayload` produces an error on validation
-    ///
-    /// This test validates that a `UpdateVersionPayload` with an invalidly incremented
-    /// `current_revision_id` produces an error on validation.
-    fn test_validate_update_version_payload_invalid_incremented_revision_id() {
-        let mut payload_revision_proto = protos::purchase_order_payload::PayloadRevision::new();
-        payload_revision_proto.set_revision_id(3);
-        payload_revision_proto.set_submitter(SUBMITTER.to_string());
-        payload_revision_proto.set_created_at(1);
-        payload_revision_proto.set_order_xml_v3_4(XML_TEST_STRING.to_string());
-
-        let mut update_version_payload =
-            protos::purchase_order_payload::UpdateVersionPayload::new();
-        update_version_payload.set_version_id("01".to_string());
-        update_version_payload.set_po_uid("PO-01".to_string());
-        update_version_payload.set_workflow_status("proposed".to_string());
-        update_version_payload.set_current_revision_id(3);
-        update_version_payload.set_revision(payload_revision_proto);
-        let version_native = update_version_payload
-            .clone()
-            .into_native()
-            .expect("Unable to create protocol UpdateVersionPayload");
-        // Validate the update version payload is successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_err());
+        assert!(validate_update_version_payload(&version_native).is_err());
     }
 
     #[test]
@@ -567,7 +532,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is successful
-        assert!(_validate_update_version_payload(&version_native, 1).is_err());
+        assert!(validate_update_version_payload(&version_native).is_err());
     }
 
     #[test]
@@ -597,7 +562,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreateVersionPayload");
         // Validate the create version payload is successful
-        assert!(_validate_create_version_payload(&payload_native).is_ok());
+        assert!(validate_create_version_payload(&payload_native).is_ok());
     }
 
     #[test]
@@ -627,7 +592,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreateVersionPayload");
         // Validate the create version payload is successful
-        assert!(_validate_create_version_payload(&payload_native).is_err());
+        assert!(validate_create_version_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -657,7 +622,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreateVersionPayload");
         // Validate the create version payload is successful
-        assert!(_validate_create_version_payload(&payload_native).is_err());
+        assert!(validate_create_version_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -687,7 +652,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreateVersionPayload");
         // Validate the create version payload is successful
-        assert!(_validate_create_version_payload(&payload_native).is_err());
+        assert!(validate_create_version_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -711,7 +676,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreateVersionPayload");
         // Validate the create version payload is successful
-        assert!(_validate_create_version_payload(&payload_native).is_err());
+        assert!(validate_create_version_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -733,7 +698,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdatePurchaseOrderPayload");
         // Validate the update po payload is successful
-        assert!(_validate_update_po_payload(&payload_native).is_ok());
+        assert!(validate_update_po_payload(&payload_native).is_ok());
     }
 
     #[test]
@@ -755,7 +720,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdatePurchaseOrderPayload");
         // Validate the update po payload is not successful
-        assert!(_validate_update_po_payload(&payload_native).is_err());
+        assert!(validate_update_po_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -777,7 +742,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol UpdatePurchaseOrderPayload");
         // Validate the update po payload is not successful
-        assert!(_validate_update_po_payload(&payload_native).is_err());
+        assert!(validate_update_po_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -802,7 +767,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreatePurchaseOrderPayload");
         // Validate the create po payload is successful
-        assert!(_validate_create_po_payload(&payload_native).is_ok());
+        assert!(validate_create_po_payload(&payload_native).is_ok());
     }
 
     #[test]
@@ -827,7 +792,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreatePurchaseOrderPayload");
         // Validate the create po payload is not successful
-        assert!(_validate_create_po_payload(&payload_native).is_err());
+        assert!(validate_create_po_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -852,7 +817,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreatePurchaseOrderPayload");
         // Validate the create po payload is not successful
-        assert!(_validate_create_po_payload(&payload_native).is_err());
+        assert!(validate_create_po_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -877,7 +842,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreatePurchaseOrderPayload");
         // Validate the create po payload is not successful
-        assert!(_validate_create_po_payload(&payload_native).is_err());
+        assert!(validate_create_po_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -902,7 +867,7 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreatePurchaseOrderPayload");
         // Validate the create po payload is not successful
-        assert!(_validate_create_po_payload(&payload_native).is_err());
+        assert!(validate_create_po_payload(&payload_native).is_err());
     }
 
     #[test]
@@ -927,6 +892,6 @@ mod tests {
             .into_native()
             .expect("Unable to create protocol CreatePurchaseOrderPayload");
         // Validate the create po payload is not successful
-        assert!(_validate_create_po_payload(&payload_native).is_err());
+        assert!(validate_create_po_payload(&payload_native).is_err());
     }
 }
