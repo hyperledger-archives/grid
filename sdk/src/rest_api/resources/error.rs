@@ -15,17 +15,37 @@
 use std::error;
 use std::fmt;
 
-/// Designed with the expectation that it may be converted into an http
-/// response.
+/// Generic error designed with the expectation that it may be converted into an HTTP response
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
+    /// A corresponding HTTP status code for the error
     status_code: u16,
+
+    /// The message that would be returned in an HTTP response
     message: String,
+
+    /// Wrapped error that is not exposed in the HTTP resposne
     #[serde(skip_serializing)]
     source: Option<Box<dyn error::Error>>,
 }
 
 impl ErrorResponse {
+    /// Create a new ErrorResponse
+    ///
+    /// # Arguments
+    ///
+    /// * `status_code` - Corresponding HTTP status code
+    /// * `message` - External message to display to the user
+    ///
+    /// # Examples
+    /// ```
+    /// use crate::grid_sdk::rest_api::resources::error::ErrorResponse;
+    ///
+    /// let response = ErrorResponse::new(404, "The requested purchase order was not found");
+    ///
+    /// assert_eq!(404, response.status_code());
+    /// assert_eq!("The requested purchase order was not found", response.message());
+    /// ```
     pub fn new(status_code: u16, message: &str) -> Self {
         Self {
             status_code,
@@ -34,6 +54,24 @@ impl ErrorResponse {
         }
     }
 
+    /// Create a new ErrorResponse that does not expose the underlaying error
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - Underlaying internal error
+    ///
+    /// # Examples
+    /// ```
+    /// use crate::grid_sdk::rest_api::resources::error::ErrorResponse;
+    ///
+    /// // Mock an internal error
+    /// let error = "NaN".parse::<u32>().unwrap_err();
+    ///
+    /// let response = ErrorResponse::internal_error(Box::new(error));
+    ///
+    /// assert_eq!(500, response.status_code());
+    /// assert_eq!("An internal error occurred", response.message());
+    /// ```
     pub fn internal_error(source: Box<dyn error::Error>) -> Self {
         Self {
             status_code: 500,
