@@ -45,6 +45,10 @@ impl ErrorResponse {
     pub fn status_code(&self) -> u16 {
         self.status_code
     }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
 }
 
 impl error::Error for ErrorResponse {
