@@ -679,3 +679,149 @@ fn print_human_readable_list(column_names: Vec<&str>, row_values: Vec<Vec<String
         println!("{}", print_row);
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    /// Tests the purchase order revisions are correctly displayed in the CLI
+    /// in the format:
+    /// Revision 4:
+    ///     Created At       <datetime string>
+    ///     Submitter        0200ef9ab9243baee...
+    /// <Revision XML file>
+    #[test]
+    fn test_display_revision() {
+        let display = "\
+Revision 1:
+	Created At        1970-05-23T21:21:18+00:00
+	Submitter         0200ef9ab9243baee54f61a64d66aeb1d33bb063f16dfaa72e61886b9870c2b7ee
+
+<tag></tag>";
+        let revision = PurchaseOrderRevisionCli {
+            revision_id: 1,
+            order_xml_v3_4: "<tag></tag>".to_string(),
+            submitter: "0200ef9ab9243baee54f61a64d66aeb1d33bb063f16dfaa72e61886b9870c2b7ee"
+                .to_string(),
+            created_at: 12345678,
+        };
+
+        assert_eq!(format!("{}", revision), display);
+    }
+
+    /// Tests the purchase order versions are correctly displayed in the CLI
+    /// in the format:
+    /// Version (1):
+    ///     workflow_status  Editable
+    ///     draft            false
+    ///     Revisions        4
+    ///     Current Revision 4
+    ///
+    /// Revision 4:
+    ///     Created At       <datetime string>
+    ///     Submitter        0200ef9ab9243baee...
+    /// <Revision XML file>
+    #[test]
+    fn test_display_version() {
+        let display = "\
+Version 1:
+	Workflow Status   proposed
+	Is Draft          true
+	Revisions         1
+	Current Revision  1
+
+Revision 1:
+	Created At        1970-05-23T21:21:18+00:00
+	Submitter         0200ef9ab9243baee54f61a64d66aeb1d33bb063f16dfaa72e61886b9870c2b7ee
+
+<tag></tag>";
+
+        let revision = PurchaseOrderRevisionCli {
+            revision_id: 1,
+            order_xml_v3_4: "<tag></tag>".to_string(),
+            submitter: "0200ef9ab9243baee54f61a64d66aeb1d33bb063f16dfaa72e61886b9870c2b7ee"
+                .to_string(),
+            created_at: 12345678,
+        };
+
+        let version = PurchaseOrderVersionCli {
+            version_id: "1".to_string(),
+            workflow_status: "proposed".to_string(),
+            is_draft: true,
+            current_revision_id: 1,
+            revisions: vec![revision],
+        };
+
+        assert_eq!(format!("{}", version), display);
+    }
+
+    /// Tests the purchase orders are correctly displayed in the CLI in the
+    /// format:
+    /// Purchase Order PO-00000-0000:
+    ///     Buyer Org        crgl (Cargill Incorporated)
+    ///     Seller Org       crgl2 (Cargill 2)
+    ///     Workflow status  Confirmed
+    ///     Created At       <datetime string>
+    ///     Closed           false
+    ///
+    /// Accepted Version (1):
+    ///     workflow_status  Editable
+    ///     draft            false
+    ///     Revisions        4
+    ///     Current Revision 4
+    ///
+    /// Revision 4:
+    ///     Created At       <datetime string>
+    ///     Submitter        0200ef9ab9243baee...
+    /// <Revision XML file>
+    #[test]
+    fn test_display_po() {
+        let display = "\
+Purchase Order PO-00000-0000:
+	Buyer Org         test
+	Seller Org        test2
+	Workflow Status   created
+	Created At        1970-05-23T21:21:17+00:00
+	Closed            false
+
+Version 1:
+	Workflow Status   proposed
+	Is Draft          true
+	Revisions         1
+	Current Revision  1
+
+Revision 1:
+	Created At        1970-05-23T21:21:18+00:00
+	Submitter         0200ef9ab9243baee54f61a64d66aeb1d33bb063f16dfaa72e61886b9870c2b7ee
+
+<tag></tag>";
+        let revision = PurchaseOrderRevisionCli {
+            revision_id: 1,
+            order_xml_v3_4: "<tag></tag>".to_string(),
+            submitter: "0200ef9ab9243baee54f61a64d66aeb1d33bb063f16dfaa72e61886b9870c2b7ee"
+                .to_string(),
+            created_at: 12345678,
+        };
+
+        let version = PurchaseOrderVersionCli {
+            version_id: "1".to_string(),
+            workflow_status: "proposed".to_string(),
+            is_draft: true,
+            current_revision_id: 1,
+            revisions: vec![revision],
+        };
+
+        let po = PurchaseOrderCli {
+            buyer_org_id: "test".to_string(),
+            seller_org_id: "test2".to_string(),
+            purchase_order_uid: "PO-00000-0000".to_string(),
+            workflow_status: "created".to_string(),
+            is_closed: false,
+            accepted_version_id: Some("1".to_string()),
+            versions: vec![version],
+            created_at: 12345677,
+        };
+
+        assert_eq!(format!("{}", po), display);
+    }
+}
