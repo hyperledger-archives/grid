@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     product::store::{ProductStore, ProductStoreError},
@@ -50,7 +51,9 @@ pub fn list_products<'a>(
         .map(ProductSlice::from)
         .collect();
 
-    let paging = Paging::new("/product", product_list.paging().clone(), service_id);
+    let base_url =
+        Url::parse("/product").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+    let paging = Paging::new(base_url, product_list.paging().clone(), service_id);
 
     Ok(ProductListSlice { data, paging })
 }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     pike::store::{PikeStore, PikeStoreError},
@@ -50,7 +51,9 @@ pub fn list_agents<'a>(
         .map(AgentSlice::try_from)
         .collect::<Result<Vec<AgentSlice>, ErrorResponse>>()?;
 
-    let paging = Paging::new("/agent", agent_list.paging, service_id);
+    let base_url =
+        Url::parse("/agent").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+    let paging = Paging::new(base_url, agent_list.paging, service_id);
 
     Ok(AgentListSlice { data, paging })
 }

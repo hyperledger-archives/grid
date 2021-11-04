@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     location::store::{LocationStore, LocationStoreError},
@@ -55,7 +56,9 @@ pub fn list_locations<'a>(
         .map(LocationSlice::from)
         .collect();
 
-    let paging = Paging::new("/location", location_list.paging, service_id);
+    let base_url =
+        Url::parse("/location").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+    let paging = Paging::new(base_url, location_list.paging, service_id);
 
     Ok(LocationListSlice { data, paging })
 }

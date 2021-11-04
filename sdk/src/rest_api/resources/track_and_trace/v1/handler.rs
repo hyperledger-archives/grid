@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
@@ -138,7 +139,9 @@ pub fn list_records<'a>(
         })
         .collect();
 
-    let paging = Paging::new("/record", record_list.paging, service_id);
+    let base_url =
+        Url::parse("/record").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+    let paging = Paging::new(base_url, record_list.paging, service_id);
 
     Ok(RecordListSlice { data, paging })
 }
