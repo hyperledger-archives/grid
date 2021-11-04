@@ -28,8 +28,6 @@ mod sawtooth;
     feature = "schema",
 ))]
 mod signing;
-#[cfg(feature = "splinter")]
-mod splinter;
 #[cfg(any(
     feature = "location",
     feature = "pike",

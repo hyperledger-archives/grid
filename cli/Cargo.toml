@@ -75,7 +75,6 @@ experimental = [
     "stable",
     # The following features are experimental:
     "purchase-order",
-    "splinter",
 ]
 
 database = ["diesel"]
@@ -92,7 +91,6 @@ product = ["pike", "schema"]
 purchase-order = ["grid-sdk/purchase-order", "rand"]
 sawtooth = []
 schema = ["pike"]
-splinter = []
 
 [package.metadata.deb]
 maintainer = "The Hyperledger Grid Team"
