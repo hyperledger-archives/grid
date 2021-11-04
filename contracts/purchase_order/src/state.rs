@@ -183,9 +183,26 @@ impl<'a> PurchaseOrderState<'a> {
                 po_uid
             ))),
         }?;
+
         // Add the `PurchaseOrderVersion` to the purchase order
         let mut versions = orig_po.versions().to_vec();
-        versions.push(purchase_order_version);
+        let vers_index = versions
+            .iter()
+            .position(|vers| vers.version_id() == purchase_order_version.version_id());
+        match vers_index {
+            Some(i) => {
+                // If the `vers_index` is a Some value, then the version we are inserting is being
+                // updated. Therefore, we need to remove the purchase order version that exists
+                // in the list of versions at this index and replace it with the updated version
+                versions.remove(i);
+                versions.insert(i, purchase_order_version);
+            }
+            None => {
+                // If the `vers_index` is a None value, the version does not exist in state so
+                // the new version gets pushed to the end of the purchase order's `versions` list
+                versions.push(purchase_order_version);
+            }
+        }
         let purchase_order = orig_po
             .into_builder()
             .with_versions(versions)
