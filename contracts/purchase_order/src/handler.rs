@@ -40,6 +40,7 @@ use grid_sdk::{
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
 };
 
+use crate::payload::validate_po_payload;
 use crate::permissions::Permission;
 use crate::state::PurchaseOrderState;
 use crate::workflow::{get_workflow, POWorkflow, WorkflowConstraint};
@@ -103,6 +104,7 @@ impl TransactionHandler for PurchaseOrderTransactionHandler {
         let payload = PurchaseOrderPayload::from_bytes(request.get_payload()).map_err(|err| {
             ApplyError::InvalidTransaction(format!("Cannot build po payload: {}", err))
         })?;
+        validate_po_payload(&payload)?;
         let signer = request.get_header().get_signer_public_key();
         let mut state = PurchaseOrderState::new(context);
         let perm_checker = PermissionChecker::new(context);
