@@ -22,6 +22,10 @@ pub struct WorkflowState {
 
 impl WorkflowState {
     pub fn can_transition(&self, new_state: String, pike_permissions: Vec<String>) -> bool {
+        if self.name == new_state {
+            return true;
+        }
+
         if !self.transitions.contains(&new_state) {
             return false;
         }
