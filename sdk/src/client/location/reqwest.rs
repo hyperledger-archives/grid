@@ -151,8 +151,12 @@ impl LocationClient for ReqwestLocationClient {
     ///
     /// * `service_id` - optional - the service id to fetch locations from
     fn list_locations(&self, service_id: Option<&str>) -> Result<Vec<Location>, ClientError> {
-        let dto_vec =
-            fetch_entities_list::<LocationDto>(&self.url, LOCATION_ROUTE.to_string(), service_id)?;
+        let dto_vec = fetch_entities_list::<LocationDto>(
+            &self.url,
+            LOCATION_ROUTE.to_string(),
+            service_id,
+            None,
+        )?;
         Ok(dto_vec.iter().map(Location::from).collect())
     }
 }

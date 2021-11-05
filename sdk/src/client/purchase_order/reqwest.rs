@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::SystemTime;
+use std::collections::HashMap;
 
 use crate::client::reqwest::{fetch_entities_list, fetch_entity, post_batches};
 use crate::client::Client;
 use crate::error::ClientError;
-use crate::purchase_order::store::ListVersionFilters;
+use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 
 use super::{
     AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision, PurchaseOrderVersion,
@@ -38,7 +38,7 @@ struct PurchaseOrderDto {
     is_closed: bool,
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersionDto>,
-    created_at: SystemTime,
+    created_at: i64,
     workflow_type: String,
 }
 
@@ -63,7 +63,7 @@ struct PurchaseOrderVersionDto {
     version_id: String,
     workflow_status: String,
     is_draft: bool,
-    current_revision_id: i64,
+    current_revision_id: u64,
     revisions: Vec<PurchaseOrderRevisionDto>,
 }
 
@@ -88,7 +88,7 @@ struct PurchaseOrderRevisionDto {
     revision_id: u64,
     order_xml_v3_4: String,
     submitter: String,
-    created_at: u64,
+    created_at: i64,
 }
 
 impl From<&PurchaseOrderRevisionDto> for PurchaseOrderRevision {
@@ -134,10 +134,15 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// Retrieves the purchase order with the specified `id`.
     fn get_purchase_order(
         &self,
-        _id: String,
-        _service_id: Option<&str>,
+        id: String,
+        service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, ClientError> {
-        unimplemented!()
+        let dto = fetch_entity::<PurchaseOrderDto>(
+            &self.url,
+            format!("{}/{}", PO_ROUTE, id),
+            service_id,
+        )?;
+        Ok(Some(PurchaseOrder::from(&dto)))
     }
 
     /// Retrieves the purchase order version with the given `version_id` of the purchase order
@@ -181,25 +186,54 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
     /// lists purchase orders.
     fn list_purchase_orders(
         &self,
-        _filter: Option<&str>,
+        filters: Option<ListPOFilters>,
+        service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrder>, ClientError> {
-        unimplemented!()
+        let mut filter_map = HashMap::new();
+        if let Some(filters) = filters {
+            if let Some(is_open) = filters.is_open {
+                filter_map.insert("is_open", is_open.to_string());
+            }
+            if let Some(has_accepted_version) = filters.has_accepted_version {
+                filter_map.insert("has_accepted_version", has_accepted_version.to_string());
+            }
+            if let Some(buyer_org_id) = filters.buyer_org_id {
+                filter_map.insert("buyer_org_id", buyer_org_id);
+            }
+            if let Some(seller_org_id) = filters.seller_org_id {
+                filter_map.insert("seller_org_id", seller_org_id);
+            }
+        }
+        let dto_vec = fetch_entities_list::<PurchaseOrderDto>(
+            &self.url,
+            PO_ROUTE.to_string(),
+            service_id,
+            Some(filter_map),
+        )?;
+        Ok(dto_vec.iter().map(PurchaseOrder::from).collect())
     }
 
     /// lists the purchase order versions of a specific purchase order.
     fn list_purchase_order_versions(
         &self,
         id: String,
-        filters: ListVersionFilters,
+        filters: Option<ListVersionFilters>,
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderVersion>, ClientError> {
+        let mut filter_map = HashMap::new();
+        if let Some(filters) = filters {
+            if let Some(is_accepted) = filters.is_accepted {
+                filter_map.insert("is_accepted", is_accepted.to_string());
+            }
+            if let Some(is_draft) = filters.is_draft {
+                filter_map.insert("is_draft", is_draft.to_string());
+            }
+        }
         let dto = fetch_entities_list::<PurchaseOrderVersionDto>(
             &self.url,
-            format!(
-                "{}/{}/{}?{:?}&{:?}",
-                PO_ROUTE, id, VERSION_ROUTE, filters.is_accepted, filters.is_draft
-            ),
+            format!("{}/{}/{}", PO_ROUTE, id, VERSION_ROUTE,),
             service_id,
+            Some(filter_map),
         )?;
 
         Ok(dto.iter().map(PurchaseOrderVersion::from).collect())
@@ -219,6 +253,7 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
                 PO_ROUTE, id, VERSION_ROUTE, version_id, REVISION_ROUTE
             ),
             service_id,
+            None,
         )?;
 
         Ok(dto.iter().map(PurchaseOrderRevision::from).collect())

@@ -92,6 +92,7 @@ use grid_sdk::{
         CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder, PayloadRevisionBuilder,
         UpdatePurchaseOrderPayloadBuilder,
     },
+    purchase_order::store::ListPOFilters,
 };
 
 use log::Record;
@@ -1569,11 +1570,16 @@ fn run() -> Result<(), CliError> {
                     SubCommand::with_name("list")
                         .about("List Purchase Orders")
                         .arg(
-                            Arg::with_name("org")
-                                .value_name("org_id")
-                                .long("org")
+                            Arg::with_name("buyer_org")
+                                .long("buyer-org")
                                 .takes_value(true)
-                                .help("Only list Purchase Orders from the specified organization"),
+                                .help("Only list Purchase Orders from the specified buyer organization"),
+                        )
+                        .arg(
+                            Arg::with_name("seller_org")
+                                .long("seller-org")
+                                .takes_value(true)
+                                .help("Only list Purchase Orders from the specified seller organization"),
                         )
                         .arg(
                             Arg::with_name("accepted")
@@ -1675,41 +1681,12 @@ fn run() -> Result<(), CliError> {
                         .about("Show a Purchase Order")
                         .arg(
                             Arg::with_name("id")
-                                .value_name("order")
                                 .takes_value(true)
                                 .required(true)
                                 .help(
                                     "ID of the Purchase Order. \
-                                    May be the Purchase Order's UUID or an Alternate ID \
+                                    May be the Purchase Order's UID or an Alternate ID \
                                     (Alternate ID format: <alternate_id_type>:<alternate_id>)",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("org")
-                                .value_name("org_id")
-                                .long("org")
-                                .takes_value(true)
-                                .required(true)
-                                .help("ID of the organization that owns the Purchase Order"),
-                        )
-                        .arg(
-                            Arg::with_name("version")
-                                .value_name("version_id")
-                                .long("version")
-                                .takes_value(true)
-                                .help(
-                                    "ID of the version of the Purchase Order to show. \
-                                    Defaults to an accepted version",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("revision")
-                                .value_name("revision_id")
-                                .long("revision")
-                                .takes_value(true)
-                                .help(
-                                    "ID of the revision of the Purchase Order to show. \
-                                    Defaults to the latest revision",
                                 ),
                         )
                         .arg(
@@ -2751,8 +2728,78 @@ fn run() -> Result<(), CliError> {
                         CliError::UserError(format!("Could not fetch Purchase Order {}", &uid));
                     }
                 }
-                ("list", Some(_)) => unimplemented!(),
-                ("show", Some(_)) => unimplemented!(),
+                ("list", Some(m)) => {
+                    let url = m
+                        .value_of("url")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                        .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+                    let service_id = m
+                        .value_of("service_id")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                    let filter = ListPOFilters {
+                        is_open: if m.is_present("open") {
+                            Some(true)
+                        } else if m.is_present("closed") {
+                            Some(false)
+                        } else {
+                            None
+                        },
+                        has_accepted_version: if m.is_present("accepted") {
+                            Some(true)
+                        } else if m.is_present("not_accepted") {
+                            Some(false)
+                        } else {
+                            None
+                        },
+                        buyer_org_id: if m.is_present("buyer_org") {
+                            Some(m.value_of("buyer_org").unwrap().to_string())
+                        } else {
+                            None
+                        },
+                        seller_org_id: if m.is_present("seller_org") {
+                            Some(m.value_of("seller_org").unwrap().to_string())
+                        } else {
+                            None
+                        },
+                    };
+                    let format = m.value_of("format");
+
+                    purchase_orders::do_list_purchase_orders(
+                        purchase_order_client,
+                        Some(filter),
+                        service_id,
+                        format,
+                    )?
+                }
+                ("show", Some(m)) => {
+                    let url = m
+                        .value_of("url")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                        .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+                    let service_id = m
+                        .value_of("service_id")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                    let purchase_order_id = m.value_of("id").unwrap();
+                    let format = m.value_of("format");
+                    purchase_orders::do_show_purchase_order(
+                        purchase_order_client,
+                        purchase_order_id.to_string(),
+                        service_id,
+                        format,
+                    )?
+                }
                 ("version", Some(m)) => match m.subcommand() {
                     ("create", Some(m)) => {
                         let key = m
@@ -2857,7 +2904,7 @@ fn run() -> Result<(), CliError> {
                             draft_filter = Some(false);
                         }
 
-                        let format = m.value_of("format").unwrap();
+                        let format = Some(m.value_of("format").unwrap());
 
                         purchase_orders::do_list_versions(
                             &*purchase_order_client,

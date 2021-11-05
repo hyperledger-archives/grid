@@ -198,8 +198,12 @@ impl PikeClient for ReqwestPikeClient {
     ///
     /// * `service_id` - optional - the service id to fetch the agents from
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<PikeAgent>, ClientError> {
-        let dto_vec =
-            fetch_entities_list::<PikeAgentDto>(&self.url, AGENT_ROUTE.to_string(), service_id)?;
+        let dto_vec = fetch_entities_list::<PikeAgentDto>(
+            &self.url,
+            AGENT_ROUTE.to_string(),
+            service_id,
+            None,
+        )?;
         Ok(dto_vec.iter().map(PikeAgent::from).collect())
     }
 
@@ -235,6 +239,7 @@ impl PikeClient for ReqwestPikeClient {
             &self.url,
             ORGANIZATION_ROUTE.to_string(),
             service_id,
+            None,
         )?;
         Ok(dto_vec.iter().map(PikeOrganization::from).collect())
     }
@@ -275,6 +280,7 @@ impl PikeClient for ReqwestPikeClient {
             &self.url,
             format!("{}/{}", ROLE_ROUTE, org_id),
             service_id,
+            None,
         )?;
         Ok(dto_vec.iter().map(PikeRole::from).collect())
     }
