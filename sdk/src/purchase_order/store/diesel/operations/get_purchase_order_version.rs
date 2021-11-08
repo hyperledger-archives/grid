@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::PurchaseOrderStoreOperations;
+use super::{get_uid_from_alternate_id, PurchaseOrderStoreOperations};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::purchase_order::store::diesel::{
@@ -28,7 +28,7 @@ pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreGetPurchase
 {
     fn get_purchase_order_version(
         &self,
-        po_uid: &str,
+        purchase_order_id: &str,
         version_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError>;
@@ -40,18 +40,26 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderVersionOperation
 {
     fn get_purchase_order_version(
         &self,
-        po_uid: &str,
+        purchase_order_id: &str,
         version_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let mut purchase_order_uid = purchase_order_id.to_string();
+            if purchase_order_id.contains(':') {
+                purchase_order_uid = get_uid_from_alternate_id::pg::get_uid_from_alternate_id(
+                    self.conn,
+                    purchase_order_id,
+                    service_id,
+                )?;
+            }
             let mut query = purchase_order_version::table
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
                 .filter(
                     purchase_order_version::version_id
                         .eq(&version_id)
-                        .and(purchase_order_version::purchase_order_uid.eq(&po_uid))
+                        .and(purchase_order_version::purchase_order_uid.eq(&purchase_order_uid))
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -116,18 +124,26 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderVersionOperation
 {
     fn get_purchase_order_version(
         &self,
-        po_uid: &str,
+        purchase_order_id: &str,
         version_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderVersion>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let mut purchase_order_uid = purchase_order_id.to_string();
+            if purchase_order_id.contains(':') {
+                purchase_order_uid = get_uid_from_alternate_id::sqlite::get_uid_from_alternate_id(
+                    self.conn,
+                    purchase_order_id,
+                    service_id,
+                )?;
+            }
             let mut query = purchase_order_version::table
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
                 .filter(
                     purchase_order_version::version_id
                         .eq(&version_id)
-                        .and(purchase_order_version::purchase_order_uid.eq(&po_uid))
+                        .and(purchase_order_version::purchase_order_uid.eq(&purchase_order_uid))
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
