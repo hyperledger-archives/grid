@@ -189,14 +189,6 @@ pub(crate) fn validate_update_version_payload(
 
     validate_payload_revision(payload.revision())?;
 
-    if payload.current_revision_id() != payload.revision().revision_id() {
-        return Err(ApplyError::InvalidTransaction(
-            "Payload's `current_revision_id` must be equal to the `revision`'s \
-            `revision_id` within this payload"
-                .to_string(),
-        ));
-    }
-
     Ok(())
 }
 
@@ -341,7 +333,6 @@ mod tests {
         update_version_payload.set_version_id("01".to_string());
         update_version_payload.set_po_uid("PO-01".to_string());
         update_version_payload.set_workflow_status("proposed".to_string());
-        update_version_payload.set_current_revision_id(2);
         update_version_payload.set_revision(payload_revision_proto);
         let version_native = update_version_payload
             .clone()
@@ -372,7 +363,6 @@ mod tests {
             protos::purchase_order_payload::UpdateVersionPayload::new();
         update_version_payload.set_po_uid("PO-01".to_string());
         update_version_payload.set_workflow_status("proposed".to_string());
-        update_version_payload.set_current_revision_id(2);
         update_version_payload.set_revision(payload_revision_proto);
         let version_native = update_version_payload
             .clone()
@@ -403,7 +393,6 @@ mod tests {
             protos::purchase_order_payload::UpdateVersionPayload::new();
         update_version_payload.set_version_id("01".to_string());
         update_version_payload.set_workflow_status("proposed".to_string());
-        update_version_payload.set_current_revision_id(2);
         update_version_payload.set_revision(payload_revision_proto);
         let version_native = update_version_payload
             .clone()
@@ -434,38 +423,6 @@ mod tests {
             protos::purchase_order_payload::UpdateVersionPayload::new();
         update_version_payload.set_version_id("01".to_string());
         update_version_payload.set_po_uid("PO-01".to_string());
-        update_version_payload.set_current_revision_id(2);
-        update_version_payload.set_revision(payload_revision_proto);
-        let version_native = update_version_payload
-            .clone()
-            .into_native()
-            .expect("Unable to create protocol UpdateVersionPayload");
-        // Validate the update version payload is not successful
-        assert!(validate_update_version_payload(&version_native).is_err());
-    }
-
-    #[test]
-    /// Validates that an `UpdateVersionPayload` with an undefined `current_revision_id` is not
-    /// able to be validated. The test follows these steps:
-    ///
-    /// 1. Create an `UpdateVersionPayload` protobuf message and define all fields except the
-    ///    `current_revision_id` field
-    /// 2. Assert this `UpdateVersionPayload` does not successfully validate
-    ///
-    /// This test validates that a `UpdateVersionPayload` with an undefined `current_revision_id`
-    /// field produces an error on validation.
-    fn test_validate_update_version_payload_invalid_current_revision_id() {
-        let mut payload_revision_proto = protos::purchase_order_payload::PayloadRevision::new();
-        payload_revision_proto.set_revision_id(2);
-        payload_revision_proto.set_submitter(SUBMITTER.to_string());
-        payload_revision_proto.set_created_at(1);
-        payload_revision_proto.set_order_xml_v3_4(XML_TEST_STRING.to_string());
-
-        let mut update_version_payload =
-            protos::purchase_order_payload::UpdateVersionPayload::new();
-        update_version_payload.set_version_id("01".to_string());
-        update_version_payload.set_po_uid("PO-01".to_string());
-        update_version_payload.set_workflow_status("proposed".to_string());
         update_version_payload.set_revision(payload_revision_proto);
         let version_native = update_version_payload
             .clone()
@@ -491,47 +448,11 @@ mod tests {
         update_version_payload.set_version_id("01".to_string());
         update_version_payload.set_po_uid("PO-01".to_string());
         update_version_payload.set_workflow_status("proposed".to_string());
-        update_version_payload.set_current_revision_id(2);
         let version_native = update_version_payload
             .clone()
             .into_native()
             .expect("Unable to create protocol UpdateVersionPayload");
         // Validate the update version payload is not successful
-        assert!(validate_update_version_payload(&version_native).is_err());
-    }
-
-    #[test]
-    /// Validates that an `UpdateVersionPayload` is invalid if the `current_revision_id` does not
-    /// match the `revision_id` of the revision submitted in the payload. The test follows these
-    /// steps:
-    ///
-    /// 1. Create a `PayloadRevision` protobuf message and define all fields, including a
-    ///    `revision_id` of `3`
-    /// 2. Create an `UpdateVersionPayload` protobuf message and define all fields, including
-    ///    the `current_revision_id` set to `2`
-    /// 2. Assert this `UpdateVersionPayload` produces an error on validation
-    ///
-    /// This test validates that a `UpdateVersionPayload` with a mismatching `revision` and
-    /// `current_revision_id` produces an error on validation.
-    fn test_validate_update_version_payload_current_revision_id_non_matching() {
-        let mut payload_revision_proto = protos::purchase_order_payload::PayloadRevision::new();
-        payload_revision_proto.set_revision_id(3);
-        payload_revision_proto.set_submitter(SUBMITTER.to_string());
-        payload_revision_proto.set_created_at(1);
-        payload_revision_proto.set_order_xml_v3_4(XML_TEST_STRING.to_string());
-
-        let mut update_version_payload =
-            protos::purchase_order_payload::UpdateVersionPayload::new();
-        update_version_payload.set_version_id("01".to_string());
-        update_version_payload.set_po_uid("PO-01".to_string());
-        update_version_payload.set_workflow_status("proposed".to_string());
-        update_version_payload.set_current_revision_id(2);
-        update_version_payload.set_revision(payload_revision_proto);
-        let version_native = update_version_payload
-            .clone()
-            .into_native()
-            .expect("Unable to create protocol UpdateVersionPayload");
-        // Validate the update version payload is successful
         assert!(validate_update_version_payload(&version_native).is_err());
     }
 

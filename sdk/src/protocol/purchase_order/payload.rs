@@ -872,7 +872,6 @@ pub struct UpdateVersionPayload {
     po_uid: String,
     workflow_status: String,
     is_draft: bool,
-    current_revision_id: u64,
     revision: PayloadRevision,
 }
 
@@ -893,10 +892,6 @@ impl UpdateVersionPayload {
         self.is_draft
     }
 
-    pub fn current_revision_id(&self) -> u64 {
-        self.current_revision_id
-    }
-
     pub fn revision(&self) -> &PayloadRevision {
         &self.revision
     }
@@ -911,7 +906,6 @@ impl FromProto<purchase_order_payload::UpdateVersionPayload> for UpdateVersionPa
             po_uid: proto.take_po_uid(),
             workflow_status: proto.take_workflow_status(),
             is_draft: proto.get_is_draft(),
-            current_revision_id: proto.get_current_revision_id(),
             revision: PayloadRevision::from_proto(proto.take_revision())?,
         })
     }
@@ -924,7 +918,6 @@ impl FromNative<UpdateVersionPayload> for purchase_order_payload::UpdateVersionP
         proto.set_po_uid(native.po_uid().to_string());
         proto.set_workflow_status(native.workflow_status().to_string());
         proto.set_is_draft(native.is_draft());
-        proto.set_current_revision_id(native.current_revision_id());
         proto.set_revision(native.revision().clone().into_proto()?);
 
         Ok(proto)
@@ -965,7 +958,6 @@ pub struct UpdateVersionPayloadBuilder {
     po_uid: Option<String>,
     workflow_status: Option<String>,
     is_draft: Option<bool>,
-    current_revision_id: Option<u64>,
     revision: Option<PayloadRevision>,
 }
 
@@ -994,11 +986,6 @@ impl UpdateVersionPayloadBuilder {
         self
     }
 
-    pub fn with_current_revision_id(mut self, value: u64) -> Self {
-        self.current_revision_id = Some(value);
-        self
-    }
-
     pub fn with_revision(mut self, value: PayloadRevision) -> Self {
         self.revision = Some(value);
         self
@@ -1021,10 +1008,6 @@ impl UpdateVersionPayloadBuilder {
             BuilderError::MissingField("'is_draft' field is required".to_string())
         })?;
 
-        let current_revision_id = self.current_revision_id.ok_or_else(|| {
-            BuilderError::MissingField("'current_revision_id' field is required".to_string())
-        })?;
-
         let revision = self.revision.ok_or_else(|| {
             BuilderError::MissingField("'revision' field is required".to_string())
         })?;
@@ -1034,7 +1017,6 @@ impl UpdateVersionPayloadBuilder {
             po_uid,
             workflow_status,
             is_draft,
-            current_revision_id,
             revision,
         })
     }

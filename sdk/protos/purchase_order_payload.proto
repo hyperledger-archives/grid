@@ -64,7 +64,6 @@ message UpdateVersionPayload {
   string po_uid = 2;
   string workflow_status = 3;
   bool is_draft = 4;
-  uint64 current_revision_id = 5;
   PayloadRevision revision = 6;
 }
 
