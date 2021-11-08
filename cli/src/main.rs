@@ -1532,9 +1532,8 @@ fn run() -> Result<(), CliError> {
                                 Defaults to randomly-generated UUID",
                         ))
                         .arg(
-                            Arg::with_name("id")
-                                .value_name("alternate_id")
-                                .long("id")
+                            Arg::with_name("alternate_id")
+                                .long("alternate-id")
                                 .takes_value(true)
                                 .multiple(true)
                                 .help(

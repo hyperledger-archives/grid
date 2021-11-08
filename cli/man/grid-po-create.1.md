@@ -42,7 +42,7 @@ output.
 OPTIONS
 =======
 
-`--id`
+`--alternate-id`
 : Optionally include an alternate ID. This may be specified multiple times.
 An ID is of the format `alternate_id_type:alternate_id`.
 Examples: `po_number:12348959` and/or `internal_po_id:a8f9fke`.
@@ -83,7 +83,7 @@ $ grid po create \
     --buyer-org=crgl \
     --seller-org=crgl2 \
     --workflow-status=Issued \
-    --id=po_number:8329173 \
+    --alternate-id=po_number:8329173 \
     --wait=0
 ```
 
