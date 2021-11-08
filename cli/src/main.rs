@@ -2539,7 +2539,7 @@ fn run() -> Result<(), CliError> {
                 ("list", Some(_)) => {
                     locations::do_list_locations(location_client, service_id.as_deref())?
                 }
-                ("show", Some(_)) => locations::do_show_location(
+                ("show", Some(m)) => locations::do_show_location(
                     location_client,
                     m.value_of("location_id").unwrap(),
                     service_id,
