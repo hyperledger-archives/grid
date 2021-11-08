@@ -50,6 +50,7 @@ impl ScabbardEventConnectionFactory {
         &self,
         circuit_id: &str,
         service_id: &str,
+        #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
     ) -> Result<ScabbardEventConnection, ScabbardEventConnectionError> {
         let source = format!("{}::{}", circuit_id, service_id);
         let connection_url = format!(
@@ -61,6 +62,8 @@ impl ScabbardEventConnectionFactory {
             source,
             connection_url,
             self.igniter.clone(),
+            #[cfg(feature = "cylinder-jwt-support")]
+            authorization.to_string(),
         ))
     }
 }
@@ -81,15 +84,24 @@ pub struct ScabbardEventConnection {
     connection_url: String,
     igniter: Igniter,
     connection_state: RefCell<ConnectionState>,
+    #[cfg(feature = "cylinder-jwt-support")]
+    authorization: String,
 }
 
 impl ScabbardEventConnection {
-    fn new(name: String, connection_url: String, igniter: Igniter) -> Self {
+    fn new(
+        name: String,
+        connection_url: String,
+        igniter: Igniter,
+        #[cfg(feature = "cylinder-jwt-support")] authorization: String,
+    ) -> Self {
         Self {
             name,
             connection_url,
             igniter,
             connection_state: RefCell::new(ConnectionState::Disconnected),
+            #[cfg(feature = "cylinder-jwt-support")]
+            authorization,
         }
     }
 }
@@ -132,6 +144,9 @@ impl EventConnection for ScabbardEventConnection {
             }
             WsResponse::Empty
         });
+
+        #[cfg(feature = "cylinder-jwt-support")]
+        state_delta_ws.header("Authorization", self.authorization.to_string());
 
         state_delta_ws.on_error(move |err, ctx| {
             error!(
