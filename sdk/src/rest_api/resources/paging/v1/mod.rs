@@ -96,24 +96,31 @@ struct Offsets {
 
 impl Offsets {
     fn new(paging: &paging::Paging) -> Self {
+        // The offset for the very last page
         let last_offset = cmp::max(((paging.total - 1) / paging.limit) * paging.limit, 0);
 
         Offsets {
             first: 0,
-            prev: if paging.offset <= 0 {
+            prev: if paging.offset == 0 {
+                // There is no previous page if we're at the beginning
                 None
             } else if paging.offset > paging.total {
+                // Default to the last page if we've passed the end of the list
                 Some(last_offset)
             } else {
+                // Calculate the previous page normally using increments of the limit
                 Some(cmp::max(paging.offset - paging.limit, 0))
             },
             last: last_offset,
             next: if paging.offset >= last_offset {
+                // There is no next page if we're on or further than the last page
                 None
             } else {
                 Some(if paging.offset + paging.limit > last_offset {
+                    // Default to the last page if we're about to hit the end of the list
                     last_offset
                 } else {
+                    // Calculate the next page normally using increments of the limit
                     paging.offset + paging.limit
                 })
             },
