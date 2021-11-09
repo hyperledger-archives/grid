@@ -116,7 +116,6 @@ pub async fn list_purchase_order_versions(
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
     version: ProtocolVersion,
-    _: AcceptServiceIdParam,
 ) -> HttpResponse {
     let store = store_state.store_factory.get_grid_purchase_order_store();
     let filters = query_filters.into_inner();
