@@ -113,7 +113,7 @@ pub fn create_key_pair(
         let private_key_file = OpenOptions::new()
             .write(true)
             .create(true)
-            .mode(0o640)
+            .mode(0o600)
             .open(private_key_path.as_path())
             .map_err(|err| {
                 CliError::UserError(format!(
