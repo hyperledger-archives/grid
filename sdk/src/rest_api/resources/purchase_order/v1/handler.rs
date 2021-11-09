@@ -28,6 +28,7 @@ use super::payloads::{
 };
 
 pub fn list_purchase_orders<'a>(
+    url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
     filters: ListPOFilters,
     service_id: Option<&str>,
@@ -61,9 +62,7 @@ pub fn list_purchase_orders<'a>(
         .map(PurchaseOrderSlice::from)
         .collect();
 
-    let base_url = Url::parse("/purchase_order")
-        .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, purchase_order_list.paging, service_id);
+    let paging = Paging::new(url, purchase_order_list.paging, service_id);
 
     Ok(PurchaseOrderListSlice { data, paging })
 }
@@ -138,6 +137,7 @@ pub fn get_purchase_order_version<'a>(
 }
 
 pub fn list_purchase_order_versions<'a>(
+    url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
     filters: ListVersionFilters,
@@ -173,14 +173,13 @@ pub fn list_purchase_order_versions<'a>(
         .map(PurchaseOrderVersionSlice::from)
         .collect();
 
-    let base_url = Url::parse(&format!("/purchase_order/{}/versions", purchase_order_uid))
-        .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, purchase_order_version_list.paging, service_id);
+    let paging = Paging::new(url, purchase_order_version_list.paging, service_id);
 
     Ok(PurchaseOrderVersionListSlice { data, paging })
 }
 
 pub fn list_purchase_order_revisions<'a>(
+    url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
     version_id: String,
@@ -219,12 +218,7 @@ pub fn list_purchase_order_revisions<'a>(
         .map(PurchaseOrderRevisionSlice::from)
         .collect();
 
-    let base_url = Url::parse(&format!(
-        "/purchase_order/{}/versions/{}/revisions",
-        purchase_order_uid, version_id
-    ))
-    .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, purchase_order_revision_list.paging, service_id);
+    let paging = Paging::new(url, purchase_order_revision_list.paging, service_id);
 
     Ok(PurchaseOrderRevisionListSlice { data, paging })
 }

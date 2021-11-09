@@ -23,6 +23,7 @@ use crate::{
 use super::payloads::{SchemaListSlice, SchemaSlice};
 
 pub fn list_schemas<'a>(
+    url: Url,
     store: Box<dyn SchemaStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -51,9 +52,7 @@ pub fn list_schemas<'a>(
         .map(SchemaSlice::from)
         .collect();
 
-    let base_url =
-        Url::parse("/schema").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, schema_list.paging, service_id);
+    let paging = Paging::new(url, schema_list.paging, service_id);
 
     Ok(SchemaListSlice { data, paging })
 }

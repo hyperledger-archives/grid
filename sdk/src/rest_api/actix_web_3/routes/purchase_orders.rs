@@ -16,7 +16,7 @@ use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpR
 use futures::future;
 
 use crate::rest_api::{
-    actix_web_3::{AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    actix_web_3::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
     resources::purchase_order::v1,
 };
 
@@ -41,6 +41,7 @@ pub struct QueryRevisionNumber {
 
 #[get("/purchase_order")]
 pub async fn list_purchase_orders(
+    req: HttpRequest,
     store_state: web::Data<StoreState>,
     query_filters: web::Query<ListPOFilters>,
     query_service_id: web::Query<QueryServiceId>,
@@ -54,13 +55,16 @@ pub async fn list_purchase_orders(
             let filters = query_filters.into_inner();
             let paging = query_paging.into_inner();
             let service_id = query_service_id.into_inner().service_id;
-            match v1::list_purchase_orders(
-                store,
-                filters,
-                service_id.as_deref(),
-                paging.offset(),
-                paging.limit(),
-            ) {
+            match request::get_base_url(&req).and_then(|url| {
+                v1::list_purchase_orders(
+                    url,
+                    store,
+                    filters,
+                    service_id.as_deref(),
+                    paging.offset(),
+                    paging.limit(),
+                )
+            }) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -105,6 +109,7 @@ pub async fn get_purchase_order(
 
 #[get("/purchase_order/{uid}/version")]
 pub async fn list_purchase_order_versions(
+    req: HttpRequest,
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
     query_filters: web::Query<ListVersionFilters>,
@@ -118,14 +123,17 @@ pub async fn list_purchase_order_versions(
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
-            match v1::list_purchase_order_versions(
-                store,
-                uid.into_inner(),
-                filters,
-                query_service_id.into_inner().service_id.as_deref(),
-                paging.offset(),
-                paging.limit(),
-            ) {
+            match request::get_base_url(&req).and_then(|url| {
+                v1::list_purchase_order_versions(
+                    url,
+                    store,
+                    uid.into_inner(),
+                    filters,
+                    query_service_id.into_inner().service_id.as_deref(),
+                    paging.offset(),
+                    paging.limit(),
+                )
+            }) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())
@@ -168,6 +176,7 @@ pub async fn get_purchase_order_version(
 
 #[get("/purchase_order/{uid}/version/{version_id}/revision")]
 pub async fn list_purchase_order_version_revisions(
+    req: HttpRequest,
     store_state: web::Data<StoreState>,
     path: web::Path<(String, String)>,
     query_service_id: web::Query<QueryServiceId>,
@@ -180,14 +189,17 @@ pub async fn list_purchase_order_version_revisions(
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
-            match v1::list_purchase_order_revisions(
-                store,
-                uid,
-                version_id,
-                query_service_id.into_inner().service_id.as_deref(),
-                paging.offset(),
-                paging.limit(),
-            ) {
+            match request::get_base_url(&req).and_then(|url| {
+                v1::list_purchase_order_revisions(
+                    url,
+                    store,
+                    uid,
+                    version_id,
+                    query_service_id.into_inner().service_id.as_deref(),
+                    paging.offset(),
+                    paging.limit(),
+                )
+            }) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())

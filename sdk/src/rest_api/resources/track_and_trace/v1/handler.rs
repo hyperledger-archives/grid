@@ -28,6 +28,7 @@ use super::payloads::{
 };
 
 pub fn list_records<'a>(
+    url: Url,
     store: Box<dyn TrackAndTraceStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -139,9 +140,7 @@ pub fn list_records<'a>(
         })
         .collect();
 
-    let base_url =
-        Url::parse("/record").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, record_list.paging, service_id);
+    let paging = Paging::new(url, record_list.paging, service_id);
 
     Ok(RecordListSlice { data, paging })
 }

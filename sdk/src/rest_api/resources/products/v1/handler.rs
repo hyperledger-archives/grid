@@ -23,6 +23,7 @@ use crate::{
 use super::payloads::{ProductListSlice, ProductSlice};
 
 pub fn list_products<'a>(
+    url: Url,
     store: Box<dyn ProductStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -51,9 +52,7 @@ pub fn list_products<'a>(
         .map(ProductSlice::from)
         .collect();
 
-    let base_url =
-        Url::parse("/product").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, product_list.paging().clone(), service_id);
+    let paging = Paging::new(url, product_list.paging().clone(), service_id);
 
     Ok(ProductListSlice { data, paging })
 }

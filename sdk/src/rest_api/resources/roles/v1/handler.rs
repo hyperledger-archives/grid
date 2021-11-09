@@ -23,6 +23,7 @@ use crate::{
 use super::payloads::{RoleListSlice, RoleSlice};
 
 pub fn list_roles_for_organization<'a>(
+    url: Url,
     store: Box<dyn PikeStore + 'a>,
     org_id: String,
     service_id: Option<&str>,
@@ -48,9 +49,7 @@ pub fn list_roles_for_organization<'a>(
 
     let data = role_list.data.into_iter().map(RoleSlice::from).collect();
 
-    let base_url =
-        Url::parse("/role").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, role_list.paging, service_id);
+    let paging = Paging::new(url, role_list.paging, service_id);
 
     Ok(RoleListSlice { data, paging })
 }

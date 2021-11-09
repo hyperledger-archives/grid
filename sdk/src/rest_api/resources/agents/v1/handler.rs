@@ -23,6 +23,7 @@ use crate::{
 use super::payloads::{AgentListSlice, AgentSlice};
 
 pub fn list_agents<'a>(
+    url: Url,
     store: Box<dyn PikeStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -51,9 +52,7 @@ pub fn list_agents<'a>(
         .map(AgentSlice::try_from)
         .collect::<Result<Vec<AgentSlice>, ErrorResponse>>()?;
 
-    let base_url =
-        Url::parse("/agent").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, agent_list.paging, service_id);
+    let paging = Paging::new(url, agent_list.paging, service_id);
 
     Ok(AgentListSlice { data, paging })
 }

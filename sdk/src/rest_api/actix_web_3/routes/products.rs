@@ -16,7 +16,7 @@ use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpR
 use futures::future;
 
 use crate::rest_api::{
-    actix_web_3::{AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    actix_web_3::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
     resources::products::v1,
 };
 
@@ -51,6 +51,7 @@ pub async fn get_product(
 
 #[get("/product")]
 pub async fn list_products(
+    req: HttpRequest,
     store_state: web::Data<StoreState>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
@@ -62,12 +63,15 @@ pub async fn list_products(
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             let service_id = query_service_id.into_inner().service_id;
-            match v1::list_products(
-                store,
-                service_id.as_deref(),
-                paging.offset(),
-                paging.limit(),
-            ) {
+            match request::get_base_url(&req).and_then(|url| {
+                v1::list_products(
+                    url,
+                    store,
+                    service_id.as_deref(),
+                    paging.offset(),
+                    paging.limit(),
+                )
+            }) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())

@@ -23,6 +23,7 @@ use crate::{
 use super::payloads::{LocationListSlice, LocationSlice};
 
 pub fn list_locations<'a>(
+    url: Url,
     store: Box<dyn LocationStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -56,9 +57,7 @@ pub fn list_locations<'a>(
         .map(LocationSlice::from)
         .collect();
 
-    let base_url =
-        Url::parse("/location").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, location_list.paging, service_id);
+    let paging = Paging::new(url, location_list.paging, service_id);
 
     Ok(LocationListSlice { data, paging })
 }

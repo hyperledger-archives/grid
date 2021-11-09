@@ -23,6 +23,7 @@ use crate::{
 use super::payloads::{OrganizationListSlice, OrganizationSlice};
 
 pub fn list_organizations<'a>(
+    url: Url,
     store: Box<dyn PikeStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -51,9 +52,7 @@ pub fn list_organizations<'a>(
         .map(OrganizationSlice::from)
         .collect();
 
-    let base_url =
-        Url::parse("/organization").map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-    let paging = Paging::new(base_url, organization_list.paging, service_id);
+    let paging = Paging::new(url, organization_list.paging, service_id);
 
     Ok(OrganizationListSlice { data, paging })
 }
