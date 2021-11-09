@@ -22,9 +22,6 @@ use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 
 use super::Client;
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
 /// The client representation of Grid Purchase Order
 #[derive(Debug, PartialEq)]
 pub struct PurchaseOrder {
@@ -156,7 +153,7 @@ pub trait PurchaseOrderClient: Client {
     /// # Arguments
     ///
     /// * `id` - the UID of the `PurchaseOrder` containing the `PurchaseOrderVersion`s to be listed
-    /// * `filters` - optional filters for for the versions
+    /// * `filters` - optional - filters for the versions
     /// * `service_id` - optional - the service ID to fetch the versions from
     fn list_purchase_order_versions(
         &self,

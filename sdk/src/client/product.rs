@@ -16,9 +16,6 @@ use crate::error::ClientError;
 
 use super::Client;
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
 /// The client representation of Grid Product
 #[derive(Debug, PartialEq)]
 pub struct Product {
@@ -45,8 +42,8 @@ pub struct PropertyValue {
 /// The client representation of Grid Product lat/long value
 #[derive(Debug, PartialEq)]
 pub struct LatLong {
-    latitude: i64,
-    longitude: i64,
+    pub latitude: i64,
+    pub longitude: i64,
 }
 
 pub trait ProductClient: Client {

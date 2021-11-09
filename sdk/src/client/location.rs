@@ -16,9 +16,6 @@ use crate::error::ClientError;
 
 use super::{schema::DataType, Client};
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
 /// The client representation of a Grid Location
 #[derive(Debug, PartialEq)]
 pub struct Location {

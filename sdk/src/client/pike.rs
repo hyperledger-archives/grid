@@ -18,9 +18,6 @@ use crate::error::ClientError;
 
 use super::Client;
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
 /// The client representation of a Pike Alternate ID
 #[derive(Debug, PartialEq)]
 pub struct AlternateId {

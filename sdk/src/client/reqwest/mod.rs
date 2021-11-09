@@ -22,16 +22,37 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::Instant;
 
-use super::location::reqwest::ReqwestLocationClient;
-use super::pike::reqwest::ReqwestPikeClient;
-use super::product::reqwest::ReqwestProductClient;
+#[cfg(feature = "location")]
+mod location;
+#[cfg(feature = "location")]
+pub use location::*;
+#[cfg(feature = "pike")]
+mod pike;
+#[cfg(feature = "pike")]
+pub use pike::*;
+#[cfg(feature = "product")]
+mod product;
+#[cfg(feature = "product")]
+pub use product::*;
 #[cfg(feature = "purchase-order")]
-use super::purchase_order;
+mod purchase_order;
 #[cfg(feature = "purchase-order")]
-use super::purchase_order::reqwest::ReqwestPurchaseOrderClient;
-use super::schema::reqwest::ReqwestSchemaClient;
+pub use purchase_order::*;
+#[cfg(feature = "schema")]
+mod schema;
+#[cfg(feature = "location")]
+use super::location as client_location;
+#[cfg(feature = "pike")]
+use super::pike as client_pike;
+#[cfg(feature = "product")]
+use super::product as client_product;
+#[cfg(feature = "purchase-order")]
+use super::purchase_order as client_purchase_order;
+#[cfg(feature = "schema")]
+use super::schema as client_schema;
 use super::ClientFactory;
-use super::{location, pike, product, schema};
+#[cfg(feature = "schema")]
+pub use schema::*;
 
 pub struct ReqwestClientFactory {}
 
@@ -49,17 +70,20 @@ impl Default for ReqwestClientFactory {
 
 impl ClientFactory for ReqwestClientFactory {
     /// Retrieves a client for listing and showing locations
-    fn get_location_client(&self, url: String) -> Box<dyn location::LocationClient> {
+    #[cfg(feature = "location")]
+    fn get_location_client(&self, url: String) -> Box<dyn client_location::LocationClient> {
         Box::new(ReqwestLocationClient::new(url))
     }
 
     /// Retrieves a client for listing and showing pike members
-    fn get_pike_client(&self, url: String) -> Box<dyn pike::PikeClient> {
+    #[cfg(feature = "pike")]
+    fn get_pike_client(&self, url: String) -> Box<dyn client_pike::PikeClient> {
         Box::new(ReqwestPikeClient::new(url))
     }
 
     /// Retrieves a client for listing and showing products
-    fn get_product_client(&self, url: String) -> Box<dyn product::ProductClient> {
+    #[cfg(feature = "product")]
+    fn get_product_client(&self, url: String) -> Box<dyn client_product::ProductClient> {
         Box::new(ReqwestProductClient::new(url))
     }
 
@@ -69,12 +93,13 @@ impl ClientFactory for ReqwestClientFactory {
     fn get_purchase_order_client(
         &self,
         url: String,
-    ) -> Box<dyn purchase_order::PurchaseOrderClient> {
+    ) -> Box<dyn client_purchase_order::PurchaseOrderClient> {
         Box::new(ReqwestPurchaseOrderClient::new(url))
     }
 
     /// Retrieves a client for listing and showing schemas
-    fn get_schema_client(&self, url: String) -> Box<dyn schema::SchemaClient> {
+    #[cfg(feature = "schema")]
+    fn get_schema_client(&self, url: String) -> Box<dyn client_schema::SchemaClient> {
         Box::new(ReqwestSchemaClient::new(url))
     }
 }

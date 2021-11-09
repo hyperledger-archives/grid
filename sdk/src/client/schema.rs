@@ -17,9 +17,6 @@ use crate::protocol::schema::state::DataType as StateDataType;
 
 use super::Client;
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
 /// The client representation of a Grid Schema
 #[derive(Debug, PartialEq)]
 pub struct Schema {
@@ -43,7 +40,7 @@ pub struct PropertyDefinition {
 }
 
 /// Possible data types for a schema property
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub enum DataType {
     Bytes,
     Boolean,
