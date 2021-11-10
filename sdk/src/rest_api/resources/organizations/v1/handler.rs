@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     pike::store::{PikeStore, PikeStoreError},
@@ -22,6 +23,7 @@ use crate::{
 use super::payloads::{OrganizationListSlice, OrganizationSlice};
 
 pub fn list_organizations<'a>(
+    url: Url,
     store: Box<dyn PikeStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -50,7 +52,7 @@ pub fn list_organizations<'a>(
         .map(OrganizationSlice::from)
         .collect();
 
-    let paging = Paging::new("/organization", organization_list.paging, service_id);
+    let paging = Paging::new(url, organization_list.paging, service_id);
 
     Ok(OrganizationListSlice { data, paging })
 }

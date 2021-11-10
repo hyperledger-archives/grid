@@ -16,7 +16,7 @@ use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpR
 use futures::future;
 
 use crate::rest_api::{
-    actix_web_3::{AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    actix_web_3::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
     resources::roles::v1,
 };
 
@@ -53,6 +53,7 @@ pub fn get_role(
 
 #[get("/role/{org_id}")]
 pub async fn list_roles_for_organization(
+    req: HttpRequest,
     store_state: web::Data<StoreState>,
     org_id: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
@@ -66,13 +67,16 @@ pub async fn list_roles_for_organization(
             let paging = query_paging.into_inner();
             let service_id = query_service_id.into_inner().service_id;
             let org_id = org_id.into_inner();
-            match v1::list_roles_for_organization(
-                store,
-                org_id,
-                service_id.as_deref(),
-                paging.offset(),
-                paging.limit(),
-            ) {
+            match request::get_base_url(&req).and_then(|url| {
+                v1::list_roles_for_organization(
+                    url,
+                    store,
+                    org_id,
+                    service_id.as_deref(),
+                    paging.offset(),
+                    paging.limit(),
+                )
+            }) {
                 Ok(res) => HttpResponse::Ok().json(res),
                 Err(err) => HttpResponse::build(
                     StatusCode::from_u16(err.status_code())

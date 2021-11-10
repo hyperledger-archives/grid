@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     purchase_order::store::{
@@ -27,6 +28,7 @@ use super::payloads::{
 };
 
 pub fn list_purchase_orders<'a>(
+    url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
     filters: ListPOFilters,
     service_id: Option<&str>,
@@ -60,7 +62,7 @@ pub fn list_purchase_orders<'a>(
         .map(PurchaseOrderSlice::from)
         .collect();
 
-    let paging = Paging::new("/purchase_order", purchase_order_list.paging, service_id);
+    let paging = Paging::new(url, purchase_order_list.paging, service_id);
 
     Ok(PurchaseOrderListSlice { data, paging })
 }
@@ -135,6 +137,7 @@ pub fn get_purchase_order_version<'a>(
 }
 
 pub fn list_purchase_order_versions<'a>(
+    url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
     filters: ListVersionFilters,
@@ -170,16 +173,13 @@ pub fn list_purchase_order_versions<'a>(
         .map(PurchaseOrderVersionSlice::from)
         .collect();
 
-    let paging = Paging::new(
-        &format!("/purchase_order/{}/versions", purchase_order_uid),
-        purchase_order_version_list.paging,
-        service_id,
-    );
+    let paging = Paging::new(url, purchase_order_version_list.paging, service_id);
 
     Ok(PurchaseOrderVersionListSlice { data, paging })
 }
 
 pub fn list_purchase_order_revisions<'a>(
+    url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
     version_id: String,
@@ -218,14 +218,7 @@ pub fn list_purchase_order_revisions<'a>(
         .map(PurchaseOrderRevisionSlice::from)
         .collect();
 
-    let paging = Paging::new(
-        &format!(
-            "/purchase_order/{}/versions/{}/revisions",
-            purchase_order_uid, version_id
-        ),
-        purchase_order_revision_list.paging,
-        service_id,
-    );
+    let paging = Paging::new(url, purchase_order_revision_list.paging, service_id);
 
     Ok(PurchaseOrderRevisionListSlice { data, paging })
 }

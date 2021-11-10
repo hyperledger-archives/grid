@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     pike::store::{PikeStore, PikeStoreError},
@@ -22,6 +23,7 @@ use crate::{
 use super::payloads::{RoleListSlice, RoleSlice};
 
 pub fn list_roles_for_organization<'a>(
+    url: Url,
     store: Box<dyn PikeStore + 'a>,
     org_id: String,
     service_id: Option<&str>,
@@ -47,7 +49,7 @@ pub fn list_roles_for_organization<'a>(
 
     let data = role_list.data.into_iter().map(RoleSlice::from).collect();
 
-    let paging = Paging::new("/role", role_list.paging, service_id);
+    let paging = Paging::new(url, role_list.paging, service_id);
 
     Ok(RoleListSlice { data, paging })
 }

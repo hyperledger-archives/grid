@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     product::store::{ProductStore, ProductStoreError},
@@ -22,6 +23,7 @@ use crate::{
 use super::payloads::{ProductListSlice, ProductSlice};
 
 pub fn list_products<'a>(
+    url: Url,
     store: Box<dyn ProductStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -50,7 +52,7 @@ pub fn list_products<'a>(
         .map(ProductSlice::from)
         .collect();
 
-    let paging = Paging::new("/product", product_list.paging().clone(), service_id);
+    let paging = Paging::new(url, product_list.paging().clone(), service_id);
 
     Ok(ProductListSlice { data, paging })
 }

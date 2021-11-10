@@ -30,3 +30,30 @@ pub use paging::QueryPaging;
 pub use run::run;
 pub use service::{AcceptServiceIdParam, QueryServiceId};
 pub use store_state::StoreState;
+
+#[cfg(any(
+    feature = "rest-api-endpoint-agent",
+    feature = "rest-api-endpoint-location",
+    feature = "rest-api-endpoint-organization",
+    feature = "rest-api-endpoint-product",
+    feature = "rest-api-endpoint-purchase-order",
+    feature = "rest-api-endpoint-record",
+    feature = "rest-api-endpoint-role",
+    feature = "rest-api-endpoint-schema",
+))]
+pub(crate) mod request {
+    use crate::rest_api::resources::error::ErrorResponse;
+    use actix_web::HttpRequest;
+    use url::Url;
+
+    pub fn get_base_url(req: &HttpRequest) -> Result<Url, ErrorResponse> {
+        let connection_info = req.connection_info();
+        Url::parse(&format!(
+            "{}://{}{}",
+            connection_info.scheme(),
+            connection_info.host(),
+            req.path()
+        ))
+        .map_err(|err| ErrorResponse::internal_error(Box::new(err)))
+    }
+}

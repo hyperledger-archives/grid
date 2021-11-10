@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
@@ -27,6 +28,7 @@ use super::payloads::{
 };
 
 pub fn list_records<'a>(
+    url: Url,
     store: Box<dyn TrackAndTraceStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -138,7 +140,7 @@ pub fn list_records<'a>(
         })
         .collect();
 
-    let paging = Paging::new("/record", record_list.paging, service_id);
+    let paging = Paging::new(url, record_list.paging, service_id);
 
     Ok(RecordListSlice { data, paging })
 }

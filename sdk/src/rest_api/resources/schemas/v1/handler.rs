@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::convert::TryFrom;
+use url::Url;
 
 use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
@@ -22,6 +23,7 @@ use crate::{
 use super::payloads::{SchemaListSlice, SchemaSlice};
 
 pub fn list_schemas<'a>(
+    url: Url,
     store: Box<dyn SchemaStore + 'a>,
     service_id: Option<&str>,
     offset: u64,
@@ -50,7 +52,7 @@ pub fn list_schemas<'a>(
         .map(SchemaSlice::from)
         .collect();
 
-    let paging = Paging::new("/schema", schema_list.paging, service_id);
+    let paging = Paging::new(url, schema_list.paging, service_id);
 
     Ok(SchemaListSlice { data, paging })
 }

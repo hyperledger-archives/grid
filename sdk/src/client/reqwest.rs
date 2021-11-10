@@ -86,7 +86,7 @@ pub struct Paging {
     limit: i64,
     total: i64,
     first: String,
-    prev: String,
+    prev: Option<String>,
     next: Option<String>,
     last: String,
 }
@@ -151,7 +151,7 @@ pub fn fetch_entities_list<T: DeserializeOwned>(
         entities.append(&mut entity_list_slice.data);
 
         if let Some(next) = entity_list_slice.paging.next {
-            final_url = format!("{}{}", url, next);
+            final_url = next;
             query_params.clear();
         } else {
             break;
