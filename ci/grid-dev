@@ -63,7 +63,7 @@ WORKDIR /build
 RUN USER=root cargo new --bin cli
 RUN USER=root cargo new --bin daemon
 RUN USER=root cargo new --bin griddle
-RUN USER=root cargo new --bin sdk
+RUN USER=root cargo new --lib sdk
 
 # Create empty Cargo projects for contracts
 RUN USER=root cargo new --bin contracts/location
