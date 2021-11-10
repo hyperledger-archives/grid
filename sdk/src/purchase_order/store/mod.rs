@@ -39,7 +39,7 @@ impl PurchaseOrderList {
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PurchaseOrder {
     purchase_order_uid: String,
-    workflow_status: String,
+    workflow_state: String,
     buyer_org_id: String,
     seller_org_id: String,
     is_closed: bool,
@@ -59,9 +59,9 @@ impl PurchaseOrder {
         &self.purchase_order_uid
     }
 
-    /// Returns the workflow status for the PO
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    /// Returns the workflow state for the PO
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     /// Returns the buyer's org ID for the PO
@@ -123,7 +123,7 @@ impl PurchaseOrder {
 #[derive(Default, Clone)]
 pub struct PurchaseOrderBuilder {
     purchase_order_uid: String,
-    workflow_status: String,
+    workflow_state: String,
     buyer_org_id: String,
     seller_org_id: String,
     is_closed: bool,
@@ -144,9 +144,9 @@ impl PurchaseOrderBuilder {
         self
     }
 
-    /// Sets the workflow status for this PO
-    pub fn with_workflow_status(mut self, status: String) -> Self {
-        self.workflow_status = status;
+    /// Sets the workflow state for this PO
+    pub fn with_workflow_state(mut self, status: String) -> Self {
+        self.workflow_state = status;
         self
     }
 
@@ -219,7 +219,7 @@ impl PurchaseOrderBuilder {
     pub fn build(self) -> Result<PurchaseOrder, PurchaseOrderBuilderError> {
         let PurchaseOrderBuilder {
             purchase_order_uid,
-            workflow_status,
+            workflow_state,
             buyer_org_id,
             seller_org_id,
             is_closed,
@@ -251,9 +251,9 @@ impl PurchaseOrderBuilder {
             ));
         };
 
-        if workflow_status.is_empty() {
+        if workflow_state.is_empty() {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
-                "workflow_status".to_string(),
+                "workflow_state".to_string(),
             ));
         };
 
@@ -277,7 +277,7 @@ impl PurchaseOrderBuilder {
 
         Ok(PurchaseOrder {
             purchase_order_uid,
-            workflow_status,
+            workflow_state,
             buyer_org_id,
             seller_org_id,
             is_closed,
@@ -313,7 +313,7 @@ pub struct PurchaseOrderVersion {
     is_draft: bool,
     current_revision_id: i64,
     revisions: Vec<PurchaseOrderVersionRevision>,
-    workflow_status: String,
+    workflow_state: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -340,9 +340,9 @@ impl PurchaseOrderVersion {
         self.revisions.to_vec()
     }
 
-    /// Returns the workflow status of the PO version
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    /// Returns the workflow state of the PO version
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     /// Returns the start_commit_num for the PO version
@@ -367,7 +367,7 @@ pub struct PurchaseOrderVersionBuilder {
     is_draft: bool,
     current_revision_id: i64,
     revisions: Vec<PurchaseOrderVersionRevision>,
-    workflow_status: String,
+    workflow_state: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -398,9 +398,9 @@ impl PurchaseOrderVersionBuilder {
         self
     }
 
-    /// Sets the workflow status for this PO version
-    pub fn with_workflow_status(mut self, workflow_status: String) -> Self {
-        self.workflow_status = workflow_status;
+    /// Sets the workflow state for this PO version
+    pub fn with_workflow_state(mut self, workflow_state: String) -> Self {
+        self.workflow_state = workflow_state;
         self
     }
 
@@ -428,7 +428,7 @@ impl PurchaseOrderVersionBuilder {
             is_draft,
             current_revision_id,
             revisions,
-            workflow_status,
+            workflow_state,
             start_commit_num,
             end_commit_num,
             service_id,
@@ -452,9 +452,9 @@ impl PurchaseOrderVersionBuilder {
             ));
         };
 
-        if workflow_status.is_empty() {
+        if workflow_state.is_empty() {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
-                "workflow_status".to_string(),
+                "workflow_state".to_string(),
             ));
         };
 
@@ -475,7 +475,7 @@ impl PurchaseOrderVersionBuilder {
             is_draft,
             current_revision_id,
             revisions,
-            workflow_status,
+            workflow_state,
             start_commit_num,
             end_commit_num,
             service_id,

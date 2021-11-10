@@ -22,7 +22,7 @@ use crate::purchase_order::store::diesel::schema::*;
 #[table_name = "purchase_order"]
 pub struct NewPurchaseOrderModel {
     pub purchase_order_uid: String,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub buyer_org_id: String,
     pub seller_org_id: String,
     pub is_closed: bool,
@@ -39,7 +39,7 @@ pub struct NewPurchaseOrderModel {
 pub struct PurchaseOrderModel {
     pub id: i64,
     pub purchase_order_uid: String,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub buyer_org_id: String,
     pub seller_org_id: String,
     pub is_closed: bool,
@@ -58,7 +58,7 @@ pub struct NewPurchaseOrderVersionModel {
     pub version_id: String,
     pub is_draft: bool,
     pub current_revision_id: i64,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
@@ -72,7 +72,7 @@ pub struct PurchaseOrderVersionModel {
     pub version_id: String,
     pub is_draft: bool,
     pub current_revision_id: i64,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub start_commit_num: i64,
     pub end_commit_num: i64,
     pub service_id: Option<String>,
@@ -134,7 +134,7 @@ impl From<PurchaseOrder> for NewPurchaseOrderModel {
     fn from(order: PurchaseOrder) -> Self {
         Self {
             purchase_order_uid: order.purchase_order_uid.to_string(),
-            workflow_status: order.workflow_status.to_string(),
+            workflow_state: order.workflow_state.to_string(),
             buyer_org_id: order.buyer_org_id.to_string(),
             seller_org_id: order.seller_org_id.to_string(),
             is_closed: order.is_closed,
@@ -164,7 +164,7 @@ impl
     ) -> Self {
         Self {
             purchase_order_uid: order.purchase_order_uid.to_string(),
-            workflow_status: order.workflow_status.to_string(),
+            workflow_state: order.workflow_state.to_string(),
             buyer_org_id: order.buyer_org_id.to_string(),
             seller_org_id: order.seller_org_id.to_string(),
             is_closed: order.is_closed,
@@ -198,7 +198,7 @@ impl
     ) -> Self {
         Self {
             purchase_order_uid: order.purchase_order_uid.to_string(),
-            workflow_status: order.workflow_status.to_string(),
+            workflow_state: order.workflow_state.to_string(),
             buyer_org_id: order.buyer_org_id.to_string(),
             seller_org_id: order.seller_org_id.to_string(),
             is_closed: order.is_closed,
@@ -241,7 +241,7 @@ impl
                 .filter(|r| r.version_id == version.version_id)
                 .map(PurchaseOrderVersionRevision::from)
                 .collect(),
-            workflow_status: version.workflow_status.to_string(),
+            workflow_state: version.workflow_state.to_string(),
             start_commit_num: version.start_commit_num,
             end_commit_num: version.end_commit_num,
             service_id: version.service_id.clone(),
@@ -258,7 +258,7 @@ impl From<(PurchaseOrderVersionModel, &i64, &i64)> for NewPurchaseOrderVersionMo
             version_id: version.version_id,
             is_draft: version.is_draft,
             current_revision_id: *current_revision_id,
-            workflow_status: version.workflow_status,
+            workflow_state: version.workflow_state,
             start_commit_num: *start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
             service_id: version.service_id,
@@ -341,7 +341,7 @@ pub fn make_purchase_order_versions(order: &PurchaseOrder) -> Vec<NewPurchaseOrd
             version_id: version.version_id.to_string(),
             is_draft: version.is_draft,
             current_revision_id: version.current_revision_id,
-            workflow_status: version.workflow_status.to_string(),
+            workflow_state: version.workflow_state.to_string(),
             start_commit_num: version.start_commit_num,
             end_commit_num: MAX_COMMIT_NUM,
             service_id: version.service_id.clone(),

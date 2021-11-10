@@ -70,7 +70,7 @@ spec. If not specified, will be randomly generated.
 `--wait`
 : Maximum number of seconds to wait for the batch to be committed.
 
-`--workflow-status`
+`--workflow-state`
 : Specifies the initial workflow state of the purchase order.
 
 EXAMPLES
@@ -82,12 +82,12 @@ The command
 $ grid po create \
     --buyer-org=crgl \
     --seller-org=crgl2 \
-    --workflow-status=Issued \
+    --workflow-state=Issued \
     --alternate-id=po_number:8329173 \
     --wait=0
 ```
 
-will generate a purchase order owned by the `crgl` organization, with the status
+will generate a purchase order owned by the `crgl` organization, with the state
 of `Issued`, and an alternate ID of `po_number:8329173`. It will generate
 output similar to the following (the UUID is randomly generated in this case):
 

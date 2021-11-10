@@ -75,12 +75,12 @@ output like the following:
 Purchase Order 809832081:
     Buyer Org        crgl (Cargill Incorporated)
     Seller Org       crgl2 (Cargill 2)
-    Workflow status  Confirmed
+    Workflow state  Confirmed
     Created At       <datetime string>
     Closed           false
 
 Accepted Version (v3):
-    workflow_status  Editable
+    workflow_state  Editable
     draft            false
     Revisions        4
     Current Revision 4
@@ -105,12 +105,12 @@ It will display output like the following:
 Purchase Order 809832081:
     Buyer Org        crgl (Cargill Incorporated)
     Seller Org       crgl2 (Cargill 2)
-    Workflow status  Confirmed
+    Workflow state  Confirmed
     Created At       <datetime string>
     Closed           false
 
 Accepted Version (v3):
-    workflow_status  Editable
+    workflow_state  Editable
     draft            false
     Revisions        4
     Current Revision 4
@@ -135,12 +135,12 @@ It will display output like the following:
 Purchase Order 809832081:
     Buyer Org        crgl (Cargill Incorporated)
     Seller Org       crgl2 (Cargill 2)
-    Workflow status  Confirmed
+    Workflow state  Confirmed
     Created At       <datetime string>
     Closed           false
 
 Accepted Version (v3):
-    workflow_status  Editable
+    workflow_state  Editable
     draft            false
     Revisions        4
     Current Revision 4

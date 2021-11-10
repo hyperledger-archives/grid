@@ -16,7 +16,7 @@ table! {
     purchase_order (id) {
         id -> Int8,
         purchase_order_uid -> Text,
-        workflow_status -> Text,
+        workflow_state -> Text,
         buyer_org_id -> Varchar,
         seller_org_id -> Varchar,
         is_closed -> Bool,
@@ -36,7 +36,7 @@ table! {
         version_id -> Text,
         is_draft -> Bool,
         current_revision_id -> Int8,
-        workflow_status -> Text,
+        workflow_state -> Text,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,

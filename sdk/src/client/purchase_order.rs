@@ -26,7 +26,7 @@ use super::Client;
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrder {
     pub purchase_order_uid: String,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub buyer_org_id: String,
     pub seller_org_id: String,
     pub is_closed: bool,
@@ -41,7 +41,7 @@ pub struct PurchaseOrder {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderVersion {
     pub version_id: String,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub is_draft: bool,
     pub current_revision_id: u64,
     pub revisions: Vec<PurchaseOrderRevision>,

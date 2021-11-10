@@ -1272,12 +1272,12 @@ fn run() -> Result<(), CliError> {
                             ),
                     )
                     .arg(
-                        Arg::with_name("workflow_status")
+                        Arg::with_name("workflow_state")
                             .value_name("status")
-                            .long("workflow-status")
+                            .long("workflow-state")
                             .takes_value(true)
                             .required(true)
-                            .help("Workflow status of this Purchase Order version"),
+                            .help("Workflow state of this Purchase Order version"),
                     )
                     .arg(
                         Arg::with_name("draft")
@@ -1346,11 +1346,11 @@ fn run() -> Result<(), CliError> {
                             ),
                     )
                     .arg(
-                        Arg::with_name("workflow_status")
+                        Arg::with_name("workflow_state")
                             .value_name("status")
-                            .long("workflow-status")
+                            .long("workflow-state")
                             .takes_value(true)
-                            .help("The updated workflow status of this Purchase Order version"),
+                            .help("The updated workflow state of this Purchase Order version"),
                     )
                     .arg(
                         Arg::with_name("draft")
@@ -1562,12 +1562,12 @@ fn run() -> Result<(), CliError> {
                                 ),
                         )
                         .arg(
-                            Arg::with_name("workflow_status")
+                            Arg::with_name("workflow_state")
                                 .value_name("status")
-                                .long("workflow-status")
+                                .long("workflow-state")
                                 .takes_value(true)
                                 .required(true)
-                                .help("Workflow status of the Purchase Order"),
+                                .help("Workflow state of the Purchase Order"),
                         )
                         .arg(
                             Arg::with_name("key")
@@ -1661,11 +1661,11 @@ fn run() -> Result<(), CliError> {
                                 ),
                         )
                         .arg(
-                            Arg::with_name("workflow_status")
+                            Arg::with_name("workflow_state")
                                 .value_name("status")
-                                .long("workflow-status")
+                                .long("workflow-state")
                                 .takes_value(true)
-                                .help("The updated workflow status of the Purchase Order"),
+                                .help("The updated workflow state of the Purchase Order"),
                         )
                         .arg(
                             Arg::with_name("is_closed")
@@ -2531,7 +2531,7 @@ fn run() -> Result<(), CliError> {
                     )
                     .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
                     .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
-                    .with_workflow_status(m.value_of("workflow_status").unwrap().into())
+                    .with_workflow_state(m.value_of("workflow_state").unwrap().into())
                     .with_alternate_ids(alternate_ids)
                     .build()
                     .map_err(|err| {
@@ -2564,8 +2564,7 @@ fn run() -> Result<(), CliError> {
                 )?;
 
                 if let Some(po) = po {
-                    let workflow_status =
-                        m.value_of("workflow_status").unwrap_or(&po.workflow_status);
+                    let workflow_state = m.value_of("workflow_state").unwrap_or(&po.workflow_state);
 
                     let mut is_closed = po.is_closed;
                     if m.is_present("is_closed") {
@@ -2615,7 +2614,7 @@ fn run() -> Result<(), CliError> {
 
                     let payload = UpdatePurchaseOrderPayloadBuilder::new()
                         .with_uid(uid)
-                        .with_workflow_status(workflow_status.to_string())
+                        .with_workflow_state(workflow_state.to_string())
                         .with_is_closed(is_closed)
                         .with_accepted_version_number(
                             accepted_version.as_deref().map(|s| s.to_string()),
@@ -2712,7 +2711,7 @@ fn run() -> Result<(), CliError> {
 
                     let po = m.value_of("po").unwrap();
 
-                    let workflow_status = m.value_of("workflow_status").unwrap();
+                    let workflow_state = m.value_of("workflow_state").unwrap();
 
                     let revision_id = purchase_orders::get_latest_revision_id(
                         &*purchase_order_client,
@@ -2727,7 +2726,7 @@ fn run() -> Result<(), CliError> {
                         CreateVersionPayloadBuilder::new()
                             .with_version_id(version_id.to_string())
                             .with_po_uid(po.to_string())
-                            .with_workflow_status(workflow_status.to_string())
+                            .with_workflow_state(workflow_state.to_string())
                             .with_is_draft(draft)
                             .with_revision(
                                 PayloadRevisionBuilder::new()
@@ -2847,9 +2846,9 @@ fn run() -> Result<(), CliError> {
                         service_id.as_deref(),
                     )?;
 
-                    let workflow_status = m
-                        .value_of("workflow_status")
-                        .unwrap_or(&version.workflow_status);
+                    let workflow_state = m
+                        .value_of("workflow_state")
+                        .unwrap_or(&version.workflow_state);
 
                     let mut current_revision_id: u64 = version.current_revision_id;
 
@@ -2924,7 +2923,7 @@ fn run() -> Result<(), CliError> {
                     let action = UpdateVersionPayloadBuilder::new()
                         .with_version_id(version_id.to_string())
                         .with_po_uid(po.to_string())
-                        .with_workflow_status(workflow_status.to_string())
+                        .with_workflow_state(workflow_state.to_string())
                         .with_is_draft(draft)
                         .with_revision(payload_revision)
                         .build()

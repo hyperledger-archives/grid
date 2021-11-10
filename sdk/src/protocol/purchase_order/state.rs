@@ -202,7 +202,7 @@ impl PurchaseOrderRevisionBuilder {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderVersion {
     version_id: String,
-    workflow_status: String,
+    workflow_state: String,
     is_draft: bool,
     current_revision_id: u64,
     revisions: Vec<PurchaseOrderRevision>,
@@ -213,8 +213,8 @@ impl PurchaseOrderVersion {
         &self.version_id
     }
 
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     pub fn is_draft(&self) -> bool {
@@ -232,7 +232,7 @@ impl PurchaseOrderVersion {
     pub fn into_builder(self) -> PurchaseOrderVersionBuilder {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(self.version_id)
-            .with_workflow_status(self.workflow_status)
+            .with_workflow_state(self.workflow_state)
             .with_is_draft(self.is_draft)
             .with_current_revision_id(self.current_revision_id)
             .with_revisions(self.revisions)
@@ -245,7 +245,7 @@ impl FromProto<purchase_order_state::PurchaseOrderVersion> for PurchaseOrderVers
     ) -> Result<Self, ProtoConversionError> {
         Ok(PurchaseOrderVersion {
             version_id: version.take_version_id(),
-            workflow_status: version.take_workflow_status(),
+            workflow_state: version.take_workflow_state(),
             is_draft: version.get_is_draft(),
             current_revision_id: version.get_current_revision_id(),
             revisions: version
@@ -261,7 +261,7 @@ impl FromNative<PurchaseOrderVersion> for purchase_order_state::PurchaseOrderVer
     fn from_native(version: PurchaseOrderVersion) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_state::PurchaseOrderVersion::new();
         proto.set_version_id(version.version_id().to_string());
-        proto.set_workflow_status(version.workflow_status().to_string());
+        proto.set_workflow_state(version.workflow_state().to_string());
         proto.set_is_draft(version.is_draft());
         proto.set_current_revision_id(version.current_revision_id());
         proto.set_revisions(RepeatedField::from_vec(
@@ -322,7 +322,7 @@ impl std::fmt::Display for PurchaseOrderVersionBuildError {
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderVersionBuilder {
     version_id: Option<String>,
-    workflow_status: Option<String>,
+    workflow_state: Option<String>,
     is_draft: Option<bool>,
     current_revision_id: Option<u64>,
     revisions: Option<Vec<PurchaseOrderRevision>>,
@@ -338,8 +338,8 @@ impl PurchaseOrderVersionBuilder {
         self
     }
 
-    pub fn with_workflow_status(mut self, workflow_status: String) -> Self {
-        self.workflow_status = Some(workflow_status);
+    pub fn with_workflow_state(mut self, workflow_state: String) -> Self {
+        self.workflow_state = Some(workflow_state);
         self
     }
 
@@ -365,9 +365,9 @@ impl PurchaseOrderVersionBuilder {
             )
         })?;
 
-        let workflow_status = self.workflow_status.ok_or_else(|| {
+        let workflow_state = self.workflow_state.ok_or_else(|| {
             PurchaseOrderVersionBuildError::MissingField(
-                "'workflow_status' field is required".to_string(),
+                "'workflow_state' field is required".to_string(),
             )
         })?;
 
@@ -389,7 +389,7 @@ impl PurchaseOrderVersionBuilder {
 
         Ok(PurchaseOrderVersion {
             version_id,
-            workflow_status,
+            workflow_state,
             is_draft,
             current_revision_id,
             revisions,
@@ -403,7 +403,7 @@ impl PurchaseOrderVersionBuilder {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrder {
     uid: String,
-    workflow_status: String,
+    workflow_state: String,
     versions: Vec<PurchaseOrderVersion>,
     accepted_version_number: Option<String>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
@@ -419,8 +419,8 @@ impl PurchaseOrder {
         &self.uid
     }
 
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     pub fn versions(&self) -> &[PurchaseOrderVersion] {
@@ -458,7 +458,7 @@ impl PurchaseOrder {
     pub fn into_builder(self) -> PurchaseOrderBuilder {
         let mut builder = PurchaseOrderBuilder::new()
             .with_uid(self.uid)
-            .with_workflow_status(self.workflow_status)
+            .with_workflow_state(self.workflow_state)
             .with_versions(self.versions)
             .with_created_at(self.created_at)
             .with_alternate_ids(self.alternate_ids)
@@ -489,7 +489,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
         };
         Ok(PurchaseOrder {
             uid: order.take_uid(),
-            workflow_status: order.take_workflow_status(),
+            workflow_state: order.take_workflow_state(),
             versions: order
                 .take_versions()
                 .into_iter()
@@ -514,7 +514,7 @@ impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
     fn from_native(order: PurchaseOrder) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_state::PurchaseOrder::new();
         proto.set_uid(order.uid().to_string());
-        proto.set_workflow_status(order.workflow_status().to_string());
+        proto.set_workflow_state(order.workflow_state().to_string());
         proto.set_versions(RepeatedField::from_vec(
             order
                 .versions()
@@ -590,7 +590,7 @@ impl std::fmt::Display for PurchaseOrderBuildError {
 #[derive(Default, Clone, PartialEq)]
 pub struct PurchaseOrderBuilder {
     uid: Option<String>,
-    workflow_status: Option<String>,
+    workflow_state: Option<String>,
     versions: Option<Vec<PurchaseOrderVersion>>,
     accepted_version_number: Option<String>,
     created_at: Option<u64>,
@@ -611,8 +611,8 @@ impl PurchaseOrderBuilder {
         self
     }
 
-    pub fn with_workflow_status(mut self, workflow_status: String) -> Self {
-        self.workflow_status = Some(workflow_status);
+    pub fn with_workflow_state(mut self, workflow_state: String) -> Self {
+        self.workflow_state = Some(workflow_state);
         self
     }
 
@@ -661,8 +661,8 @@ impl PurchaseOrderBuilder {
             PurchaseOrderBuildError::MissingField("'uid' field is required".to_string())
         })?;
 
-        let workflow_status = self.workflow_status.ok_or_else(|| {
-            PurchaseOrderBuildError::MissingField("'workflow_status' field is required".to_string())
+        let workflow_state = self.workflow_state.ok_or_else(|| {
+            PurchaseOrderBuildError::MissingField("'workflow_state' field is required".to_string())
         })?;
 
         let versions = self.versions.ok_or_else(|| {
@@ -695,7 +695,7 @@ impl PurchaseOrderBuilder {
 
         Ok(PurchaseOrder {
             uid,
-            workflow_status,
+            workflow_state,
             versions,
             accepted_version_number,
             created_at,

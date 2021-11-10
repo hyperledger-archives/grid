@@ -185,7 +185,7 @@ pub struct CreatePurchaseOrderPayload {
     created_at: u64,
     buyer_org_id: String,
     seller_org_id: String,
-    workflow_status: String,
+    workflow_state: String,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
     create_version_payload: Option<CreateVersionPayload>,
 }
@@ -207,8 +207,8 @@ impl CreatePurchaseOrderPayload {
         &self.seller_org_id
     }
 
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     pub fn alternate_ids(&self) -> &[PurchaseOrderAlternateId] {
@@ -241,7 +241,7 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
             created_at: proto.get_created_at(),
             buyer_org_id: proto.take_buyer_org_id(),
             seller_org_id: proto.take_seller_org_id(),
-            workflow_status: proto.take_workflow_status(),
+            workflow_state: proto.take_workflow_state(),
             alternate_ids: proto
                 .get_alternate_ids()
                 .to_vec()
@@ -271,7 +271,7 @@ impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
                     ProtoConversionError,
                 >>()?,
         ));
-        proto.set_workflow_status(native.workflow_status().to_string());
+        proto.set_workflow_state(native.workflow_state().to_string());
 
         if let Some(payload) = native.create_version_payload() {
             let proto_payload: purchase_order_payload::CreateVersionPayload =
@@ -317,7 +317,7 @@ pub struct CreatePurchaseOrderPayloadBuilder {
     created_at: Option<u64>,
     buyer_org_id: Option<String>,
     seller_org_id: Option<String>,
-    workflow_status: Option<String>,
+    workflow_state: Option<String>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
     create_version_payload: Option<CreateVersionPayload>,
 }
@@ -347,8 +347,8 @@ impl CreatePurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_workflow_status(mut self, value: String) -> Self {
-        self.workflow_status = Some(value);
+    pub fn with_workflow_state(mut self, value: String) -> Self {
+        self.workflow_state = Some(value);
         self
     }
 
@@ -379,8 +379,8 @@ impl CreatePurchaseOrderPayloadBuilder {
             BuilderError::MissingField("'seller_org_id' field is required".to_string())
         })?;
 
-        let workflow_status = self.workflow_status.ok_or_else(|| {
-            BuilderError::MissingField("'workflow_status' field is required".to_string())
+        let workflow_state = self.workflow_state.ok_or_else(|| {
+            BuilderError::MissingField("'workflow_state' field is required".to_string())
         })?;
 
         let alternate_ids = self.alternate_ids;
@@ -392,7 +392,7 @@ impl CreatePurchaseOrderPayloadBuilder {
             created_at,
             buyer_org_id,
             seller_org_id,
-            workflow_status,
+            workflow_state,
             alternate_ids,
             create_version_payload,
         })
@@ -403,7 +403,7 @@ impl CreatePurchaseOrderPayloadBuilder {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct UpdatePurchaseOrderPayload {
     uid: String,
-    workflow_status: String,
+    workflow_state: String,
     is_closed: bool,
     accepted_version_number: Option<String>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
@@ -414,8 +414,8 @@ impl UpdatePurchaseOrderPayload {
         &self.uid
     }
 
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     pub fn is_closed(&self) -> bool {
@@ -437,7 +437,7 @@ impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePur
     ) -> Result<Self, ProtoConversionError> {
         Ok(UpdatePurchaseOrderPayload {
             uid: proto.take_po_uid(),
-            workflow_status: proto.take_workflow_status(),
+            workflow_state: proto.take_workflow_state(),
             is_closed: proto.get_is_closed(),
             accepted_version_number: match proto.get_accepted_version_number().is_empty() {
                 false => Some(proto.take_accepted_version_number()),
@@ -457,7 +457,7 @@ impl FromNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
     fn from_native(native: UpdatePurchaseOrderPayload) -> Result<Self, ProtoConversionError> {
         let mut proto = purchase_order_payload::UpdatePurchaseOrderPayload::new();
         proto.set_po_uid(native.uid().to_string());
-        proto.set_workflow_status(native.workflow_status().to_string());
+        proto.set_workflow_state(native.workflow_state().to_string());
         proto.set_is_closed(native.is_closed());
         proto.set_accepted_version_number(
             native.accepted_version_number().unwrap_or("").to_string(),
@@ -508,7 +508,7 @@ impl IntoNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
 #[derive(Default, Debug)]
 pub struct UpdatePurchaseOrderPayloadBuilder {
     uid: Option<String>,
-    workflow_status: Option<String>,
+    workflow_state: Option<String>,
     is_closed: Option<bool>,
     accepted_version_number: Option<String>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
@@ -524,8 +524,8 @@ impl UpdatePurchaseOrderPayloadBuilder {
         self
     }
 
-    pub fn with_workflow_status(mut self, value: String) -> Self {
-        self.workflow_status = Some(value);
+    pub fn with_workflow_state(mut self, value: String) -> Self {
+        self.workflow_state = Some(value);
         self
     }
 
@@ -549,8 +549,8 @@ impl UpdatePurchaseOrderPayloadBuilder {
             .uid
             .ok_or_else(|| BuilderError::MissingField("'uid' field is required".to_string()))?;
 
-        let workflow_status = self.workflow_status.ok_or_else(|| {
-            BuilderError::MissingField("'workflow_status' field is required".to_string())
+        let workflow_state = self.workflow_state.ok_or_else(|| {
+            BuilderError::MissingField("'workflow_state' field is required".to_string())
         })?;
 
         let is_closed = self.is_closed.ok_or_else(|| {
@@ -561,7 +561,7 @@ impl UpdatePurchaseOrderPayloadBuilder {
 
         Ok(UpdatePurchaseOrderPayload {
             uid,
-            workflow_status,
+            workflow_state,
             is_closed,
             accepted_version_number: self.accepted_version_number,
             alternate_ids,
@@ -714,7 +714,7 @@ pub struct CreateVersionPayload {
     version_id: String,
     po_uid: String,
     is_draft: bool,
-    workflow_status: String,
+    workflow_state: String,
     revision: PayloadRevision,
 }
 
@@ -731,8 +731,8 @@ impl CreateVersionPayload {
         self.is_draft
     }
 
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     pub fn revision(&self) -> &PayloadRevision {
@@ -748,7 +748,7 @@ impl FromProto<purchase_order_payload::CreateVersionPayload> for CreateVersionPa
             version_id: proto.take_version_id(),
             po_uid: proto.take_po_uid(),
             is_draft: proto.get_is_draft(),
-            workflow_status: proto.take_workflow_status(),
+            workflow_state: proto.take_workflow_state(),
             revision: PayloadRevision::from_proto(proto.take_revision())?,
         })
     }
@@ -760,7 +760,7 @@ impl FromNative<CreateVersionPayload> for purchase_order_payload::CreateVersionP
         proto.set_version_id(native.version_id().to_string());
         proto.set_po_uid(native.po_uid().to_string());
         proto.set_is_draft(native.is_draft());
-        proto.set_workflow_status(native.workflow_status().to_string());
+        proto.set_workflow_state(native.workflow_state().to_string());
         proto.set_revision(native.revision().clone().into_proto()?);
 
         Ok(proto)
@@ -800,7 +800,7 @@ pub struct CreateVersionPayloadBuilder {
     version_id: Option<String>,
     po_uid: Option<String>,
     is_draft: Option<bool>,
-    workflow_status: Option<String>,
+    workflow_state: Option<String>,
     revision: Option<PayloadRevision>,
 }
 
@@ -824,8 +824,8 @@ impl CreateVersionPayloadBuilder {
         self
     }
 
-    pub fn with_workflow_status(mut self, value: String) -> Self {
-        self.workflow_status = Some(value);
+    pub fn with_workflow_state(mut self, value: String) -> Self {
+        self.workflow_state = Some(value);
         self
     }
 
@@ -847,8 +847,8 @@ impl CreateVersionPayloadBuilder {
             BuilderError::MissingField("'is_draft' field is required".to_string())
         })?;
 
-        let workflow_status = self.workflow_status.ok_or_else(|| {
-            BuilderError::MissingField("'workflow_status' field is required".to_string())
+        let workflow_state = self.workflow_state.ok_or_else(|| {
+            BuilderError::MissingField("'workflow_state' field is required".to_string())
         })?;
 
         let revision = self.revision.ok_or_else(|| {
@@ -859,7 +859,7 @@ impl CreateVersionPayloadBuilder {
             version_id,
             po_uid,
             is_draft,
-            workflow_status,
+            workflow_state,
             revision,
         })
     }
@@ -870,7 +870,7 @@ impl CreateVersionPayloadBuilder {
 pub struct UpdateVersionPayload {
     version_id: String,
     po_uid: String,
-    workflow_status: String,
+    workflow_state: String,
     is_draft: bool,
     revision: PayloadRevision,
 }
@@ -884,8 +884,8 @@ impl UpdateVersionPayload {
         &self.po_uid
     }
 
-    pub fn workflow_status(&self) -> &str {
-        &self.workflow_status
+    pub fn workflow_state(&self) -> &str {
+        &self.workflow_state
     }
 
     pub fn is_draft(&self) -> bool {
@@ -904,7 +904,7 @@ impl FromProto<purchase_order_payload::UpdateVersionPayload> for UpdateVersionPa
         Ok(UpdateVersionPayload {
             version_id: proto.take_version_id(),
             po_uid: proto.take_po_uid(),
-            workflow_status: proto.take_workflow_status(),
+            workflow_state: proto.take_workflow_state(),
             is_draft: proto.get_is_draft(),
             revision: PayloadRevision::from_proto(proto.take_revision())?,
         })
@@ -916,7 +916,7 @@ impl FromNative<UpdateVersionPayload> for purchase_order_payload::UpdateVersionP
         let mut proto = purchase_order_payload::UpdateVersionPayload::new();
         proto.set_version_id(native.version_id().to_string());
         proto.set_po_uid(native.po_uid().to_string());
-        proto.set_workflow_status(native.workflow_status().to_string());
+        proto.set_workflow_state(native.workflow_state().to_string());
         proto.set_is_draft(native.is_draft());
         proto.set_revision(native.revision().clone().into_proto()?);
 
@@ -956,7 +956,7 @@ impl IntoNative<UpdateVersionPayload> for purchase_order_payload::UpdateVersionP
 pub struct UpdateVersionPayloadBuilder {
     version_id: Option<String>,
     po_uid: Option<String>,
-    workflow_status: Option<String>,
+    workflow_state: Option<String>,
     is_draft: Option<bool>,
     revision: Option<PayloadRevision>,
 }
@@ -976,8 +976,8 @@ impl UpdateVersionPayloadBuilder {
         self
     }
 
-    pub fn with_workflow_status(mut self, value: String) -> Self {
-        self.workflow_status = Some(value);
+    pub fn with_workflow_state(mut self, value: String) -> Self {
+        self.workflow_state = Some(value);
         self
     }
 
@@ -1000,8 +1000,8 @@ impl UpdateVersionPayloadBuilder {
             .po_uid
             .ok_or_else(|| BuilderError::MissingField("'po_uid' field is required".to_string()))?;
 
-        let workflow_status = self.workflow_status.ok_or_else(|| {
-            BuilderError::MissingField("'workflow_status' field is required".to_string())
+        let workflow_state = self.workflow_state.ok_or_else(|| {
+            BuilderError::MissingField("'workflow_state' field is required".to_string())
         })?;
 
         let is_draft = self.is_draft.ok_or_else(|| {
@@ -1015,7 +1015,7 @@ impl UpdateVersionPayloadBuilder {
         Ok(UpdateVersionPayload {
             version_id,
             po_uid,
-            workflow_status,
+            workflow_state,
             is_draft,
             revision,
         })
@@ -1032,7 +1032,7 @@ mod test {
         // Validate with all fields filled out
         let proto_update_po = UpdatePurchaseOrderPayload {
             uid: "uid".to_string(),
-            workflow_status: "status".to_string(),
+            workflow_state: "status".to_string(),
             is_closed: true,
             accepted_version_number: Some("version".to_string()),
             alternate_ids: Vec::new(),
@@ -1040,14 +1040,14 @@ mod test {
         .into_proto()
         .expect("could not transform into proto");
         assert_eq!(proto_update_po.get_po_uid(), "uid");
-        assert_eq!(proto_update_po.get_workflow_status(), "status");
+        assert_eq!(proto_update_po.get_workflow_state(), "status");
         assert!(proto_update_po.get_is_closed());
         assert_eq!(proto_update_po.get_accepted_version_number(), "version");
 
         // Validate with optional fields not filled out
         let proto_update_po = UpdatePurchaseOrderPayload {
             uid: "uid".to_string(),
-            workflow_status: "status".to_string(),
+            workflow_state: "status".to_string(),
             is_closed: true,
             accepted_version_number: None,
             alternate_ids: Vec::new(),
@@ -1063,7 +1063,7 @@ mod test {
         // Validate with all fields filled out
         let mut proto_update_po = purchase_order_payload::UpdatePurchaseOrderPayload::new();
         proto_update_po.set_po_uid("uid".to_string());
-        proto_update_po.set_workflow_status("status".to_string());
+        proto_update_po.set_workflow_state("status".to_string());
         proto_update_po.set_is_closed(true);
         proto_update_po.set_accepted_version_number("version".to_string());
 
@@ -1071,14 +1071,14 @@ mod test {
             .into_native()
             .expect("could not transform into native");
         assert_eq!(update_po.uid(), "uid");
-        assert_eq!(update_po.workflow_status(), "status");
+        assert_eq!(update_po.workflow_state(), "status");
         assert!(update_po.is_closed());
         assert_eq!(update_po.accepted_version_number(), Some("version"));
 
         // Validate with optional fields not filled out
         let mut proto_update_po = purchase_order_payload::UpdatePurchaseOrderPayload::new();
         proto_update_po.set_po_uid("uid".to_string());
-        proto_update_po.set_workflow_status("status".to_string());
+        proto_update_po.set_workflow_state("status".to_string());
         proto_update_po.set_is_closed(true);
         proto_update_po.set_accepted_version_number("".to_string());
 
