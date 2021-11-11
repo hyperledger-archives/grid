@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use crate::client::purchase_order::{
-    PurchaseOrder as ClientPurchaseOrder, PurchaseOrderRevision as ClientPurchaseOrderRevision,
+    AlternateId as ClientAlternateId, PurchaseOrder as ClientPurchaseOrder,
+    PurchaseOrderRevision as ClientPurchaseOrderRevision,
     PurchaseOrderVersion as ClientPurchaseOrderVersion,
 };
 
@@ -24,6 +25,7 @@ pub struct PurchaseOrder {
     buyer_org_id: String,
     seller_org_id: String,
     is_closed: bool,
+    alternate_ids: Vec<AlternateId>,
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
     created_at: i64,
@@ -38,6 +40,11 @@ impl From<&PurchaseOrder> for ClientPurchaseOrder {
             buyer_org_id: d.buyer_org_id.to_string(),
             seller_org_id: d.seller_org_id.to_string(),
             is_closed: d.is_closed,
+            alternate_ids: d
+                .alternate_ids
+                .iter()
+                .map(ClientAlternateId::from)
+                .collect(),
             accepted_version_id: d.accepted_version_id.as_ref().map(String::from),
             versions: d
                 .versions
@@ -90,6 +97,23 @@ impl From<&PurchaseOrderRevision> for ClientPurchaseOrderRevision {
             order_xml_v3_4: d.order_xml_v3_4.to_string(),
             submitter: d.submitter.to_string(),
             created_at: d.created_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AlternateId {
+    pub purchase_order_uid: String,
+    pub id_type: String,
+    pub id: String,
+}
+
+impl From<&AlternateId> for ClientAlternateId {
+    fn from(d: &AlternateId) -> Self {
+        Self {
+            purchase_order_uid: d.purchase_order_uid.to_string(),
+            alternate_id_type: d.id_type.to_string(),
+            alternate_id: d.id.to_string(),
         }
     }
 }

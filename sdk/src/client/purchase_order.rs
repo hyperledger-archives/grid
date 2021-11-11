@@ -30,6 +30,7 @@ pub struct PurchaseOrder {
     pub buyer_org_id: String,
     pub seller_org_id: String,
     pub is_closed: bool,
+    pub alternate_ids: Vec<AlternateId>,
     pub accepted_version_id: Option<String>,
     pub versions: Vec<PurchaseOrderVersion>,
     pub created_at: i64,
