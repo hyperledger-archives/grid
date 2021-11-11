@@ -23,7 +23,7 @@ use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 use super::Client;
 
 /// The client representation of Grid Purchase Order
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrder {
     pub purchase_order_uid: String,
     pub workflow_status: String,
@@ -37,7 +37,7 @@ pub struct PurchaseOrder {
 }
 
 /// The client representation of Grid Purchase Order version
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderVersion {
     pub version_id: String,
     pub workflow_status: String,
@@ -47,7 +47,7 @@ pub struct PurchaseOrderVersion {
 }
 
 /// The client representation of Grid Purchase Order version revision
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderRevision {
     pub revision_id: u64,
     pub order_xml_v3_4: String,
@@ -56,7 +56,7 @@ pub struct PurchaseOrderRevision {
 }
 
 /// The client representation of Grid Purchase Order alternate ID
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlternateId {
     pub purchase_order_uid: String,
     pub alternate_id_type: String,
