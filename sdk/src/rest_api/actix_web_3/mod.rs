@@ -43,17 +43,32 @@ pub use store_state::StoreState;
 ))]
 pub(crate) mod request {
     use crate::rest_api::resources::error::ErrorResponse;
-    use actix_web::HttpRequest;
+    use actix_web::{web::Query, HttpRequest};
+    use std::collections::HashMap;
     use url::Url;
 
     pub fn get_base_url(req: &HttpRequest) -> Result<Url, ErrorResponse> {
         let connection_info = req.connection_info();
-        Url::parse(&format!(
-            "{}://{}{}",
-            connection_info.scheme(),
-            connection_info.host(),
-            req.path()
-        ))
+
+        // Get the query params from the url
+        let mut query = Query::<HashMap<String, String>>::from_query(req.query_string())
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?
+            .into_inner();
+
+        // Remove elements handled by pagination, not part of the base URL
+        query.remove("limit");
+        query.remove("offset");
+        query.remove("service_id");
+
+        Url::parse_with_params(
+            &format!(
+                "{}://{}{}",
+                connection_info.scheme(),
+                connection_info.host(),
+                req.path()
+            ),
+            query,
+        )
         .map_err(|err| ErrorResponse::internal_error(Box::new(err)))
     }
 }
