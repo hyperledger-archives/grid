@@ -1746,26 +1746,16 @@ fn run() -> Result<(), CliError> {
     match matches.subcommand() {
         #[cfg(feature = "pike")]
         ("agent", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+            let url = value_of_url(m)?;
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+            let service_id_str = value_of_service_id(m)?;
 
             let service_id = service_id_str.as_deref();
 
             let pike_client = client_factory.get_pike_client(url);
             match m.subcommand() {
                 ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let active = if m.is_present("inactive") {
@@ -1798,10 +1788,7 @@ fn run() -> Result<(), CliError> {
                     agents::do_create_agent(pike_client, signer, wait, create_agent, service_id)?;
                 }
                 ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
 
                     let signer = signing::load_signer(key)?;
 
@@ -1850,26 +1837,16 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "pike")]
         ("organization", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+            let url = value_of_url(m)?;
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+            let service_id_str = value_of_service_id(m)?;
 
             let service_id = service_id_str.as_deref();
 
             let pike_client = client_factory.get_pike_client(url);
             match m.subcommand() {
                 ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -1892,10 +1869,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -1939,26 +1913,16 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "pike")]
         ("role", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+            let url = value_of_url(m)?;
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+            let service_id_str = value_of_service_id(m)?;
 
             let service_id = service_id_str.as_deref();
 
             let pike_client = client_factory.get_pike_client(url);
             match m.subcommand() {
                 ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -1999,10 +1963,7 @@ fn run() -> Result<(), CliError> {
                     roles::do_create_role(pike_client, signer, wait, create_role, service_id)?;
                 }
                 ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2043,10 +2004,7 @@ fn run() -> Result<(), CliError> {
                     roles::do_update_role(pike_client, signer, wait, update_role, service_id)?;
                 }
                 ("delete", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2076,26 +2034,16 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "schema")]
         ("schema", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+            let url = value_of_url(m)?;
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+            let service_id_str = value_of_service_id(m)?;
 
             let service_id = service_id_str.as_deref();
 
             let schema_client = client_factory.get_schema_client(url);
             match m.subcommand() {
                 ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2110,10 +2058,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2178,16 +2123,9 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "product")]
         ("product", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+            let url = value_of_url(m)?;
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+            let service_id_str = value_of_service_id(m)?;
 
             let service_id = service_id_str.as_deref();
 
@@ -2195,10 +2133,7 @@ fn run() -> Result<(), CliError> {
             let schema_client = client_factory.get_schema_client(url);
             match m.subcommand() {
                 ("create", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2220,10 +2155,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2263,10 +2195,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2287,10 +2216,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2329,10 +2255,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("delete", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2367,16 +2290,9 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "location")]
         ("location", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+            let url = value_of_url(m)?;
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+            let service_id_str = value_of_service_id(m)?;
 
             let service_id = service_id_str.as_deref();
 
@@ -2384,10 +2300,7 @@ fn run() -> Result<(), CliError> {
             let schema_client = client_factory.get_schema_client(url);
             match m.subcommand() {
                 ("create", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2408,10 +2321,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2451,10 +2361,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2475,10 +2382,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2517,10 +2421,7 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("delete", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2563,25 +2464,15 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "purchase-order")]
         ("po", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+            let url = value_of_url(m)?;
 
-            let service_id = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+            let service_id = value_of_service_id(m)?;
 
             let purchase_order_client = client_factory.get_purchase_order_client(url);
 
             match m.subcommand() {
                 ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
 
                     let signer = signing::load_signer(key)?;
 
@@ -2629,23 +2520,13 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
-                    let url = m
-                        .value_of("url")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                        .unwrap_or_else(|| String::from("http://localhost:8000"));
+                    let url = value_of_url(m)?;
 
-                    let service_id = m
-                        .value_of("service_id")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                    let service_id = value_of_service_id(m)?;
 
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                    let key = value_of_key(m)?;
 
                     let signer = signing::load_signer(key)?;
 
@@ -2743,16 +2624,9 @@ fn run() -> Result<(), CliError> {
                     }
                 }
                 ("list", Some(m)) => {
-                    let url = m
-                        .value_of("url")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                        .unwrap_or_else(|| String::from("http://localhost:8000"));
+                    let url =  value_of_url(m)?;
 
-                    let service_id = m
-                        .value_of("service_id")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                    let service_id = value_of_service_id(m)?;
 
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
@@ -2792,16 +2666,9 @@ fn run() -> Result<(), CliError> {
                     )?
                 }
                 ("show", Some(m)) => {
-                    let url = m
-                        .value_of("url")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                        .unwrap_or_else(|| String::from("http://localhost:8000"));
+                    let url =  value_of_url(m)?;
 
-                    let service_id = m
-                        .value_of("service_id")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                    let service_id = value_of_service_id(m)?;
 
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
@@ -2816,10 +2683,7 @@ fn run() -> Result<(), CliError> {
                 }
                 ("version", Some(m)) => match m.subcommand() {
                     ("create", Some(m)) => {
-                        let key = m
-                            .value_of("key")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                        let key = value_of_key(m)?;
                         let signer = signing::load_signer(key)?;
 
                         let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2895,10 +2759,7 @@ fn run() -> Result<(), CliError> {
                         )?;
                     }
                     ("list", Some(m)) => {
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                        let service_id = value_of_service_id(m)?;
 
                         let po_uid = m.value_of("po_uid").unwrap();
 
@@ -2929,16 +2790,9 @@ fn run() -> Result<(), CliError> {
                         )?
                     }
                     ("show", Some(m)) => {
-                        let url = m
-                            .value_of("url")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                            .unwrap_or_else(|| String::from("http://localhost:8000"));
+                        let url = value_of_url(m)?;
 
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                        let service_id = value_of_service_id(m)?;
 
                         let purchase_order_client = client_factory.get_purchase_order_client(url);
 
@@ -3083,16 +2937,9 @@ fn run() -> Result<(), CliError> {
                 },
                 ("revision", Some(m)) => match m.subcommand() {
                     ("list", Some(m)) => {
-                        let url = m
-                            .value_of("url")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                            .unwrap_or_else(|| String::from("http://localhost:8000"));
+                        let url = value_of_url(m)?;
 
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                        let service_id = value_of_service_id(m)?;
 
                         let purchase_order_client = client_factory.get_purchase_order_client(url);
 
@@ -3108,16 +2955,9 @@ fn run() -> Result<(), CliError> {
                         )?
                     }
                     ("show", Some(m)) => {
-                        let url = m
-                            .value_of("url")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                            .unwrap_or_else(|| String::from("http://localhost:8000"));
+                        let url = value_of_url(m)?;
 
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                        let service_id = value_of_service_id(m)?;
 
                         let purchase_order_client = client_factory.get_purchase_order_client(url);
 
@@ -3148,6 +2988,52 @@ fn run() -> Result<(), CliError> {
     }
 
     Ok(())
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
+fn value_of_url(matches: &ArgMatches) -> Result<String, CliError> {
+    let url = matches
+        .value_of("url")
+        .map(String::from)
+        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+        .unwrap_or_else(|| String::from("http://localhost:8000"));
+    Ok(url)
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
+fn value_of_service_id(matches: &ArgMatches) -> Result<Option<String>, CliError> {
+    let service_id_string = matches
+        .value_of("service_id")
+        .map(String::from)
+        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+    Ok(service_id_string)
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
+fn value_of_key(matches: &ArgMatches) -> Result<Option<String>, CliError> {
+    let key = matches
+        .value_of("key")
+        .map(String::from)
+        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+    Ok(key)
 }
 
 #[cfg(feature = "pike")]
