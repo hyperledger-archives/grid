@@ -2578,11 +2578,7 @@ fn run() -> Result<(), CliError> {
                             .unwrap();
                     }
 
-                    let mut alternate_ids = purchase_orders::do_fetch_alternate_ids(
-                        &*purchase_order_client,
-                        &uid,
-                        service_id.as_deref(),
-                    )?;
+                    let mut alternate_ids = po.alternate_ids.clone();
 
                     if m.is_present("add_id") {
                         let adds: Vec<&str> = m.values_of("add_id").unwrap().collect();
