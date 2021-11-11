@@ -1746,15 +1746,13 @@ fn run() -> Result<(), CliError> {
     match matches.subcommand() {
         #[cfg(feature = "pike")]
         ("agent", Some(m)) => {
-            let url = value_of_url(m)?;
-
-            let service_id_str = value_of_service_id(m)?;
-
-            let service_id = service_id_str.as_deref();
-
-            let pike_client = client_factory.get_pike_client(url);
+            
             match m.subcommand() {
                 ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
 
@@ -1788,8 +1786,11 @@ fn run() -> Result<(), CliError> {
                     agents::do_create_agent(pike_client, signer, wait, create_agent, service_id)?;
                 }
                 ("update", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
                     let key = value_of_key(m)?;
-
                     let signer = signing::load_signer(key)?;
 
                     let active = if m.is_present("inactive") {
@@ -1821,34 +1822,41 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to update agent...");
                     agents::do_update_agent(pike_client, signer, wait, update_agent, service_id)?;
                 }
-                ("list", Some(m)) => agents::do_list_agents(
-                    pike_client,
-                    service_id,
-                    m.value_of("format").unwrap(),
-                    m.is_present("line-per-role"),
-                )?,
-                ("show", Some(m)) => agents::do_show_agents(
-                    pike_client,
-                    m.value_of("public_key").unwrap(),
-                    service_id,
-                )?,
+                ("list", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
+                    agents::do_list_agents(
+                        pike_client,
+                        service_id,
+                        m.value_of("format").unwrap(),
+                        m.is_present("line-per-role"),
+                        )?;
+                    }
+                ("show", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
+                        agents::do_show_agents(
+                        pike_client,
+                        m.value_of("public_key").unwrap(),
+                        service_id,
+                        )?}
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
         #[cfg(feature = "pike")]
         ("organization", Some(m)) => {
-            let url = value_of_url(m)?;
-
-            let service_id_str = value_of_service_id(m)?;
-
-            let service_id = service_id_str.as_deref();
-
-            let pike_client = client_factory.get_pike_client(url);
             match m.subcommand() {
                 ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let create_org = CreateOrganizationActionBuilder::new()
@@ -1869,9 +1877,12 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let update_org = UpdateOrganizationActionBuilder::new()
@@ -1897,34 +1908,40 @@ fn run() -> Result<(), CliError> {
                         service_id,
                     )?;
                 }
-                ("list", Some(m)) => orgs::do_list_organizations(
-                    pike_client,
-                    service_id,
-                    m.value_of("format").unwrap(),
-                    m.is_present("alternate_ids"),
-                )?,
-                ("show", Some(m)) => orgs::do_show_organization(
+                ("list", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
+                    orgs::do_list_organizations(
+                        pike_client,
+                        service_id,
+                        m.value_of("format").unwrap(),
+                        m.is_present("alternate_ids"),
+                    )?}
+                ("show", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
+                    orgs::do_show_organization(
                     pike_client,
                     service_id,
                     m.value_of("org_id").unwrap(),
-                )?,
+                )?}
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
         #[cfg(feature = "pike")]
         ("role", Some(m)) => {
-            let url = value_of_url(m)?;
-
-            let service_id_str = value_of_service_id(m)?;
-
-            let service_id = service_id_str.as_deref();
-
-            let pike_client = client_factory.get_pike_client(url);
             match m.subcommand() {
                 ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let active = if m.is_present("inactive") {
@@ -1963,9 +1980,12 @@ fn run() -> Result<(), CliError> {
                     roles::do_create_role(pike_client, signer, wait, create_role, service_id)?;
                 }
                 ("update", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let active = if m.is_present("inactive") {
@@ -2004,9 +2024,12 @@ fn run() -> Result<(), CliError> {
                     roles::do_update_role(pike_client, signer, wait, update_role, service_id)?;
                 }
                 ("delete", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let delete_role = DeleteRoleActionBuilder::new()
@@ -2018,34 +2041,40 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to delete role...");
                     roles::do_delete_role(pike_client, signer, wait, delete_role, service_id)?;
                 }
-                ("show", Some(m)) => roles::do_show_role(
+                ("show", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
+                    roles::do_show_role(
                     pike_client,
                     m.value_of("org_id").unwrap().into(),
                     m.value_of("name").unwrap().into(),
                     service_id,
-                )?,
-                ("list", Some(m)) => roles::do_list_roles(
+                )?}
+                ("list", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let pike_client = client_factory.get_pike_client(url);
+                    roles::do_list_roles(
                     pike_client,
                     m.value_of("org_id").unwrap().into(),
                     service_id,
-                )?,
+                )?}
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
         #[cfg(feature = "schema")]
         ("schema", Some(m)) => {
-            let url = value_of_url(m)?;
-
-            let service_id_str = value_of_service_id(m)?;
-
-            let service_id = service_id_str.as_deref();
-
-            let schema_client = client_factory.get_schema_client(url);
             match m.subcommand() {
                 ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     info!("Submitting request to create schema...");
@@ -2058,9 +2087,12 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     info!("Submitting request to update schema...");
@@ -2072,12 +2104,21 @@ fn run() -> Result<(), CliError> {
                         service_id,
                     )?;
                 }
-                ("list", Some(_)) => schemas::do_list_schemas(schema_client, service_id)?,
-                ("show", Some(m)) => schemas::do_show_schema(
+                ("list", Some(_)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let schema_client = client_factory.get_schema_client(url);
+                    schemas::do_list_schemas(schema_client, service_id)?}
+                ("show", Some(m)) => {let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let schema_client = client_factory.get_schema_client(url);
+                    schemas::do_show_schema(
                     schema_client,
                     m.value_of("name").unwrap().into(),
                     service_id,
-                )?,
+                )?}
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
@@ -2123,19 +2164,16 @@ fn run() -> Result<(), CliError> {
         }
         #[cfg(feature = "product")]
         ("product", Some(m)) => {
-            let url = value_of_url(m)?;
-
-            let service_id_str = value_of_service_id(m)?;
-
-            let service_id = service_id_str.as_deref();
-
-            let product_client = client_factory.get_product_client(url.to_string());
-            let schema_client = client_factory.get_schema_client(url);
+            
             match m.subcommand() {
                 ("create", Some(m)) if m.is_present("file") => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let product_client = client_factory.get_product_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let actions = products::create_product_payloads_from_file(
@@ -2155,9 +2193,13 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let product_client = client_factory.get_product_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
@@ -2195,9 +2237,13 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) if m.is_present("file") => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let product_client = client_factory.get_product_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let actions = products::update_product_payloads_from_file(
@@ -2216,9 +2262,13 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let product_client = client_factory.get_product_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
@@ -2255,9 +2305,12 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("delete", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let product_client = client_factory.get_product_client(url.to_string());
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
@@ -2279,30 +2332,36 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to delete product...");
                     products::do_delete_products(product_client, signer, wait, action, service_id)?;
                 }
-                ("list", Some(_)) => products::do_list_products(product_client, service_id)?,
-                ("show", Some(m)) => products::do_show_products(
+                ("list", Some(_)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let product_client = client_factory.get_product_client(url.to_string());
+                    products::do_list_products(product_client, service_id)?}
+                ("show", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let product_client = client_factory.get_product_client(url.to_string());
+                    products::do_show_products(
                     product_client,
                     m.value_of("product_id").unwrap().into(),
                     service_id,
-                )?,
+                )?}
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
         #[cfg(feature = "location")]
         ("location", Some(m)) => {
-            let url = value_of_url(m)?;
-
-            let service_id_str = value_of_service_id(m)?;
-
-            let service_id = service_id_str.as_deref();
-
-            let location_client = client_factory.get_location_client(url.to_string());
-            let schema_client = client_factory.get_schema_client(url);
             match m.subcommand() {
                 ("create", Some(m)) if m.is_present("file") => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let location_client = client_factory.get_location_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let actions = locations::create_location_payloads_from_file(
@@ -2321,9 +2380,13 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let location_client = client_factory.get_location_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
@@ -2361,9 +2424,13 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) if m.is_present("file") => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let location_client = client_factory.get_location_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let actions = locations::update_location_payloads_from_file(
@@ -2382,9 +2449,13 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("update", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let location_client = client_factory.get_location_client(url.to_string());
+                    let schema_client = client_factory.get_schema_client(url);
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
@@ -2421,9 +2492,12 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("delete", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let location_client = client_factory.get_location_client(url.to_string());
                     let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
@@ -2452,30 +2526,34 @@ fn run() -> Result<(), CliError> {
                     )?;
                 }
                 ("list", Some(_)) => {
-                    locations::do_list_locations(location_client, service_id.as_deref())?
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let location_client = client_factory.get_location_client(url.to_string());
+                    locations::do_list_locations(location_client, service_id)?
                 }
-                ("show", Some(m)) => locations::do_show_location(
+                ("show", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id_str = value_of_service_id(m)?;
+                    let service_id = service_id_str.as_deref();
+                    let location_client = client_factory.get_location_client(url.to_string());
+                    locations::do_show_location(
                     location_client,
                     m.value_of("location_id").unwrap(),
                     service_id,
-                )?,
+                )?}
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
         }
         #[cfg(feature = "purchase-order")]
         ("po", Some(m)) => {
-            let url = value_of_url(m)?;
-
-            let service_id = value_of_service_id(m)?;
-
-            let purchase_order_client = client_factory.get_purchase_order_client(url);
-
             match m.subcommand() {
                 ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id = value_of_service_id(m)?;
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
                     let key = value_of_key(m)?;
-
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let uid = m
@@ -2521,15 +2599,10 @@ fn run() -> Result<(), CliError> {
                 }
                 ("update", Some(m)) => {
                     let url = value_of_url(m)?;
-
                     let service_id = value_of_service_id(m)?;
-
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
-
                     let key = value_of_key(m)?;
-
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let uid = m.value_of("id").map(String::from).unwrap();
@@ -2625,9 +2698,7 @@ fn run() -> Result<(), CliError> {
                 }
                 ("list", Some(m)) => {
                     let url =  value_of_url(m)?;
-
                     let service_id = value_of_service_id(m)?;
-
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
                     let filter = ListPOFilters {
@@ -2667,11 +2738,8 @@ fn run() -> Result<(), CliError> {
                 }
                 ("show", Some(m)) => {
                     let url =  value_of_url(m)?;
-
                     let service_id = value_of_service_id(m)?;
-
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
-
                     let purchase_order_id = m.value_of("id").unwrap();
                     let format = m.value_of("format");
                     purchase_orders::do_show_purchase_order(
@@ -2683,9 +2751,11 @@ fn run() -> Result<(), CliError> {
                 }
                 ("version", Some(m)) => match m.subcommand() {
                     ("create", Some(m)) => {
+                        let url = value_of_url(m)?;
+                        let service_id = value_of_service_id(m)?;
+                        let purchase_order_client = client_factory.get_purchase_order_client(url);
                         let key = value_of_key(m)?;
                         let signer = signing::load_signer(key)?;
-
                         let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                         let order_xml_path = m.value_of("order_xml").unwrap();
@@ -2759,7 +2829,9 @@ fn run() -> Result<(), CliError> {
                         )?;
                     }
                     ("list", Some(m)) => {
+                        let url = value_of_url(m)?;
                         let service_id = value_of_service_id(m)?;
+                        let purchase_order_client = client_factory.get_purchase_order_client(url);
 
                         let po_uid = m.value_of("po_uid").unwrap();
 
@@ -2791,9 +2863,7 @@ fn run() -> Result<(), CliError> {
                     }
                     ("show", Some(m)) => {
                         let url = value_of_url(m)?;
-
                         let service_id = value_of_service_id(m)?;
-
                         let purchase_order_client = client_factory.get_purchase_order_client(url);
 
                         let po_uid = m.value_of("po_uid").unwrap();
@@ -2808,10 +2878,10 @@ fn run() -> Result<(), CliError> {
                         )?;
                     }
                     ("update", Some(m)) => {
-                        let key = m
-                            .value_of("key")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                        let url = value_of_url(m)?;
+                        let service_id = value_of_service_id(m)?;
+                        let purchase_order_client = client_factory.get_purchase_order_client(url);
+                        let key = value_of_key(m)?;
                         let signer = signing::load_signer(key)?;
 
                         let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2938,9 +3008,7 @@ fn run() -> Result<(), CliError> {
                 ("revision", Some(m)) => match m.subcommand() {
                     ("list", Some(m)) => {
                         let url = value_of_url(m)?;
-
                         let service_id = value_of_service_id(m)?;
-
                         let purchase_order_client = client_factory.get_purchase_order_client(url);
 
                         let po_uid = m.value_of("po_uid").unwrap();
@@ -2956,9 +3024,7 @@ fn run() -> Result<(), CliError> {
                     }
                     ("show", Some(m)) => {
                         let url = value_of_url(m)?;
-
                         let service_id = value_of_service_id(m)?;
-
                         let purchase_order_client = client_factory.get_purchase_order_client(url);
 
                         let po_uid = m.value_of("po_uid").unwrap();
