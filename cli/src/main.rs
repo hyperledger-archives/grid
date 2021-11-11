@@ -2104,7 +2104,7 @@ fn run() -> Result<(), CliError> {
                         service_id,
                     )?;
                 }
-                ("list", Some(_)) => {
+                ("list", Some(m)) => {
                     let url = value_of_url(m)?;
                     let service_id_str = value_of_service_id(m)?;
                     let service_id = service_id_str.as_deref();
@@ -2332,7 +2332,7 @@ fn run() -> Result<(), CliError> {
                     info!("Submitting request to delete product...");
                     products::do_delete_products(product_client, signer, wait, action, service_id)?;
                 }
-                ("list", Some(_)) => {
+                ("list", Some(m)) => {
                     let url = value_of_url(m)?;
                     let service_id_str = value_of_service_id(m)?;
                     let service_id = service_id_str.as_deref();
@@ -2525,7 +2525,7 @@ fn run() -> Result<(), CliError> {
                         service_id,
                     )?;
                 }
-                ("list", Some(_)) => {
+                ("list", Some(m)) => {
                     let url = value_of_url(m)?;
                     let service_id_str = value_of_service_id(m)?;
                     let service_id = service_id_str.as_deref();
