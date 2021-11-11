@@ -71,4 +71,25 @@ pub(crate) mod request {
         )
         .map_err(|err| ErrorResponse::internal_error(Box::new(err)))
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use actix_web::test;
+
+        #[test]
+        fn test_get_base_url_returns_base_url() {
+            let req = test::TestRequest::with_uri(
+                "http://localhost/test/endpoint?service_id=foo&limit=10&offset=0&filter=yes",
+            )
+            .to_http_request();
+
+            assert_eq!(
+                get_base_url(&req)
+                    .expect("could not get base url")
+                    .to_string(),
+                "http://localhost/test/endpoint?filter=yes"
+            );
+        }
+    }
 }
