@@ -184,16 +184,6 @@ pub fn do_fetch_revisions(
     Ok(revisions)
 }
 
-pub fn do_fetch_alternate_ids(
-    client: &dyn PurchaseOrderClient,
-    po_uid: &str,
-    service_id: Option<&str>,
-) -> Result<Vec<AlternateId>, CliError> {
-    let alternate_ids = client.list_alternate_ids(po_uid.to_string(), service_id)?;
-
-    Ok(alternate_ids)
-}
-
 pub fn do_list_revisions(
     client: &dyn PurchaseOrderClient,
     po_uid: &str,

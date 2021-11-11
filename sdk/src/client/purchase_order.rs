@@ -177,16 +177,4 @@ pub trait PurchaseOrderClient: Client {
         version_id: String,
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError>;
-
-    /// Lists the purchase order's alternate IDs
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The UID of the `PurchaseOrder` for the `AlternateId`s to be listed
-    /// * `service_id` - optional - the service ID to fetch the alternate IDs from
-    fn list_alternate_ids(
-        &self,
-        id: String,
-        service_id: Option<&str>,
-    ) -> Result<Vec<AlternateId>, ClientError>;
 }
