@@ -32,12 +32,10 @@ COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo
 COPY contracts/track_and_trace /build/contracts/track_and_trace
 COPY sdk/ /build/sdk/
 
-WORKDIR /build/contracts/track_and_trace
-
 # Build the contract
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo build --target wasm32-unknown-unknown --release
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" contracts/track_and_trace/Cargo.toml
+RUN cargo build --manifest-path contracts/track_and_trace/Cargo.toml --target wasm32-unknown-unknown --release
 
 # Build a scar file
 # Copy the packaging directory
@@ -46,7 +44,7 @@ COPY contracts/track_and_trace/packaging/scar/* \
 
 # Copy the contract to the packaging directory
 RUN cp /build/target/wasm32-unknown-unknown/release/grid-track-and-trace-tp.wasm \
-    packaging/scar
+    /build/contracts/track_and_trace/packaging/scar
 
 WORKDIR /build/contracts/track_and_trace/packaging/scar
 
