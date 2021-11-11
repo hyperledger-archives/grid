@@ -102,16 +102,16 @@ RUN find ./*/ -name 'Cargo.toml' | \
 
 # Do wasm builds for the contracts
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=experimental"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=experimental"
 
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=stable"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=stable"
 
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=default"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=default"
 
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --no-default-features"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --no-default-features"
 
 # Clean up built files
 RUN rm -f \
