@@ -63,7 +63,7 @@ WORKDIR /build
 RUN USER=root cargo new --bin cli
 RUN USER=root cargo new --bin daemon
 RUN USER=root cargo new --bin griddle
-RUN USER=root cargo new --bin sdk
+RUN USER=root cargo new --lib sdk
 
 # Create empty Cargo projects for contracts
 RUN USER=root cargo new --bin contracts/location
@@ -102,16 +102,16 @@ RUN find ./*/ -name 'Cargo.toml' | \
 
 # Do wasm builds for the contracts
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=experimental"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=experimental"
 
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=stable"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=stable"
 
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=default"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=default"
 
 RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --no-default-features"
+    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --no-default-features"
 
 # Clean up built files
 RUN rm -f \
