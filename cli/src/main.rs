@@ -2147,7 +2147,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let product_client = client_factory.get_product_client(url.to_string());
+                let product_client = client_factory.get_product_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2167,7 +2167,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let product_client = client_factory.get_product_client(url.to_string());
+                let product_client = client_factory.get_product_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2211,7 +2211,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let product_client = client_factory.get_product_client(url.to_string());
+                let product_client = client_factory.get_product_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2230,7 +2230,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let product_client = client_factory.get_product_client(url.to_string());
+                let product_client = client_factory.get_product_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2273,7 +2273,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let product_client = client_factory.get_product_client(url.to_string());
+                let product_client = client_factory.get_product_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2301,14 +2301,14 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let product_client = client_factory.get_product_client(url.to_string());
+                let product_client = client_factory.get_product_client(url);
                 products::do_list_products(product_client, service_id)?
             }
             ("show", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let product_client = client_factory.get_product_client(url.to_string());
+                let product_client = client_factory.get_product_client(url);
                 products::do_show_products(
                     product_client,
                     m.value_of("product_id").unwrap().into(),
@@ -2323,7 +2323,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let location_client = client_factory.get_location_client(url.to_string());
+                let location_client = client_factory.get_location_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2342,7 +2342,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let location_client = client_factory.get_location_client(url.to_string());
+                let location_client = client_factory.get_location_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2386,7 +2386,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let location_client = client_factory.get_location_client(url.to_string());
+                let location_client = client_factory.get_location_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2405,7 +2405,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let location_client = client_factory.get_location_client(url.to_string());
+                let location_client = client_factory.get_location_client(url.clone());
                 let schema_client = client_factory.get_schema_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
@@ -2448,7 +2448,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let location_client = client_factory.get_location_client(url.to_string());
+                let location_client = client_factory.get_location_client(url);
                 let key = value_of_key(m)?;
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
@@ -2476,14 +2476,14 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let location_client = client_factory.get_location_client(url.to_string());
+                let location_client = client_factory.get_location_client(url);
                 locations::do_list_locations(location_client, service_id)?
             }
             ("show", Some(m)) => {
                 let url = value_of_url(m)?;
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
-                let location_client = client_factory.get_location_client(url.to_string());
+                let location_client = client_factory.get_location_client(url);
                 locations::do_show_location(
                     location_client,
                     m.value_of("location_id").unwrap(),
