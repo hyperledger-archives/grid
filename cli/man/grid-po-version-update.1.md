@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po version update** \[**FLAGS**\] \[**OPTIONS**\] <VERSION_ID> <**--org** ORG_ID>
+**grid po version update** \[**FLAGS**\] \[**OPTIONS**\] <VERSION_ID>
 
 DESCRIPTION
 ===========
@@ -22,7 +22,7 @@ This command allows for the update of Grid Purchase Orders versions. It
 submits a Sabre transaction to create the purchase order version. Each update
 creates a new revision of that version.
 
-VERSION_ID argument and --org option are required.
+VERSION_ID argument and the --po option are required.
 
 
 ARGS
@@ -59,8 +59,12 @@ OPTIONS
 `-k`, `--key`
 : base name or path to a private signing key file
 
-`--org`
-: Specify the organization that owns the purchase order.
+`--order-xml`
+: Specify the path to an order xml FILE to load.  The file must conform to the
+  GS1 Order spec v3.4
+
+`--po`
+: Either a UID or an alternate ID of a purchase order.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
@@ -82,22 +86,18 @@ The command
 
 ```
 $ grid po version update \
-    --org=crgl \
-    --po=po_number:809832081 \
-    --workflow-status=Review \
+    --po PO-00000-1111 \
+    --workflow-status Review \
     --wait \
     v3
 ```
 
-will update the version `v3` of purchase order `82urioz098aui3871uc`, owned by
-the organization `crgl`, to have the workflow status of `Review`. It will
-generate output like the following:
+will update the version `v3` of purchase order `PO-00000-1111` to have the
+workflow status of `Review`. It will generate output like the following:
 
 ```
-Updating version "v3" for Purchase Order 82urioz098aui3871uc.
-Submitted Purchase Order Version create transaction:
-    Batch: 52342uoisufoin38908fyhsdfhs098yv98y98v
-    Transaction: 123456uofo238098fyu80h028yf082ehf8h
+Submitting request to update version...
+Submitted batch: efed2ff3efc50ac32a81b05b8d330fdb154d...
 Waiting for transaction to be committed...
 Transaction was committed successfully.
 ```

@@ -23,7 +23,7 @@ use grid_sdk::{
     },
     protocol::purchase_order::payload::{
         Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayloadBuilder,
-        UpdatePurchaseOrderPayload,
+        UpdatePurchaseOrderPayload, UpdateVersionPayload,
     },
     protos::IntoProto,
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
@@ -138,6 +138,35 @@ pub fn do_fetch_purchase_order(
     let po = client.get_purchase_order(po_uid.to_string(), service_id)?;
 
     Ok(po)
+}
+pub fn do_update_version(
+    client: &dyn PurchaseOrderClient,
+    signer: Box<dyn Signer>,
+    wait: u64,
+    update_version: UpdateVersionPayload,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+    let payload = PurchaseOrderPayloadBuilder::new()
+        .with_action(Action::UpdateVersion(update_version))
+        .with_timestamp(timestamp)
+        .build()
+        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+    let batch_list = purchase_order_batch_builder(signer)
+        .add_transaction(
+            &payload.into_proto()?,
+            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+        )?
+        .create_batch_list();
+
+    client.post_batches(wait, &batch_list, service_id)?;
+    Ok(())
 }
 
 pub fn do_fetch_revisions(
@@ -823,5 +852,50 @@ Revision 1:
         };
 
         assert_eq!(format!("{}", po), display);
+    }
+}
+
+pub fn get_current_revision_for_version(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    version: &PurchaseOrderVersion,
+    service_id: Option<&str>,
+) -> Result<PurchaseOrderRevision, CliError> {
+    let revision = client.get_purchase_order_revision(
+        po_uid.to_string(),
+        version.version_id.to_string(),
+        version.current_revision_id,
+        service_id,
+    )?;
+
+    if let Some(revision) = revision {
+        Ok(revision)
+    } else {
+        Err(CliError::UserError(format!(
+            "Could not fetch revision {} for version {} of purchase order {}",
+            version.current_revision_id, version.version_id, po_uid
+        )))
+    }
+}
+
+pub fn get_purchase_order_version(
+    client: &dyn PurchaseOrderClient,
+    po_uid: &str,
+    version_id: &str,
+    service_id: Option<&str>,
+) -> Result<PurchaseOrderVersion, CliError> {
+    let version = client.get_purchase_order_version(
+        po_uid.to_string(),
+        version_id.to_string(),
+        service_id,
+    )?;
+
+    if let Some(version) = version {
+        Ok(version)
+    } else {
+        Err(CliError::UserError(format!(
+            "Could not fetch version {} for purchase order {}",
+            version_id, po_uid
+        )))
     }
 }

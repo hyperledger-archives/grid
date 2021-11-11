@@ -41,7 +41,7 @@ mod yaml_parser;
 use std::path::PathBuf;
 
 #[cfg(any(feature = "purchase-order"))]
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 #[cfg(any(feature = "purchase-order"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -90,7 +90,7 @@ use grid_sdk::{
     data_validation::validate_order_xml_3_4,
     protocol::purchase_order::payload::{
         CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder, PayloadRevisionBuilder,
-        UpdatePurchaseOrderPayloadBuilder,
+        UpdatePurchaseOrderPayloadBuilder, UpdateVersionPayloadBuilder,
     },
     purchase_order::store::ListPOFilters,
 };
@@ -1324,23 +1324,27 @@ fn run() -> Result<(), CliError> {
                     .arg(
                         Arg::with_name("version_id")
                             .value_name("version_id")
+                            .takes_value(true)
                             .required(true)
                             .help("ID of the Purchase Order version to be updated"),
                     )
                     .arg(
-                        Arg::with_name("org")
-                            .value_name("org_id")
-                            .long("org")
+                        Arg::with_name("po")
+                            .value_name("order_id")
+                            .long("po")
                             .takes_value(true)
                             .required(true)
-                            .help("ID of the organization that owns the Purchase Order version"),
+                            .help(
+                                "ID of the Purchase Order this version belongs to. \
+                        May be the Purchase Order's UID or an Alternate ID \
+                        (Alternate ID format: <alternate_id_type>:<alternate_id>)",
+                            ),
                     )
                     .arg(
                         Arg::with_name("workflow_status")
                             .value_name("status")
                             .long("workflow-status")
                             .takes_value(true)
-                            .required(true)
                             .help("The updated workflow status of this Purchase Order version"),
                     )
                     .arg(
@@ -1354,6 +1358,16 @@ fn run() -> Result<(), CliError> {
                             .long("not-draft")
                             .conflicts_with("draft")
                             .help("Specify this Purchase Order version is not a draft"),
+                    )
+                    .arg(
+                        Arg::with_name("order_xml")
+                            .value_name("file")
+                            .long("order-xml")
+                            .takes_value(true)
+                            .help(
+                                "Specify the path to a Purchase Order XML file. \
+                                    (Formatting must abide by GS1 XML standards 3.4)",
+                            ),
                     )
                     .arg(
                         Arg::with_name("key")
@@ -2880,7 +2894,6 @@ fn run() -> Result<(), CliError> {
                             service_id.as_deref(),
                         )?;
                     }
-                    ("update", Some(_)) => unimplemented!(),
                     ("list", Some(m)) => {
                         let service_id = m
                             .value_of("service_id")
@@ -2937,6 +2950,132 @@ fn run() -> Result<(), CliError> {
                             &*purchase_order_client,
                             po_uid,
                             version,
+                            service_id.as_deref(),
+                        )?;
+                    }
+                    ("update", Some(m)) => {
+                        let key = m
+                            .value_of("key")
+                            .map(String::from)
+                            .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                        let signer = signing::load_signer(key)?;
+
+                        let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                        let version_id = m.value_of("version_id").unwrap();
+
+                        let po = m.value_of("po").unwrap();
+
+                        let version = purchase_orders::get_purchase_order_version(
+                            &*purchase_order_client,
+                            po,
+                            version_id,
+                            service_id.as_deref(),
+                        )?;
+
+                        let current_revision = purchase_orders::get_current_revision_for_version(
+                            &*purchase_order_client,
+                            po,
+                            &version,
+                            service_id.as_deref(),
+                        )?;
+
+                        let workflow_status = m
+                            .value_of("workflow_status")
+                            .unwrap_or(&version.workflow_status);
+
+                        let mut current_revision_id: u64 = version.current_revision_id;
+
+                        let mut new_xml = false;
+                        let mut xml_str = current_revision.order_xml_v3_4.to_string();
+                        if m.is_present("order_xml") {
+                            new_xml = true;
+                            let order_xml_path = m.value_of("order_xml").unwrap();
+                            let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
+                                .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+                            xml_str = String::new();
+                            std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
+                            validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
+                            info!("Purchase order was valid.");
+
+                            current_revision_id = u64::try_from(
+                                purchase_orders::get_latest_revision_id(
+                                    &*purchase_order_client,
+                                    po,
+                                    version_id,
+                                    service_id.as_deref(),
+                                )? + 1,
+                            )
+                            .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                        }
+
+                        let mut draft = version.is_draft;
+
+                        if m.is_present("draft") {
+                            draft = true;
+                        } else if m.is_present("not_draft") {
+                            draft = false;
+                        }
+
+                        let created_at = current_revision
+                            .created_at
+                            .try_into()
+                            .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+                        let mut payload_revision = PayloadRevisionBuilder::new()
+                            .with_revision_id(current_revision.revision_id)
+                            .with_submitter(current_revision.submitter.to_string())
+                            .with_created_at(created_at)
+                            .with_order_xml_v3_4(current_revision.order_xml_v3_4)
+                            .build()
+                            .map_err(|err| {
+                                CliError::UserError(format!("Could not build PO revision: {}", err))
+                            })?;
+
+                        if new_xml {
+                            payload_revision = PayloadRevisionBuilder::new()
+                                .with_revision_id(current_revision_id)
+                                .with_submitter(
+                                    signer
+                                        .public_key()
+                                        .map_err(|err| CliError::UserError(format!("{}", err)))?
+                                        .as_hex(),
+                                )
+                                .with_created_at(
+                                    SystemTime::now()
+                                        .duration_since(UNIX_EPOCH)
+                                        .map(|d| d.as_secs())
+                                        .map_err(|err| {
+                                            CliError::PayloadError(format!("{}", err))
+                                        })?,
+                                )
+                                .with_order_xml_v3_4(xml_str)
+                                .build()
+                                .map_err(|err| {
+                                    CliError::UserError(format!(
+                                        "Could not build PO revision: {}",
+                                        err
+                                    ))
+                                })?;
+                        }
+
+                        let action = UpdateVersionPayloadBuilder::new()
+                            .with_version_id(version_id.to_string())
+                            .with_po_uid(po.to_string())
+                            .with_workflow_status(workflow_status.to_string())
+                            .with_is_draft(draft)
+                            .with_revision(payload_revision)
+                            .build()
+                            .map_err(|err| {
+                                CliError::UserError(format!("Could not build PO version: {}", err))
+                            })?;
+
+                        info!("Submitting request to update purchase order version...");
+                        purchase_orders::do_update_version(
+                            &*purchase_order_client,
+                            signer,
+                            wait,
+                            action,
                             service_id.as_deref(),
                         )?;
                     }
