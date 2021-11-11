@@ -25,7 +25,7 @@ ARGS
 ====
 
 `IDENTIFIER`
-: Either a UUID or an alternate ID of a purchase order.
+: Either a unique ID or an alternate ID of a purchase order.
 
 FLAGS
 =====
@@ -55,7 +55,7 @@ OPTIONS
   `po_number:12348959` and/or `internal_po_id:a8f9fke`.
 
 `--is-closed`
-: Specifies if the purchuse order is closed or open. Possible values are `true`
+: Specifies if the purchase order is closed or open. Possible values are `true`
   or `false`.
 
 `-k`, `--key`
@@ -90,45 +90,40 @@ The command
 ```
 
 $ grid po update \
-    --org=crgl \
-    --add-id=po_number:809832081 \
-    --wait=0 \
-    82urioz098aui3871uc
+    --org crgl \
+    --add-id po_number:809832081 \
+    --wait 10 \
+    PO-1234-56789
 ```
 
-will update the purchase order with UUID `82urioz098aui3871uc` and add an
+will update the purchase order with UID `PO-1234-56789` and add an
 additional alternate ID. It will generate output like the following:
 
 ```
-Submitted Purchase Order update transaction:
-    Batch: 8903huoisufoin38908fyhsdfhs098yv98y98v
-    Transaction: 24898uofo238098fyu80h028yf082ehf8h
-Waiting for transaction to be committed...
-Transaction was committed successfully.
+Submitting request to update purchase order...
+Submitted batch: 0123456789
+Batch and transaction structure was valid. Batch queued.
 ```
 
 The command
 
 ```
 $ grid po update \
-    --org=crgl \
-    --workflow-state=Confirmed \
-    --accepted-version=v3 \
-    --wait \
+    --org crgl \
+    --workflow-state confirmed \
+    --accepted-version v3 \
+    --wait 10 \
     po_number:809832081
 ```
 
 will update the purchase order with alternate ID `po_number:809832081`, set the
-workflow state to `Confirmed`, and the accepted version to `v3`. It will
+workflow state to `confirmed`, and the accepted version to `v3`. It will
 generate output like the following:
 
 ```
-Found Purchase Order UID: 82urioz098aui3871uc
-Submitted Purchase Order update transaction:
-    Batch: 8903huoisufoin38908fyhsdfhs098yv98y98v
-    Transaction: 24898uofo238098fyu80h028yf082ehf8h
-Waiting for transaction to be committed...
-Transaction was committed successfully.
+Submitting request to update purchase order...
+Submitted batch: 987654321
+Batch and transaction structure was valid. Batch queued.
 ```
 
 ENVIRONMENT VARIABLES

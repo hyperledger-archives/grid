@@ -18,7 +18,7 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-Lists or shows Grid Purchase Order revisions for a specified Purchase Order 
+Lists or shows Grid Purchase Order revisions for a specified Purchase Order
 and version.
 
 FLAGS

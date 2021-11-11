@@ -20,8 +20,8 @@ DESCRIPTION
 ===========
 
 This command allows for the creation of Grid Purchase Orders. It submits a
-Sabre transaction to create the purchase order. `--buyer-org` and
-`--seller-org` is required.
+Sabre transaction to create the purchase order. The options `--buyer-org` and
+`--seller-org` are required.
 
 FLAGS
 =====
@@ -63,9 +63,9 @@ Splinter. Format: `<circuit-id>::<service-id>`.
 `--url`
 : URL for the REST API
 
-`--uuid`
-: Optionally specify the UUID of the purchase order. Must conform to the UUID
-spec. If not specified, will be randomly generated.
+`--uid`
+: Optionally specify the unique ID of the purchase order. If not specified,
+will be randomly generated.
 
 `--wait`
 : Maximum number of seconds to wait for the batch to be committed.
@@ -80,24 +80,22 @@ The command
 
 ```
 $ grid po create \
-    --buyer-org=crgl \
-    --seller-org=crgl2 \
-    --workflow-state=Issued \
-    --alternate-id=po_number:8329173 \
-    --wait=0
+    --buyer-org crgl \
+    --seller-org crgl2 \
+    --workflow-state issued \
+    --alternate-id po_number:8329173 \
+    --wait 10
 ```
 
 will generate a purchase order owned by the `crgl` organization, with the state
-of `Issued`, and an alternate ID of `po_number:8329173`. It will generate
-output similar to the following (the UUID is randomly generated in this case):
+of `issued`, and an alternate ID of `po_number:8329173`. It will generate
+output similar to the following (the unique ID is randomly generated in this
+case):
 
 ```
-Generated Purchase Order UUID: 82urioz098aui3871uc
-Submitted Purchase Order create transaction:
-    Batch: 8903huoisufoin38908fyhsdfhs098yv98y98v
-    Transaction: 24898uofo238098fyu80h028yf082ehf8h
-Waiting for transaction to be committed...
-Transaction was committed successfully.
+Submitting request to create purchase order...
+Submitted batch: 55f83da3ff883dec1b4a075f55ff57aecf8428b3c07b3e8041bee5012ce2bebe4c43dab59865c30718f6960f48f380758a079597101af57e42295ec0b6203cef
+Batch and transaction structure was valid. Batch queued.
 ```
 
 ENVIRONMENT VARIABLES
