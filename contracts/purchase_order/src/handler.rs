@@ -390,18 +390,18 @@ fn update_purchase_order(
         // Validate the workflow is closed
         if !desired_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Workflow state '{}' set for closed purchase order {}. Expected workflow \
-                state to be closed when the purchase order is closed",
-                payload.workflow_status(),
+                "Property `is_closed` for purchase order {} is set to true, but the desired \
+                workflow state {} does not have the `closed` constraint.",
                 po_uid,
+                payload.workflow_status(),
             )));
         }
     } else {
         // Validate the workflow is not closed
         if desired_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Workflow state '{}' set for closed purchase order {}. Expected workflow \
-                state to be closed when the purchase order is closed",
+                "The desired workflow state {} for purchase order {} has the `closed` constraint, \
+                but property `is_closed` was set to false.",
                 payload.workflow_status(),
                 po_uid,
             )));
@@ -1334,9 +1334,9 @@ mod tests {
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
         let expected = format!(
-            "Workflow state '{}' set for closed purchase order {}. \
-                Expected workflow state to be closed when the purchase order is closed",
-            to_workflow, PO_UID
+            "Property `is_closed` for purchase order {} is set to true, but the desired \
+            workflow state {} does not have the `closed` constraint.",
+            PO_UID, to_workflow
         );
         match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
             Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
@@ -1359,17 +1359,18 @@ mod tests {
         ctx.add_buyer_role();
         ctx.add_purchase_order(purchase_order());
 
+        let to_workflow = "closed";
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_workflow_status("closed".to_string())
+            .with_workflow_status(to_workflow.to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
         let expected = format!(
-            "Workflow state 'closed' set for closed purchase order {}. \
-                Expected workflow state to be closed when the purchase order is closed",
-            PO_UID
+            "The desired workflow state {} for purchase order {} has the `closed` constraint, \
+            but property `is_closed` was set to false.",
+            to_workflow, PO_UID
         );
         match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
             Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
