@@ -14,50 +14,55 @@
 
 use crate::error::ClientError;
 
-use super::{schema::DataType, Client};
+use super::Client;
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
-pub struct Location {
-    pub location_id: String,
-    pub location_namespace: String,
+/// The client representation of Grid Product
+#[derive(Debug, PartialEq)]
+pub struct Product {
+    pub product_id: String,
+    pub product_namespace: String,
     pub owner: String,
-    pub properties: Vec<LocationPropertyValue>,
-    pub service_id: Option<String>,
+    pub properties: Vec<PropertyValue>,
 }
 
-pub struct LocationPropertyValue {
+/// The client representation of Grid Product property value
+#[derive(Debug, PartialEq)]
+pub struct PropertyValue {
     pub name: String,
-    pub data_type: DataType,
-    pub service_id: Option<String>,
+    pub data_type: String,
     pub bytes_value: Option<Vec<u8>>,
     pub boolean_value: Option<bool>,
     pub number_value: Option<i64>,
     pub string_value: Option<String>,
-    pub enum_value: Option<i32>,
+    pub enum_value: Option<u32>,
     pub struct_values: Option<Vec<String>>,
     pub lat_long_value: Option<LatLong>,
 }
 
+/// The client representation of Grid Product lat/long value
+#[derive(Debug, PartialEq)]
 pub struct LatLong {
     pub latitude: i64,
     pub longitude: i64,
 }
 
-pub trait LocationClient: Client {
-    /// Fetches an agent based on its identified
+pub trait ProductClient: Client {
+    /// Fetches single product by identifier
     ///
     /// # Arguments
     ///
-    /// * `id` - the location's identifier
-    /// * `service_id` - optional - the service id to fetch the location from
-    fn get_location(&self, id: String, service_id: Option<&str>) -> Result<Location, ClientError>;
+    /// * `product_id` - the product's identifier
+    /// * `service_id` - optional - the service ID to fetch the product from
+    fn get_product(
+        &self,
+        product_id: String,
+        service_id: Option<&str>,
+    ) -> Result<Product, ClientError>;
 
-    /// Fetches locations.
+    /// Fetches all products for a service
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch locations from
-    fn list_locations(&self, service_id: Option<&str>) -> Result<Vec<Location>, ClientError>;
+    /// * `service_id` - optional - the service ID to fetch the products from
+    fn list_products(&self, service_id: Option<&str>) -> Result<Vec<Product>, ClientError>;
 }

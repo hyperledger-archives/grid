@@ -17,9 +17,8 @@ use crate::protocol::schema::state::DataType as StateDataType;
 
 use super::Client;
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
+/// The client representation of a Grid Schema
+#[derive(Debug, PartialEq)]
 pub struct Schema {
     pub name: String,
     pub description: String,
@@ -27,6 +26,8 @@ pub struct Schema {
     pub properties: Vec<PropertyDefinition>,
 }
 
+/// The client representation of a Grid Schema property definition
+#[derive(Debug, PartialEq)]
 pub struct PropertyDefinition {
     pub name: String,
     pub schema_name: String,
@@ -38,7 +39,8 @@ pub struct PropertyDefinition {
     pub struct_properties: Vec<PropertyDefinition>,
 }
 
-#[derive(Debug)]
+/// Possible data types for a schema property
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub enum DataType {
     Bytes,
     Boolean,
@@ -69,13 +71,13 @@ pub trait SchemaClient: Client {
     /// # Arguments
     ///
     /// * `name` - the name of the schema (identifier)
-    /// * `service_id` - optional - the service id to fetch the schema from
+    /// * `service_id` - optional - the service ID to fetch the schema from
     fn get_schema(&self, name: String, service_id: Option<&str>) -> Result<Schema, ClientError>;
 
     /// Fetches a list of schemas for the organization
     ///
     /// # Arguments
     ///
-    /// * `service_id` - optional - the service id to fetch the schemas from
+    /// * `service_id` - optional - the service ID to fetch the schemas from
     fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, ClientError>;
 }

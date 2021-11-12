@@ -59,7 +59,7 @@ use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
     feature = "product",
     feature = "schema",
 ))]
-use grid_sdk::client::{create_client_factory, ClientType};
+use grid_sdk::client::{reqwest::ReqwestClientFactory, ClientFactory};
 
 #[cfg(feature = "schema")]
 use grid_sdk::client::{schema, schema::SchemaClient};
@@ -1741,7 +1741,7 @@ fn run() -> Result<(), CliError> {
         feature = "product",
         feature = "schema",
     ))]
-    let client_factory = create_client_factory(ClientType::Reqwest).unwrap();
+    let client_factory = Box::new(ReqwestClientFactory::new());
 
     match matches.subcommand() {
         #[cfg(feature = "pike")]

@@ -22,9 +22,8 @@ use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 
 use super::Client;
 
-#[cfg(feature = "client-reqwest")]
-pub mod reqwest;
-
+/// The client representation of Grid Purchase Order
+#[derive(Debug, PartialEq)]
 pub struct PurchaseOrder {
     pub purchase_order_uid: String,
     pub workflow_status: String,
@@ -37,6 +36,8 @@ pub struct PurchaseOrder {
     pub workflow_type: String,
 }
 
+/// The client representation of Grid Purchase Order version
+#[derive(Debug, PartialEq)]
 pub struct PurchaseOrderVersion {
     pub version_id: String,
     pub workflow_status: String,
@@ -45,6 +46,8 @@ pub struct PurchaseOrderVersion {
     pub revisions: Vec<PurchaseOrderRevision>,
 }
 
+/// The client representation of Grid Purchase Order version revision
+#[derive(Debug, PartialEq)]
 pub struct PurchaseOrderRevision {
     pub revision_id: u64,
     pub order_xml_v3_4: String,
@@ -52,6 +55,8 @@ pub struct PurchaseOrderRevision {
     pub created_at: i64,
 }
 
+/// The client representation of Grid Purchase Order alternate ID
+#[derive(Debug, PartialEq)]
 pub struct AlternateId {
     pub purchase_order_uid: String,
     pub alternate_id_type: String,
@@ -86,12 +91,12 @@ impl TryFrom<AlternateId> for PurchaseOrderAlternateId {
 }
 
 pub trait PurchaseOrderClient: Client {
-    /// Retrieves the purchase order with the specified `id`.
+    /// Retrieves the purchase order with the specified `id`
     ///
     /// # Arguments
     ///
-    /// * `id` - The UID of the `PurchaseOrder` to be retrieved
-    /// * `service_id` - Filter by service ID on the list of `PurchaseOrder`s
+    /// * `id` - the UID of the `PurchaseOrder` to be retrieved
+    /// * `service_id` - optional - the service ID to fetch the orders from
     fn get_purchase_order(
         &self,
         id: String,
@@ -103,9 +108,9 @@ pub trait PurchaseOrderClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `id` - The id of the `PurchaseOrder` containing the `PurchaseOrderVersion` to be retrieved
-    /// * `version_id` - The version id of the `PurchaseOrderVersion` to be retrieved
-    /// * `service_id` - The service ID to fetch the version from
+    /// * `id` - the UID of the `PurchaseOrder` containing the `PurchaseOrderVersion` to be retrieved
+    /// * `version_id` - the version ID of the `PurchaseOrderVersion` to be retrieved
+    /// * `service_id` - optional - the service ID to fetch the versions from
     fn get_purchase_order_version(
         &self,
         id: String,
@@ -118,11 +123,11 @@ pub trait PurchaseOrderClient: Client {
     ///
     /// # Arguments
     ///
-    /// * `id` - The id of the `PurchaseOrder` containing the `PurchaseOrderRevision` to be retrieved
-    /// * `version_id` - The version id of the `PurchaseOrderVersion` containing the
+    /// * `id` - the UID of the `PurchaseOrder` containing the `PurchaseOrderRevision` to be retrieved
+    /// * `version_id` - the version ID of the `PurchaseOrderVersion` containing the
     ///   `PurchaseOrderRevision` to be retrieved
-    /// * `revision_id` - The revision number of the `PurchaseOrderRevision` to be retrieved
-    /// * `service_id` - The service ID to fetch the revision from
+    /// * `revision_id` - the revision number of the `PurchaseOrderRevision` to be retrieved
+    /// * `service_id` - optional - the service ID to fetch the revision from
     fn get_purchase_order_revision(
         &self,
         id: String,
@@ -131,25 +136,25 @@ pub trait PurchaseOrderClient: Client {
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrderRevision>, ClientError>;
 
-    /// lists purchase orders.
+    /// Lists purchase orders.
     ///
     /// # Arguments
     ///
-    /// * `filter` - Filter to apply to the list of `PurchaseOrder`s
-    /// * `service_id` - optional service id if running splinter
+    /// * `filters` - optional - filters to apply to the list of `PurchaseOrder`s
+    /// * `service_id` - optional - the service ID to fetch the orders from
     fn list_purchase_orders(
         &self,
         filters: Option<ListPOFilters>,
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrder>, ClientError>;
 
-    /// lists the purchase order versions of a specific purchase order.
+    /// Lists the purchase order versions of a specific purchase order.
     ///
     /// # Arguments
     ///
-    /// * `id` - The uuid of the `PurchaseOrder` containing the `PurchaseOrderVersion`s to be listed
-    /// * `filters` - Optional filters for for the versions
-    /// * `service_id` - The service ID to fetch the versions from
+    /// * `id` - the UID of the `PurchaseOrder` containing the `PurchaseOrderVersion`s to be listed
+    /// * `filters` - optional - filters for the versions
+    /// * `service_id` - optional - the service ID to fetch the versions from
     fn list_purchase_order_versions(
         &self,
         id: String,
@@ -157,14 +162,14 @@ pub trait PurchaseOrderClient: Client {
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderVersion>, ClientError>;
 
-    /// lists the purchase order revisions of a specific purchase order version.
+    /// Lists the purchase order revisions of a specific purchase order version.
     ///
     /// # Arguments
     ///
-    /// * `id` - The id of the `PurchaseOrder` containing the `PurchaseOrderRevision`s to be listed
-    /// * `version_id` - The version id of the `PurchaseOrderVersion` containing
+    /// * `id` - the UID of the `PurchaseOrder` containing the `PurchaseOrderRevision`s to be listed
+    /// * `version_id` - the version id of the `PurchaseOrderVersion` containing
     ///   the `PurchaseOrderRevision`s to be listed
-    /// * `service_id` - The service ID to fetch the revisions from
+    /// * `service_id` - optional - the service ID to fetch the revisions from
     fn list_purchase_order_revisions(
         &self,
         id: String,
@@ -172,11 +177,12 @@ pub trait PurchaseOrderClient: Client {
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError>;
 
-    /// Lists the purchase order's alternate IDs.
+    /// Lists the purchase order's alternate IDs
     ///
     /// # Arguments
     ///
-    /// * `id` - The uid of the `PurchaseOrder` for the `AlternateId`s to be listed
+    /// * `id` - The UID of the `PurchaseOrder` for the `AlternateId`s to be listed
+    /// * `service_id` - optional - the service ID to fetch the alternate IDs from
     fn list_alternate_ids(
         &self,
         id: String,

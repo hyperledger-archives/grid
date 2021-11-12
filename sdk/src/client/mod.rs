@@ -14,16 +14,30 @@
 
 //! Traits and implementations useful for interacting with the REST API.
 
+#[cfg(feature = "location")]
 pub mod location;
+#[cfg(feature = "location")]
+pub use location::*;
+#[cfg(feature = "pike")]
 pub mod pike;
+#[cfg(feature = "pike")]
+pub use pike::*;
+#[cfg(feature = "product")]
 pub mod product;
+#[cfg(feature = "product")]
+pub use product::*;
 #[cfg(feature = "purchase-order")]
 pub mod purchase_order;
+#[cfg(feature = "purchase-order")]
+pub use purchase_order::*;
 #[cfg(feature = "client-reqwest")]
 pub mod reqwest;
+#[cfg(feature = "schema")]
 pub mod schema;
+#[cfg(feature = "schema")]
+pub use schema::*;
 
-use crate::error::{ClientError, InternalError};
+use crate::error::ClientError;
 use sawtooth_sdk::messages::batch::BatchList;
 
 pub trait Client {
@@ -32,8 +46,8 @@ pub trait Client {
     /// # Arguments
     ///
     /// * `wait` - wait time in seconds
-    /// * `batch_list` - The `BatchList` to be submitted
-    /// * `service_id` - optional service id if running splinter
+    /// * `batch_list` - the `BatchList` to be submitted
+    /// * `service_id` - optional - the service ID to post batches to if running splinter
     fn post_batches(
         &self,
         wait: u64,
@@ -44,12 +58,15 @@ pub trait Client {
 
 pub trait ClientFactory {
     /// Retrieves a client for listing and showing locations
+    #[cfg(feature = "location")]
     fn get_location_client(&self, url: String) -> Box<dyn location::LocationClient>;
 
     /// Retrieves a client for listing and showing pike members
+    #[cfg(feature = "pike")]
     fn get_pike_client(&self, url: String) -> Box<dyn pike::PikeClient>;
 
     /// Retrieves a client for listing and showing products
+    #[cfg(feature = "product")]
     fn get_product_client(&self, url: String) -> Box<dyn product::ProductClient>;
 
     /// Retrieves a client for listing and showing
@@ -61,24 +78,6 @@ pub trait ClientFactory {
     ) -> Box<dyn purchase_order::PurchaseOrderClient>;
 
     /// Retrieves a client for listing and showing schemas
+    #[cfg(feature = "schema")]
     fn get_schema_client(&self, url: String) -> Box<dyn schema::SchemaClient>;
-}
-
-pub enum ClientType {
-    #[cfg(feature = "client-reqwest")]
-    Reqwest,
-}
-
-pub fn create_client_factory(
-    client_type: ClientType,
-) -> Result<Box<dyn ClientFactory>, InternalError> {
-    match client_type {
-        #[cfg(feature = "client-reqwest")]
-        ClientType::Reqwest => Ok(Box::new(reqwest::ReqwestClientFactory::new())),
-
-        #[cfg(not(feature = "client-reqwest"))]
-        _ => Err(InternalError::with_message(
-            "Client Type Required. Feature may be required".to_string(),
-        )),
-    }
 }
