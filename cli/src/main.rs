@@ -1745,397 +1745,362 @@ fn run() -> Result<(), CliError> {
 
     match matches.subcommand() {
         #[cfg(feature = "pike")]
-        ("agent", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+        ("agent", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                let active = if m.is_present("inactive") {
+                    false
+                } else if m.is_present("active") {
+                    true
+                } else {
+                    return Err(CliError::UserError(
+                        "--active or --inactive flag must be provided".to_string(),
+                    ));
+                };
 
-            let service_id = service_id_str.as_deref();
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let pike_client = client_factory.get_pike_client(url);
-            match m.subcommand() {
-                ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let create_agent = CreateAgentActionBuilder::new()
+                    .with_org_id(m.value_of("org_id").unwrap().into())
+                    .with_public_key(m.value_of("public_key").unwrap().into())
+                    .with_active(active)
+                    .with_roles(
+                        m.values_of("role")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_metadata(parse_metadata(m)?)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let active = if m.is_present("inactive") {
-                        false
-                    } else if m.is_present("active") {
-                        true
-                    } else {
-                        return Err(CliError::UserError(
-                            "--active or --inactive flag must be provided".to_string(),
-                        ));
-                    };
+                info!("Submitting request to create agent...");
+                agents::do_create_agent(pike_client, signer, wait, create_agent, service_id)?;
+            }
+            ("update", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                let active = if m.is_present("inactive") {
+                    false
+                } else if m.is_present("active") {
+                    true
+                } else {
+                    return Err(CliError::UserError(
+                        "--active or --inactive flag must be provided".to_string(),
+                    ));
+                };
 
-                    let create_agent = CreateAgentActionBuilder::new()
-                        .with_org_id(m.value_of("org_id").unwrap().into())
-                        .with_public_key(m.value_of("public_key").unwrap().into())
-                        .with_active(active)
-                        .with_roles(
-                            m.values_of("role")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_metadata(parse_metadata(m)?)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    info!("Submitting request to create agent...");
-                    agents::do_create_agent(pike_client, signer, wait, create_agent, service_id)?;
-                }
-                ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                let update_agent = UpdateAgentActionBuilder::new()
+                    .with_org_id(m.value_of("org_id").unwrap().into())
+                    .with_public_key(m.value_of("public_key").unwrap().into())
+                    .with_active(active)
+                    .with_roles(
+                        m.values_of("role")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_metadata(parse_metadata(m)?)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let signer = signing::load_signer(key)?;
-
-                    let active = if m.is_present("inactive") {
-                        false
-                    } else if m.is_present("active") {
-                        true
-                    } else {
-                        return Err(CliError::UserError(
-                            "--active or --inactive flag must be provided".to_string(),
-                        ));
-                    };
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let update_agent = UpdateAgentActionBuilder::new()
-                        .with_org_id(m.value_of("org_id").unwrap().into())
-                        .with_public_key(m.value_of("public_key").unwrap().into())
-                        .with_active(active)
-                        .with_roles(
-                            m.values_of("role")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_metadata(parse_metadata(m)?)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to update agent...");
-                    agents::do_update_agent(pike_client, signer, wait, update_agent, service_id)?;
-                }
-                ("list", Some(m)) => agents::do_list_agents(
+                info!("Submitting request to update agent...");
+                agents::do_update_agent(pike_client, signer, wait, update_agent, service_id)?;
+            }
+            ("list", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                agents::do_list_agents(
                     pike_client,
                     service_id,
                     m.value_of("format").unwrap(),
                     m.is_present("line-per-role"),
-                )?,
-                ("show", Some(m)) => agents::do_show_agents(
-                    pike_client,
-                    m.value_of("public_key").unwrap(),
-                    service_id,
-                )?,
-                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                )?;
             }
-        }
+            ("show", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                agents::do_show_agents(pike_client, m.value_of("public_key").unwrap(), service_id)?
+            }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         #[cfg(feature = "pike")]
-        ("organization", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+        ("organization", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                let create_org = CreateOrganizationActionBuilder::new()
+                    .with_org_id(m.value_of("org_id").unwrap().into())
+                    .with_name(m.value_of("name").unwrap().into())
+                    .with_alternate_ids(parse_alternate_ids(m)?)
+                    .with_metadata(parse_metadata(m)?)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-            let service_id = service_id_str.as_deref();
+                info!("Submitting request to create organization...");
+                orgs::do_create_organization(pike_client, signer, wait, create_org, service_id)?;
+            }
+            ("update", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let pike_client = client_factory.get_pike_client(url);
-            match m.subcommand() {
-                ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let update_org = UpdateOrganizationActionBuilder::new()
+                    .with_org_id(m.value_of("org_id").unwrap().into())
+                    .with_name(m.value_of("name").unwrap().into())
+                    .with_locations(
+                        m.values_of("locations")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_alternate_ids(parse_alternate_ids(m)?)
+                    .with_metadata(parse_metadata(m)?)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let create_org = CreateOrganizationActionBuilder::new()
-                        .with_org_id(m.value_of("org_id").unwrap().into())
-                        .with_name(m.value_of("name").unwrap().into())
-                        .with_alternate_ids(parse_alternate_ids(m)?)
-                        .with_metadata(parse_metadata(m)?)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to create organization...");
-                    orgs::do_create_organization(
-                        pike_client,
-                        signer,
-                        wait,
-                        create_org,
-                        service_id,
-                    )?;
-                }
-                ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let update_org = UpdateOrganizationActionBuilder::new()
-                        .with_org_id(m.value_of("org_id").unwrap().into())
-                        .with_name(m.value_of("name").unwrap().into())
-                        .with_locations(
-                            m.values_of("locations")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_alternate_ids(parse_alternate_ids(m)?)
-                        .with_metadata(parse_metadata(m)?)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to update organization...");
-                    orgs::do_update_organization(
-                        pike_client,
-                        signer,
-                        wait,
-                        update_org,
-                        service_id,
-                    )?;
-                }
-                ("list", Some(m)) => orgs::do_list_organizations(
+                info!("Submitting request to update organization...");
+                orgs::do_update_organization(pike_client, signer, wait, update_org, service_id)?;
+            }
+            ("list", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                orgs::do_list_organizations(
                     pike_client,
                     service_id,
                     m.value_of("format").unwrap(),
                     m.is_present("alternate_ids"),
-                )?,
-                ("show", Some(m)) => orgs::do_show_organization(
-                    pike_client,
-                    service_id,
-                    m.value_of("org_id").unwrap(),
-                )?,
-                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                )?
             }
-        }
+            ("show", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                orgs::do_show_organization(pike_client, service_id, m.value_of("org_id").unwrap())?
+            }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         #[cfg(feature = "pike")]
-        ("role", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+        ("role", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                let active = if m.is_present("inactive") {
+                    false
+                } else {
+                    m.is_present("active")
+                };
 
-            let service_id = service_id_str.as_deref();
+                let create_role = CreateRoleActionBuilder::new()
+                    .with_org_id(m.value_of("org_id").unwrap().into())
+                    .with_name(m.value_of("name").unwrap().into())
+                    .with_description(m.value_of("description").unwrap_or("").into())
+                    .with_permissions(
+                        m.values_of("permissions")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_allowed_organizations(
+                        m.values_of("allowed_orgs")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_inherit_from(
+                        m.values_of("inherit_from")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_active(active)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-            let pike_client = client_factory.get_pike_client(url);
-            match m.subcommand() {
-                ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                info!("Submitting request to create role...");
+                roles::do_create_role(pike_client, signer, wait, create_role, service_id)?;
+            }
+            ("update", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                let active = if m.is_present("inactive") {
+                    false
+                } else {
+                    m.is_present("active")
+                };
 
-                    let active = if m.is_present("inactive") {
-                        false
-                    } else {
-                        m.is_present("active")
-                    };
+                let update_role = UpdateRoleActionBuilder::new()
+                    .with_org_id(m.value_of("org_id").unwrap().into())
+                    .with_name(m.value_of("name").unwrap().into())
+                    .with_description(m.value_of("description").unwrap_or("").into())
+                    .with_permissions(
+                        m.values_of("permissions")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_allowed_organizations(
+                        m.values_of("allowed_orgs")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_inherit_from(
+                        m.values_of("inherit_from")
+                            .unwrap_or_default()
+                            .map(String::from)
+                            .collect::<Vec<String>>(),
+                    )
+                    .with_active(active)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let create_role = CreateRoleActionBuilder::new()
-                        .with_org_id(m.value_of("org_id").unwrap().into())
-                        .with_name(m.value_of("name").unwrap().into())
-                        .with_description(m.value_of("description").unwrap_or("").into())
-                        .with_permissions(
-                            m.values_of("permissions")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_allowed_organizations(
-                            m.values_of("allowed_orgs")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_inherit_from(
-                            m.values_of("inherit_from")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_active(active)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+                info!("Submitting request to update role...");
+                roles::do_update_role(pike_client, signer, wait, update_role, service_id)?;
+            }
+            ("delete", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    info!("Submitting request to create role...");
-                    roles::do_create_role(pike_client, signer, wait, create_role, service_id)?;
-                }
-                ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let delete_role = DeleteRoleActionBuilder::new()
+                    .with_org_id(m.value_of("org_id").unwrap().into())
+                    .with_name(m.value_of("name").unwrap().into())
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let active = if m.is_present("inactive") {
-                        false
-                    } else {
-                        m.is_present("active")
-                    };
-
-                    let update_role = UpdateRoleActionBuilder::new()
-                        .with_org_id(m.value_of("org_id").unwrap().into())
-                        .with_name(m.value_of("name").unwrap().into())
-                        .with_description(m.value_of("description").unwrap_or("").into())
-                        .with_permissions(
-                            m.values_of("permissions")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_allowed_organizations(
-                            m.values_of("allowed_orgs")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_inherit_from(
-                            m.values_of("inherit_from")
-                                .unwrap_or_default()
-                                .map(String::from)
-                                .collect::<Vec<String>>(),
-                        )
-                        .with_active(active)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to update role...");
-                    roles::do_update_role(pike_client, signer, wait, update_role, service_id)?;
-                }
-                ("delete", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let delete_role = DeleteRoleActionBuilder::new()
-                        .with_org_id(m.value_of("org_id").unwrap().into())
-                        .with_name(m.value_of("name").unwrap().into())
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to delete role...");
-                    roles::do_delete_role(pike_client, signer, wait, delete_role, service_id)?;
-                }
-                ("show", Some(m)) => roles::do_show_role(
+                info!("Submitting request to delete role...");
+                roles::do_delete_role(pike_client, signer, wait, delete_role, service_id)?;
+            }
+            ("show", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                roles::do_show_role(
                     pike_client,
                     m.value_of("org_id").unwrap().into(),
                     m.value_of("name").unwrap().into(),
                     service_id,
-                )?,
-                ("list", Some(m)) => roles::do_list_roles(
+                )?
+            }
+            ("list", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let pike_client = client_factory.get_pike_client(url);
+                roles::do_list_roles(
                     pike_client,
                     m.value_of("org_id").unwrap().into(),
                     service_id,
-                )?,
-                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                )?
             }
-        }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         #[cfg(feature = "schema")]
-        ("schema", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+        ("schema", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                info!("Submitting request to create schema...");
+                schemas::do_create_schemas(
+                    schema_client,
+                    signer,
+                    wait,
+                    m.value_of("path").unwrap(),
+                    service_id,
+                )?;
+            }
+            ("update", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let service_id = service_id_str.as_deref();
-
-            let schema_client = client_factory.get_schema_client(url);
-            match m.subcommand() {
-                ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    info!("Submitting request to create schema...");
-                    schemas::do_create_schemas(
-                        schema_client,
-                        signer,
-                        wait,
-                        m.value_of("path").unwrap(),
-                        service_id,
-                    )?;
-                }
-                ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    info!("Submitting request to update schema...");
-                    schemas::do_update_schemas(
-                        schema_client,
-                        signer,
-                        wait,
-                        m.value_of("path").unwrap(),
-                        service_id,
-                    )?;
-                }
-                ("list", Some(_)) => schemas::do_list_schemas(schema_client, service_id)?,
-                ("show", Some(m)) => schemas::do_show_schema(
+                info!("Submitting request to update schema...");
+                schemas::do_update_schemas(
+                    schema_client,
+                    signer,
+                    wait,
+                    m.value_of("path").unwrap(),
+                    service_id,
+                )?;
+            }
+            ("list", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let schema_client = client_factory.get_schema_client(url);
+                schemas::do_list_schemas(schema_client, service_id)?
+            }
+            ("show", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let schema_client = client_factory.get_schema_client(url);
+                schemas::do_show_schema(
                     schema_client,
                     m.value_of("name").unwrap().into(),
                     service_id,
-                )?,
-                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                )?
             }
-        }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         #[cfg(feature = "database")]
         ("database", Some(m)) => match m.subcommand() {
             ("migrate", Some(m)) => database::run_migrations(
@@ -2177,677 +2142,589 @@ fn run() -> Result<(), CliError> {
             keygen::generate_keys(key_name, conflict_strategy, key_dir)?
         }
         #[cfg(feature = "product")]
-        ("product", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+        ("product", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) if m.is_present("file") => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let product_client = client_factory.get_product_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                let actions = products::create_product_payloads_from_file(
+                    m.values_of("file").unwrap().collect(),
+                    schema_client,
+                    service_id.as_deref(),
+                    m.value_of("owner"),
+                )?;
 
-            let service_id = service_id_str.as_deref();
+                info!("Submitting request to create product...");
+                products::do_create_products(product_client, signer, wait, actions, service_id)?;
+            }
+            ("create", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let product_client = client_factory.get_product_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let product_client = client_factory.get_product_client(url.to_string());
-            let schema_client = client_factory.get_schema_client(url);
-            match m.subcommand() {
-                ("create", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                    "GS1" => ProductNamespace::Gs1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                let properties = parse_properties(
+                    schema_client,
+                    m.value_of("product_namespace").unwrap_or("gs1_product"),
+                    service_id.as_deref(),
+                    m,
+                )?;
 
-                    let actions = products::create_product_payloads_from_file(
-                        m.values_of("file").unwrap().collect(),
-                        schema_client,
-                        service_id.as_deref(),
-                        m.value_of("owner"),
-                    )?;
+                let action = ProductCreateActionBuilder::new()
+                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_owner(m.value_of("owner").unwrap().into())
+                    .with_product_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    info!("Submitting request to create product...");
-                    products::do_create_products(
-                        product_client,
-                        signer,
-                        wait,
-                        actions,
-                        service_id,
-                    )?;
-                }
-                ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                info!("Submitting request to create product...");
+                products::do_create_products(
+                    product_client,
+                    signer,
+                    wait,
+                    vec![action],
+                    service_id,
+                )?;
+            }
+            ("update", Some(m)) if m.is_present("file") => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let product_client = client_factory.get_product_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                let actions = products::update_product_payloads_from_file(
+                    m.values_of("file").unwrap().collect(),
+                    schema_client,
+                    service_id.as_deref(),
+                )?;
 
-                    let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                        "GS1" => ProductNamespace::Gs1,
-                        unknown => {
-                            return Err(CliError::UserError(format!(
-                                "Unrecognized namespace {}",
-                                unknown
-                            )))
-                        }
-                    };
+                info!("Submitting request to update product...");
+                products::do_update_products(product_client, signer, wait, actions, service_id)?;
+            }
+            ("update", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let product_client = client_factory.get_product_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let properties = parse_properties(
-                        schema_client,
-                        m.value_of("product_namespace").unwrap_or("gs1_product"),
-                        service_id.as_deref(),
-                        m,
-                    )?;
+                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                    "GS1" => ProductNamespace::Gs1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
 
-                    let action = ProductCreateActionBuilder::new()
-                        .with_product_id(m.value_of("product_id").unwrap().into())
-                        .with_owner(m.value_of("owner").unwrap().into())
-                        .with_product_namespace(namespace)
-                        .with_properties(properties)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+                let properties = parse_properties(
+                    schema_client,
+                    m.value_of("product_namespace").unwrap_or("gs1_product"),
+                    service_id.as_deref(),
+                    m,
+                )?;
 
-                    info!("Submitting request to create product...");
-                    products::do_create_products(
-                        product_client,
-                        signer,
-                        wait,
-                        vec![action],
-                        service_id,
-                    )?;
-                }
-                ("update", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let action = ProductUpdateActionBuilder::new()
+                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_product_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                info!("Submitting request to update product...");
+                products::do_update_products(
+                    product_client,
+                    signer,
+                    wait,
+                    vec![action],
+                    service_id,
+                )?;
+            }
+            ("delete", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let product_client = client_factory.get_product_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let actions = products::update_product_payloads_from_file(
-                        m.values_of("file").unwrap().collect(),
-                        schema_client,
-                        service_id.as_deref(),
-                    )?;
+                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                    "GS1" => ProductNamespace::Gs1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
 
-                    info!("Submitting request to update product...");
-                    products::do_update_products(
-                        product_client,
-                        signer,
-                        wait,
-                        actions,
-                        service_id,
-                    )?;
-                }
-                ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let action = ProductDeleteActionBuilder::new()
+                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_product_namespace(namespace)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                        "GS1" => ProductNamespace::Gs1,
-                        unknown => {
-                            return Err(CliError::UserError(format!(
-                                "Unrecognized namespace {}",
-                                unknown
-                            )))
-                        }
-                    };
-
-                    let properties = parse_properties(
-                        schema_client,
-                        m.value_of("product_namespace").unwrap_or("gs1_product"),
-                        service_id.as_deref(),
-                        m,
-                    )?;
-
-                    let action = ProductUpdateActionBuilder::new()
-                        .with_product_id(m.value_of("product_id").unwrap().into())
-                        .with_product_namespace(namespace)
-                        .with_properties(properties)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to update product...");
-                    products::do_update_products(
-                        product_client,
-                        signer,
-                        wait,
-                        vec![action],
-                        service_id,
-                    )?;
-                }
-                ("delete", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                        "GS1" => ProductNamespace::Gs1,
-                        unknown => {
-                            return Err(CliError::UserError(format!(
-                                "Unrecognized namespace {}",
-                                unknown
-                            )))
-                        }
-                    };
-
-                    let action = ProductDeleteActionBuilder::new()
-                        .with_product_id(m.value_of("product_id").unwrap().into())
-                        .with_product_namespace(namespace)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to delete product...");
-                    products::do_delete_products(product_client, signer, wait, action, service_id)?;
-                }
-                ("list", Some(_)) => products::do_list_products(product_client, service_id)?,
-                ("show", Some(m)) => products::do_show_products(
+                info!("Submitting request to delete product...");
+                products::do_delete_products(product_client, signer, wait, action, service_id)?;
+            }
+            ("list", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let product_client = client_factory.get_product_client(url);
+                products::do_list_products(product_client, service_id)?
+            }
+            ("show", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let product_client = client_factory.get_product_client(url);
+                products::do_show_products(
                     product_client,
                     m.value_of("product_id").unwrap().into(),
                     service_id,
-                )?,
-                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                )?
             }
-        }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         #[cfg(feature = "location")]
-        ("location", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+        ("location", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) if m.is_present("file") => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let location_client = client_factory.get_location_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let service_id_str = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                let actions = locations::create_location_payloads_from_file(
+                    m.value_of("file").unwrap(),
+                    schema_client,
+                    service_id.as_deref(),
+                )?;
 
-            let service_id = service_id_str.as_deref();
+                info!("Submitting request to create location...");
+                locations::do_create_location(location_client, signer, wait, actions, service_id)?;
+            }
+            ("create", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let location_client = client_factory.get_location_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let location_client = client_factory.get_location_client(url.to_string());
-            let schema_client = client_factory.get_schema_client(url);
-            match m.subcommand() {
-                ("create", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                    "GS1" => LocationNamespace::Gs1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                let properties = parse_properties(
+                    schema_client,
+                    m.value_of("location_namespace").unwrap_or("gs1_location"),
+                    service_id.as_deref(),
+                    m,
+                )?;
 
-                    let actions = locations::create_location_payloads_from_file(
-                        m.value_of("file").unwrap(),
-                        schema_client,
-                        service_id.as_deref(),
-                    )?;
+                let action = LocationCreateActionBuilder::new()
+                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_owner(m.value_of("owner").unwrap().into())
+                    .with_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    info!("Submitting request to create location...");
-                    locations::do_create_location(
-                        location_client,
-                        signer,
-                        wait,
-                        actions,
-                        service_id,
-                    )?;
-                }
-                ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                info!("Submitting request to create location...");
+                locations::do_create_location(
+                    location_client,
+                    signer,
+                    wait,
+                    vec![action],
+                    service_id,
+                )?;
+            }
+            ("update", Some(m)) if m.is_present("file") => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let location_client = client_factory.get_location_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                let actions = locations::update_location_payloads_from_file(
+                    m.value_of("file").unwrap(),
+                    schema_client,
+                    service_id.as_deref(),
+                )?;
 
-                    let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                        "GS1" => LocationNamespace::Gs1,
-                        unknown => {
-                            return Err(CliError::UserError(format!(
-                                "Unrecognized namespace {}",
-                                unknown
-                            )))
-                        }
-                    };
+                info!("Submitting request to update location...");
+                locations::do_update_location(location_client, signer, wait, actions, service_id)?;
+            }
+            ("update", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let location_client = client_factory.get_location_client(url.clone());
+                let schema_client = client_factory.get_schema_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let properties = parse_properties(
-                        schema_client,
-                        m.value_of("location_namespace").unwrap_or("gs1_location"),
-                        service_id.as_deref(),
-                        m,
-                    )?;
+                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                    "GS1" => LocationNamespace::Gs1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
 
-                    let action = LocationCreateActionBuilder::new()
-                        .with_location_id(m.value_of("location_id").unwrap().into())
-                        .with_owner(m.value_of("owner").unwrap().into())
-                        .with_namespace(namespace)
-                        .with_properties(properties)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+                let properties = parse_properties(
+                    schema_client,
+                    m.value_of("location_namespace").unwrap_or("gs1_location"),
+                    service_id.as_deref(),
+                    m,
+                )?;
 
-                    info!("Submitting request to create location...");
-                    locations::do_create_location(
-                        location_client,
-                        signer,
-                        wait,
-                        vec![action],
-                        service_id,
-                    )?;
-                }
-                ("update", Some(m)) if m.is_present("file") => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let action = LocationUpdateActionBuilder::new()
+                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                info!("Submitting request to update location...");
+                locations::do_update_location(
+                    location_client,
+                    signer,
+                    wait,
+                    vec![action],
+                    service_id,
+                )?;
+            }
+            ("delete", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let location_client = client_factory.get_location_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let actions = locations::update_location_payloads_from_file(
-                        m.value_of("file").unwrap(),
-                        schema_client,
-                        service_id.as_deref(),
-                    )?;
+                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                    "GS1" => LocationNamespace::Gs1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
 
-                    info!("Submitting request to update location...");
-                    locations::do_update_location(
-                        location_client,
-                        signer,
-                        wait,
-                        actions,
-                        service_id,
-                    )?;
-                }
-                ("update", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
+                let action = LocationDeleteActionBuilder::new()
+                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_namespace(namespace)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                        "GS1" => LocationNamespace::Gs1,
-                        unknown => {
-                            return Err(CliError::UserError(format!(
-                                "Unrecognized namespace {}",
-                                unknown
-                            )))
-                        }
-                    };
-
-                    let properties = parse_properties(
-                        schema_client,
-                        m.value_of("location_namespace").unwrap_or("gs1_location"),
-                        service_id.as_deref(),
-                        m,
-                    )?;
-
-                    let action = LocationUpdateActionBuilder::new()
-                        .with_location_id(m.value_of("location_id").unwrap().into())
-                        .with_namespace(namespace)
-                        .with_properties(properties)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to update location...");
-                    locations::do_update_location(
-                        location_client,
-                        signer,
-                        wait,
-                        vec![action],
-                        service_id,
-                    )?;
-                }
-                ("delete", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                    let signer = signing::load_signer(key)?;
-
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                    let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                        "GS1" => LocationNamespace::Gs1,
-                        unknown => {
-                            return Err(CliError::UserError(format!(
-                                "Unrecognized namespace {}",
-                                unknown
-                            )))
-                        }
-                    };
-
-                    let action = LocationDeleteActionBuilder::new()
-                        .with_location_id(m.value_of("location_id").unwrap().into())
-                        .with_namespace(namespace)
-                        .build()
-                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                    info!("Submitting request to delete location...");
-                    locations::do_delete_location(
-                        location_client,
-                        signer,
-                        wait,
-                        action,
-                        service_id,
-                    )?;
-                }
-                ("list", Some(_)) => {
-                    locations::do_list_locations(location_client, service_id.as_deref())?
-                }
-                ("show", Some(m)) => locations::do_show_location(
+                info!("Submitting request to delete location...");
+                locations::do_delete_location(location_client, signer, wait, action, service_id)?;
+            }
+            ("list", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let location_client = client_factory.get_location_client(url);
+                locations::do_list_locations(location_client, service_id)?
+            }
+            ("show", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id_str = value_of_service_id(m)?;
+                let service_id = service_id_str.as_deref();
+                let location_client = client_factory.get_location_client(url);
+                locations::do_show_location(
                     location_client,
                     m.value_of("location_id").unwrap(),
                     service_id,
-                )?,
-                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+                )?
             }
-        }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         #[cfg(feature = "purchase-order")]
-        ("po", Some(m)) => {
-            let url = m
-                .value_of("url")
-                .map(String::from)
-                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                .unwrap_or_else(|| String::from("http://localhost:8000"));
+        ("po", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id = value_of_service_id(m)?;
+                let purchase_order_client = client_factory.get_purchase_order_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-            let service_id = m
-                .value_of("service_id")
-                .map(String::from)
-                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                let uid = m
+                    .value_of("uid")
+                    .map(String::from)
+                    .unwrap_or_else(purchase_orders::generate_purchase_order_uid);
 
-            let purchase_order_client = client_factory.get_purchase_order_client(url);
+                let alternate_ids = m
+                    .values_of("alternate_id")
+                    .unwrap_or_default()
+                    .map(|id| {
+                        purchase_orders::make_alternate_id_from_str(&uid, id)?
+                            .try_into()
+                            .map_err(|err| CliError::PayloadError(format!("{}", err)))
+                    })
+                    .collect::<Result<_, _>>()?;
 
-            match m.subcommand() {
-                ("create", Some(m)) => {
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+                let payload = CreatePurchaseOrderPayloadBuilder::new()
+                    .with_uid(uid)
+                    .with_created_at(
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_secs())
+                            .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
+                    )
+                    .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
+                    .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
+                    .with_workflow_status(m.value_of("workflow_status").unwrap().into())
+                    .with_alternate_ids(alternate_ids)
+                    .build()
+                    .map_err(|err| {
+                        CliError::UserError(format!("Could not build Purchase Order: {}", err))
+                    })?;
 
-                    let signer = signing::load_signer(key)?;
+                info!("Submitting request to create purchase order...");
+                purchase_orders::do_create_purchase_order(
+                    purchase_order_client,
+                    signer,
+                    wait,
+                    payload,
+                    service_id.as_deref(),
+                )?;
+            }
+            ("update", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id = value_of_service_id(m)?;
+                let purchase_order_client = client_factory.get_purchase_order_client(url);
+                let key = value_of_key(m)?;
+                let signer = signing::load_signer(key)?;
+                let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                let uid = m.value_of("id").map(String::from).unwrap();
 
-                    let uid = m
-                        .value_of("uid")
-                        .map(String::from)
-                        .unwrap_or_else(purchase_orders::generate_purchase_order_uid);
+                let po = purchase_orders::do_fetch_purchase_order(
+                    &*purchase_order_client,
+                    &uid,
+                    service_id.as_deref(),
+                )?;
 
-                    let alternate_ids = m
-                        .values_of("alternate_id")
-                        .unwrap_or_default()
-                        .map(|id| {
-                            purchase_orders::make_alternate_id_from_str(&uid, id)?
-                                .try_into()
-                                .map_err(|err| CliError::PayloadError(format!("{}", err)))
-                        })
-                        .collect::<Result<_, _>>()?;
+                if let Some(po) = po {
+                    let workflow_status =
+                        m.value_of("workflow_status").unwrap_or(&po.workflow_status);
 
-                    let payload = CreatePurchaseOrderPayloadBuilder::new()
+                    let mut is_closed = po.is_closed;
+                    if m.is_present("is_closed") {
+                        is_closed = true;
+                    }
+
+                    let mut accepted_version = po.accepted_version_id;
+
+                    if m.is_present("accepted_version") {
+                        accepted_version = m
+                            .value_of("accepted_version")
+                            .map(String::from)
+                            .map(Some)
+                            .unwrap();
+                    }
+
+                    let mut alternate_ids = purchase_orders::do_fetch_alternate_ids(
+                        &*purchase_order_client,
+                        &uid,
+                        service_id.as_deref(),
+                    )?;
+
+                    if m.is_present("add_id") {
+                        let adds: Vec<&str> = m.values_of("add_id").unwrap().collect();
+                        for a in adds {
+                            alternate_ids
+                                .push(purchase_orders::make_alternate_id_from_str(&uid, a)?);
+                        }
+                    }
+
+                    if m.is_present("rm_id") {
+                        let rms: Vec<&str> = m.values_of("rm_id").unwrap().collect();
+
+                        for r in rms {
+                            let converted = purchase_orders::make_alternate_id_from_str(&uid, r)?;
+                            alternate_ids.retain(|i| {
+                                i.alternate_id_type != converted.alternate_id_type
+                                    || i.alternate_id != converted.alternate_id
+                            });
+                        }
+                    }
+
+                    let mut converted_ids = Vec::new();
+
+                    for id in alternate_ids {
+                        let converted = id
+                            .try_into()
+                            .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                        converted_ids.push(converted);
+                    }
+
+                    let payload = UpdatePurchaseOrderPayloadBuilder::new()
                         .with_uid(uid)
-                        .with_created_at(
-                            SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .map(|d| d.as_secs())
-                                .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
+                        .with_workflow_status(workflow_status.to_string())
+                        .with_is_closed(is_closed)
+                        .with_accepted_version_number(
+                            accepted_version.as_deref().map(|s| s.to_string()),
                         )
-                        .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
-                        .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
-                        .with_workflow_status(m.value_of("workflow_status").unwrap().into())
-                        .with_alternate_ids(alternate_ids)
+                        .with_alternate_ids(converted_ids)
                         .build()
                         .map_err(|err| {
                             CliError::UserError(format!("Could not build Purchase Order: {}", err))
                         })?;
 
-                    info!("Submitting request to create purchase order...");
-                    purchase_orders::do_create_purchase_order(
+                    info!("Submitting request to update purchase order...");
+                    purchase_orders::do_update_purchase_order(
                         purchase_order_client,
                         signer,
                         wait,
                         payload,
                         service_id.as_deref(),
                     )?;
+                } else {
+                    CliError::UserError(format!("Could not fetch Purchase Order {}", &uid));
                 }
-                ("update", Some(m)) => {
-                    let url = m
-                        .value_of("url")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                        .unwrap_or_else(|| String::from("http://localhost:8000"));
+            }
+            ("list", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id = value_of_service_id(m)?;
+                let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let service_id = m
-                        .value_of("service_id")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                let filter = ListPOFilters {
+                    is_open: if m.is_present("open") {
+                        Some(true)
+                    } else if m.is_present("closed") {
+                        Some(false)
+                    } else {
+                        None
+                    },
+                    has_accepted_version: if m.is_present("accepted") {
+                        Some(true)
+                    } else if m.is_present("not_accepted") {
+                        Some(false)
+                    } else {
+                        None
+                    },
+                    buyer_org_id: if m.is_present("buyer_org") {
+                        Some(m.value_of("buyer_org").unwrap().to_string())
+                    } else {
+                        None
+                    },
+                    seller_org_id: if m.is_present("seller_org") {
+                        Some(m.value_of("seller_org").unwrap().to_string())
+                    } else {
+                        None
+                    },
+                };
+                let format = m.value_of("format");
 
+                purchase_orders::do_list_purchase_orders(
+                    purchase_order_client,
+                    Some(filter),
+                    service_id,
+                    format,
+                )?
+            }
+            ("show", Some(m)) => {
+                let url = value_of_url(m)?;
+                let service_id = value_of_service_id(m)?;
+                let purchase_order_client = client_factory.get_purchase_order_client(url);
+                let purchase_order_id = m.value_of("id").unwrap();
+                let format = m.value_of("format");
+                purchase_orders::do_show_purchase_order(
+                    purchase_order_client,
+                    purchase_order_id.to_string(),
+                    service_id,
+                    format,
+                )?
+            }
+            ("version", Some(m)) => match m.subcommand() {
+                ("create", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id = value_of_service_id(m)?;
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
-
-                    let key = m
-                        .value_of("key")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-
+                    let key = value_of_key(m)?;
                     let signer = signing::load_signer(key)?;
-
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let uid = m.value_of("id").map(String::from).unwrap();
+                    let order_xml_path = m.value_of("order_xml").unwrap();
+                    let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
+                        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+                    let mut xml_str = String::new();
+                    std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
+                    validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
+                    info!("Purchase order was valid.");
 
-                    let po = purchase_orders::do_fetch_purchase_order(
+                    let version_id = m.value_of("version_id").unwrap();
+
+                    let po = m.value_of("po").unwrap();
+
+                    let workflow_status = m.value_of("workflow_status").unwrap();
+
+                    let revision_id = purchase_orders::get_latest_revision_id(
                         &*purchase_order_client,
-                        &uid,
+                        po,
+                        version_id,
                         service_id.as_deref(),
-                    )?;
+                    )? + 1;
 
-                    if let Some(po) = po {
-                        let workflow_status =
-                            m.value_of("workflow_status").unwrap_or(&po.workflow_status);
+                    let draft = !m.is_present("not_draft");
 
-                        let mut is_closed = po.is_closed;
-                        if m.is_present("is_closed") {
-                            is_closed = true;
-                        }
-
-                        let mut accepted_version = po.accepted_version_id;
-
-                        if m.is_present("accepted_version") {
-                            accepted_version = m
-                                .value_of("accepted_version")
-                                .map(String::from)
-                                .map(Some)
-                                .unwrap();
-                        }
-
-                        let mut alternate_ids = purchase_orders::do_fetch_alternate_ids(
-                            &*purchase_order_client,
-                            &uid,
-                            service_id.as_deref(),
-                        )?;
-
-                        if m.is_present("add_id") {
-                            let adds: Vec<&str> = m.values_of("add_id").unwrap().collect();
-                            for a in adds {
-                                alternate_ids
-                                    .push(purchase_orders::make_alternate_id_from_str(&uid, a)?);
-                            }
-                        }
-
-                        if m.is_present("rm_id") {
-                            let rms: Vec<&str> = m.values_of("rm_id").unwrap().collect();
-
-                            for r in rms {
-                                let converted =
-                                    purchase_orders::make_alternate_id_from_str(&uid, r)?;
-                                alternate_ids.retain(|i| {
-                                    i.alternate_id_type != converted.alternate_id_type
-                                        || i.alternate_id != converted.alternate_id
-                                });
-                            }
-                        }
-
-                        let mut converted_ids = Vec::new();
-
-                        for id in alternate_ids {
-                            let converted = id
-                                .try_into()
-                                .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
-                            converted_ids.push(converted);
-                        }
-
-                        let payload = UpdatePurchaseOrderPayloadBuilder::new()
-                            .with_uid(uid)
-                            .with_workflow_status(workflow_status.to_string())
-                            .with_is_closed(is_closed)
-                            .with_accepted_version_number(
-                                accepted_version.as_deref().map(|s| s.to_string()),
-                            )
-                            .with_alternate_ids(converted_ids)
-                            .build()
-                            .map_err(|err| {
-                                CliError::UserError(format!(
-                                    "Could not build Purchase Order: {}",
-                                    err
-                                ))
-                            })?;
-
-                        info!("Submitting request to update purchase order...");
-                        purchase_orders::do_update_purchase_order(
-                            purchase_order_client,
-                            signer,
-                            wait,
-                            payload,
-                            service_id.as_deref(),
-                        )?;
-                    } else {
-                        CliError::UserError(format!("Could not fetch Purchase Order {}", &uid));
-                    }
-                }
-                ("list", Some(m)) => {
-                    let url = m
-                        .value_of("url")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                        .unwrap_or_else(|| String::from("http://localhost:8000"));
-
-                    let service_id = m
-                        .value_of("service_id")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
-
-                    let purchase_order_client = client_factory.get_purchase_order_client(url);
-
-                    let filter = ListPOFilters {
-                        is_open: if m.is_present("open") {
-                            Some(true)
-                        } else if m.is_present("closed") {
-                            Some(false)
-                        } else {
-                            None
-                        },
-                        has_accepted_version: if m.is_present("accepted") {
-                            Some(true)
-                        } else if m.is_present("not_accepted") {
-                            Some(false)
-                        } else {
-                            None
-                        },
-                        buyer_org_id: if m.is_present("buyer_org") {
-                            Some(m.value_of("buyer_org").unwrap().to_string())
-                        } else {
-                            None
-                        },
-                        seller_org_id: if m.is_present("seller_org") {
-                            Some(m.value_of("seller_org").unwrap().to_string())
-                        } else {
-                            None
-                        },
-                    };
-                    let format = m.value_of("format");
-
-                    purchase_orders::do_list_purchase_orders(
-                        purchase_order_client,
-                        Some(filter),
-                        service_id,
-                        format,
-                    )?
-                }
-                ("show", Some(m)) => {
-                    let url = m
-                        .value_of("url")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                        .unwrap_or_else(|| String::from("http://localhost:8000"));
-
-                    let service_id = m
-                        .value_of("service_id")
-                        .map(String::from)
-                        .or_else(|| env::var(GRID_SERVICE_ID).ok());
-
-                    let purchase_order_client = client_factory.get_purchase_order_client(url);
-
-                    let purchase_order_id = m.value_of("id").unwrap();
-                    let format = m.value_of("format");
-                    purchase_orders::do_show_purchase_order(
-                        purchase_order_client,
-                        purchase_order_id.to_string(),
-                        service_id,
-                        format,
-                    )?
-                }
-                ("version", Some(m)) => match m.subcommand() {
-                    ("create", Some(m)) => {
-                        let key = m
-                            .value_of("key")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                        let signer = signing::load_signer(key)?;
-
-                        let wait = value_t!(m, "wait", u64).unwrap_or(0);
-
-                        let order_xml_path = m.value_of("order_xml").unwrap();
-                        let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
-                            .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
-                        let mut xml_str = String::new();
-                        std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
-                        validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
-                        info!("Purchase order was valid.");
-
-                        let version_id = m.value_of("version_id").unwrap();
-
-                        let po = m.value_of("po").unwrap();
-
-                        let workflow_status = m.value_of("workflow_status").unwrap();
-
-                        let revision_id = purchase_orders::get_latest_revision_id(
-                            &*purchase_order_client,
-                            po,
-                            version_id,
-                            service_id.as_deref(),
-                        )? + 1;
-
-                        let draft = !m.is_present("not_draft");
-
-                        let action = CreateVersionPayloadBuilder::new()
+                    let action =
+                        CreateVersionPayloadBuilder::new()
                             .with_version_id(version_id.to_string())
                             .with_po_uid(po.to_string())
                             .with_workflow_status(workflow_status.to_string())
@@ -2885,269 +2762,281 @@ fn run() -> Result<(), CliError> {
                                 CliError::UserError(format!("Could not build PO version: {}", err))
                             })?;
 
-                        info!("Submitting request to create purchase order version...");
-                        purchase_orders::do_create_version(
-                            &*purchase_order_client,
-                            signer,
-                            wait,
-                            action,
-                            service_id.as_deref(),
-                        )?;
+                    info!("Submitting request to create purchase order version...");
+                    purchase_orders::do_create_version(
+                        &*purchase_order_client,
+                        signer,
+                        wait,
+                        action,
+                        service_id.as_deref(),
+                    )?;
+                }
+                ("list", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id = value_of_service_id(m)?;
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                    let po_uid = m.value_of("po_uid").unwrap();
+
+                    let mut accepted_filter = None;
+                    let mut draft_filter = None;
+
+                    if m.is_present("accepted") {
+                        accepted_filter = Some(true);
+                    } else if m.is_present("not_accepted") {
+                        accepted_filter = Some(false);
                     }
-                    ("list", Some(m)) => {
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
 
-                        let po_uid = m.value_of("po_uid").unwrap();
-
-                        let mut accepted_filter = None;
-                        let mut draft_filter = None;
-
-                        if m.is_present("accepted") {
-                            accepted_filter = Some(true);
-                        } else if m.is_present("not_accepted") {
-                            accepted_filter = Some(false);
-                        }
-
-                        if m.is_present("draft") {
-                            draft_filter = Some(true);
-                        } else if m.is_present("not_draft") {
-                            draft_filter = Some(false);
-                        }
-
-                        let format = Some(m.value_of("format").unwrap());
-
-                        purchase_orders::do_list_versions(
-                            &*purchase_order_client,
-                            po_uid,
-                            accepted_filter,
-                            draft_filter,
-                            format,
-                            service_id.as_deref(),
-                        )?
+                    if m.is_present("draft") {
+                        draft_filter = Some(true);
+                    } else if m.is_present("not_draft") {
+                        draft_filter = Some(false);
                     }
-                    ("show", Some(m)) => {
-                        let url = m
-                            .value_of("url")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                            .unwrap_or_else(|| String::from("http://localhost:8000"));
 
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                    let format = Some(m.value_of("format").unwrap());
 
-                        let purchase_order_client = client_factory.get_purchase_order_client(url);
+                    purchase_orders::do_list_versions(
+                        &*purchase_order_client,
+                        po_uid,
+                        accepted_filter,
+                        draft_filter,
+                        format,
+                        service_id.as_deref(),
+                    )?
+                }
+                ("show", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id = value_of_service_id(m)?;
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                        let po_uid = m.value_of("po_uid").unwrap();
+                    let po_uid = m.value_of("po_uid").unwrap();
 
-                        let version = m.value_of("version_id").unwrap();
+                    let version = m.value_of("version_id").unwrap();
 
-                        purchase_orders::do_show_version(
-                            &*purchase_order_client,
-                            po_uid,
-                            version,
-                            service_id.as_deref(),
-                        )?;
+                    purchase_orders::do_show_version(
+                        &*purchase_order_client,
+                        po_uid,
+                        version,
+                        service_id.as_deref(),
+                    )?;
+                }
+                ("update", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id = value_of_service_id(m)?;
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
+                    let key = value_of_key(m)?;
+                    let signer = signing::load_signer(key)?;
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let version_id = m.value_of("version_id").unwrap();
+
+                    let po = m.value_of("po").unwrap();
+
+                    let version = purchase_orders::get_purchase_order_version(
+                        &*purchase_order_client,
+                        po,
+                        version_id,
+                        service_id.as_deref(),
+                    )?;
+
+                    let current_revision = purchase_orders::get_current_revision_for_version(
+                        &*purchase_order_client,
+                        po,
+                        &version,
+                        service_id.as_deref(),
+                    )?;
+
+                    let workflow_status = m
+                        .value_of("workflow_status")
+                        .unwrap_or(&version.workflow_status);
+
+                    let mut current_revision_id: u64 = version.current_revision_id;
+
+                    let mut new_xml = false;
+                    let mut xml_str = current_revision.order_xml_v3_4.to_string();
+                    if m.is_present("order_xml") {
+                        new_xml = true;
+                        let order_xml_path = m.value_of("order_xml").unwrap();
+                        let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
+                            .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+                        xml_str = String::new();
+                        std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
+                        validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
+                        info!("Purchase order was valid.");
+
+                        current_revision_id = u64::try_from(
+                            purchase_orders::get_latest_revision_id(
+                                &*purchase_order_client,
+                                po,
+                                version_id,
+                                service_id.as_deref(),
+                            )? + 1,
+                        )
+                        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
                     }
-                    ("update", Some(m)) => {
-                        let key = m
-                            .value_of("key")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-                        let signer = signing::load_signer(key)?;
 
-                        let wait = value_t!(m, "wait", u64).unwrap_or(0);
+                    let mut draft = version.is_draft;
 
-                        let version_id = m.value_of("version_id").unwrap();
+                    if m.is_present("draft") {
+                        draft = true;
+                    } else if m.is_present("not_draft") {
+                        draft = false;
+                    }
 
-                        let po = m.value_of("po").unwrap();
+                    let created_at = current_revision
+                        .created_at
+                        .try_into()
+                        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
 
-                        let version = purchase_orders::get_purchase_order_version(
-                            &*purchase_order_client,
-                            po,
-                            version_id,
-                            service_id.as_deref(),
-                        )?;
+                    let mut payload_revision = PayloadRevisionBuilder::new()
+                        .with_revision_id(current_revision.revision_id)
+                        .with_submitter(current_revision.submitter.to_string())
+                        .with_created_at(created_at)
+                        .with_order_xml_v3_4(current_revision.order_xml_v3_4)
+                        .build()
+                        .map_err(|err| {
+                            CliError::UserError(format!("Could not build PO revision: {}", err))
+                        })?;
 
-                        let current_revision = purchase_orders::get_current_revision_for_version(
-                            &*purchase_order_client,
-                            po,
-                            &version,
-                            service_id.as_deref(),
-                        )?;
-
-                        let workflow_status = m
-                            .value_of("workflow_status")
-                            .unwrap_or(&version.workflow_status);
-
-                        let mut current_revision_id: u64 = version.current_revision_id;
-
-                        let mut new_xml = false;
-                        let mut xml_str = current_revision.order_xml_v3_4.to_string();
-                        if m.is_present("order_xml") {
-                            new_xml = true;
-                            let order_xml_path = m.value_of("order_xml").unwrap();
-                            let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
-                                .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
-                            xml_str = String::new();
-                            std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
-                            validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
-                            info!("Purchase order was valid.");
-
-                            current_revision_id = u64::try_from(
-                                purchase_orders::get_latest_revision_id(
-                                    &*purchase_order_client,
-                                    po,
-                                    version_id,
-                                    service_id.as_deref(),
-                                )? + 1,
+                    if new_xml {
+                        payload_revision = PayloadRevisionBuilder::new()
+                            .with_revision_id(current_revision_id)
+                            .with_submitter(
+                                signer
+                                    .public_key()
+                                    .map_err(|err| CliError::UserError(format!("{}", err)))?
+                                    .as_hex(),
                             )
-                            .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
-                        }
-
-                        let mut draft = version.is_draft;
-
-                        if m.is_present("draft") {
-                            draft = true;
-                        } else if m.is_present("not_draft") {
-                            draft = false;
-                        }
-
-                        let created_at = current_revision
-                            .created_at
-                            .try_into()
-                            .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
-
-                        let mut payload_revision = PayloadRevisionBuilder::new()
-                            .with_revision_id(current_revision.revision_id)
-                            .with_submitter(current_revision.submitter.to_string())
-                            .with_created_at(created_at)
-                            .with_order_xml_v3_4(current_revision.order_xml_v3_4)
+                            .with_created_at(
+                                SystemTime::now()
+                                    .duration_since(UNIX_EPOCH)
+                                    .map(|d| d.as_secs())
+                                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
+                            )
+                            .with_order_xml_v3_4(xml_str)
                             .build()
                             .map_err(|err| {
                                 CliError::UserError(format!("Could not build PO revision: {}", err))
                             })?;
-
-                        if new_xml {
-                            payload_revision = PayloadRevisionBuilder::new()
-                                .with_revision_id(current_revision_id)
-                                .with_submitter(
-                                    signer
-                                        .public_key()
-                                        .map_err(|err| CliError::UserError(format!("{}", err)))?
-                                        .as_hex(),
-                                )
-                                .with_created_at(
-                                    SystemTime::now()
-                                        .duration_since(UNIX_EPOCH)
-                                        .map(|d| d.as_secs())
-                                        .map_err(|err| {
-                                            CliError::PayloadError(format!("{}", err))
-                                        })?,
-                                )
-                                .with_order_xml_v3_4(xml_str)
-                                .build()
-                                .map_err(|err| {
-                                    CliError::UserError(format!(
-                                        "Could not build PO revision: {}",
-                                        err
-                                    ))
-                                })?;
-                        }
-
-                        let action = UpdateVersionPayloadBuilder::new()
-                            .with_version_id(version_id.to_string())
-                            .with_po_uid(po.to_string())
-                            .with_workflow_status(workflow_status.to_string())
-                            .with_is_draft(draft)
-                            .with_revision(payload_revision)
-                            .build()
-                            .map_err(|err| {
-                                CliError::UserError(format!("Could not build PO version: {}", err))
-                            })?;
-
-                        info!("Submitting request to update purchase order version...");
-                        purchase_orders::do_update_version(
-                            &*purchase_order_client,
-                            signer,
-                            wait,
-                            action,
-                            service_id.as_deref(),
-                        )?;
                     }
-                    _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-                },
-                ("revision", Some(m)) => match m.subcommand() {
-                    ("list", Some(m)) => {
-                        let url = m
-                            .value_of("url")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                            .unwrap_or_else(|| String::from("http://localhost:8000"));
 
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
+                    let action = UpdateVersionPayloadBuilder::new()
+                        .with_version_id(version_id.to_string())
+                        .with_po_uid(po.to_string())
+                        .with_workflow_status(workflow_status.to_string())
+                        .with_is_draft(draft)
+                        .with_revision(payload_revision)
+                        .build()
+                        .map_err(|err| {
+                            CliError::UserError(format!("Could not build PO version: {}", err))
+                        })?;
 
-                        let purchase_order_client = client_factory.get_purchase_order_client(url);
-
-                        let po_uid = m.value_of("po_uid").unwrap();
-
-                        let version = m.value_of("version_id").unwrap();
-
-                        purchase_orders::do_list_revisions(
-                            &*purchase_order_client,
-                            po_uid,
-                            version,
-                            service_id.as_deref(),
-                        )?
-                    }
-                    ("show", Some(m)) => {
-                        let url = m
-                            .value_of("url")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-                            .unwrap_or_else(|| String::from("http://localhost:8000"));
-
-                        let service_id = m
-                            .value_of("service_id")
-                            .map(String::from)
-                            .or_else(|| env::var(GRID_SERVICE_ID).ok());
-
-                        let purchase_order_client = client_factory.get_purchase_order_client(url);
-
-                        let po_uid = m.value_of("po_uid").unwrap();
-
-                        let version = m.value_of("version_id").unwrap();
-
-                        let revision_str = m.value_of("revision_number").unwrap();
-
-                        let revision = revision_str
-                            .parse::<u64>()
-                            .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                        purchase_orders::do_show_revision(
-                            &*purchase_order_client,
-                            po_uid,
-                            version,
-                            revision,
-                            service_id.as_deref(),
-                        )?;
-                    }
-                    _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-                },
+                    info!("Submitting request to update purchase order version...");
+                    purchase_orders::do_update_version(
+                        &*purchase_order_client,
+                        signer,
+                        wait,
+                        action,
+                        service_id.as_deref(),
+                    )?;
+                }
                 _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-            }
-        }
+            },
+            ("revision", Some(m)) => match m.subcommand() {
+                ("list", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id = value_of_service_id(m)?;
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                    let po_uid = m.value_of("po_uid").unwrap();
+
+                    let version = m.value_of("version_id").unwrap();
+
+                    purchase_orders::do_list_revisions(
+                        &*purchase_order_client,
+                        po_uid,
+                        version,
+                        service_id.as_deref(),
+                    )?
+                }
+                ("show", Some(m)) => {
+                    let url = value_of_url(m)?;
+                    let service_id = value_of_service_id(m)?;
+                    let purchase_order_client = client_factory.get_purchase_order_client(url);
+
+                    let po_uid = m.value_of("po_uid").unwrap();
+
+                    let version = m.value_of("version_id").unwrap();
+
+                    let revision_str = m.value_of("revision_number").unwrap();
+
+                    let revision = revision_str
+                        .parse::<u64>()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    purchase_orders::do_show_revision(
+                        &*purchase_order_client,
+                        po_uid,
+                        version,
+                        revision,
+                        service_id.as_deref(),
+                    )?;
+                }
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+            },
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),
     }
 
     Ok(())
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
+fn value_of_url(matches: &ArgMatches) -> Result<String, CliError> {
+    let url = matches
+        .value_of("url")
+        .map(String::from)
+        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+        .unwrap_or_else(|| String::from("http://localhost:8000"));
+    Ok(url)
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
+fn value_of_service_id(matches: &ArgMatches) -> Result<Option<String>, CliError> {
+    let service_id_string = matches
+        .value_of("service_id")
+        .map(String::from)
+        .or_else(|| env::var(GRID_SERVICE_ID).ok());
+    Ok(service_id_string)
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
+fn value_of_key(matches: &ArgMatches) -> Result<Option<String>, CliError> {
+    let key = matches
+        .value_of("key")
+        .map(String::from)
+        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+    Ok(key)
 }
 
 #[cfg(feature = "pike")]
