@@ -22,7 +22,7 @@ use crate::error::ClientError;
 use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 
 use crate::client::purchase_order::{
-    AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision, PurchaseOrderVersion,
+    PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision, PurchaseOrderVersion,
 };
 
 use sawtooth_sdk::messages::batch::BatchList;
@@ -187,14 +187,5 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         )?;
 
         Ok(dto.iter().map(PurchaseOrderRevision::from).collect())
-    }
-
-    /// Lists the purchase order's alternate IDs
-    fn list_alternate_ids(
-        &self,
-        _id: String,
-        _service_id: Option<&str>,
-    ) -> Result<Vec<AlternateId>, ClientError> {
-        unimplemented!()
     }
 }

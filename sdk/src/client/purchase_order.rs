@@ -23,13 +23,14 @@ use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 use super::Client;
 
 /// The client representation of Grid Purchase Order
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrder {
     pub purchase_order_uid: String,
     pub workflow_status: String,
     pub buyer_org_id: String,
     pub seller_org_id: String,
     pub is_closed: bool,
+    pub alternate_ids: Vec<AlternateId>,
     pub accepted_version_id: Option<String>,
     pub versions: Vec<PurchaseOrderVersion>,
     pub created_at: i64,
@@ -37,7 +38,7 @@ pub struct PurchaseOrder {
 }
 
 /// The client representation of Grid Purchase Order version
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderVersion {
     pub version_id: String,
     pub workflow_status: String,
@@ -47,7 +48,7 @@ pub struct PurchaseOrderVersion {
 }
 
 /// The client representation of Grid Purchase Order version revision
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PurchaseOrderRevision {
     pub revision_id: u64,
     pub order_xml_v3_4: String,
@@ -56,7 +57,7 @@ pub struct PurchaseOrderRevision {
 }
 
 /// The client representation of Grid Purchase Order alternate ID
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlternateId {
     pub purchase_order_uid: String,
     pub alternate_id_type: String,
@@ -176,16 +177,4 @@ pub trait PurchaseOrderClient: Client {
         version_id: String,
         service_id: Option<&str>,
     ) -> Result<Vec<PurchaseOrderRevision>, ClientError>;
-
-    /// Lists the purchase order's alternate IDs
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The UID of the `PurchaseOrder` for the `AlternateId`s to be listed
-    /// * `service_id` - optional - the service ID to fetch the alternate IDs from
-    fn list_alternate_ids(
-        &self,
-        id: String,
-        service_id: Option<&str>,
-    ) -> Result<Vec<AlternateId>, ClientError>;
 }
