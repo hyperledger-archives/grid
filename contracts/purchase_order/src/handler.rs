@@ -163,7 +163,6 @@ fn create_purchase_order(
     let (workflow, versions) = match payload.create_version_payload() {
         Some(payload_version) => {
             let workflow = POWorkflow::SystemOfRecord;
-
             // Check the version permissions
             let perm_string = Permission::CanCreatePoVersion.to_string();
             let beginning_workflow = get_workflow(&POWorkflow::SystemOfRecord.to_string())
@@ -175,6 +174,31 @@ fn create_purchase_order(
             let start_state = version_subworkflow.state("create").ok_or_else(|| {
                 ApplyError::InternalError("Unable to get create state from subworkflow".to_string())
             })?;
+            // Retrieve desired state to validate any constraints
+            let desired_state = version_subworkflow
+                .state(payload_version.workflow_status())
+                .ok_or_else(|| {
+                    ApplyError::InternalError(format!(
+                        "Unable to get `{}` state from subworkflow",
+                        payload_version.workflow_status()
+                    ))
+                })?;
+            if desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
+                && payload_version.is_draft()
+            {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Desired workflow state `{}` has `Accepted` constraint, version is a draft",
+                    payload_version.workflow_status()
+                )));
+            }
+            if desired_state.has_constraint(&WorkflowConstraint::Draft.to_string())
+                && !payload_version.is_draft()
+            {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Desired workflow state `{}` has `Draft` constraint, version is not a draft",
+                    payload_version.workflow_status()
+                )));
+            }
             let perm_result = perm_checker
                 .check_permission_with_workflow(
                     &perm_string,
@@ -245,6 +269,36 @@ fn create_purchase_order(
     let start_state = po_subworkflow.state("create").ok_or_else(|| {
         ApplyError::InternalError("Unable to get create state from subworkflow".to_string())
     })?;
+    // Retrieve the desired workflow state to validate any constraints
+    let desired_state = po_subworkflow
+        .state(payload.workflow_status())
+        .ok_or_else(|| {
+            ApplyError::InternalError(format!(
+                "Unable to get `{}` state from subworkflow",
+                payload.workflow_status()
+            ))
+        })?;
+    if desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Desired workflow state `{}` has `Accepted` constraint, purchase order does not have \
+            an accepted version",
+            payload.workflow_status()
+        )));
+    }
+    if desired_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Desired workflow state `{}` has `Closed` constraint, creating an open purchase order",
+            payload.workflow_status()
+        )));
+    }
+    if desired_state.has_constraint(&WorkflowConstraint::Complete.to_string())
+        && versions.is_empty()
+    {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Desired workflow state `{}` has `Complete` constraint, purchase order has no versions",
+            payload.workflow_status()
+        )));
+    }
     let perm_string = Permission::CanCreatePo.to_string();
     let perm_result = perm_checker
         .check_permission_with_workflow(
@@ -1223,6 +1277,44 @@ mod tests {
             create_purchase_order(&create_po_payload, BUYER_PUB_KEY, &mut state, &perm_checker)
         {
             panic!("Should be valid: {}", err)
+        }
+    }
+
+    #[test]
+    /// Validates a purchase order may not be created and put into a workflow state with the
+    /// `Accepted` constraint, as it does not have an accepted version yet. The test follows
+    /// these steps:
+    ///
+    /// 1. Create the necessary organizations and create an agent with the "buyer" role
+    /// 2. Build a `CreatePurchaseOrderPayload` with a `workflow_status` of `confirmed`
+    /// 3. Assert the `create_version` function returns an error
+    fn test_create_po_invalid_workflow_state() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_org(ORG_ID_1);
+        ctx.add_org(ORG_ID_2);
+        ctx.add_buyer_role();
+        ctx.add_buyer_agent();
+        let create_po_payload = CreatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_created_at(1)
+            .with_buyer_org_id(ORG_ID_1.to_string())
+            .with_seller_org_id(ORG_ID_2.to_string())
+            .with_workflow_status("confirmed".to_string())
+            .build()
+            .expect("Unable to build CreatePurchaseOrderPayload");
+        let expected = "Desired workflow state `confirmed` has `Accepted` constraint, \
+                purchase order does not have an accepted version"
+            .to_string();
+        match create_purchase_order(&create_po_payload, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
         }
     }
 
