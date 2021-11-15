@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::PurchaseOrderStoreOperations;
+use super::{get_uid_from_alternate_id, PurchaseOrderStoreOperations};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::purchase_order::store::diesel::{
@@ -33,7 +33,7 @@ use diesel::{prelude::*, result::Error::NotFound};
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreGetPurchaseOrderOperation {
     fn get_purchase_order(
         &self,
-        purchase_order_uid: &str,
+        purchase_order_id: &str,
         version_id: Option<&str>,
         revision_number: Option<i64>,
         service_id: Option<&str>,
@@ -46,12 +46,21 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
 {
     fn get_purchase_order(
         &self,
-        purchase_order_uid: &str,
+        purchase_order_id: &str,
         version_id: Option<&str>,
         revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let mut purchase_order_uid = purchase_order_id.to_string();
+            if purchase_order_id.contains(':') {
+                purchase_order_uid = get_uid_from_alternate_id::pg::get_uid_from_alternate_id(
+                    self.conn,
+                    purchase_order_id,
+                    service_id,
+                )?;
+            }
+
             let mut query = purchase_order::table
                 .into_boxed()
                 .select(purchase_order::all_columns)
@@ -182,12 +191,21 @@ impl<'a> PurchaseOrderStoreGetPurchaseOrderOperation
 {
     fn get_purchase_order(
         &self,
-        purchase_order_uid: &str,
+        purchase_order_id: &str,
         version_id: Option<&str>,
         revision_number: Option<i64>,
         service_id: Option<&str>,
     ) -> Result<Option<PurchaseOrder>, PurchaseOrderStoreError> {
         self.conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
+            let mut purchase_order_uid = purchase_order_id.to_string();
+            if purchase_order_id.contains(':') {
+                purchase_order_uid = get_uid_from_alternate_id::sqlite::get_uid_from_alternate_id(
+                    self.conn,
+                    purchase_order_id,
+                    service_id,
+                )?;
+            }
+
             let mut query = purchase_order::table
                 .into_boxed()
                 .select(purchase_order::all_columns)

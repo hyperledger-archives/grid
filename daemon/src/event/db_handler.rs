@@ -67,13 +67,14 @@ use grid_sdk::{
 #[cfg(feature = "purchase-order")]
 use grid_sdk::{
     protocol::purchase_order::state::{
-        PurchaseOrderList, PurchaseOrderRevision as ProtocolPORevision,
-        PurchaseOrderVersion as ProtocolPOVersion,
+        PurchaseOrderAlternateId as ProtocolPOAlternateId, PurchaseOrderList,
+        PurchaseOrderRevision as ProtocolPORevision, PurchaseOrderVersion as ProtocolPOVersion,
     },
     purchase_order::{
         addressing::{GRID_PURCHASE_ORDER_NAMESPACE, GRID_PURCHASE_ORDER_PO_NAMESPACE},
         store::{
-            PurchaseOrder, PurchaseOrderBuilder, PurchaseOrderBuilderError, PurchaseOrderStore,
+            PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderAlternateIdBuilder,
+            PurchaseOrderBuilder, PurchaseOrderBuilderError, PurchaseOrderStore,
             PurchaseOrderVersion, PurchaseOrderVersionBuilder, PurchaseOrderVersionRevision,
             PurchaseOrderVersionRevisionBuilder,
         },
@@ -731,6 +732,12 @@ fn state_change_to_db_operation(
                                 .with_created_at(po.created_at().try_into().map_err(|err| {
                                     EventError(format!("Invalid created_at value: {}", err))
                                 })?)
+                                .with_alternate_ids(make_po_alternate_ids(
+                                    po.uid(),
+                                    po.alternate_ids().to_vec(),
+                                    commit_num,
+                                    service_id,
+                                )?)
                                 .with_is_closed(po.is_closed())
                                 .with_buyer_org_id(po.buyer_org_id().to_string())
                                 .with_seller_org_id(po.seller_org_id().to_string())
@@ -1080,4 +1087,29 @@ fn make_po_revisions(
         .map_err(|err| EventError(format!("{}", err)))?;
 
     Ok(revisions)
+}
+
+#[cfg(feature = "purchase-order")]
+fn make_po_alternate_ids(
+    po_uid: &str,
+    alternate_ids: Vec<ProtocolPOAlternateId>,
+    start_commit_num: i64,
+    service_id: Option<&String>,
+) -> Result<Vec<PurchaseOrderAlternateId>, EventError> {
+    let ids: Vec<PurchaseOrderAlternateId> = alternate_ids
+        .iter()
+        .map(|id| {
+            PurchaseOrderAlternateIdBuilder::default()
+                .with_purchase_order_uid(po_uid.to_string())
+                .with_id_type(id.id_type().to_string())
+                .with_id(id.id().to_string())
+                .with_start_commit_number(start_commit_num)
+                .with_end_commit_number(MAX_COMMIT_NUM)
+                .with_service_id(service_id.cloned())
+                .build()
+        })
+        .collect::<Result<Vec<PurchaseOrderAlternateId>, PurchaseOrderBuilderError>>()
+        .map_err(|err| EventError(err.to_string()))?;
+
+    Ok(ids)
 }

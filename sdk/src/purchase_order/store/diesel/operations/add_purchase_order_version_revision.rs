@@ -37,7 +37,7 @@ pub(in crate) mod pg {
     pub fn add_purchase_order_version_revision(
         conn: &diesel::pg::PgConnection,
         revision: &NewPurchaseOrderVersionRevisionModel,
-        po_id: &str,
+        purchase_order_uid: &str,
     ) -> Result<(), PurchaseOrderStoreError> {
         conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
             let mut query = purchase_order_version_revision::table.into_boxed().filter(
@@ -72,7 +72,7 @@ pub(in crate) mod pg {
 
                 let mut version_query = purchase_order_version::table.into_boxed().filter(
                     purchase_order_version::purchase_order_uid
-                        .eq(po_id)
+                        .eq(purchase_order_uid)
                         .and(purchase_order_version::version_id.eq(&revision.version_id))
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
@@ -105,7 +105,7 @@ pub(in crate) mod pg {
                         update(purchase_order_version::table)
                             .filter(
                                 purchase_order_version::purchase_order_uid
-                                    .eq(po_id)
+                                    .eq(purchase_order_uid)
                                     .and(
                                         purchase_order_version::version_id.eq(&revision.version_id),
                                     )
@@ -123,7 +123,7 @@ pub(in crate) mod pg {
                         update(purchase_order_version::table)
                             .filter(
                                 purchase_order_version::purchase_order_uid
-                                    .eq(po_id)
+                                    .eq(purchase_order_uid)
                                     .and(
                                         purchase_order_version::version_id.eq(&revision.version_id),
                                     )
@@ -164,7 +164,7 @@ pub(in crate) mod sqlite {
     pub fn add_purchase_order_version_revision(
         conn: &diesel::sqlite::SqliteConnection,
         revision: &NewPurchaseOrderVersionRevisionModel,
-        po_id: &str,
+        purchase_order_uid: &str,
     ) -> Result<(), PurchaseOrderStoreError> {
         conn.transaction::<_, PurchaseOrderStoreError, _>(|| {
             let mut query = purchase_order_version_revision::table.into_boxed().filter(
@@ -199,7 +199,7 @@ pub(in crate) mod sqlite {
 
                 let mut version_query = purchase_order_version::table.into_boxed().filter(
                     purchase_order_version::purchase_order_uid
-                        .eq(po_id)
+                        .eq(purchase_order_uid)
                         .and(purchase_order_version::version_id.eq(&revision.version_id))
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
@@ -232,7 +232,7 @@ pub(in crate) mod sqlite {
                         update(purchase_order_version::table)
                             .filter(
                                 purchase_order_version::purchase_order_uid
-                                    .eq(po_id)
+                                    .eq(purchase_order_uid)
                                     .and(
                                         purchase_order_version::version_id.eq(&revision.version_id),
                                     )
@@ -250,7 +250,7 @@ pub(in crate) mod sqlite {
                         update(purchase_order_version::table)
                             .filter(
                                 purchase_order_version::purchase_order_uid
-                                    .eq(po_id)
+                                    .eq(purchase_order_uid)
                                     .and(
                                         purchase_order_version::version_id.eq(&revision.version_id),
                                     )

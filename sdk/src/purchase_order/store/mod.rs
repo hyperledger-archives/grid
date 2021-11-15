@@ -708,6 +708,7 @@ impl PurchaseOrderAlternateId {
     }
 }
 
+#[derive(Default, Clone)]
 pub struct PurchaseOrderAlternateIdBuilder {
     purchase_order_uid: String,
     id_type: String,

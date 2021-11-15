@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::PurchaseOrderStoreOperations;
+use super::{get_uid_from_alternate_id, PurchaseOrderStoreOperations};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::paging::Paging;
@@ -29,7 +29,7 @@ pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchas
 {
     fn list_purchase_order_versions(
         &self,
-        po_uid: &str,
+        purchase_order_id: &str,
         filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
@@ -43,7 +43,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
 {
     fn list_purchase_order_versions(
         &self,
-        po_uid: &str,
+        purchase_order_id: &str,
         filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
@@ -55,12 +55,21 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                 is_draft,
             } = filters;
 
+            let mut purchase_order_uid = purchase_order_id.to_string();
+            if purchase_order_id.contains(':') {
+                purchase_order_uid = get_uid_from_alternate_id::pg::get_uid_from_alternate_id(
+                    self.conn,
+                    purchase_order_id,
+                    service_id,
+                )?;
+            }
+
             let mut query = purchase_order_version::table
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
                 .filter(
                     purchase_order_version::purchase_order_uid
-                        .eq(&po_uid)
+                        .eq(&purchase_order_uid)
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -70,7 +79,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                     .select(purchase_order::all_columns)
                     .filter(
                         purchase_order::purchase_order_uid
-                            .eq(&po_uid)
+                            .eq(&purchase_order_uid)
                             .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
                     );
 
@@ -102,7 +111,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                 } else {
                     return Err(PurchaseOrderStoreError::NotFoundError(format!(
                         "could not find purchase order with id: {}",
-                        &po_uid
+                        &purchase_order_uid
                     )));
                 }
             }
@@ -184,7 +193,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
 {
     fn list_purchase_order_versions(
         &self,
-        po_uid: &str,
+        purchase_order_id: &str,
         filters: ListVersionFilters,
         service_id: Option<&str>,
         offset: i64,
@@ -196,12 +205,21 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                 is_draft,
             } = filters;
 
+            let mut purchase_order_uid = purchase_order_id.to_string();
+            if purchase_order_id.contains(':') {
+                purchase_order_uid = get_uid_from_alternate_id::sqlite::get_uid_from_alternate_id(
+                    self.conn,
+                    purchase_order_id,
+                    service_id,
+                )?;
+            }
+
             let mut query = purchase_order_version::table
                 .into_boxed()
                 .select(purchase_order_version::all_columns)
                 .filter(
                     purchase_order_version::purchase_order_uid
-                        .eq(&po_uid)
+                        .eq(&purchase_order_uid)
                         .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
                 );
 
@@ -211,7 +229,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                     .select(purchase_order::all_columns)
                     .filter(
                         purchase_order::purchase_order_uid
-                            .eq(&po_uid)
+                            .eq(&purchase_order_uid)
                             .and(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM)),
                     );
 
@@ -243,7 +261,7 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                 } else {
                     return Err(PurchaseOrderStoreError::NotFoundError(format!(
                         "could not find purchase order with id: {}",
-                        &po_uid
+                        &purchase_order_uid
                     )));
                 }
             }
