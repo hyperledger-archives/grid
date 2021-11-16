@@ -41,7 +41,7 @@ use crate::transaction::purchase_order_batch_builder;
 pub const GRID_ORDER_SCHEMA_DIR: &str = "GRID_ORDER_SCHEMA_DIR";
 
 pub fn do_create_purchase_order(
-    client: Box<dyn PurchaseOrderClient>,
+    client: &dyn PurchaseOrderClient,
     signer: Box<dyn Signer>,
     wait: u64,
     create_purchase_order: CreatePurchaseOrderPayload,
@@ -71,7 +71,7 @@ pub fn do_create_purchase_order(
 }
 
 pub fn do_update_purchase_order(
-    client: Box<dyn PurchaseOrderClient>,
+    client: &dyn PurchaseOrderClient,
     signer: Box<dyn Signer>,
     wait: u64,
     update_purchase_order: UpdatePurchaseOrderPayload,
@@ -327,7 +327,7 @@ pub fn make_alternate_id_from_str(uid: &str, id: &str) -> Result<AlternateId, Cl
 }
 
 pub fn do_show_purchase_order(
-    client: Box<dyn PurchaseOrderClient>,
+    client: &dyn PurchaseOrderClient,
     purchase_order_id: String,
     service_id: Option<String>,
     format: Option<&str>,
@@ -345,7 +345,7 @@ pub fn do_show_purchase_order(
 }
 
 pub fn do_list_purchase_orders(
-    client: Box<dyn PurchaseOrderClient>,
+    client: &dyn PurchaseOrderClient,
     filter: Option<ListPOFilters>,
     service_id: Option<String>,
     format: Option<&str>,
@@ -356,6 +356,47 @@ pub fn do_list_purchase_orders(
         .map(PurchaseOrderCli::from)
         .collect::<Vec<PurchaseOrderCli>>();
     print_formattable_list(PurchaseOrderCliList(po_list), format)?;
+
+    Ok(())
+}
+
+pub fn do_check_alternate_ids_are_unique(
+    client: &dyn PurchaseOrderClient,
+    alternate_ids: Vec<String>,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    let filter = ListPOFilters {
+        is_open: None,
+        has_accepted_version: None,
+        buyer_org_id: None,
+        seller_org_id: None,
+        alternate_ids: Some(alternate_ids.join(",")),
+    };
+
+    let res = client.list_purchase_orders(Some(filter), service_id.as_deref())?;
+
+    if !res.is_empty() {
+        let res_ids: Vec<AlternateId> = res
+            .iter()
+            .flat_map(|id| id.alternate_ids.to_vec())
+            .collect();
+
+        let duplicates: Vec<String> = alternate_ids
+            .iter()
+            .filter(|prop| {
+                res_ids.iter().any(|existing| {
+                    format!("{}:{}", existing.alternate_id_type, existing.alternate_id)
+                        == prop.to_string()
+                })
+            })
+            .map(String::from)
+            .collect();
+
+        return Err(CliError::UserError(format!(
+            "Alternate IDs {:?} are already in use",
+            duplicates
+        )));
+    }
 
     Ok(())
 }

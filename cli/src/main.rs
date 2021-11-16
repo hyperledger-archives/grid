@@ -87,11 +87,13 @@ use grid_sdk::protocol::product::{
 use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder};
 #[cfg(any(feature = "purchase-order"))]
 use grid_sdk::{
+    client::purchase_order::AlternateId as POClientAlternateId,
     data_validation::validate_order_xml_3_4,
     protocol::purchase_order::payload::{
         CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder, PayloadRevisionBuilder,
         UpdatePurchaseOrderPayloadBuilder, UpdateVersionPayloadBuilder,
     },
+    protocol::purchase_order::state::PurchaseOrderAlternateId as POProtocolAlternateId,
     purchase_order::store::ListPOFilters,
 };
 
@@ -2511,14 +2513,28 @@ fn run() -> Result<(), CliError> {
                     .map(String::from)
                     .unwrap_or_else(purchase_orders::generate_purchase_order_uid);
 
-                let alternate_ids = m
+                let alternate_ids: Vec<String> = m
                     .values_of("alternate_id")
                     .unwrap_or_default()
-                    .map(|id| {
-                        purchase_orders::make_alternate_id_from_str(&uid, id)?
-                            .try_into()
-                            .map_err(|err| CliError::PayloadError(format!("{}", err)))
-                    })
+                    .map(String::from)
+                    .collect();
+
+                if !alternate_ids.is_empty() {
+                    purchase_orders::do_check_alternate_ids_are_unique(
+                        &*purchase_order_client,
+                        alternate_ids.to_vec(),
+                        service_id.as_deref(),
+                    )?;
+                }
+
+                let client_alternate_ids: Vec<POClientAlternateId> = alternate_ids
+                    .iter()
+                    .map(|id| purchase_orders::make_alternate_id_from_str(&uid, id))
+                    .collect::<Result<_, _>>()?;
+
+                let protocol_alternate_ids: Vec<POProtocolAlternateId> = client_alternate_ids
+                    .into_iter()
+                    .map(|id| id.try_into())
                     .collect::<Result<_, _>>()?;
 
                 let payload = CreatePurchaseOrderPayloadBuilder::new()
@@ -2531,8 +2547,8 @@ fn run() -> Result<(), CliError> {
                     )
                     .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
                     .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
+                    .with_alternate_ids(protocol_alternate_ids)
                     .with_workflow_state(m.value_of("workflow_state").unwrap().into())
-                    .with_alternate_ids(alternate_ids)
                     .build()
                     .map_err(|err| {
                         CliError::UserError(format!("Could not build Purchase Order: {}", err))
@@ -2540,7 +2556,7 @@ fn run() -> Result<(), CliError> {
 
                 info!("Submitting request to create purchase order...");
                 purchase_orders::do_create_purchase_order(
-                    purchase_order_client,
+                    &*purchase_order_client,
                     signer,
                     wait,
                     payload,
@@ -2584,10 +2600,18 @@ fn run() -> Result<(), CliError> {
                     let mut alternate_ids = po.alternate_ids.clone();
 
                     if m.is_present("add_id") {
-                        let adds: Vec<&str> = m.values_of("add_id").unwrap().collect();
+                        let adds: Vec<String> =
+                            m.values_of("add_id").unwrap().map(String::from).collect();
+
+                        purchase_orders::do_check_alternate_ids_are_unique(
+                            &*purchase_order_client,
+                            adds.to_vec(),
+                            service_id.as_deref(),
+                        )?;
+
                         for a in adds {
                             alternate_ids
-                                .push(purchase_orders::make_alternate_id_from_str(&uid, a)?);
+                                .push(purchase_orders::make_alternate_id_from_str(&uid, &a)?);
                         }
                     }
 
@@ -2627,7 +2651,7 @@ fn run() -> Result<(), CliError> {
 
                     info!("Submitting request to update purchase order...");
                     purchase_orders::do_update_purchase_order(
-                        purchase_order_client,
+                        &*purchase_order_client,
                         signer,
                         wait,
                         payload,
@@ -2667,11 +2691,12 @@ fn run() -> Result<(), CliError> {
                     } else {
                         None
                     },
+                    alternate_ids: None,
                 };
                 let format = m.value_of("format");
 
                 purchase_orders::do_list_purchase_orders(
-                    purchase_order_client,
+                    &*purchase_order_client,
                     Some(filter),
                     service_id,
                     format,
@@ -2684,7 +2709,7 @@ fn run() -> Result<(), CliError> {
                 let purchase_order_id = m.value_of("id").unwrap();
                 let format = m.value_of("format");
                 purchase_orders::do_show_purchase_order(
-                    purchase_order_client,
+                    &*purchase_order_client,
                     purchase_order_id.to_string(),
                     service_id,
                     format,

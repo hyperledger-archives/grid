@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::PurchaseOrderStoreOperations;
+use super::{get_uid_from_alternate_id, PurchaseOrderStoreOperations};
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::paging::Paging;
@@ -30,6 +30,7 @@ use crate::purchase_order::store::diesel::{
 };
 
 use crate::purchase_order::store::PurchaseOrderStoreError;
+use diesel::dsl::*;
 use diesel::prelude::*;
 
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchaseOrdersOperation {
@@ -59,7 +60,28 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                 seller_org_id,
                 has_accepted_version,
                 is_open,
+                alternate_ids,
             } = filters;
+
+            let mut uids: Vec<String> = Vec::new();
+
+            if let Some(ref alternate_ids) = alternate_ids {
+                let id_vec = alternate_ids
+                    .split(',')
+                    .map(String::from)
+                    .collect::<Vec<String>>();
+                uids = id_vec
+                    .iter()
+                    .filter_map(
+                        |id| match get_uid_from_alternate_id::pg::get_uid_from_alternate_id(
+                            self.conn, id, service_id,
+                        ) {
+                            Err(PurchaseOrderStoreError::NotFoundError(_)) => None,
+                            other => Some(other),
+                        },
+                    )
+                    .collect::<Result<_, _>>()?;
+            }
 
             let mut query = purchase_order::table
                 .into_boxed()
@@ -67,6 +89,15 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                 .offset(offset)
                 .limit(limit)
                 .filter(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM));
+
+            if !uids.is_empty() {
+                query = query.filter(purchase_order::purchase_order_uid.eq(any(uids)));
+            } else if uids.is_empty() && alternate_ids.is_some() {
+                return Ok(PurchaseOrderList::new(
+                    Vec::new(),
+                    Paging::new(offset, limit, 0),
+                ));
+            }
 
             if let Some(has_accepted_version) = has_accepted_version {
                 if has_accepted_version {
@@ -229,7 +260,28 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                 seller_org_id,
                 has_accepted_version,
                 is_open,
+                alternate_ids,
             } = filters;
+
+            let mut uids: Vec<String> = Vec::new();
+
+            if let Some(ref alternate_ids) = alternate_ids {
+                let id_vec = alternate_ids
+                    .split(',')
+                    .map(String::from)
+                    .collect::<Vec<String>>();
+                uids = id_vec
+                    .iter()
+                    .filter_map(|id| {
+                        match get_uid_from_alternate_id::sqlite::get_uid_from_alternate_id(
+                            self.conn, id, service_id,
+                        ) {
+                            Err(PurchaseOrderStoreError::NotFoundError(_)) => None,
+                            other => Some(other),
+                        }
+                    })
+                    .collect::<Result<_, _>>()?;
+            }
 
             let mut query = purchase_order::table
                 .into_boxed()
@@ -237,6 +289,15 @@ impl<'a> PurchaseOrderStoreListPurchaseOrdersOperation
                 .offset(offset)
                 .limit(limit)
                 .filter(purchase_order::end_commit_num.eq(MAX_COMMIT_NUM));
+
+            if !uids.is_empty() {
+                query = query.filter(purchase_order::purchase_order_uid.eq_any(uids));
+            } else if uids.is_empty() && alternate_ids.is_some() {
+                return Ok(PurchaseOrderList::new(
+                    Vec::new(),
+                    Paging::new(offset, limit, 0),
+                ));
+            }
 
             if let Some(has_accepted_version) = has_accepted_version {
                 if has_accepted_version {

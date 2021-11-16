@@ -133,6 +133,9 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
             if let Some(seller_org_id) = filters.seller_org_id {
                 filter_map.insert("seller_org_id", seller_org_id);
             }
+            if let Some(alternate_ids) = filters.alternate_ids {
+                filter_map.insert("alternate_ids", alternate_ids);
+            }
         }
         let dto_vec = fetch_entities_list::<data::PurchaseOrder>(
             &self.url,

@@ -91,6 +91,23 @@ impl TryFrom<AlternateId> for PurchaseOrderAlternateId {
     }
 }
 
+impl TryFrom<&AlternateId> for PurchaseOrderAlternateId {
+    type Error = ClientError;
+
+    fn try_from(id: &AlternateId) -> Result<PurchaseOrderAlternateId, Self::Error> {
+        let po = PurchaseOrderAlternateIdBuilder::new()
+            .with_id_type(id.alternate_id_type.to_string())
+            .with_id(id.alternate_id.to_string())
+            .with_purchase_order_uid(id.purchase_order_uid.to_string())
+            .build()
+            .map_err(|err| {
+                Self::Error::DaemonError(format!("Could not convert Alternate ID: {}", err))
+            })?;
+
+        Ok(po)
+    }
+}
+
 pub trait PurchaseOrderClient: Client {
     /// Retrieves the purchase order with the specified `id`
     ///
