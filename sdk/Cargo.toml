@@ -107,7 +107,6 @@ experimental = [
     "client-reqwest",
     "cylinder-jwt-support",
     "data-validation",
-    "pike-rest-api",
     "purchase-order",
     "rest-api-resources",
     "rest-api-actix-web-3",
@@ -131,7 +130,6 @@ cylinder-jwt-support = ["cylinder/jwt"]
 data-validation = [ "libc", "quick-xml", "reqwest"]
 location = ["pike", "schema"]
 pike = ["cfg-if", "workflow"]
-pike-rest-api = ["pike", "serde_json", "rest-api-resources"]
 product-gdsn = [ "libc", "quick-xml", "reqwest" ]
 purchase-order = ["pike"]
 product = ["pike", "schema"]
