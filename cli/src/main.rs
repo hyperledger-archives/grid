@@ -903,16 +903,36 @@ fn run() -> Result<(), CliError> {
                                 .help("Unique ID for product"),
                         )
                         .arg(
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .multiple(true)
+                                .number_of_values(1)
+                                .display_order(1)
+                                .help("Path to file containing a list of products"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .display_order(2)
+                                .help("Base name or path for private signing key file"),
+                        )
+                        .arg(
                             Arg::with_name("product_namespace")
                                 .long("namespace")
                                 .takes_value(true)
                                 .conflicts_with("file")
+                                .display_order(3)
                                 .help("Product namespace (example: GS1)"),
                         )
                         .arg(
                             Arg::with_name("owner")
                                 .long("owner")
                                 .takes_value(true)
+                                .display_order(4)
                                 .help("Pike organization ID"),
                         )
                         .arg(
@@ -922,26 +942,11 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .conflicts_with("file")
+                                .display_order(5)
                                 .help(
                                     "Key value pair specifying a product property formatted as \
                                     key=value",
                                 ),
-                        )
-                        .arg(
-                            Arg::with_name("file")
-                                .long("file")
-                                .short("f")
-                                .takes_value(true)
-                                .multiple(true)
-                                .number_of_values(1)
-                                .help("Path to file containing a list of products"),
-                        )
-                        .arg(
-                            Arg::with_name("key")
-                                .long("key")
-                                .short("k")
-                                .takes_value(true)
-                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
