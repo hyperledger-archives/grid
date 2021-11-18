@@ -100,7 +100,6 @@ database-sqlite = ["grid-sdk/sqlite"]
 location = ["grid-sdk/location", "grid-sdk/rest-api-endpoint-location", "pike", "schema"]
 pike = [
     "grid-sdk/pike",
-    "grid-sdk/pike-rest-api",
     "grid-sdk/rest-api-endpoint-agent",
     "grid-sdk/rest-api-endpoint-organization",
     "grid-sdk/rest-api-endpoint-role",
