@@ -214,6 +214,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         splinter_endpoint.url(),
         #[cfg(feature = "cylinder-jwt-support")]
         authorization,
+        #[cfg(not(feature = "cylinder-jwt-support"))]
+        "".to_string(),
     );
     let backend_state = BackendState::new(Arc::new(backend_client));
 
