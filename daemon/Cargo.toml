@@ -92,7 +92,7 @@ experimental = [
     "track-and-trace",
 ]
 
-cylinder-jwt-support = ["cylinder/jwt", "grid-sdk/cylinder-jwt-support"]
+cylinder-jwt-support = ["cylinder/jwt"]
 event = ["database"]
 database = []
 database-postgres = ["grid-sdk/postgres"]

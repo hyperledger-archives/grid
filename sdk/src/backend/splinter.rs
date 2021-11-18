@@ -36,20 +36,15 @@ macro_rules! try_fut {
 #[derive(Clone)]
 pub struct SplinterBackendClient {
     node_url: String,
-    #[cfg(feature = "cylinder-jwt-support")]
     authorization: String,
 }
 
 impl SplinterBackendClient {
     /// Constructs a new splinter BackendClient instance, using the given url for the node's REST
     /// API.
-    pub fn new(
-        node_url: String,
-        #[cfg(feature = "cylinder-jwt-support")] authorization: String,
-    ) -> Self {
+    pub fn new(node_url: String, authorization: String) -> Self {
         Self {
             node_url,
-            #[cfg(feature = "cylinder-jwt-support")]
             authorization,
         }
     }
@@ -86,18 +81,11 @@ impl BackendClient for SplinterBackendClient {
         response_url.set_query(Some(&format!("id={}", batch_query)));
         let link = response_url.to_string();
 
-        let mut client = reqwest::Client::new().post(&url);
-
-        client = client
+        reqwest::Client::new()
+            .post(&url)
             .header("GridProtocolVersion", "1")
-            .header("Content-Type", "octet-stream");
-
-        #[cfg(feature = "cylinder-jwt-support")]
-        {
-            client = client.header("Authorization", &self.authorization.to_string());
-        }
-
-        client
+            .header("Content-Type", "octet-stream")
+            .header("Authorization", &self.authorization.to_string())
             .body(batch_list_bytes)
             .send()
             .then(|res| {
@@ -139,16 +127,10 @@ impl BackendClient for SplinterBackendClient {
         url.push_str("ids=");
         url.push_str(&msg.batch_ids.join(","));
 
-        let mut client = reqwest::Client::new().get(&url);
-
-        client = client.header("GridProtocolVersion", "1");
-
-        #[cfg(feature = "cylinder-jwt-support")]
-        {
-            client = client.header("Authorization", &self.authorization.to_string());
-        }
-
-        client
+        reqwest::Client::new()
+            .get(&url)
+            .header("GridProtocolVersion", "1")
+            .header("Authorization", &self.authorization.to_string())
             .send()
             .then(|res| match res {
                 Ok(res) => res.json().boxed(),
