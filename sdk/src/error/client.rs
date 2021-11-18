@@ -13,8 +13,9 @@
 // limitations under the License.
 
 //! Module containing ClientError implementation.
-use std::fmt;
+use std::fmt::{Display, Formatter, Result};
 use std::io;
+use reqwest;
 
 /// An error which is returned from a Client Implementation.
 #[derive(Debug)]
@@ -35,8 +36,8 @@ impl From<reqwest::Error> for ClientError {
     }
 }
 
-impl fmt::Display for ClientError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for ClientError {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         match &self {
             ClientError::IoError(err) => write!(f, "{:?}", err),
             ClientError::DaemonError(err) => write!(f, "{}", err),
