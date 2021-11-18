@@ -189,7 +189,7 @@ fn run() -> Result<(), CliError> {
         (@arg verbose: -v +multiple +global "Log verbosely")
         (@arg quiet: -q --quiet +global conflicts_with[verbose] "Do not display output")
         (@subcommand database =>
-            (about: "Manage Grid Daemon database")
+            (about: "Manage the Grid Daemon database")
             (@setting SubcommandRequiredElseHelp)
             (@subcommand migrate =>
                 (about: "Run database migrations")
@@ -198,7 +198,7 @@ fn run() -> Result<(), CliError> {
             )
         )
         (@subcommand keygen =>
-            (about: "Generates keys with which the user can sign transactions and batches.")
+            (about: "Generates keys with which the user can sign transactions and batches")
             (@arg key_name: +takes_value "Name of the key to create")
             (@arg force: --force conflicts_with[skip] "Overwrite files if they exist")
             (@arg skip: --skip conflicts_with[force] "Check if files exist; generate if missing" )
@@ -215,7 +215,7 @@ fn run() -> Result<(), CliError> {
 
         app = app.subcommand(
             SubCommand::with_name("agent")
-                .about("Create, update, list or show agent")
+                .about("Create, update, list, or show an agent")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
                 .arg(
                     Arg::with_name("service_id")
@@ -390,7 +390,7 @@ fn run() -> Result<(), CliError> {
         )
         .subcommand(
             SubCommand::with_name("organization")
-                .about("Update, create, list or show organizations")
+                .about("Create, update, list, or show organizations")
                 .setting(clap::AppSettings::SubcommandRequiredElseHelp)
                 .arg(
                     Arg::with_name("service_id")
@@ -903,16 +903,36 @@ fn run() -> Result<(), CliError> {
                                 .help("Unique ID for product"),
                         )
                         .arg(
+                            Arg::with_name("file")
+                                .long("file")
+                                .short("f")
+                                .takes_value(true)
+                                .multiple(true)
+                                .number_of_values(1)
+                                .display_order(1)
+                                .help("Path to file containing a list of products"),
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .long("key")
+                                .short("k")
+                                .takes_value(true)
+                                .display_order(2)
+                                .help("Base name or path for private signing key file"),
+                        )
+                        .arg(
                             Arg::with_name("product_namespace")
                                 .long("namespace")
                                 .takes_value(true)
                                 .conflicts_with("file")
+                                .display_order(3)
                                 .help("Product namespace (example: GS1)"),
                         )
                         .arg(
                             Arg::with_name("owner")
                                 .long("owner")
                                 .takes_value(true)
+                                .display_order(4)
                                 .help("Pike organization ID"),
                         )
                         .arg(
@@ -922,26 +942,11 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .multiple(true)
                                 .conflicts_with("file")
+                                .display_order(5)
                                 .help(
                                     "Key value pair specifying a product property formatted as \
                                     key=value",
                                 ),
-                        )
-                        .arg(
-                            Arg::with_name("file")
-                                .long("file")
-                                .short("f")
-                                .takes_value(true)
-                                .multiple(true)
-                                .number_of_values(1)
-                                .help("Path to file containing a list of products"),
-                        )
-                        .arg(
-                            Arg::with_name("key")
-                                .long("key")
-                                .short("k")
-                                .takes_value(true)
-                                .help("Base name or path for private signing key file"),
                         )
                         .arg(
                             Arg::with_name("wait")
