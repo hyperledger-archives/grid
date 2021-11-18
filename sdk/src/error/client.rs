@@ -13,15 +13,16 @@
 // limitations under the License.
 
 //! Module containing ClientError implementation.
+use reqwest;
 use std::fmt::{Display, Formatter, Result};
 use std::io;
-use reqwest;
 
 /// An error which is returned from a Client Implementation.
 #[derive(Debug)]
 pub enum ClientError {
     IoError(io::Error),
     DaemonError(String),
+    InternalError(String),
 }
 
 impl From<io::Error> for ClientError {
@@ -32,7 +33,7 @@ impl From<io::Error> for ClientError {
 
 impl From<reqwest::Error> for ClientError {
     fn from(err: reqwest::Error) -> Self {
-        ClientError::DaemonError(format!("Request Failed: {}", err))
+        ClientError::InternalError(format!("Request Failed: {}", err))
     }
 }
 
@@ -41,6 +42,7 @@ impl Display for ClientError {
         match &self {
             ClientError::IoError(err) => write!(f, "{:?}", err),
             ClientError::DaemonError(err) => write!(f, "{}", err),
+            ClientError::InternalError(err) => write!(f, "{}", err),
         }
     }
 }

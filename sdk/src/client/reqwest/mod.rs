@@ -171,7 +171,7 @@ pub fn fetch_entities_list<T: DeserializeOwned>(
         let response = client.get(&final_url).query(&query_params).send()?;
 
         if !response.status().is_success() {
-            return Err(ClientError::DaemonError(response.text()?));
+            return Err(ClientError::InternalError(response.text()?));
         }
 
         let mut entity_list_slice = response.json::<ListSlice<T>>()?;
@@ -212,7 +212,7 @@ pub fn fetch_entity<T: DeserializeOwned>(
     let response = client.get(&final_url).query(&query_params).send()?;
 
     if !response.status().is_success() {
-        return Err(ClientError::DaemonError(response.text()?));
+        return Err(ClientError::InternalError(response.text()?));
     }
 
     let agent = response.json::<T>()?;
@@ -236,7 +236,7 @@ pub fn post_batches(
     service_id: Option<&str>,
 ) -> Result<(), ClientError> {
     let bytes = batch_list.write_to_bytes().map_err(|_err| {
-        ClientError::DaemonError("Failed to convert batch list to bytes".to_string())
+        ClientError::InternalError("Failed to convert batch list to bytes".to_string())
     })?;
 
     let mut wait_time = wait;
@@ -254,16 +254,16 @@ pub fn post_batches(
         .header("GridProtocolVersion", "1")
         .body(bytes)
         .send()
-        .map_err(|_err| ClientError::DaemonError("Failed to post batch list".to_string()))?;
+        .map_err(|_err| ClientError::InternalError("Failed to post batch list".to_string()))?;
 
     if !response.status().is_success() {
-        return Err(ClientError::DaemonError(response.text().map_err(|_| {
-            ClientError::DaemonError("Unable to convert error response to text".to_string())
-        })?));
+        return Err(ClientError::InternalError(response.text().map_err(
+            |_| ClientError::InternalError("Unable to convert error response to text".to_string()),
+        )?));
     }
 
     let batch_link = response.json::<BatchStatusLink>().map_err(|_err| {
-        ClientError::DaemonError("Unable to get batch status link from response".to_string())
+        ClientError::InternalError("Unable to get batch status link from response".to_string())
     })?;
 
     let params: Vec<&str> = batch_link.link.split('?').collect();
@@ -289,16 +289,20 @@ pub fn post_batches(
         let response = client
             .get(&url)
             .send()
-            .map_err(|_err| ClientError::DaemonError("Unable to get batch status".to_string()))?;
+            .map_err(|_err| ClientError::InternalError("Unable to get batch status".to_string()))?;
 
         if !response.status().is_success() {
-            return Err(ClientError::DaemonError(response.text().map_err(|_| {
-                ClientError::DaemonError("Unable to convert error response to text".to_string())
-            })?));
+            return Err(ClientError::InternalError(response.text().map_err(
+                |_| {
+                    ClientError::InternalError(
+                        "Unable to convert error response to text".to_string(),
+                    )
+                },
+            )?));
         }
 
         let batch_status = response.json::<BatchStatusResponse>().map_err(|_err| {
-            ClientError::DaemonError("Unable to get batch status response".to_string())
+            ClientError::InternalError("Unable to get batch status response".to_string())
         })?;
 
         for t in &batch_status.data {
