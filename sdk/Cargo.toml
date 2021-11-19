@@ -52,7 +52,7 @@ rust-crypto-wasm = "0.3"
 sabre-sdk = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cylinder = { version = "0.2.2", features = ["key-load"], optional = true}
+cylinder = { version = "0.2.2", features = ["key-load", "jwt"], optional = true}
 rust-crypto = "0.2"
 sawtooth-sdk = "0.4"
 quick-xml = { version = "0.22", features = [ "serialize" ], optional = true }
@@ -105,7 +105,6 @@ experimental = [
     "batch-store",
     "client",
     "client-reqwest",
-    "cylinder-jwt-support",
     "data-validation",
     "purchase-order",
     "rest-api-resources",
@@ -126,7 +125,6 @@ backend-sawtooth = ["backend", "uuid"]
 backend-splinter = ["backend", "reqwest"]
 client = []
 client-reqwest = ["client", "reqwest"]
-cylinder-jwt-support = ["cylinder/jwt"]
 data-validation = [ "libc", "quick-xml", "reqwest"]
 location = ["pike", "schema"]
 pike = ["cfg-if", "workflow"]
