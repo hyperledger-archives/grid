@@ -25,9 +25,7 @@ use std::sync::{
     Arc,
 };
 
-use cylinder::load_key;
-#[cfg(feature = "cylinder-jwt-support")]
-use cylinder::{jwt::JsonWebTokenBuilder, secp256k1::Secp256k1Context, Context};
+use cylinder::{jwt::JsonWebTokenBuilder, load_key, secp256k1::Secp256k1Context, Context};
 use grid_sdk::backend::SplinterBackendClient;
 use grid_sdk::commits::store::Commit;
 use grid_sdk::commits::{CommitStore, DieselCommitStore};
@@ -82,10 +80,8 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
 
     let scabbard_admin_key = &gridd_key.as_hex();
 
-    #[cfg(feature = "cylinder-jwt-support")]
     let signer = Secp256k1Context::new().new_signer(gridd_key);
 
-    #[cfg(feature = "cylinder-jwt-support")]
     let authorization = {
         let jwt = JsonWebTokenBuilder::new()
             .build(&*signer)
@@ -191,7 +187,6 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
                     service_id.circuit_id,
                     service_id.service_id,
                     Some(&commit.commit_id),
-                    #[cfg(feature = "cylinder-jwt-support")]
                     &authorization,
                     || vec![chan_event_handler.cloned_box()],
                 )
@@ -205,18 +200,11 @@ pub fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
         chan_event_handler,
         reactor.igniter(),
         scabbard_admin_key.to_string(),
-        #[cfg(feature = "cylinder-jwt-support")]
         authorization.clone(),
     )
     .map_err(|err| DaemonError::from_source(Box::new(err)))?;
 
-    let backend_client = SplinterBackendClient::new(
-        splinter_endpoint.url(),
-        #[cfg(feature = "cylinder-jwt-support")]
-        authorization,
-        #[cfg(not(feature = "cylinder-jwt-support"))]
-        "".to_string(),
-    );
+    let backend_client = SplinterBackendClient::new(splinter_endpoint.url(), authorization);
     let backend_state = BackendState::new(Arc::new(backend_client));
 
     #[cfg(feature = "integration")]

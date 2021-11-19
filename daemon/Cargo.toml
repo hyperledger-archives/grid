@@ -37,7 +37,7 @@ byteorder = "1"
 cfg-if = "1"
 clap = "2"
 ctrlc = "3.0"
-cylinder = "0.2.2"
+cylinder = { version = "0.2.2", features = ["jwt"], optional = true }
 diesel = { version = "1.0.0", features = ["r2d2", "serde_json"] }
 diesel_migrations = "1.4"
 flexi_logger = "0.17"
@@ -86,13 +86,11 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
-    "cylinder-jwt-support",
     "integration",
     "purchase-order",
     "track-and-trace",
 ]
 
-cylinder-jwt-support = ["cylinder/jwt"]
 event = ["database"]
 database = []
 database-postgres = ["grid-sdk/postgres"]
