@@ -43,17 +43,53 @@ pub use store_state::StoreState;
 ))]
 pub(crate) mod request {
     use crate::rest_api::resources::error::ErrorResponse;
-    use actix_web::HttpRequest;
+    use actix_web::{web::Query, HttpRequest};
+    use std::collections::HashMap;
     use url::Url;
 
     pub fn get_base_url(req: &HttpRequest) -> Result<Url, ErrorResponse> {
         let connection_info = req.connection_info();
-        Url::parse(&format!(
-            "{}://{}{}",
-            connection_info.scheme(),
-            connection_info.host(),
-            req.path()
-        ))
+
+        // Get the query params from the url
+        let mut query = Query::<HashMap<String, String>>::from_query(req.query_string())
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?
+            .into_inner();
+
+        // Remove elements handled by pagination, not part of the base URL
+        query.remove("limit");
+        query.remove("offset");
+        query.remove("service_id");
+
+        Url::parse_with_params(
+            &format!(
+                "{}://{}{}",
+                connection_info.scheme(),
+                connection_info.host(),
+                req.path()
+            ),
+            query,
+        )
         .map_err(|err| ErrorResponse::internal_error(Box::new(err)))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use actix_web::test;
+
+        #[test]
+        fn test_get_base_url_returns_base_url() {
+            let req = test::TestRequest::with_uri(
+                "http://localhost/test/endpoint?service_id=foo&limit=10&offset=0&filter=yes",
+            )
+            .to_http_request();
+
+            assert_eq!(
+                get_base_url(&req)
+                    .expect("could not get base url")
+                    .to_string(),
+                "http://localhost/test/endpoint?filter=yes"
+            );
+        }
     }
 }
