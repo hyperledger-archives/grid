@@ -181,7 +181,7 @@ fn create_purchase_order(
                     signer,
                     agent.org_id(),
                     start_state,
-                    payload_version.workflow_status(),
+                    payload_version.workflow_state(),
                 )
                 .map_err(|err| {
                     ApplyError::InternalError(format!(
@@ -195,7 +195,7 @@ fn create_purchase_order(
                         signer,
                         &perm_string,
                         agent.org_id(),
-                        payload_version.workflow_status()
+                        payload_version.workflow_state()
                     )));
             }
 
@@ -220,9 +220,9 @@ fn create_purchase_order(
                     .with_version_id(payload_version.version_id().to_string())
                     .with_is_draft(payload_version.is_draft())
                     .with_current_revision_id(revision.revision_id())
-                    .with_workflow_status(payload_version.workflow_status().to_string())
+                    .with_workflow_state(payload_version.workflow_state().to_string())
                     .with_revisions(vec![revision])
-                    .with_workflow_status(payload_version.workflow_status().to_string())
+                    .with_workflow_state(payload_version.workflow_state().to_string())
                     .build()
                     .map_err(|err| {
                         ApplyError::InvalidTransaction(format!(
@@ -252,7 +252,7 @@ fn create_purchase_order(
             signer,
             agent.org_id(),
             start_state,
-            payload.workflow_status(),
+            payload.workflow_state(),
         )
         .map_err(|err| {
             ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
@@ -263,14 +263,14 @@ fn create_purchase_order(
             signer,
             &perm_string,
             agent.org_id(),
-            payload.workflow_status()
+            payload.workflow_state()
         )));
     }
 
     let purchase_order = PurchaseOrderBuilder::new()
         .with_uid(po_uid.to_string())
         .with_versions(versions)
-        .with_workflow_status(payload.workflow_status().to_string())
+        .with_workflow_state(payload.workflow_state().to_string())
         .with_alternate_ids(payload.alternate_ids().to_vec())
         .with_created_at(payload.created_at())
         .with_is_closed(false)
@@ -319,21 +319,21 @@ fn update_purchase_order(
     let desired_state = workflow
         .subworkflow("po")
         .ok_or_else(|| ApplyError::InternalError("Unable to get po subworkflow".to_string()))?
-        .state(payload.workflow_status())
+        .state(payload.workflow_state())
         .ok_or_else(|| {
             ApplyError::InternalError("Unable to get state from subworkflow".to_string())
         })?;
 
     // Check if the agent has permission to update the purchase order
-    let perm_string = if payload.workflow_status() == purchase_order.workflow_status() {
+    let perm_string = if payload.workflow_state() == purchase_order.workflow_state() {
         // Updates within the same state require CanUpdatePo
         Permission::CanUpdatePo
     } else {
         // Updates from one state to another require that specific transition permission
-        Permission::can_transition(payload.workflow_status()).ok_or_else(|| {
+        Permission::can_transition(payload.workflow_state()).ok_or_else(|| {
             ApplyError::InternalError(format!(
                 "No permission exists to allow transitioning to a state of '{}'",
-                payload.workflow_status()
+                payload.workflow_state()
             ))
         })?
     };
@@ -347,11 +347,11 @@ fn update_purchase_order(
                 .ok_or_else(|| {
                     ApplyError::InternalError("Unable to get po subworkflow".to_string())
                 })?
-                .state(purchase_order.workflow_status())
+                .state(purchase_order.workflow_state())
                 .ok_or_else(|| {
                     ApplyError::InternalError("Unable to get state from subworkflow".to_string())
                 })?,
-            payload.workflow_status(),
+            payload.workflow_state(),
         )
         .map_err(|err| {
             ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
@@ -362,8 +362,8 @@ fn update_purchase_order(
                      purchase order {} from a state of {} to {}",
             signer,
             po_uid,
-            purchase_order.workflow_status(),
-            payload.workflow_status()
+            purchase_order.workflow_state(),
+            payload.workflow_state()
         )));
     }
 
@@ -382,7 +382,7 @@ fn update_purchase_order(
             return Err(ApplyError::InvalidTransaction(format!(
                 "Workflow state '{}' set for closed purchase order {}. Expected workflow \
                 state not to be closed for a complete purchase order",
-                payload.workflow_status(),
+                payload.workflow_state(),
                 po_uid,
             )));
         }
@@ -393,7 +393,7 @@ fn update_purchase_order(
                 "Property `is_closed` for purchase order {} is set to true, but the desired \
                 workflow state {} does not have the `closed` constraint.",
                 po_uid,
-                payload.workflow_status(),
+                payload.workflow_state(),
             )));
         }
     } else {
@@ -402,7 +402,7 @@ fn update_purchase_order(
             return Err(ApplyError::InvalidTransaction(format!(
                 "The desired workflow state {} for purchase order {} has the `closed` constraint, \
                 but property `is_closed` was set to false.",
-                payload.workflow_status(),
+                payload.workflow_state(),
                 po_uid,
             )));
         }
@@ -424,7 +424,7 @@ fn update_purchase_order(
             .ok_or_else(|| {
                 ApplyError::InternalError("Unable to get version subworkflow".to_string())
             })?
-            .state(version.workflow_status())
+            .state(version.workflow_state())
             .ok_or_else(|| {
                 ApplyError::InternalError("Unable to get state from subworkflow".to_string())
             })?;
@@ -435,7 +435,7 @@ fn update_purchase_order(
                 "Workflow state '{}' set for accepted version number {} of purchase \
                     order {}. Expected version workflow state to be accepted when accepted \
                     version number is set",
-                version.workflow_status(),
+                version.workflow_state(),
                 accepted_version_number,
                 po_uid,
             )));
@@ -446,7 +446,7 @@ fn update_purchase_order(
             return Err(ApplyError::InvalidTransaction(format!(
                 "Workflow state '{}' set for purchase order {}. Expected workflow state \
                     to be accepted when accepted version number is set",
-                payload.workflow_status(),
+                payload.workflow_state(),
                 po_uid,
             )));
         }
@@ -456,7 +456,7 @@ fn update_purchase_order(
             return Err(ApplyError::InvalidTransaction(format!(
                 "Workflow state '{}' set for purchase order {}. Expected purchase order \
                     accepted version for an accepted purchase order",
-                payload.workflow_status(),
+                payload.workflow_state(),
                 po_uid,
             )));
         }
@@ -465,7 +465,7 @@ fn update_purchase_order(
     // Handle updating the purchase_order
     let builder = PurchaseOrderBuilder::new()
         .with_uid(po_uid.to_string())
-        .with_workflow_status(payload.workflow_status().to_string())
+        .with_workflow_state(payload.workflow_state().to_string())
         .with_is_closed(payload.is_closed())
         .with_versions(purchase_order.versions().to_vec())
         .with_created_at(purchase_order.created_at())
@@ -530,7 +530,7 @@ fn create_version(
         )));
     }
 
-    let desired_state = payload.workflow_status().to_string();
+    let desired_state = payload.workflow_state().to_string();
     // Validate the intended state for the new version
     if payload.is_draft() && desired_state != "editable"
         || !payload.is_draft() && desired_state != "proposed"
@@ -593,7 +593,7 @@ fn create_version(
     // Create the PurchaseOrderVersion to be added to state
     let new_version = PurchaseOrderVersionBuilder::new()
         .with_version_id(payload.version_id().to_string())
-        .with_workflow_status(desired_state)
+        .with_workflow_state(desired_state)
         .with_is_draft(payload.is_draft())
         .with_current_revision_id(revision.revision_id())
         .with_revisions(vec![revision])
@@ -645,9 +645,9 @@ fn update_version(
             ApplyError::InternalError("Unable to get version subworkflow".to_string())
         })?;
 
-    let desired_state = payload.workflow_status();
+    let desired_state = payload.workflow_state();
     // Check if the agent has permission to update the version
-    let perm_string = if desired_state == original_version.workflow_status() {
+    let perm_string = if desired_state == original_version.workflow_state() {
         Permission::CanUpdatePoVersion
     } else {
         Permission::can_transition(desired_state).ok_or_else(|| {
@@ -664,7 +664,7 @@ fn update_version(
             signer,
             agent.org_id(),
             version_subworkflow
-                .state(original_version.workflow_status())
+                .state(original_version.workflow_state())
                 .ok_or_else(|| {
                     ApplyError::InternalError("Unable to get state from subworkflow".to_string())
                 })?,
@@ -679,7 +679,7 @@ fn update_version(
                      purchase order version {} from a state of {} to {}",
             signer,
             version_id,
-            original_version.workflow_status(),
+            original_version.workflow_state(),
             desired_state,
         )));
     }
@@ -745,7 +745,7 @@ fn update_version(
 
     let updated_version = original_version
         .into_builder()
-        .with_workflow_status(payload.workflow_status().to_string())
+        .with_workflow_state(payload.workflow_state().to_string())
         .with_is_draft(payload.is_draft())
         .with_current_revision_id(current_revision_id)
         .with_revisions(current_revisions)
@@ -1112,7 +1112,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1138,7 +1138,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1162,7 +1162,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1188,7 +1188,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1216,7 +1216,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("issued".to_string())
+            .with_workflow_state("issued".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         if let Err(err) =
@@ -1236,7 +1236,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1264,7 +1264,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1295,7 +1295,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_workflow_status("closed".to_string())
+            .with_workflow_state("closed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1329,7 +1329,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(true)
-            .with_workflow_status(to_workflow.to_string())
+            .with_workflow_state(to_workflow.to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1363,7 +1363,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_workflow_status(to_workflow.to_string())
+            .with_workflow_state(to_workflow.to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1397,7 +1397,7 @@ mod tests {
             .with_uid(PO_UID.to_string())
             .with_is_closed(true)
             .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
-            .with_workflow_status("confirmed".to_string())
+            .with_workflow_state("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1430,7 +1430,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(true)
-            .with_workflow_status("closed".to_string())
+            .with_workflow_state("closed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1453,7 +1453,7 @@ mod tests {
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
             .with_accepted_version_number(Some(PO_VERSION_ID_2.to_string()))
-            .with_workflow_status("confirmed".to_string())
+            .with_workflow_state("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1488,7 +1488,7 @@ mod tests {
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
             .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
-            .with_workflow_status("confirmed".to_string())
+            .with_workflow_state("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1526,7 +1526,7 @@ mod tests {
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
             .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
-            .with_workflow_status(to_workflow.to_string())
+            .with_workflow_state(to_workflow.to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1560,7 +1560,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(true)
-            .with_workflow_status(to_workflow.to_string())
+            .with_workflow_state(to_workflow.to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1593,7 +1593,7 @@ mod tests {
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
-            .with_workflow_status(to_workflow.to_string())
+            .with_workflow_state(to_workflow.to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1629,7 +1629,7 @@ mod tests {
             .with_uid(PO_UID.to_string())
             .with_is_closed(false)
             .with_accepted_version_number(Some(PO_VERSION_ID_1.to_string()))
-            .with_workflow_status("confirmed".to_string())
+            .with_workflow_state("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
@@ -1648,7 +1648,7 @@ mod tests {
     /// 2. Add a Purchase Order to state with versions (This will issue the purchase order
     ///    within the System of Record version subworkflow)
     /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a
-    ///    `workflow_status` of `proposed`
+    ///    `workflow_state` of `proposed`
     /// 4. Assert the `create_version` function returns an error
     ///
     /// This test validates an agent is unable to create a "proposed" purchase order version with
@@ -1673,7 +1673,7 @@ mod tests {
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(true)
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
@@ -1698,7 +1698,7 @@ mod tests {
     /// 1. Create the necessary organizations and create an agent with the "draft" role
     /// 2. Add a Purchase Order to state with versions (This will issue the purchase order
     ///    within the System of Record version subworkflow)
-    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_state`
     ///    of `editable`
     /// 4. Assert the `create_version` function returns an error
     ///
@@ -1724,7 +1724,7 @@ mod tests {
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(true)
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
@@ -1744,18 +1744,18 @@ mod tests {
 
     #[test]
     /// Validates the `create_version` function returns an error in the case that the
-    /// payload's `workflow_status` does not match the purchase order version's state within a
+    /// payload's `workflow_state` does not match the purchase order version's state within a
     /// `Collaborative` version subworkflow. The test follows these steps:
     ///
     /// 1. Create the necessary organizations and create an agent with the "partner" role
     /// 2. Add a Purchase Order to state without versions (This will issue the purchase order
     ///    within the `Collaborative` version subworkflow)
-    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_state`
     ///    of `modified`
     /// 4. Assert the `create_version` function returns an error
     ///
     /// This test validates a purchase order version is unable to be created with a
-    /// `workflow_status` of `modified` within the `Collaborative` version subworkflow
+    /// `workflow_state` of `modified` within the `Collaborative` version subworkflow
     /// although the agent had the correct workflow permission to create a version, "partner".
     /// Purchase order versions must first be `proposed` before they are able to be `modified`
     /// within both the Collaborative and System of Record subworkflows.
@@ -1779,7 +1779,7 @@ mod tests {
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(true)
-            .with_workflow_status("modified".to_string())
+            .with_workflow_state("modified".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
@@ -1792,7 +1792,7 @@ mod tests {
         ) {
             panic!(
                 "New purchase order version should be invalid because \
-                the desired workflow status is invalid"
+                the desired workflow state is invalid"
             )
         }
     }
@@ -1807,11 +1807,11 @@ mod tests {
     /// 2. Add a Purchase Order to state without versions (This will issue the purchase order
     ///    within the Collaborative version subworkflow)
     /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a
-    ///    `workflow_status` of `proposed`
+    ///    `workflow_state` of `proposed`
     /// 4. Assert the `create_version` function returns succesfully
     ///
     /// This test validates a purchase order version is able to be created with a
-    /// `workflow_status` of `proposed` within the `Collaborative` version subworkflow
+    /// `workflow_state` of `proposed` within the `Collaborative` version subworkflow
     /// as the agent had the correct workflow permission to create a version, "partner".
     fn test_col_create_po_vers_valid() {
         let ctx = MockTransactionContext::default();
@@ -1833,7 +1833,7 @@ mod tests {
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(false)
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
@@ -1858,12 +1858,12 @@ mod tests {
     /// 2. Create an agent with the "buyer" role
     /// 3. Add a Purchase Order to state with versions (This will issue the purchase order
     ///    within the System of Record version subworkflow)
-    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a `workflow_status`
+    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a `workflow_state`
     ///    of `proposed`
     /// 5. Assert the `create_version` function returns successfully
     ///
     /// This test validates a purchase order version is able to be created with a
-    /// `workflow_status` of `proposed` within the System of Record version subworkflow as the
+    /// `workflow_state` of `proposed` within the System of Record version subworkflow as the
     /// agent has the "buyer" role, which enables the agent to create the version and transition
     /// it to the "proposed" workflow state.
     fn test_sys_create_po_vers_valid_transition_proposed() {
@@ -1886,7 +1886,7 @@ mod tests {
             .with_version_id(PO_VERSION_ID_2.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(false)
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
@@ -1911,12 +1911,12 @@ mod tests {
     /// 2. Create an agent with the "draft" role
     /// 3. Add a Purchase Order to state with versions (This will issue the purchase order
     ///    within the System of Record version subworkflow)
-    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_state`
     ///    of `editable`
     /// 5. Assert the `create_version` function returns successfully
     ///
     /// This test validates a purchase order version is able to be created with a
-    /// `workflow_status` of `editable` within the System of Record version subworkflow as the
+    /// `workflow_state` of `editable` within the System of Record version subworkflow as the
     /// agent has the "draft" role, which enables the agent to create the version and transition
     /// it to the "editable" workflow state.
     fn test_sys_create_po_vers_valid_transition_editable() {
@@ -1939,7 +1939,7 @@ mod tests {
             .with_version_id(PO_VERSION_ID_2.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(true)
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
@@ -1965,12 +1965,12 @@ mod tests {
     /// 2. Create an agent with the "buyer" role
     /// 3. Add a Purchase Order to state with versions (This will issue the purchase order
     ///    within the System of Record version subworkflow)
-    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_status`
+    /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_state`
     ///    of `proposed`
     /// 5. Assert the `create_version` function returns an error
     ///
     /// This test validates a draft purchase order version is not able to be created with a
-    /// `workflow_status` of `proposed` within the System of Record version subworkflow. Draft
+    /// `workflow_state` of `proposed` within the System of Record version subworkflow. Draft
     /// versions are moved into the draft workflow state, "editable", upon creation.
     fn test_sys_create_po_vers_invalid_transition_proposed() {
         let ctx = MockTransactionContext::default();
@@ -1992,7 +1992,7 @@ mod tests {
             .with_version_id(PO_VERSION_ID_2.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(true)
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
@@ -2041,7 +2041,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_is_draft(true)
             .with_revision(payload_revision)
             .build()
@@ -2088,7 +2088,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .with_is_draft(false)
             .with_revision(payload_revision)
             .build()
@@ -2139,7 +2139,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("modified".to_string())
+            .with_workflow_state("modified".to_string())
             .with_is_draft(false)
             .with_revision(payload_revision)
             .build()
@@ -2168,7 +2168,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_is_draft(true)
             .with_revision(payload_revision)
             .build()
@@ -2216,7 +2216,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .with_is_draft(false)
             .with_revision(payload_revision)
             .build()
@@ -2270,7 +2270,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_is_draft(true)
             .with_revision(payload_revision)
             .build()
@@ -2328,7 +2328,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_is_draft(false)
             .with_revision(payload_revision)
             .build()
@@ -2382,7 +2382,7 @@ mod tests {
         let update_vers_payload = UpdateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_1.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_workflow_status("accepted".to_string())
+            .with_workflow_state("accepted".to_string())
             .with_is_draft(true)
             .with_revision(payload_revision)
             .build()
@@ -2409,7 +2409,7 @@ mod tests {
     fn purchase_order() -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
-            .with_workflow_status("issued".to_string())
+            .with_workflow_state("issued".to_string())
             .with_created_at(1)
             .with_versions(vec![purchase_order_version(PO_VERSION_ID_1)])
             .with_is_closed(false)
@@ -2423,7 +2423,7 @@ mod tests {
     fn purchase_order_with_versions(versions: Vec<PurchaseOrderVersion>) -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
-            .with_workflow_status("issued".to_string())
+            .with_workflow_state("issued".to_string())
             .with_created_at(1)
             .with_versions(versions)
             .with_is_closed(false)
@@ -2437,7 +2437,7 @@ mod tests {
     fn purchase_order_confirmed(versions: Vec<PurchaseOrderVersion>) -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
-            .with_workflow_status("confirmed".to_string())
+            .with_workflow_state("confirmed".to_string())
             .with_created_at(1)
             .with_versions(versions)
             .with_is_closed(false)
@@ -2451,7 +2451,7 @@ mod tests {
     fn purchase_order_wo_versions() -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
-            .with_workflow_status("issued".to_string())
+            .with_workflow_state("issued".to_string())
             .with_created_at(1)
             .with_is_closed(false)
             .with_versions(vec![])
@@ -2465,7 +2465,7 @@ mod tests {
     fn purchase_order_version_draft(version_id: &str) -> PurchaseOrderVersion {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
-            .with_workflow_status("editable".to_string())
+            .with_workflow_state("editable".to_string())
             .with_is_draft(true)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())
@@ -2476,7 +2476,7 @@ mod tests {
     fn purchase_order_version(version_id: &str) -> PurchaseOrderVersion {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
-            .with_workflow_status("proposed".to_string())
+            .with_workflow_state("proposed".to_string())
             .with_is_draft(false)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())
@@ -2487,7 +2487,7 @@ mod tests {
     fn purchase_order_version_accepted(version_id: &str) -> PurchaseOrderVersion {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
-            .with_workflow_status("accepted".to_string())
+            .with_workflow_state("accepted".to_string())
             .with_is_draft(true)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())

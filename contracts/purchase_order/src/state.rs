@@ -453,7 +453,7 @@ mod tests {
     fn purchase_order_basic() -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
-            .with_workflow_status("Issued".to_string())
+            .with_workflow_state("Issued".to_string())
             .with_created_at(1)
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
@@ -467,7 +467,7 @@ mod tests {
     fn purchase_order_multiple_versions() -> PurchaseOrder {
         PurchaseOrderBuilder::new()
             .with_uid(PO_UID.to_string())
-            .with_workflow_status("Issued".to_string())
+            .with_workflow_state("Issued".to_string())
             .with_created_at(2)
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
@@ -484,7 +484,7 @@ mod tests {
     fn purchase_order_version(version_id: &str) -> PurchaseOrderVersion {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
-            .with_workflow_status("Editable".to_string())
+            .with_workflow_state("Editable".to_string())
             .with_is_draft(true)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revision())

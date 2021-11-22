@@ -73,7 +73,7 @@ will show version 1 for the purchase order "PO-AA11A-BB22" in human-readable
 format:
 
 ```
-VERSION_ID  WORKFLOW_STATUS  IS_DRAFT  CURRENT_REVISION  REVISIONS
+VERSION_ID  WORKFLOW_STATE  IS_DRAFT  CURRENT_REVISION  REVISIONS
 1           Editable         t         1                 1
 ```
 

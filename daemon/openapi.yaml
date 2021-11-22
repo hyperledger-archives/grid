@@ -1019,7 +1019,7 @@ components:
         uid:
           type: string
           example: 0099474000005
-        workflow_status:
+        workflow_state:
           type: string
           example: ACCEPTED
         accepted_version_id:
@@ -1047,7 +1047,7 @@ components:
         version_id:
           type: string
           example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
-        workflow_status:
+        workflow_state:
           type: string
           example: ISSUED
         is_draft:

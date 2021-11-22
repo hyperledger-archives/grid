@@ -79,7 +79,7 @@ OPTIONS
 `--wait`
 : Maximum number of seconds to wait for the batch to be committed.
 
-`--workflow-status`
+`--workflow-state`
 : Specifies the workflow state of the purchase order.
 
 EXAMPLES
@@ -112,14 +112,14 @@ The command
 ```
 $ grid po update \
     --org=crgl \
-    --workflow-status=Confirmed \
+    --workflow-state=Confirmed \
     --accepted-version=v3 \
     --wait \
     po_number:809832081
 ```
 
 will update the purchase order with alternate ID `po_number:809832081`, set the
-workflow status to `Confirmed`, and the accepted version to `v3`. It will
+workflow state to `Confirmed`, and the accepted version to `v3`. It will
 generate output like the following:
 
 ```

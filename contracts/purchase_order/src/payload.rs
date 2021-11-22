@@ -69,9 +69,9 @@ pub(crate) fn validate_create_po_payload(
         ));
     }
 
-    if payload.workflow_status().is_empty() {
+    if payload.workflow_state().is_empty() {
         return Err(ApplyError::InvalidTransaction(
-            "`workflow_status` is required to create a purchase order".to_string(),
+            "`workflow_state` is required to create a purchase order".to_string(),
         ));
     }
 
@@ -92,9 +92,9 @@ pub(crate) fn validate_update_po_payload(
         ));
     }
 
-    if payload.workflow_status().is_empty() {
+    if payload.workflow_state().is_empty() {
         return Err(ApplyError::InvalidTransaction(
-            "`workflow_status` is required to update a purchase order".to_string(),
+            "`workflow_state` is required to update a purchase order".to_string(),
         ));
     }
 
@@ -154,9 +154,9 @@ pub(crate) fn validate_create_version_payload(
         ));
     }
 
-    if payload.workflow_status().is_empty() {
+    if payload.workflow_state().is_empty() {
         return Err(ApplyError::InvalidTransaction(
-            "`workflow_status` is required to create a purchase order version".to_string(),
+            "`workflow_state` is required to create a purchase order version".to_string(),
         ));
     }
 
@@ -181,9 +181,9 @@ pub(crate) fn validate_update_version_payload(
         ));
     }
 
-    if payload.workflow_status().is_empty() {
+    if payload.workflow_state().is_empty() {
         return Err(ApplyError::InvalidTransaction(
-            "`workflow_status` is required to update a purchase order version".to_string(),
+            "`workflow_state` is required to update a purchase order version".to_string(),
         ));
     }
 
@@ -332,7 +332,7 @@ mod tests {
             protos::purchase_order_payload::UpdateVersionPayload::new();
         update_version_payload.set_version_id("01".to_string());
         update_version_payload.set_po_uid("PO-01".to_string());
-        update_version_payload.set_workflow_status("proposed".to_string());
+        update_version_payload.set_workflow_state("proposed".to_string());
         update_version_payload.set_revision(payload_revision_proto);
         let version_native = update_version_payload
             .clone()
@@ -362,7 +362,7 @@ mod tests {
         let mut update_version_payload =
             protos::purchase_order_payload::UpdateVersionPayload::new();
         update_version_payload.set_po_uid("PO-01".to_string());
-        update_version_payload.set_workflow_status("proposed".to_string());
+        update_version_payload.set_workflow_state("proposed".to_string());
         update_version_payload.set_revision(payload_revision_proto);
         let version_native = update_version_payload
             .clone()
@@ -392,7 +392,7 @@ mod tests {
         let mut update_version_payload =
             protos::purchase_order_payload::UpdateVersionPayload::new();
         update_version_payload.set_version_id("01".to_string());
-        update_version_payload.set_workflow_status("proposed".to_string());
+        update_version_payload.set_workflow_state("proposed".to_string());
         update_version_payload.set_revision(payload_revision_proto);
         let version_native = update_version_payload
             .clone()
@@ -403,16 +403,16 @@ mod tests {
     }
 
     #[test]
-    /// Validates that an `UpdateVersionPayload` with an undefined `workflow_status` is not able
+    /// Validates that an `UpdateVersionPayload` with an undefined `workflow_state` is not able
     /// to be validated. The test follows these steps:
     ///
     /// 1. Create an `UpdateVersionPayload` protobuf message and define all fields except the
-    ///    `workflow_status` field
+    ///    `workflow_state` field
     /// 2. Assert this `UpdateVersionPayload` does not successfully validate
     ///
-    /// This test validates that a `UpdateVersionPayload` with an undefined `workflow_status`
+    /// This test validates that a `UpdateVersionPayload` with an undefined `workflow_state`
     /// field produces an error on validation.
-    fn test_validate_update_version_payload_invalid_workflow_status() {
+    fn test_validate_update_version_payload_invalid_workflow_state() {
         let mut payload_revision_proto = protos::purchase_order_payload::PayloadRevision::new();
         payload_revision_proto.set_revision_id(2);
         payload_revision_proto.set_submitter(SUBMITTER.to_string());
@@ -447,7 +447,7 @@ mod tests {
             protos::purchase_order_payload::UpdateVersionPayload::new();
         update_version_payload.set_version_id("01".to_string());
         update_version_payload.set_po_uid("PO-01".to_string());
-        update_version_payload.set_workflow_status("proposed".to_string());
+        update_version_payload.set_workflow_state("proposed".to_string());
         let version_native = update_version_payload
             .clone()
             .into_native()
@@ -476,7 +476,7 @@ mod tests {
             protos::purchase_order_payload::CreateVersionPayload::new();
         create_version_payload.set_version_id("01".to_string());
         create_version_payload.set_po_uid("PO-01".to_string());
-        create_version_payload.set_workflow_status("proposed".to_string());
+        create_version_payload.set_workflow_state("proposed".to_string());
         create_version_payload.set_revision(payload_revision_proto);
         let payload_native = create_version_payload
             .clone()
@@ -506,7 +506,7 @@ mod tests {
         let mut create_version_payload =
             protos::purchase_order_payload::CreateVersionPayload::new();
         create_version_payload.set_po_uid("PO-01".to_string());
-        create_version_payload.set_workflow_status("proposed".to_string());
+        create_version_payload.set_workflow_state("proposed".to_string());
         create_version_payload.set_revision(payload_revision_proto);
         let payload_native = create_version_payload
             .clone()
@@ -536,7 +536,7 @@ mod tests {
         let mut create_version_payload =
             protos::purchase_order_payload::CreateVersionPayload::new();
         create_version_payload.set_version_id("01".to_string());
-        create_version_payload.set_workflow_status("proposed".to_string());
+        create_version_payload.set_workflow_state("proposed".to_string());
         create_version_payload.set_revision(payload_revision_proto);
         let payload_native = create_version_payload
             .clone()
@@ -547,16 +547,16 @@ mod tests {
     }
 
     #[test]
-    /// Validates that a `CreateVersionPayload` with an undefined `workflow_status` is not
+    /// Validates that a `CreateVersionPayload` with an undefined `workflow_state` is not
     /// able to be validated. The test follows these steps:
     ///
     /// 1. Create a `CreateVersionPayload` protobuf message and define all fields except the
-    ///    `workflow_status` field
+    ///    `workflow_state` field
     /// 2. Assert this `CreateVersionPayload` does not successfully validate
     ///
-    /// This test validates that a `CreateVersionPayload` with an undefined `workflow_status`
+    /// This test validates that a `CreateVersionPayload` with an undefined `workflow_state`
     /// field produces an error on validation.
-    fn test_validate_create_version_payload_invalid_workflow_status() {
+    fn test_validate_create_version_payload_invalid_workflow_state() {
         let mut payload_revision_proto = protos::purchase_order_payload::PayloadRevision::new();
         payload_revision_proto.set_revision_id(1);
         payload_revision_proto.set_submitter(SUBMITTER.to_string());
@@ -591,7 +591,7 @@ mod tests {
             protos::purchase_order_payload::CreateVersionPayload::new();
         create_version_payload.set_version_id("01".to_string());
         create_version_payload.set_po_uid("PO-01".to_string());
-        create_version_payload.set_workflow_status("proposed".to_string());
+        create_version_payload.set_workflow_state("proposed".to_string());
         let payload_native = create_version_payload
             .clone()
             .into_native()
@@ -613,7 +613,7 @@ mod tests {
         let mut update_po_payload =
             protos::purchase_order_payload::UpdatePurchaseOrderPayload::new();
         update_po_payload.set_po_uid("PO-01".to_string());
-        update_po_payload.set_workflow_status("issued".to_string());
+        update_po_payload.set_workflow_state("issued".to_string());
         let payload_native = update_po_payload
             .clone()
             .into_native()
@@ -635,7 +635,7 @@ mod tests {
     fn test_validate_update_po_payload_invalid_po_uid() {
         let mut update_po_payload =
             protos::purchase_order_payload::UpdatePurchaseOrderPayload::new();
-        update_po_payload.set_workflow_status("issued".to_string());
+        update_po_payload.set_workflow_state("issued".to_string());
         let payload_native = update_po_payload
             .clone()
             .into_native()
@@ -645,16 +645,16 @@ mod tests {
     }
 
     #[test]
-    /// Validates that an `UpdatePurchaseOrderPayload` with an undefined `workflow_status` field
+    /// Validates that an `UpdatePurchaseOrderPayload` with an undefined `workflow_state` field
     /// is unable to be validated. The test follows these steps:
     ///
     /// 1. Create an `UpdatePurchaseOrderPayload` protobuf message and define all fields except
-    ///    the `workflow_status` field
+    ///    the `workflow_state` field
     /// 2. Assert this `UpdatePurchaseOrderPayload` does not validate
     ///
-    /// This test validates that a `UpdatePurchaseOrderPayload` with an undefined `workflow_status`
+    /// This test validates that a `UpdatePurchaseOrderPayload` with an undefined `workflow_state`
     /// field is unable to be validated
-    fn test_validate_update_po_payload_invalid_workflow_status() {
+    fn test_validate_update_po_payload_invalid_workflow_state() {
         let mut update_po_payload =
             protos::purchase_order_payload::UpdatePurchaseOrderPayload::new();
         update_po_payload.set_po_uid("PO-01".to_string());
@@ -682,7 +682,7 @@ mod tests {
         create_po_payload.set_created_at(1);
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
-        create_po_payload.set_workflow_status("issued".to_string());
+        create_po_payload.set_workflow_state("issued".to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -707,7 +707,7 @@ mod tests {
         create_po_payload.set_created_at(1);
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
-        create_po_payload.set_workflow_status("issued".to_string());
+        create_po_payload.set_workflow_state("issued".to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -732,7 +732,7 @@ mod tests {
         create_po_payload.set_uid("PO-01".to_string());
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
-        create_po_payload.set_workflow_status("issued".to_string());
+        create_po_payload.set_workflow_state("issued".to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -757,7 +757,7 @@ mod tests {
         create_po_payload.set_uid("PO-01".to_string());
         create_po_payload.set_created_at(1);
         create_po_payload.set_seller_org_id("seller".to_string());
-        create_po_payload.set_workflow_status("issued".to_string());
+        create_po_payload.set_workflow_state("issued".to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -782,7 +782,7 @@ mod tests {
         create_po_payload.set_uid("PO-01".to_string());
         create_po_payload.set_created_at(1);
         create_po_payload.set_buyer_org_id("buyer".to_string());
-        create_po_payload.set_workflow_status("issued".to_string());
+        create_po_payload.set_workflow_state("issued".to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -792,16 +792,16 @@ mod tests {
     }
 
     #[test]
-    /// Validates that a `CreatePurchaseOrderPayload` with an undefind `workflow_status` field is
+    /// Validates that a `CreatePurchaseOrderPayload` with an undefind `workflow_state` field is
     /// not validated. The test follows these steps:
     ///
-    /// 1. Create an `CreatePurchaseOrderPayload` protobuf message, leaving the `workflow_status`
+    /// 1. Create an `CreatePurchaseOrderPayload` protobuf message, leaving the `workflow_state`
     ///    field undefined and filling in the remaining values
     /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
     ///
-    /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `workflow_status`
+    /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `workflow_state`
     /// field is not succesfully validated.
-    fn test_validate_create_po_payload_invalid_workflow_status() {
+    fn test_validate_create_po_payload_invalid_workflow_state() {
         let mut create_po_payload =
             protos::purchase_order_payload::CreatePurchaseOrderPayload::new();
         create_po_payload.set_uid("PO-01".to_string());

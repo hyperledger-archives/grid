@@ -76,7 +76,7 @@ OPTIONS
 `--wait`
 : Maximum number of seconds to wait for the batch to be committed.
 
-`--workflow-status`
+`--workflow-state`
 : Specifies the initial workflow state of the purchase order.
 
 EXAMPLES
@@ -87,13 +87,13 @@ The command
 ```
 $ grid po version update \
     --po PO-00000-1111 \
-    --workflow-status Review \
+    --workflow-state Review \
     --wait \
     v3
 ```
 
 will update the version `v3` of purchase order `PO-00000-1111` to have the
-workflow status of `Review`. It will generate output like the following:
+workflow state of `Review`. It will generate output like the following:
 
 ```
 Submitting request to update version...

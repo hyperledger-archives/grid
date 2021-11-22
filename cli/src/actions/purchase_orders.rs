@@ -364,7 +364,7 @@ struct PurchaseOrderCli {
     buyer_org_id: String,
     seller_org_id: String,
     purchase_order_uid: String,
-    workflow_status: String,
+    workflow_state: String,
     is_closed: bool,
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersionCli>,
@@ -377,7 +377,7 @@ impl From<&PurchaseOrder> for PurchaseOrderCli {
             buyer_org_id: d.buyer_org_id.to_string(),
             seller_org_id: d.seller_org_id.to_string(),
             purchase_order_uid: d.purchase_order_uid.to_string(),
-            workflow_status: d.workflow_status.to_string(),
+            workflow_state: d.workflow_state.to_string(),
             is_closed: d.is_closed,
             accepted_version_id: d.accepted_version_id.as_ref().map(String::from),
             versions: d
@@ -393,7 +393,7 @@ impl From<&PurchaseOrder> for PurchaseOrderCli {
 #[derive(Debug, Serialize)]
 struct PurchaseOrderVersionCli {
     pub version_id: String,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub is_draft: bool,
     pub current_revision_id: u64,
     pub revisions: Vec<PurchaseOrderRevisionCli>,
@@ -403,7 +403,7 @@ impl From<&PurchaseOrderVersion> for PurchaseOrderVersionCli {
     fn from(d: &PurchaseOrderVersion) -> Self {
         Self {
             version_id: d.version_id.to_string(),
-            workflow_status: d.workflow_status.to_string(),
+            workflow_state: d.workflow_state.to_string(),
             is_draft: d.is_draft,
             current_revision_id: d.current_revision_id,
             revisions: d
@@ -475,7 +475,7 @@ impl std::fmt::Display for PurchaseOrderCli {
         write!(f, "Purchase Order {}:", &self.purchase_order_uid)?;
         write!(f, "\n\t{:18}{}", "Buyer Org", &self.buyer_org_id)?;
         write!(f, "\n\t{:18}{}", "Seller Org", &self.seller_org_id)?;
-        write!(f, "\n\t{:18}{}", "Workflow Status", &self.workflow_status)?;
+        write!(f, "\n\t{:18}{}", "Workflow State", &self.workflow_state)?;
         write!(
             f,
             "\n\t{:18}{}",
@@ -501,7 +501,7 @@ impl std::fmt::Display for PurchaseOrderCli {
 impl std::fmt::Display for PurchaseOrderVersionCli {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Version {}:", &self.version_id)?;
-        write!(f, "\n\t{:18}{}", "Workflow Status", &self.workflow_status)?;
+        write!(f, "\n\t{:18}{}", "Workflow State", &self.workflow_state)?;
         write!(f, "\n\t{:18}{}", "Is Draft", &self.is_draft)?;
         let revisions = &self.revisions;
         write!(f, "\n\t{:18}{}", "Revisions", &revisions.len())?;
@@ -557,7 +557,7 @@ impl ListDisplay for PurchaseOrderCliList {
                     po.buyer_org_id.to_string(),
                     po.seller_org_id.to_string(),
                     po.purchase_order_uid.to_string(),
-                    po.workflow_status.to_string(),
+                    po.workflow_state.to_string(),
                     match &po.accepted_version_id {
                         Some(s) => s.to_string(),
                         None => String::new(),
@@ -573,7 +573,7 @@ impl ListDisplay for PurchaseOrderVersionCliList {
     fn header() -> Vec<&'static str> {
         vec![
             "VERSION_ID",
-            "WORKFLOW_STATUS",
+            "WORKFLOW_STATE",
             "IS_DRAFT",
             "CURRENT_REVISION",
             "REVISIONS",
@@ -586,7 +586,7 @@ impl ListDisplay for PurchaseOrderVersionCliList {
             .map(|version| {
                 vec![
                     version.version_id.to_string(),
-                    version.workflow_status.to_string(),
+                    version.workflow_state.to_string(),
                     version.is_draft.to_string(),
                     version.current_revision_id.to_string(),
                     version.revisions.len().to_string(),
@@ -731,7 +731,7 @@ Revision 1:
     /// Tests the purchase order versions are correctly displayed in the CLI
     /// in the format:
     /// Version (1):
-    ///     workflow_status  Editable
+    ///     workflow_state  Editable
     ///     draft            false
     ///     Revisions        4
     ///     Current Revision 4
@@ -744,7 +744,7 @@ Revision 1:
     fn test_display_version() {
         let display = "\
 Version 1:
-	Workflow Status   proposed
+	Workflow State    proposed
 	Is Draft          true
 	Revisions         1
 	Current Revision  1
@@ -765,7 +765,7 @@ Revision 1:
 
         let version = PurchaseOrderVersionCli {
             version_id: "1".to_string(),
-            workflow_status: "proposed".to_string(),
+            workflow_state: "proposed".to_string(),
             is_draft: true,
             current_revision_id: 1,
             revisions: vec![revision],
@@ -779,12 +779,12 @@ Revision 1:
     /// Purchase Order PO-00000-0000:
     ///     Buyer Org        crgl (Cargill Incorporated)
     ///     Seller Org       crgl2 (Cargill 2)
-    ///     Workflow status  Confirmed
+    ///     Workflow state  Confirmed
     ///     Created At       <datetime string>
     ///     Closed           false
     ///
     /// Accepted Version (1):
-    ///     workflow_status  Editable
+    ///     workflow_state  Editable
     ///     draft            false
     ///     Revisions        4
     ///     Current Revision 4
@@ -799,12 +799,12 @@ Revision 1:
 Purchase Order PO-00000-0000:
 	Buyer Org         test
 	Seller Org        test2
-	Workflow Status   created
+	Workflow State    created
 	Created At        1970-05-23T21:21:17+00:00
 	Closed            false
 
 Version 1:
-	Workflow Status   proposed
+	Workflow State    proposed
 	Is Draft          true
 	Revisions         1
 	Current Revision  1
@@ -824,7 +824,7 @@ Revision 1:
 
         let version = PurchaseOrderVersionCli {
             version_id: "1".to_string(),
-            workflow_status: "proposed".to_string(),
+            workflow_state: "proposed".to_string(),
             is_draft: true,
             current_revision_id: 1,
             revisions: vec![revision],
@@ -834,7 +834,7 @@ Revision 1:
             buyer_org_id: "test".to_string(),
             seller_org_id: "test2".to_string(),
             purchase_order_uid: "PO-00000-0000".to_string(),
-            workflow_status: "created".to_string(),
+            workflow_state: "created".to_string(),
             is_closed: false,
             accepted_version_id: Some("1".to_string()),
             versions: vec![version],

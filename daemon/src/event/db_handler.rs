@@ -723,7 +723,7 @@ fn state_change_to_db_operation(
                         .map(|po| {
                             let mut builder = PurchaseOrderBuilder::default()
                                 .with_purchase_order_uid(po.uid().to_string())
-                                .with_workflow_status(po.workflow_status().to_string())
+                                .with_workflow_state(po.workflow_state().to_string())
                                 .with_versions(make_po_versions(
                                     po.versions().to_vec(),
                                     commit_num,
@@ -1042,7 +1042,7 @@ fn make_po_versions(
                     make_po_revisions(version.revisions().to_vec(), start_commit_num, service_id)
                         .map_err(|err| PurchaseOrderBuilderError::BuildError(Box::new(err)))?,
                 )
-                .with_workflow_status(version.workflow_status().to_string())
+                .with_workflow_state(version.workflow_state().to_string())
                 .with_start_commit_number(start_commit_num)
                 .with_end_commit_number(MAX_COMMIT_NUM)
                 .with_service_id(service_id.cloned())

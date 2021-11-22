@@ -63,7 +63,7 @@ impl fmt::Display for Permission {
 }
 
 impl Permission {
-    /// Get the relevant permission for transitioning to a workflow status
+    /// Get the relevant permission for transitioning to a workflow state
     pub fn can_transition(to_status: &str) -> Option<Permission> {
         match to_status {
             "issued" => Some(Permission::CanTransitionIssued),

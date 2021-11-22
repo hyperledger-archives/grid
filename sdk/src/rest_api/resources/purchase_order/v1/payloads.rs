@@ -22,7 +22,7 @@ use crate::{
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderSlice {
     pub purchase_order_uid: String,
-    pub workflow_status: String,
+    pub workflow_state: String,
     pub buyer_org_id: String,
     pub seller_org_id: String,
     #[serde(default)]
@@ -43,7 +43,7 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
     fn from(purchase_order: PurchaseOrder) -> Self {
         Self {
             purchase_order_uid: purchase_order.purchase_order_uid().to_string(),
-            workflow_status: purchase_order.workflow_status().to_string(),
+            workflow_state: purchase_order.workflow_state().to_string(),
             buyer_org_id: purchase_order.buyer_org_id().to_string(),
             seller_org_id: purchase_order.seller_org_id().to_string(),
             accepted_version_id: purchase_order.accepted_version_id().map(ToOwned::to_owned),
@@ -80,7 +80,7 @@ pub struct PurchaseOrderVersionSlice {
     is_draft: bool,
     current_revision_id: i64,
     revisions: Vec<PurchaseOrderRevisionSlice>,
-    workflow_status: String,
+    workflow_state: String,
 }
 
 impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
@@ -94,7 +94,7 @@ impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
                 .into_iter()
                 .map(PurchaseOrderRevisionSlice::from)
                 .collect(),
-            workflow_status: purchase_order_version.workflow_status().to_string(),
+            workflow_state: purchase_order_version.workflow_state().to_string(),
         }
     }
 }

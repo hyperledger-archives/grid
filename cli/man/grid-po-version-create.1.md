@@ -77,7 +77,7 @@ OPTIONS
 `--wait`
 : Maximum number of seconds to wait for the batch to be committed.
 
-`--workflow-status`
+`--workflow-state`
 : Specifies the initial workflow state of the purchase order.
 
 EXAMPLES
@@ -91,13 +91,13 @@ $ grid po version create \
     --po=82urioz098aui3871uc \
     --order-xml ./my_test_order.xml \
     --draft \
-    --workflow-status=Editable \
+    --workflow-state=Editable \
     --wait \
     v3
 ```
 
 will generate version `v3` of purchase order `82urioz098aui3871uc` owned by the
-organization `crgl`. It will be created as a draft and have the workflow status
+organization `crgl`. It will be created as a draft and have the workflow state
 of `Editable`.  It will generate output like the following:
 
 ```

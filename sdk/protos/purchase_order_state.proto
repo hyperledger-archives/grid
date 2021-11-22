@@ -17,7 +17,7 @@ syntax = "proto3";
 
 message PurchaseOrder {
   string uid = 1;
-  string workflow_status = 2;
+  string workflow_state = 2;
   string buyer_org_id = 3;
   string seller_org_id = 4;
   repeated PurchaseOrderVersion versions = 5;
@@ -34,7 +34,7 @@ message PurchaseOrderList {
 
 message PurchaseOrderVersion {
   string version_id = 1;
-  string workflow_status = 2;
+  string workflow_state = 2;
   bool is_draft = 3;
   uint64 current_revision_id = 4;
   repeated PurchaseOrderRevision revisions = 5;

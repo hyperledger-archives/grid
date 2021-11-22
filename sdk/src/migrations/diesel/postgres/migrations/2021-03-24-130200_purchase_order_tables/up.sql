@@ -16,7 +16,7 @@
 CREATE TABLE purchase_order (
     id BIGSERIAL PRIMARY KEY,
     purchase_order_uid TEXT NOT NULL,
-    workflow_status TEXT NOT NULL,
+    workflow_state TEXT NOT NULL,
     buyer_org_id VARCHAR(256) NOT NULL,
     seller_org_id VARCHAR(256) NOT NULL,
     is_closed BOOLEAN NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE purchase_order_version (
     version_id TEXT NOT NULL,
     is_draft BOOLEAN NOT NULL,
     current_revision_id BIGINT NOT NULL,
-    workflow_status TEXT NOT NULL,
+    workflow_state TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT

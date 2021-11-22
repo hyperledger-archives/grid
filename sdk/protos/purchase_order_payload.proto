@@ -38,14 +38,14 @@ message CreatePurchaseOrderPayload {
   uint64 created_at = 2;
   string buyer_org_id = 3;
   string seller_org_id = 4;
-  string workflow_status = 5;
+  string workflow_state = 5;
   repeated PurchaseOrderAlternateId alternate_ids = 6;
   CreateVersionPayload create_version_payload = 7;
 }
 
 message UpdatePurchaseOrderPayload {
   string po_uid = 1;
-  string workflow_status = 2;
+  string workflow_state = 2;
   bool is_closed = 3;
   string accepted_version_number = 4;
   repeated PurchaseOrderAlternateId alternate_ids = 5;
@@ -55,14 +55,14 @@ message CreateVersionPayload {
   string version_id = 1;
   string po_uid = 2;
   bool is_draft = 3;
-  string workflow_status = 4;
+  string workflow_state = 4;
   PayloadRevision revision = 5;
 }
 
 message UpdateVersionPayload {
   string version_id = 1;
   string po_uid = 2;
-  string workflow_status = 3;
+  string workflow_state = 3;
   bool is_draft = 4;
   PayloadRevision revision = 6;
 }
