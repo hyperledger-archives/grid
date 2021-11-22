@@ -12,15 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Representation of a single state within a workflow
+
+/// Defines the current state of an item within a workflow. WorkflowState represents a single
+/// point within a workflow and defines the logic used by the smart contract to determine if an
+/// item may be in this workflow state.
 #[derive(Clone)]
 pub struct WorkflowState {
     name: String,
+    /// Defines specific attributes an item must have to be in this workflow state
     constraints: Vec<String>,
+    /// Permission definitions for operating within this workflow state
     permission_aliases: Vec<PermissionAlias>,
+    /// Workflow states that may be transitioned to from this workflow state
     transitions: Vec<String>,
 }
 
 impl WorkflowState {
+    /// Determines if an item may be transitioned to a new workflow state, considering the
+    /// permissions of the submitter and the `permission_aliases` defined within this workflow
+    /// state.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_state` - Name of the workflow state an item is attempting to be transitioned to
+    /// * `pike_permissions` - List of Grid Pike permissions assigned to the submitter of the
+    /// request
     pub fn can_transition(&self, new_state: String, pike_permissions: Vec<String>) -> bool {
         if self.name == new_state {
             return true;
@@ -41,6 +58,11 @@ impl WorkflowState {
         false
     }
 
+    /// List the workflow permissions available to a permission alias
+    ///
+    /// # Arguments
+    ///
+    /// `names` - List of names of the permission aliases to expand
     pub fn expand_permissions(&self, names: &[String]) -> Vec<String> {
         let mut perms = Vec::new();
 
@@ -55,6 +77,11 @@ impl WorkflowState {
         perms
     }
 
+    /// Retrieve the aliases that contain the specified workflow permissions
+    ///
+    /// # Arguments
+    ///
+    /// `permission` - Permission to search for within the workflow aliases
     pub fn get_aliases_by_permission(&self, permission: &str) -> Vec<String> {
         let mut aliases = Vec::new();
 
@@ -67,6 +94,11 @@ impl WorkflowState {
         aliases
     }
 
+    /// Check if a workflow state contains the specified constraint
+    ///
+    /// # Arguments
+    ///
+    /// `constraint` - Name of the constraint a workflow state may hold
     pub fn has_constraint(&self, constraint: &str) -> bool {
         self.constraints.contains(&constraint.to_string())
     }
@@ -76,6 +108,7 @@ impl WorkflowState {
     }
 }
 
+/// Builder used to create a `WorkflowState` object
 #[derive(Default)]
 pub struct WorkflowStateBuilder {
     name: String,
@@ -117,10 +150,13 @@ impl WorkflowStateBuilder {
     }
 }
 
+/// An alias that houses multiple permissions
 #[derive(Clone, Default)]
 pub struct PermissionAlias {
     name: String,
+    /// Permissions granted to this alias
     permissions: Vec<String>,
+    /// Workflow states this alias is able to transition an object to
     transitions: Vec<String>,
 }
 
