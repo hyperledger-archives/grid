@@ -32,9 +32,11 @@ pub(in crate) mod pg {
     ) -> Result<String, PurchaseOrderStoreError> {
         if !alternate_id.contains(':') {
             return Err(PurchaseOrderStoreError::InternalError(
-                InternalError::with_message(
-                    format!("Could not find alternate ID {}. Alternate IDs must be in the format <id_type>:<id>", alternate_id)
-                )
+                InternalError::with_message(format!(
+                    "Could not find alternate ID {}.
+                    Alternate IDs must be in the format <id_type>:<id>",
+                    alternate_id
+                )),
             ));
         }
         let split: Vec<&str> = alternate_id.split(':').collect();
@@ -80,7 +82,13 @@ pub(in crate) mod sqlite {
         service_id: Option<&str>,
     ) -> Result<String, PurchaseOrderStoreError> {
         if !alternate_id.contains(':') {
-            return Err(PurchaseOrderStoreError::InternalError(InternalError::with_message(format!("Could not find alternate ID {}. Alternate IDs must be in the format <id_type>:<id>", alternate_id))));
+            return Err(PurchaseOrderStoreError::InternalError(
+                InternalError::with_message(format!(
+                    "Could not find alternate ID {}.
+                Alternate IDs must be in the format <id_type>:<id>",
+                    alternate_id
+                )),
+            ));
         }
         let split: Vec<&str> = alternate_id.split(':').collect();
         let id_type = split[0];

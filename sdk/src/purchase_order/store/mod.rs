@@ -812,6 +812,8 @@ pub struct ListPOFilters {
     pub seller_org_id: Option<String>,
     pub has_accepted_version: Option<bool>,
     pub is_open: Option<bool>,
+    // Comma separated list of alternate IDs in the format <id_type>:<id>
+    pub alternate_ids: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -833,7 +835,8 @@ pub trait PurchaseOrderStore {
     /// # Arguments
     ///
     ///  * `filters` - Optional filters for the POs: `buyer_org_id`,
-    ///    `seller_org_id`, `has_accepted_version`, and `is_open`
+    ///    `seller_org_id`, `has_accepted_version`, `is_open`, and
+    ///    `alternate_ids`
     ///  * `service_id` - The service ID
     ///  * `offset` - The index of the first in storage to retrieve
     ///  * `limit` - The number of items to retrieve from the offset
