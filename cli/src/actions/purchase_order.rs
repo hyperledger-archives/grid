@@ -21,6 +21,7 @@ use grid_sdk::{
         AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision,
         PurchaseOrderVersion,
     },
+    pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::purchase_order::payload::{
         Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayloadBuilder,
         UpdatePurchaseOrderPayload, UpdateVersionPayload,
@@ -61,7 +62,10 @@ pub fn do_create_purchase_order(
     let batch_list = purchase_order_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            &[
+                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
+            ],
             &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
         )?
         .create_batch_list();
@@ -91,7 +95,10 @@ pub fn do_update_purchase_order(
     let batch_list = purchase_order_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            &[
+                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
+            ],
             &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
         )?
         .create_batch_list();
@@ -121,7 +128,10 @@ pub fn do_create_version(
     let batch_list = purchase_order_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            &[
+                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
+            ],
             &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
         )?
         .create_batch_list();
@@ -160,7 +170,10 @@ pub fn do_update_version(
     let batch_list = purchase_order_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
-            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            &[
+                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
+            ],
             &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
         )?
         .create_batch_list();
