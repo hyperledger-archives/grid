@@ -54,6 +54,14 @@ pub enum CliError {
         feature = "schema",
     ))]
     DaemonError(String),
+    #[cfg(any(
+        feature = "location",
+        feature = "pike",
+        feature = "product",
+        feature = "purchase-order",
+        feature = "schema",
+    ))]
+    InternalError(String),
 }
 
 impl StdError for CliError {
@@ -92,6 +100,14 @@ impl StdError for CliError {
                 feature = "schema",
             ))]
             CliError::DaemonError(_) => None,
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "purchase-order",
+                feature = "schema",
+            ))]
+            CliError::InternalError(_) => None,
         }
     }
 }
@@ -134,6 +150,14 @@ impl std::fmt::Display for CliError {
                 feature = "schema",
             ))]
             CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "purchase-order",
+                feature = "schema",
+            ))]
+            CliError::InternalError(ref err) => write!(f, "{}", err.replace("\"", "")),
         }
     }
 }
@@ -197,6 +221,7 @@ impl From<grid_sdk::error::ClientError> for CliError {
         match client_error {
             grid_sdk::error::ClientError::IoError(err) => CliError::IoError(err),
             grid_sdk::error::ClientError::DaemonError(err) => CliError::DaemonError(err),
+            grid_sdk::error::ClientError::InternalError(err) => CliError::InternalError(err),
         }
     }
 }
