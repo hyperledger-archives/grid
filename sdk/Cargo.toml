@@ -73,6 +73,7 @@ stable = [
     "backend",
     "backend-sawtooth",
     "backend-splinter",
+    "client",
     "location",
     "pike",
     "postgres",
@@ -103,7 +104,6 @@ experimental = [
     # The following features are experimental:
     "batch-processor",
     "batch-store",
-    "client",
     "client-reqwest",
     "data-validation",
     "purchase-order",
