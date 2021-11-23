@@ -496,7 +496,7 @@ fn create_version(
     state: &mut PurchaseOrderState,
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
-    // Validate the signer exists as an agent
+    // Validate the signer exists as an agent and retrieve the agent's organization ID
     let agent_org_id = state
         .get_agent(signer)?
         .ok_or_else(|| {
@@ -506,19 +506,13 @@ fn create_version(
         .to_string();
     let po_uid = payload.po_uid();
     let version_id = payload.version_id();
-    let existing_po_workflow_type = state
-        .get_purchase_order(po_uid)
-        .map_err(|err| {
-            ApplyError::InternalError(format!(
-                "Unable to retrieve purchase order {}: {}",
-                po_uid, err
-            ))
-        })?
-        .ok_or_else(|| {
-            ApplyError::InvalidTransaction(format!("Purchase order {} does not exist", po_uid))
-        })?
-        .workflow_type()
-        .to_string();
+    let workflow_type = match state.get_purchase_order(po_uid)? {
+        Some(po) => Ok(po.workflow_type().to_string()),
+        None => Err(ApplyError::InvalidTransaction(format!(
+            "Purchase order {} does not exist",
+            po_uid
+        ))),
+    }?;
     // Validate this version does not already exist
     if state
         .get_purchase_order_version(po_uid, version_id)?
@@ -529,31 +523,54 @@ fn create_version(
             version_id, po_uid,
         )));
     }
-
-    let desired_state = payload.workflow_state().to_string();
-    // Validate the intended state for the new version
-    if payload.is_draft() && desired_state != "editable"
-        || !payload.is_draft() && desired_state != "proposed"
+    // Retrieve the workflow state we will put the version in
+    let desired_workflow_state_string = payload.workflow_state().to_string();
+    let desired_workflow_state = get_workflow(&workflow_type)
+        .ok_or_else(|| {
+            ApplyError::InternalError(format!("Unable to get `{}` workflow", &workflow_type))
+        })?
+        .subworkflow("version")
+        .ok_or_else(|| {
+            ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
+        })?
+        .state(&desired_workflow_state_string)
+        .ok_or_else(|| {
+            ApplyError::InternalError(format!(
+                "Unable to get `{}` state from `version` subworkflow",
+                desired_workflow_state_string
+            ))
+        })?;
+    // Check the desired workflow state for any constraints it may have related to the version
+    if desired_workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
+        && payload.is_draft()
     {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Version draft status {} does not match intended workflow state {}",
-            payload.is_draft(),
-            &desired_state,
-        )));
+        return Err(ApplyError::InvalidTransaction(
+            "Desired workflow state has `Accepted` constraint, version is a draft".to_string(),
+        ));
     }
-    // Get the workflow specific to the purchase order the version is to be added to
-    let workflow = get_workflow(&existing_po_workflow_type).ok_or_else(|| {
-        ApplyError::InternalError(format!(
-            "Unable to get `{}` workflow",
-            &existing_po_workflow_type
-        ))
-    })?;
-    let version_subworkflow = workflow.subworkflow("version").ok_or_else(|| {
-        ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
-    })?;
-    let workflow_state = version_subworkflow.state("create").ok_or_else(|| {
-        ApplyError::InternalError("Unable to get state from `version` subworkflow".to_string())
-    })?;
+    if desired_workflow_state.has_constraint(&WorkflowConstraint::Draft.to_string())
+        && !payload.is_draft()
+    {
+        return Err(ApplyError::InvalidTransaction(
+            "Desired workflow state has `Draft` constraint, version is not a draft".to_string(),
+        ));
+    }
+    // Get the "create" state from the version subworkflow, to validate if we are able to
+    // create this version
+    let create_workflow_state = get_workflow(&workflow_type)
+        .ok_or_else(|| {
+            ApplyError::InternalError(format!("Unable to get `{}` workflow", &workflow_type))
+        })?
+        .subworkflow("version")
+        .ok_or_else(|| {
+            ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
+        })?
+        .state("create")
+        .ok_or_else(|| {
+            ApplyError::InternalError(
+                "Unable to get `create` state from `version` subworkflow".to_string(),
+            )
+        })?;
     // Validate the agent is able to create the purchase order version
     let perm_string = Permission::CanCreatePoVersion.to_string();
     let perm_result = perm_checker
@@ -561,8 +578,8 @@ fn create_version(
             &perm_string,
             signer,
             &agent_org_id,
-            workflow_state,
-            &desired_state,
+            create_workflow_state,
+            &desired_workflow_state_string,
         )
         .map_err(|err| {
             ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
@@ -571,11 +588,11 @@ fn create_version(
     if !perm_result {
         return Err(ApplyError::InvalidTransaction(format!(
             "Agent {} does not have the correct permissions for organization {} to create purchase \
-             order version {} with a status of {}",
+             order version {} in the {} workflow state",
             signer,
             &agent_org_id,
             payload.version_id(),
-            desired_state,
+            desired_workflow_state_string,
         )));
     }
 
@@ -583,7 +600,7 @@ fn create_version(
     let payload_revision = payload.revision();
     let revision = PurchaseOrderRevisionBuilder::new()
         .with_revision_id(payload_revision.revision_id())
-        .with_submitter(signer.to_string())
+        .with_submitter(payload_revision.submitter().to_string())
         .with_created_at(payload_revision.created_at())
         .with_order_xml_v3_4(payload_revision.order_xml_v3_4().to_string())
         .build()
@@ -593,7 +610,7 @@ fn create_version(
     // Create the PurchaseOrderVersion to be added to state
     let new_version = PurchaseOrderVersionBuilder::new()
         .with_version_id(payload.version_id().to_string())
-        .with_workflow_state(desired_state)
+        .with_workflow_state(desired_workflow_state_string)
         .with_is_draft(payload.is_draft())
         .with_current_revision_id(revision.revision_id())
         .with_revisions(vec![revision])
@@ -1955,24 +1972,18 @@ mod tests {
     }
 
     #[test]
-    /// Validates the `create_version` function returns an error if the version to be created
-    /// contains state that invalidates the workflow state it is to be transitioned to.
-    /// This test specifically tests the scenario where a purchase order version is created as a
-    /// draft and moved into the "proposed" workflow state within the System of Record version
-    /// subworkflow. The test follows these steps:
+    /// This test validates a draft purchase order version is not able to be created with a
+    /// `workflow_state` of `accepted` within the System of Record version subworkflow.
+    /// An accepted purchase order version may not be a draft. The test follows these steps:
     ///
     /// 1. Add the buyer and seller organizations to state
     /// 2. Create an agent with the "buyer" role
     /// 3. Add a Purchase Order to state with versions (This will issue the purchase order
     ///    within the System of Record version subworkflow)
     /// 4. Build a `CreateVersionPayload` with an `is_draft` field of `true` and a `workflow_state`
-    ///    of `proposed`
+    ///    of `accepted`
     /// 5. Assert the `create_version` function returns an error
-    ///
-    /// This test validates a draft purchase order version is not able to be created with a
-    /// `workflow_state` of `proposed` within the System of Record version subworkflow. Draft
-    /// versions are moved into the draft workflow state, "editable", upon creation.
-    fn test_sys_create_po_vers_invalid_transition_proposed() {
+    fn test_sys_create_po_vers_invalid_transition_accepted() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
@@ -1992,21 +2003,26 @@ mod tests {
             .with_version_id(PO_VERSION_ID_2.to_string())
             .with_po_uid(PO_UID.to_string())
             .with_is_draft(true)
-            .with_workflow_state("proposed".to_string())
+            .with_workflow_state("accepted".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
+        let expected =
+            "Desired workflow state has `Accepted` constraint, version is a draft".to_string();
 
-        if let Ok(()) = create_version(
+        match create_version(
             &create_po_vers_payload,
             BUYER_PUB_KEY,
             &mut state,
             &perm_checker,
         ) {
-            panic!(
-                "New purchase order version should be invalid because draft versions are \
-            unable to be transitioned to the `proposed` workflow state"
-            )
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got `{:?}`, expected ApplyError with message `{:?}`",
+                    value, expected
+                )
+            }
         }
     }
 
