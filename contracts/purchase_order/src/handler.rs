@@ -176,11 +176,11 @@ fn create_purchase_order(
             })?;
             // Retrieve desired state to validate any constraints
             let desired_state = version_subworkflow
-                .state(payload_version.workflow_status())
+                .state(payload_version.workflow_state())
                 .ok_or_else(|| {
                     ApplyError::InternalError(format!(
                         "Unable to get `{}` state from subworkflow",
-                        payload_version.workflow_status()
+                        payload_version.workflow_state()
                     ))
                 })?;
             if desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
@@ -188,7 +188,7 @@ fn create_purchase_order(
             {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Desired workflow state `{}` has `Accepted` constraint, version is a draft",
-                    payload_version.workflow_status()
+                    payload_version.workflow_state()
                 )));
             }
             if desired_state.has_constraint(&WorkflowConstraint::Draft.to_string())
@@ -196,7 +196,7 @@ fn create_purchase_order(
             {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Desired workflow state `{}` has `Draft` constraint, version is not a draft",
-                    payload_version.workflow_status()
+                    payload_version.workflow_state()
                 )));
             }
             let perm_result = perm_checker
@@ -271,24 +271,24 @@ fn create_purchase_order(
     })?;
     // Retrieve the desired workflow state to validate any constraints
     let desired_state = po_subworkflow
-        .state(payload.workflow_status())
+        .state(payload.workflow_state())
         .ok_or_else(|| {
             ApplyError::InternalError(format!(
                 "Unable to get `{}` state from subworkflow",
-                payload.workflow_status()
+                payload.workflow_state()
             ))
         })?;
     if desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
         return Err(ApplyError::InvalidTransaction(format!(
             "Desired workflow state `{}` has `Accepted` constraint, purchase order does not have \
             an accepted version",
-            payload.workflow_status()
+            payload.workflow_state()
         )));
     }
     if desired_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
         return Err(ApplyError::InvalidTransaction(format!(
             "Desired workflow state `{}` has `Closed` constraint, creating an open purchase order",
-            payload.workflow_status()
+            payload.workflow_state()
         )));
     }
     if desired_state.has_constraint(&WorkflowConstraint::Complete.to_string())
@@ -296,7 +296,7 @@ fn create_purchase_order(
     {
         return Err(ApplyError::InvalidTransaction(format!(
             "Desired workflow state `{}` has `Complete` constraint, purchase order has no versions",
-            payload.workflow_status()
+            payload.workflow_state()
         )));
     }
     let perm_string = Permission::CanCreatePo.to_string();
@@ -1303,7 +1303,7 @@ mod tests {
     /// these steps:
     ///
     /// 1. Create the necessary organizations and create an agent with the "buyer" role
-    /// 2. Build a `CreatePurchaseOrderPayload` with a `workflow_status` of `confirmed`
+    /// 2. Build a `CreatePurchaseOrderPayload` with a `workflow_state` of `confirmed`
     /// 3. Assert the `create_version` function returns an error
     fn test_create_po_invalid_workflow_state() {
         let ctx = MockTransactionContext::default();
@@ -1318,7 +1318,7 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_status("confirmed".to_string())
+            .with_workflow_state("confirmed".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         let expected = "Desired workflow state `confirmed` has `Accepted` constraint, \
@@ -1423,8 +1423,8 @@ mod tests {
     }
 
     #[test]
-    // Test that the update po closed status will fail when there is an incorrect workflow state
-    fn test_update_po_closed_status_fails_incorrect_status() {
+    // Test that the update po closed state will fail when there is an incorrect workflow state
+    fn test_update_po_closed_state_fails_incorrect_state() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
@@ -1493,8 +1493,8 @@ mod tests {
     }
 
     #[test]
-    // Test that the update po closed status will fail when there's an accepted version number
-    fn test_update_po_closed_status_fails_with_accepted_version_number() {
+    // Test that the update po closed state will fail when there's an accepted version number
+    fn test_update_po_closed_state_fails_with_accepted_version_number() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
@@ -1527,8 +1527,8 @@ mod tests {
     }
 
     #[test]
-    // Test that the update po closed status succeeds
-    fn test_update_po_closed_status_succeeds() {
+    // Test that the update po closed state succeeds
+    fn test_update_po_closed_state_succeeds() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
         let perm_checker = PermissionChecker::new(&ctx);
@@ -1582,7 +1582,7 @@ mod tests {
     }
 
     #[test]
-    // Test that the update po checks the status of accepted versions
+    // Test that the update po checks the state of accepted versions
     fn test_update_po_accepted_version_number_validates_version_workflow_accepted() {
         let ctx = MockTransactionContext::default();
         let mut state = PurchaseOrderState::new(&ctx);
