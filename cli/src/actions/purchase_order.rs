@@ -422,7 +422,10 @@ impl From<&PurchaseOrder> for PurchaseOrderCli {
             workflow_type: d.workflow_type.to_string(),
             workflow_state: d.workflow_state.to_string(),
             is_closed: d.is_closed,
-            accepted_version_id: d.accepted_version_id.as_ref().map(String::from),
+            accepted_version_id: match d.accepted_version_id.as_ref() {
+                Some(a) => Some(a.to_string()),
+                None => Some("none".to_string()),
+            },
             versions: d
                 .versions
                 .iter()
@@ -533,8 +536,9 @@ impl std::fmt::Display for PurchaseOrderCli {
             let version: Option<&PurchaseOrderVersionCli> = versions
                 .iter()
                 .find(|&ver| ver.version_id == *accepted_version_id);
-            if let Some(version) = version {
-                write!(f, "\n\n{}", version)?;
+            match version {
+                Some(v) => write!(f, "\n\n{}", v)?,
+                None => write!(f, "\n\nNo accepted version")?,
             }
         }
 
