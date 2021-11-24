@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! This module provides the data types for the reqwest-backed client
+//! implementation. These must be able to be converted into their
+//! corresponding structs in the corresponding client module.
+
 use crate::client::product::{
     LatLong as ClientLatLong, Product as ClientProduct, PropertyValue as ClientPropertyValue,
 };
