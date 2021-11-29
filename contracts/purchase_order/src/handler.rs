@@ -29,7 +29,7 @@ cfg_if! {
 
 use grid_sdk::protos::FromBytes;
 use grid_sdk::{
-    pike::permissions::PermissionChecker,
+    pike::{addressing::GRID_PIKE_NAMESPACE, permissions::PermissionChecker},
     protocol::purchase_order::{
         payload::{
             Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayload,
@@ -78,7 +78,10 @@ impl PurchaseOrderTransactionHandler {
         Self {
             family_name: "grid_purchase_order".to_string(),
             family_versions: vec!["1".to_string()],
-            namespaces: vec![GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
+            namespaces: vec![
+                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
+                GRID_PIKE_NAMESPACE.to_string(),
+            ],
         }
     }
 }
