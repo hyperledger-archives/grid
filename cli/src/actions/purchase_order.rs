@@ -405,6 +405,7 @@ struct PurchaseOrderCli {
     buyer_org_id: String,
     seller_org_id: String,
     purchase_order_uid: String,
+    workflow_type: String,
     workflow_state: String,
     is_closed: bool,
     accepted_version_id: Option<String>,
@@ -418,9 +419,13 @@ impl From<&PurchaseOrder> for PurchaseOrderCli {
             buyer_org_id: d.buyer_org_id.to_string(),
             seller_org_id: d.seller_org_id.to_string(),
             purchase_order_uid: d.purchase_order_uid.to_string(),
+            workflow_type: d.workflow_type.to_string(),
             workflow_state: d.workflow_state.to_string(),
             is_closed: d.is_closed,
-            accepted_version_id: d.accepted_version_id.as_ref().map(String::from),
+            accepted_version_id: match d.accepted_version_id.as_ref() {
+                Some(a) => Some(a.to_string()),
+                None => Some("none".to_string()),
+            },
             versions: d
                 .versions
                 .iter()
@@ -516,6 +521,7 @@ impl std::fmt::Display for PurchaseOrderCli {
         write!(f, "Purchase Order {}:", &self.purchase_order_uid)?;
         write!(f, "\n\t{:18}{}", "Buyer Org", &self.buyer_org_id)?;
         write!(f, "\n\t{:18}{}", "Seller Org", &self.seller_org_id)?;
+        write!(f, "\n\t{:18}{}", "Workflow Name", &self.workflow_type)?;
         write!(f, "\n\t{:18}{}", "Workflow State", &self.workflow_state)?;
         write!(
             f,
@@ -530,8 +536,9 @@ impl std::fmt::Display for PurchaseOrderCli {
             let version: Option<&PurchaseOrderVersionCli> = versions
                 .iter()
                 .find(|&ver| ver.version_id == *accepted_version_id);
-            if let Some(version) = version {
-                write!(f, "\n\n{}", version)?;
+            match version {
+                Some(v) => write!(f, "\n\n{}", v)?,
+                None => write!(f, "\n\nNo accepted version")?,
             }
         }
 
@@ -587,7 +594,9 @@ trait ListDisplay {
 
 impl ListDisplay for PurchaseOrderCliList {
     fn header() -> Vec<&'static str> {
-        vec!["BUYER", "SELLER", "UID", "STATUS", "ACCEPTED", "CLOSED"]
+        vec![
+            "BUYER", "SELLER", "UID", "WORKFLOW", "STATE", "ACCEPTED", "CLOSED",
+        ]
     }
 
     fn details(&self) -> Vec<Vec<String>> {
@@ -598,6 +607,7 @@ impl ListDisplay for PurchaseOrderCliList {
                     po.buyer_org_id.to_string(),
                     po.seller_org_id.to_string(),
                     po.purchase_order_uid.to_string(),
+                    po.workflow_type.to_string(),
                     po.workflow_state.to_string(),
                     match &po.accepted_version_id {
                         Some(s) => s.to_string(),
@@ -840,6 +850,7 @@ Revision 1:
 Purchase Order PO-00000-0000:
 	Buyer Org         test
 	Seller Org        test2
+	Workflow Name     default
 	Workflow State    created
 	Created At        1970-05-23T21:21:17+00:00
 	Closed            false
@@ -875,6 +886,7 @@ Revision 1:
             buyer_org_id: "test".to_string(),
             seller_org_id: "test2".to_string(),
             purchase_order_uid: "PO-00000-0000".to_string(),
+            workflow_type: "default".to_string(),
             workflow_state: "created".to_string(),
             is_closed: false,
             accepted_version_id: Some("1".to_string()),
