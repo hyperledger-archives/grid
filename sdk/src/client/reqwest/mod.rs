@@ -54,6 +54,9 @@ use super::ClientFactory;
 #[cfg(feature = "schema")]
 pub use schema::*;
 
+/// This is the abstraction of the `ClientFactory` struct for the
+/// reqwest-backed implementation. This provides methods to return the reqwest
+/// clients for various Grid features.
 pub struct ReqwestClientFactory {}
 
 impl ReqwestClientFactory {
@@ -143,13 +146,14 @@ struct BatchStatus {
     pub status: String,
 }
 
-/// Fetches and serializes `T` entities from REST API
+/// Fetches and deserializes `T` entities from REST API
 ///
 /// # Arguments
 ///
 /// * `url` - The base url of the request
 /// * `route` - the route to find the entity
 /// * `service_id` - optional - the service ID to fetch the entities from
+/// * `filters` - optional - filters for the resource being fetched
 pub fn fetch_entities_list<T: DeserializeOwned>(
     url: &str,
     route: String,
