@@ -69,12 +69,20 @@ The command
 $ grid po version show PO-AA11A-BB22 1
 ```
 
-will show version 1 for the purchase order "PO-AA11A-BB22" in human-readable
-format:
+will show version 1 for the purchase order "PO-AA11A-BB22":
 
 ```
-VERSION_ID  WORKFLOW_STATE  IS_DRAFT  CURRENT_REVISION  REVISIONS
-1           Editable         t         1                 1
+Version 1:
+	Workflow State    proposed
+	Is Draft          false
+	Revisions         1
+	Current Revision  1
+
+Revision 1:
+    Created At       <datetime string>
+    Submitter        0200ef9ab9243baee...
+<Revision XML file>
+
 ```
 
 ENVIRONMENT VARIABLES

@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po version create** \[**FLAGS**\] \[**OPTIONS**\] <VERSION_ID> <**--org** ORG_ID>
+**grid po version create** \[**FLAGS**\] \[**OPTIONS**\] <VERSION_ID>
 
 DESCRIPTION
 ===========
@@ -21,7 +21,7 @@ DESCRIPTION
 This command allows for the creation of Grid Purchase Orders versions. It
 submits a Sabre transaction to create the purchase order version.
 
-VERSION_ID argument and --org option are required.
+The VERSION_ID argument is required.
 
 ARGS
 ====
@@ -87,26 +87,22 @@ The command
 
 ```
 $ grid po version create \
-    --org=crgl \
-    --po=82urioz098aui3871uc \
+    --po PO-1234-56789 \
     --order-xml ./my_test_order.xml \
     --draft \
-    --workflow-state=Editable \
-    --wait \
+    --workflow-state editable \
+    --wait 10 \
     v3
 ```
 
-will generate version `v3` of purchase order `82urioz098aui3871uc` owned by the
-organization `crgl`. It will be created as a draft and have the workflow state
-of `Editable`.  It will generate output like the following:
+will generate version `v3` of purchase order `PO-1234-56789`. It will be
+created as a draft and have the workflow state of `editable`.  It will
+generate output like the following:
 
 ```
-Creating version "v3" for Purchase Order 82urioz098aui3871uc.
-Submitted Purchase Order Version create transaction:
-    Batch: 142312uoisufoin38908fyhsdfhs098yv98y98v
-    Transaction: af32348uofo238098fyu80h028yf082ehf8h
-Waiting for transaction to be committed...
-Transaction was committed successfully.
+Submitting request to create purchase order version...
+Submitted batch: 123678945
+Batch and transaction structure was valid. Batch queued.
 ```
 
 ENVIRONMENT VARIABLES

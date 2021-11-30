@@ -1269,7 +1269,7 @@ fn run() -> Result<(), CliError> {
                             .required(true)
                             .help(
                                 "ID of the Purchase Order this version belongs to. \
-                        May be the Purchase Order's UUID or an Alternate ID \
+                        May be the Purchase Order's unique ID or an Alternate ID \
                         (Alternate ID format: <alternate_id_type>:<alternate_id>)",
                             ),
                     )
@@ -1548,9 +1548,9 @@ fn run() -> Result<(), CliError> {
                                 .required(true)
                                 .help("ID of the organization which is selling the Purchase Order"),
                         )
-                        .arg(Arg::with_name("uuid").long("uuid").takes_value(true).help(
-                            "UUID for Purchase Order. \
-                                Defaults to randomly-generated UUID",
+                        .arg(Arg::with_name("uid").long("uid").takes_value(true).help(
+                            "Unique ID for Purchase Order. \
+                                Defaults to randomly-generated unique ID",
                         ))
                         .arg(
                             Arg::with_name("alternate_id")

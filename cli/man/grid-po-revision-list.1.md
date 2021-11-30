@@ -24,7 +24,7 @@ ARGS
 ====
 
 `PURCHASE_ORDER_ID`
-: Either a UUID or an alternate ID of a purchase order.
+: Either a UID or an alternate ID of a purchase order.
 
 `VERSION_ID`
 : The purchase order's version identifier.
@@ -51,10 +51,10 @@ OPTIONS
 `-F`, `--format=FORMAT`
 : Specifies the output format of the list. Possible values for formatting are
   `human`, `csv`, `yaml`, and `json`. Defaults to `human`.
-  
+
 `--org`
 : Optionally, filter the purchase orders for the organization specified by
-  `ORG_ID`. 
+  `ORG_ID`.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
@@ -66,13 +66,13 @@ OPTIONS
 EXAMPLES
 ========
 
-The command 
+The command
 ```
-$ grid po revision list 82urioz098aui3871uc v3
+$ grid po revision list PO-1234-56789 v3
 ```
 
-will display all purchase order revisions for version `3` of 
-purchase order with the UUID of `82urioz098aui3871uc` in human
+will display all purchase order revisions for version `3` of
+purchase order with the unique ID of `PO-1234-56789` in human
 readable format. It will display in the following format:
 ```
 Revision 4:
@@ -105,6 +105,7 @@ ENVIRONMENT VARIABLES
 SEE ALSO
 ========
 | `grid-po-revision(1)`
-| `grid-po-show(1)`
+| `grid-po-version(1)`
+| `grid-po-version-list(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.2/

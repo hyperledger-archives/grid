@@ -67,7 +67,7 @@ OPTIONS
 
 `--org`
 : Optionally, filter the purchase orders for the organization specified by
-  `ORG_ID`. 
+  `ORG_ID`.
 
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
@@ -82,15 +82,15 @@ EXAMPLES
 The command
 
 ```
-$ grid po version list --org=crgl
+$ grid po version list PO-1234-56789
 ```
 
-will list all purchase orders version for the org `crgl` in human-readable
-format:
+will list all purchase orders version for the purchase order with a unique ID
+of `PO-1234-56789`.
 
 ```
-ORG  PO                  ID STATUS   REVISON
-crgl 82urioz098aui3871uc v3 Editable       2
+VERSION_ID  WORKFLOW_STATE IS_DRAFT CURRENT_REVISION REVISIONS
+01          proposed        false    2                2
 ```
 
 ENVIRONMENT VARIABLES

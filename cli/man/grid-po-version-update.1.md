@@ -87,19 +87,18 @@ The command
 ```
 $ grid po version update \
     --po PO-00000-1111 \
-    --workflow-state Review \
-    --wait \
+    --workflow-state review \
+    --wait=10 \
     v3
 ```
 
 will update the version `v3` of purchase order `PO-00000-1111` to have the
-workflow state of `Review`. It will generate output like the following:
+workflow state of `review`. It will generate output like the following:
 
 ```
-Submitting request to update version...
+Submitting request to update purchase order version...
 Submitted batch: efed2ff3efc50ac32a81b05b8d330fdb154d...
-Waiting for transaction to be committed...
-Transaction was committed successfully.
+Batch and transaction structure was valid. Batch queued.
 ```
 
 ENVIRONMENT VARIABLES

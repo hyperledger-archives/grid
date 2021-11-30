@@ -64,15 +64,15 @@ EXAMPLES
 The command
 
 ```
-$ grid po show --org=crgl 809832081
+$ grid po show --org=crgl PO-1234-56789
 ```
 
 will display the current revision of the accepted version of the purchase order
-with UID `809832081` in human-readable format. It will display
+with UID `PO-1234-56789` in human-readable format. It will display
 output like the following:
 
 ```
-Purchase Order 809832081:
+Purchase Order PO-1234-56789:
     Buyer Org        crgl (Cargill Incorporated)
     Seller Org       crgl2 (Cargill 2)
     Workflow state  Confirmed
@@ -94,15 +94,15 @@ Revision 4:
 The command
 
 ```
-$ grid po show purchase_order:809832081
+$ grid po show purchase_order:34595
 ```
 
 will display the current revision of the accepted version of the purchase order
-with the alternate ID of `purchase_order:809832081` in human-readable format.
+with the alternate ID of `purchase_order:34595` in human-readable format.
 It will display output like the following:
 
 ```
-Purchase Order 809832081:
+Purchase Order PO-1234-56789:
     Buyer Org        crgl (Cargill Incorporated)
     Seller Org       crgl2 (Cargill 2)
     Workflow state  Confirmed
@@ -124,15 +124,15 @@ Revision 4:
 The command
 
 ```
-$ grid po show --org=crgl purchase_order:809832081 --version v3 --revision 2
+$ grid po show --org=crgl purchase_order:34595 --version v3 --revision 2
 ```
 
 will display revision `2` of version `v3` of the purchase order
-with the alternate ID of `purchase_order:809832081` in human-readable format.
+with the alternate ID of `purchase_order:34595` in human-readable format.
 It will display output like the following:
 
 ```
-Purchase Order 809832081:
+Purchase Order PO-1234-56789:
     Buyer Org        crgl (Cargill Incorporated)
     Seller Org       crgl2 (Cargill 2)
     Workflow state  Confirmed

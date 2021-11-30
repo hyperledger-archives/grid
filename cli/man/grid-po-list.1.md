@@ -83,8 +83,8 @@ $ grid po list --buyer-org=crgl
 will list all purchase orders for the org `crgl` in human-readable format:
 
 ```
-BUYER SELLER   UID                 STATUS    ACCEPTED CLOSED
-crgl  tst      PO-1234-56789       Confirmed v3       False
+BUYER SELLER   UID                 STATE     ACCEPTED CLOSED
+crgl  tst      PO-1234-56789       confirmed v3       false
 ```
 
 The command
@@ -97,10 +97,10 @@ will list all the purchase orders that have an accepted version in
 human-readable format:
 
 ```
-BUYER SELLER   UID                 STATUS    ACCEPTED CLOSED
-crgl  tst      PO-1234-56789       Confirmed v3       False
-tst   crgl     PO-2345-67890       Issued    v1       False
-crgl  tst      PO-3456-78901       Closed    v1       True
+BUYER SELLER   UID                 STATE     ACCEPTED CLOSED
+crgl  tst      PO-1234-56789       confirmed v3       false
+tst   crgl     PO-2345-67890       issued    v1       false
+crgl  tst      PO-3456-78901       closed    v1       true
 ```
 
 The command
@@ -116,9 +116,9 @@ will display all of the purchase orders that have an accepted version and are
 open. The output is formatted in csv:
 
 ```
-BUYER,SELLER,UID,STATUS,ACCEPTED,CLOSED
-crgl,tst,PO-1234-56789,Confirmed,v3,False
-tst,crgl,PO-2345-67890,Issued,v1,False
+BUYER,SELLER,UID,STATE,ACCEPTED,CLOSED
+crgl,tst,PO-1234-56789,confirmed,v3,false
+tst,crgl,PO-2345-67890,issued,v1,false
 ```
 
 ENVIRONMENT VARIABLES

@@ -76,10 +76,13 @@ SUBCOMMANDS
 : Create a new purchase order version.
 
 `list`
-: List details of all existing purchase orders versions.
+: List details of purchase order versions from a specified purchase order.
 
 `update`
 : Update an existing purchase order version.
+
+`show`
+: Show details of a specified purchase order version.
 
 SEE ALSO
 ========
@@ -87,6 +90,6 @@ SEE ALSO
 | `grid-po-version-create(1)`
 | `grid-po-version-list(1)`
 | `grid-po-version-update(1)`
-| `grid-po-revision(1)`
+| `grid-po-version-show(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.1/

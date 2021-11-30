@@ -87,7 +87,7 @@ SUBCOMMANDS
 : Update an existing purchase order.
 
 `version`
-: Create or update versions of a purchase order.
+: Create, update or display versions of a purchase order.
 
 SEE ALSO
 ========

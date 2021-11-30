@@ -68,12 +68,12 @@ EXAMPLES
 
 The command
 ```
-$ grid po revision show 82urioz098aui3871uc v3 3
+$ grid po revision show PO-1234-56789 v3 3
 ```
 
 will display revision number `3` for the `v3` version of the purchase order
-with UUID `82urioz098aui3871uc` in human-readable format. It will display
-output like the following:
+with UID `PO-1234-56789` in human-readable format. It will display output like
+the following:
 ```
 Revision 3:
     submitter        <public key of submitter>
@@ -83,7 +83,7 @@ Revision 3:
 
 In contrast, a summary view is available using the command
 ```
-$ grid po show 82urioz098aui3871uc --version v3 --revision 3
+$ grid po show PO-1234-56789 --version v3 --revision 3
 ```
 with details provided in `grid-po-show(1)`.
 
@@ -100,5 +100,6 @@ SEE ALSO
 ========
 | `grid-po-revision(1)`
 | `grid-po-revision-list(1)`
+| `grid-po-version(1)`
 |
 | Grid documentation: https://grid.hyperledger.org/docs/0.2/
