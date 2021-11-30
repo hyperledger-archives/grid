@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Defines an API to manage and utilize workflows. Grid Workflow provides a framework for modeling
+//! business workflows as state transitions within smart contracts.
+
 mod state;
 mod subworkflow;
 
 pub use state::{PermissionAlias, WorkflowState, WorkflowStateBuilder};
 pub use subworkflow::{SubWorkflow, SubWorkflowBuilder};
 
+/// A single workflow may involve multiple processes; these processes are defined by the list of
+/// subworkflows.
 pub struct Workflow {
     subworkflow: Vec<SubWorkflow>,
 }

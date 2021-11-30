@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! An API for managing a subprocess of a workflow
+
 use super::state::WorkflowState;
 
+/// A subprocess of a workflow
 #[derive(Clone)]
 pub struct SubWorkflow {
     name: String,
+    /// All states an object may be in within this subworkflow
     states: Vec<WorkflowState>,
+    /// The states an object may begin at within this subworkflow
     starting_states: Vec<String>,
 }
 
@@ -41,6 +46,7 @@ impl SubWorkflow {
     }
 }
 
+/// Builder used to create a `SubWorkflow`
 #[derive(Default)]
 pub struct SubWorkflowBuilder {
     name: String,
