@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po version create** \[**FLAGS**\] \[**OPTIONS**\] <VERSION_ID>
+**grid po version create** \[**FLAGS**\] \[**OPTIONS**\] <PO_NUMBER> <VERSION_ID>
 
 DESCRIPTION
 ===========
@@ -21,10 +21,13 @@ DESCRIPTION
 This command allows for the creation of Grid Purchase Orders versions. It
 submits a Sabre transaction to create the purchase order version.
 
-The VERSION_ID argument is required.
+The PO_NUMBER and VERSION_ID arguments are required.
 
 ARGS
 ====
+
+`PO_NUMBER`
+: The UID or an alternate ID of the purchase order this version is for.
 
 `VERSION_ID`
 : The user-specified version identifier.
@@ -64,9 +67,6 @@ OPTIONS
 `--org`
 : Specify the organization that owns the purchase order. This option is required.
 
-`--po`
-: Either a UID or an alternate ID of a purchase order.
-
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
   Splinter. Format: `<circuit-id>::<service-id>`.
@@ -87,12 +87,12 @@ The command
 
 ```
 $ grid po version create \
-    --po PO-1234-56789 \
+    PO-1234-56789 \
+    v3 \
     --order-xml ./my_test_order.xml \
     --draft \
     --workflow-state editable \
-    --wait 10 \
-    v3
+    --wait 10
 ```
 
 will generate version `v3` of purchase order `PO-1234-56789`. It will be

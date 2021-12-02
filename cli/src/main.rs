@@ -1255,16 +1255,8 @@ fn run() -> Result<(), CliError> {
                 SubCommand::with_name("create")
                     .about("Create a Purchase Order version")
                     .arg(
-                        Arg::with_name("version_id")
-                            .value_name("version_id")
-                            .takes_value(true)
-                            .required(true)
-                            .help("Identifier for this Purchase Order version"),
-                    )
-                    .arg(
                         Arg::with_name("po")
                             .value_name("order_id")
-                            .long("po")
                             .takes_value(true)
                             .required(true)
                             .help(
@@ -1272,6 +1264,13 @@ fn run() -> Result<(), CliError> {
                         May be the Purchase Order's unique ID or an Alternate ID \
                         (Alternate ID format: <alternate_id_type>:<alternate_id>)",
                             ),
+                    )
+                    .arg(
+                        Arg::with_name("version_id")
+                            .value_name("version_id")
+                            .takes_value(true)
+                            .required(true)
+                            .help("Identifier for this Purchase Order version"),
                     )
                     .arg(
                         Arg::with_name("workflow_state")
@@ -1329,16 +1328,8 @@ fn run() -> Result<(), CliError> {
                 SubCommand::with_name("update")
                     .about("Update a Purchase Order version")
                     .arg(
-                        Arg::with_name("version_id")
-                            .value_name("version_id")
-                            .takes_value(true)
-                            .required(true)
-                            .help("ID of the Purchase Order version to be updated"),
-                    )
-                    .arg(
                         Arg::with_name("po")
                             .value_name("order_id")
-                            .long("po")
                             .takes_value(true)
                             .required(true)
                             .help(
@@ -1346,6 +1337,13 @@ fn run() -> Result<(), CliError> {
                         May be the Purchase Order's UID or an Alternate ID \
                         (Alternate ID format: <alternate_id_type>:<alternate_id>)",
                             ),
+                    )
+                    .arg(
+                        Arg::with_name("version_id")
+                            .value_name("version_id")
+                            .takes_value(true)
+                            .required(true)
+                            .help("ID of the Purchase Order version to be updated"),
                     )
                     .arg(
                         Arg::with_name("workflow_state")

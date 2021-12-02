@@ -13,7 +13,7 @@ NAME
 SYNOPSIS
 ========
 
-**grid po version update** \[**FLAGS**\] \[**OPTIONS**\] <VERSION_ID>
+**grid po version update** \[**FLAGS**\] \[**OPTIONS**\] <PO_NUMBER> <VERSION_ID>
 
 DESCRIPTION
 ===========
@@ -22,11 +22,14 @@ This command allows for the update of Grid Purchase Orders versions. It
 submits a Sabre transaction to create the purchase order version. Each update
 creates a new revision of that version.
 
-VERSION_ID argument and the --po option are required.
+The PO_NUMBER and VERSION_ID arguments are required.
 
 
 ARGS
 ====
+
+`PO_NUMBER`
+: The UID or an alternate ID of the purchase order this version is for.
 
 `VERSION_ID`
 : The user-specified version identifier.
@@ -63,9 +66,6 @@ OPTIONS
 : Specify the path to an order xml FILE to load.  The file must conform to the
   GS1 Order spec v3.4
 
-`--po`
-: Either a UID or an alternate ID of a purchase order.
-
 `--service-id`
 : The ID of the service the payload should be sent to; required if running on
   Splinter. Format: `<circuit-id>::<service-id>`.
@@ -86,10 +86,10 @@ The command
 
 ```
 $ grid po version update \
-    --po PO-00000-1111 \
+    PO-00000-1111 \
+    v3 \
     --workflow-state review \
-    --wait=10 \
-    v3
+    --wait=10
 ```
 
 will update the version `v3` of purchase order `PO-00000-1111` to have the
