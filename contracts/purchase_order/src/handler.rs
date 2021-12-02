@@ -175,12 +175,12 @@ fn create_purchase_order(
             let version_subworkflow =
                 beginning_workflow.subworkflow("version").ok_or_else(|| {
                     ApplyError::InvalidTransaction(
-                        "Unable to get `version` subworkflow".to_string(),
+                        "Subworkflow `version` does not exist".to_string(),
                     )
                 })?;
             let start_state = version_subworkflow.state("create").ok_or_else(|| {
                 ApplyError::InvalidTransaction(
-                    "Unable to get create state from subworkflow".to_string(),
+                    "Workflow state `create` does not exist in `version` subworkflow".to_string(),
                 )
             })?;
             // Retrieve desired state to validate any constraints
@@ -188,7 +188,7 @@ fn create_purchase_order(
                 .state(payload_version.workflow_state())
                 .ok_or_else(|| {
                     ApplyError::InvalidTransaction(format!(
-                        "Unable to get `{}` state from subworkflow",
+                        "Workflow state `{}` does not exist in version subworkflow",
                         payload_version.workflow_state()
                     ))
                 })?;
@@ -273,17 +273,19 @@ fn create_purchase_order(
         ApplyError::InvalidTransaction("Cannot build System Of Record PO workflow".to_string())
     })?;
     let po_subworkflow = beginning_workflow.subworkflow("po").ok_or_else(|| {
-        ApplyError::InvalidTransaction("Unable to get po subworkflow".to_string())
+        ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
     })?;
     let start_state = po_subworkflow.state("create").ok_or_else(|| {
-        ApplyError::InvalidTransaction("Unable to get create state from subworkflow".to_string())
+        ApplyError::InvalidTransaction(
+            "Workflow state `create` does not exist in `po` subworkflow".to_string(),
+        )
     })?;
     // Retrieve the desired workflow state to validate any constraints
     let desired_state = po_subworkflow
         .state(payload.workflow_state())
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
-                "Unable to get `{}` state from subworkflow",
+                "Workflow state `{}` does not exist in `po` subworkflow",
                 payload.workflow_state()
             ))
         })?;
@@ -381,10 +383,15 @@ fn update_purchase_order(
 
     let desired_state = workflow
         .subworkflow("po")
-        .ok_or_else(|| ApplyError::InvalidTransaction("Unable to get po subworkflow".to_string()))?
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
+        })?
         .state(payload.workflow_state())
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction("Unable to get state from subworkflow".to_string())
+            ApplyError::InvalidTransaction(format!(
+                "Workflow state `{}` does not exist in `po` subworkflow",
+                payload.workflow_state()
+            ))
         })?;
 
     // Check if the agent has permission to update the purchase order
@@ -408,13 +415,14 @@ fn update_purchase_order(
             workflow
                 .subworkflow("po")
                 .ok_or_else(|| {
-                    ApplyError::InvalidTransaction("Unable to get po subworkflow".to_string())
+                    ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
                 })?
                 .state(purchase_order.workflow_state())
                 .ok_or_else(|| {
-                    ApplyError::InvalidTransaction(
-                        "Unable to get state from subworkflow".to_string(),
-                    )
+                    ApplyError::InvalidTransaction(format!(
+                        "Workflow state `{}` does not exist in `po` subworkflow",
+                        purchase_order.workflow_state()
+                    ))
                 })?,
             payload.workflow_state(),
         )
@@ -487,11 +495,14 @@ fn update_purchase_order(
         let version_workflow = workflow
             .subworkflow("version")
             .ok_or_else(|| {
-                ApplyError::InvalidTransaction("Unable to get version subworkflow".to_string())
+                ApplyError::InvalidTransaction("Subworkflow `version` does not exist".to_string())
             })?
             .state(version.workflow_state())
             .ok_or_else(|| {
-                ApplyError::InvalidTransaction("Unable to get state from subworkflow".to_string())
+                ApplyError::InvalidTransaction(format!(
+                    "Workflow state `{}` does not exist in `version` subworkflow",
+                    version.workflow_state()
+                ))
             })?;
 
         // Validate the version workflow is accepted
@@ -593,16 +604,16 @@ fn create_version(
     let desired_workflow_state_string = payload.workflow_state().to_string();
     let desired_workflow_state = get_workflow(&workflow_type)
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction(format!("Unable to get `{}` workflow", &workflow_type))
+            ApplyError::InvalidTransaction(format!("Workflow `{}` does not exist", &workflow_type))
         })?
         .subworkflow("version")
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction("Unable to get `version` subworkflow".to_string())
+            ApplyError::InvalidTransaction("Subworkflow `version` does not exist".to_string())
         })?
         .state(&desired_workflow_state_string)
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
-                "Unable to get `{}` state from `version` subworkflow",
+                "Workflow state `{}` does not exist in `version` subworkflow",
                 desired_workflow_state_string
             ))
         })?;
@@ -625,16 +636,16 @@ fn create_version(
     // create this version
     let create_workflow_state = get_workflow(&workflow_type)
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction(format!("Unable to get `{}` workflow", &workflow_type))
+            ApplyError::InvalidTransaction(format!("Workflow `{}` does not exist", &workflow_type))
         })?
         .subworkflow("version")
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction("Unable to get `version` subworkflow".to_string())
+            ApplyError::InvalidTransaction("Subworkflow `version` does not exist".to_string())
         })?
         .state("create")
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(
-                "Unable to get `create` state from `version` subworkflow".to_string(),
+                "Workflow state `create` does not exist in `version` subworkflow".to_string(),
             )
         })?;
     // Validate the agent is able to create the purchase order version
@@ -725,7 +736,7 @@ fn update_version(
         })?
         .subworkflow("version")
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction("Unable to get version subworkflow".to_string())
+            ApplyError::InvalidTransaction("Subworkflow `version` does not exist".to_string())
         })?;
 
     let desired_state = payload.workflow_state();
@@ -749,9 +760,10 @@ fn update_version(
             version_subworkflow
                 .state(original_version.workflow_state())
                 .ok_or_else(|| {
-                    ApplyError::InvalidTransaction(
-                        "Unable to get state from subworkflow".to_string(),
-                    )
+                    ApplyError::InvalidTransaction(format!(
+                        "Workflow state `{}` does not exist in `version` subworkflow",
+                        original_version.workflow_state()
+                    ))
                 })?,
             desired_state,
         )
@@ -770,7 +782,10 @@ fn update_version(
     }
 
     let desired_workflow_state = version_subworkflow.state(desired_state).ok_or_else(|| {
-        ApplyError::InvalidTransaction("Unable to get state from subworkflow".to_string())
+        ApplyError::InvalidTransaction(format!(
+            "Workflow state `{}` does not exist in `version` subworkflow",
+            desired_state
+        ))
     })?;
 
     if desired_workflow_state.has_constraint(&WorkflowConstraint::Draft.to_string()) {
