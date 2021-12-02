@@ -64,10 +64,16 @@ fn default_sub_workflow() -> SubWorkflow {
         buyer.add_permission(&Permission::CanTransitionIssued.to_string());
         buyer.add_transition("issued");
 
+        let mut partner = PermissionAlias::new("po::partner");
+        partner.add_permission(&Permission::CanCreatePo.to_string());
+        partner.add_permission(&Permission::CanTransitionIssued.to_string());
+        partner.add_transition("issued");
+
         WorkflowStateBuilder::new("create")
             .add_transition("issued")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_permission_alias(partner)
             .build()
     };
 
@@ -86,11 +92,23 @@ fn default_sub_workflow() -> SubWorkflow {
         seller.add_permission(&Permission::CanTransitionConfirmed.to_string());
         seller.add_transition("confirmed");
 
+        let mut partner = PermissionAlias::new("po::partner");
+        partner.add_permission(&Permission::CanCreatePoVersion.to_string());
+        partner.add_permission(&Permission::CanUpdatePoVersion.to_string());
+        partner.add_permission(&Permission::CanUpdatePo.to_string());
+        partner.add_permission(&Permission::CanTransitionConfirmed.to_string());
+        partner.add_permission(&Permission::CanTransitionClosed.to_string());
+        partner.add_transition("confirmed");
+        partner.add_transition("closed");
+
+
+
         WorkflowStateBuilder::new("issued")
             .add_transition("confirmed")
             .add_transition("closed")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_permission_alias(partner)
             .build()
     };
 
@@ -107,11 +125,20 @@ fn default_sub_workflow() -> SubWorkflow {
         seller.add_permission(&Permission::CanTransitionClosed.to_string());
         seller.add_transition("closed");
 
+        let mut partner = PermissionAlias::new("po::partner");
+        partner.add_permission(&Permission::CanCreatePoVersion.to_string());
+        partner.add_permission(&Permission::CanUpdatePo.to_string());
+        partner.add_permission(&Permission::CanTransitionIssued.to_string());
+        partner.add_permission(&Permission::CanTransitionClosed.to_string());
+        partner.add_transition("issued");
+        partner.add_transition("closed");
+
         WorkflowStateBuilder::new("confirmed")
             .add_transition("issued")
             .add_transition("closed")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_permission_alias(partner)
             .add_constraint(&WorkflowConstraint::Accepted.to_string())
             .add_constraint(&WorkflowConstraint::Complete.to_string())
             .build()
@@ -120,10 +147,12 @@ fn default_sub_workflow() -> SubWorkflow {
     let closed = {
         let buyer = PermissionAlias::new("po::buyer");
         let seller = PermissionAlias::new("po::seller");
+        let partner = PermissionAlias::new("po::partner");
 
         WorkflowStateBuilder::new("closed")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
+            .add_permission_alias(partner)
             .add_constraint(&WorkflowConstraint::Closed.to_string())
             .build()
     };
