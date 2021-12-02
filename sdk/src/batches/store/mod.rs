@@ -111,7 +111,10 @@ pub struct TransactionReceipt {
     pub external_error_message: Option<String>,
 }
 
+// BatchList is serialized as byte string; Rust doesn't recognize this as the
+// fields being read, so we need to allow "dead" code
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct BatchList {
     data: Vec<Batch>,
     paging: Paging,
