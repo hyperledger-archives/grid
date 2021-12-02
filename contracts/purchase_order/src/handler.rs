@@ -523,6 +523,7 @@ fn update_purchase_order(
     let builder = PurchaseOrderBuilder::new()
         .with_uid(po_uid.to_string())
         .with_workflow_state(payload.workflow_state().to_string())
+        .with_alternate_ids(payload.alternate_ids().to_vec())
         .with_is_closed(payload.is_closed())
         .with_versions(purchase_order.versions().to_vec())
         .with_created_at(purchase_order.created_at())
