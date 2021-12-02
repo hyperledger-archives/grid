@@ -69,7 +69,7 @@ impl XmlSchema {
 impl Drop for XmlSchema {
     fn drop(&mut self) {
         unsafe {
-            xmlSchemaFree(self.0);
+            xmlSchemaFree(self.as_ptr());
         }
     }
 }
@@ -109,7 +109,7 @@ impl XmlSchemaParserCtxt {
 impl Drop for XmlSchemaParserCtxt {
     fn drop(&mut self) {
         unsafe {
-            xmlSchemaFreeParserCtxt(self.0);
+            xmlSchemaFreeParserCtxt(self.as_ptr());
         }
     }
 }
@@ -146,7 +146,7 @@ impl XmlSchemaValidCtxt {
 impl Drop for XmlSchemaValidCtxt {
     fn drop(&mut self) {
         unsafe {
-            xmlSchemaFreeValidCtxt(self.0);
+            xmlSchemaFreeValidCtxt(self.as_ptr());
         }
     }
 }
