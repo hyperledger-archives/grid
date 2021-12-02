@@ -40,7 +40,6 @@ pub mod batches;
 #[cfg(feature = "client")]
 pub mod client;
 pub mod commits;
-#[cfg(feature = "data-validation")]
 pub mod data_validation;
 pub mod error;
 mod hex;

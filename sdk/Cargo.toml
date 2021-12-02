@@ -55,8 +55,8 @@ sabre-sdk = "0.5"
 cylinder = { version = "0.2.2", features = ["key-load", "jwt"], optional = true}
 rust-crypto = "0.2"
 sawtooth-sdk = "0.4"
-quick-xml = { version = "0.22", features = [ "serialize" ], optional = true }
-libc = { version = "0.2.94", optional = true}
+quick-xml = { version = "0.22", features = [ "serialize" ] }
+libc = { version = "0.2.94" }
 tempfile = "3"
 
 [build-dependencies]
@@ -106,7 +106,6 @@ experimental = [
     "batch-processor",
     "batch-store",
     "client-reqwest",
-    "data-validation",
     "purchase-order",
     "rest-api-actix-web-3",
     "rest-api-actix-web-3-run",
@@ -125,10 +124,9 @@ backend-sawtooth = ["backend", "uuid"]
 backend-splinter = ["backend", "reqwest"]
 client = []
 client-reqwest = ["client", "reqwest"]
-data-validation = [ "libc", "quick-xml", "reqwest"]
 location = ["pike", "schema"]
 pike = ["cfg-if", "workflow"]
-product-gdsn = [ "libc", "quick-xml", "reqwest" ]
+product-gdsn = [ "reqwest" ]
 purchase-order = ["pike"]
 product = ["pike", "schema"]
 schema = ["pike"]

@@ -39,7 +39,7 @@ log = "0.4"
 flexi_logger = "0.17"
 sawtooth-sdk = "0.4"
 sabre-sdk = "0.5"
-grid-sdk = { path = "../sdk", features = ["postgres", "sqlite", "pike", "schema", "product", "product-gdsn", "location", "client", "client-reqwest", "data-validation"] }
+grid-sdk = { path = "../sdk", features = ["postgres", "sqlite", "pike", "schema", "product", "product-gdsn", "location", "client", "client-reqwest"] }
 rust-crypto = "0.2"
 protobuf = "2.19"
 users = "0.11"
