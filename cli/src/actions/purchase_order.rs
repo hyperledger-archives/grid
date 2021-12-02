@@ -386,7 +386,7 @@ pub fn do_check_alternate_ids_are_unique(
         alternate_ids: Some(alternate_ids.join(",")),
     };
 
-    let res = client.list_purchase_orders(Some(filter), service_id.as_deref())?;
+    let res = client.list_purchase_orders(Some(filter), service_id)?;
 
     if !res.is_empty() {
         let res_ids: Vec<AlternateId> = res

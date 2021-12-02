@@ -2162,7 +2162,7 @@ fn run() -> Result<(), CliError> {
                 let actions = product::create_product_payloads_from_file(
                     m.values_of("file").unwrap().collect(),
                     schema_client,
-                    service_id.as_deref(),
+                    service_id,
                     m.value_of("owner"),
                 )?;
 
@@ -2192,7 +2192,7 @@ fn run() -> Result<(), CliError> {
                 let properties = parse_properties(
                     schema_client,
                     m.value_of("product_namespace").unwrap_or("gs1_product"),
-                    service_id.as_deref(),
+                    service_id,
                     m,
                 )?;
 
@@ -2226,7 +2226,7 @@ fn run() -> Result<(), CliError> {
                 let actions = product::update_product_payloads_from_file(
                     m.values_of("file").unwrap().collect(),
                     schema_client,
-                    service_id.as_deref(),
+                    service_id,
                 )?;
 
                 info!("Submitting request to update product...");
@@ -2255,7 +2255,7 @@ fn run() -> Result<(), CliError> {
                 let properties = parse_properties(
                     schema_client,
                     m.value_of("product_namespace").unwrap_or("gs1_product"),
-                    service_id.as_deref(),
+                    service_id,
                     m,
                 )?;
 
@@ -2338,7 +2338,7 @@ fn run() -> Result<(), CliError> {
                 let actions = location::create_location_payloads_from_file(
                     m.value_of("file").unwrap(),
                     schema_client,
-                    service_id.as_deref(),
+                    service_id,
                 )?;
 
                 info!("Submitting request to create location...");
@@ -2367,7 +2367,7 @@ fn run() -> Result<(), CliError> {
                 let properties = parse_properties(
                     schema_client,
                     m.value_of("location_namespace").unwrap_or("gs1_location"),
-                    service_id.as_deref(),
+                    service_id,
                     m,
                 )?;
 
@@ -2401,7 +2401,7 @@ fn run() -> Result<(), CliError> {
                 let actions = location::update_location_payloads_from_file(
                     m.value_of("file").unwrap(),
                     schema_client,
-                    service_id.as_deref(),
+                    service_id,
                 )?;
 
                 info!("Submitting request to update location...");
@@ -2430,7 +2430,7 @@ fn run() -> Result<(), CliError> {
                 let properties = parse_properties(
                     schema_client,
                     m.value_of("location_namespace").unwrap_or("gs1_location"),
-                    service_id.as_deref(),
+                    service_id,
                     m,
                 )?;
 

@@ -139,7 +139,7 @@ pub fn do_create_products(
         signer,
         wait,
         actions.into_iter().map(Action::ProductCreate).collect(),
-        service_id.as_deref(),
+        service_id,
     )
 }
 
@@ -163,7 +163,7 @@ pub fn do_update_products(
         signer,
         wait,
         actions.into_iter().map(Action::ProductUpdate).collect(),
-        service_id.as_deref(),
+        service_id,
     )
 }
 
@@ -187,7 +187,7 @@ pub fn do_delete_products(
         signer,
         wait,
         vec![Action::ProductDelete(action)],
-        service_id.as_deref(),
+        service_id,
     )
 }
 

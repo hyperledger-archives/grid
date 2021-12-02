@@ -132,7 +132,7 @@ pub fn do_show_schema(
     name: String,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let schema = client.get_schema(name, service_id.as_deref())?;
+    let schema = client.get_schema(name, service_id)?;
     display_schema(&schema);
     Ok(())
 }
