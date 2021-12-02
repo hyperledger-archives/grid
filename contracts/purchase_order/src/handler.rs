@@ -169,19 +169,25 @@ fn create_purchase_order(
             // Check the version permissions
             let perm_string = Permission::CanCreatePoVersion.to_string();
             let beginning_workflow = get_workflow(&POWorkflow::SystemOfRecord.to_string())
-                .ok_or_else(|| ApplyError::InternalError("Cannot build PO Workflow".to_string()))?;
+                .ok_or_else(|| {
+                    ApplyError::InvalidTransaction("Cannot build PO Workflow".to_string())
+                })?;
             let version_subworkflow =
                 beginning_workflow.subworkflow("version").ok_or_else(|| {
-                    ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
+                    ApplyError::InvalidTransaction(
+                        "Unable to get `version` subworkflow".to_string(),
+                    )
                 })?;
             let start_state = version_subworkflow.state("create").ok_or_else(|| {
-                ApplyError::InternalError("Unable to get create state from subworkflow".to_string())
+                ApplyError::InvalidTransaction(
+                    "Unable to get create state from subworkflow".to_string(),
+                )
             })?;
             // Retrieve desired state to validate any constraints
             let desired_state = version_subworkflow
                 .state(payload_version.workflow_state())
                 .ok_or_else(|| {
-                    ApplyError::InternalError(format!(
+                    ApplyError::InvalidTransaction(format!(
                         "Unable to get `{}` state from subworkflow",
                         payload_version.workflow_state()
                     ))
@@ -211,7 +217,7 @@ fn create_purchase_order(
                     payload_version.workflow_state(),
                 )
                 .map_err(|err| {
-                    ApplyError::InternalError(format!(
+                    ApplyError::InvalidTransaction(format!(
                         "Unable to check agent's permission: {}",
                         err
                     ))
@@ -264,19 +270,19 @@ fn create_purchase_order(
 
     // Check the purchase order permissions
     let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
-        ApplyError::InternalError("Cannot build System Of Record PO workflow".to_string())
+        ApplyError::InvalidTransaction("Cannot build System Of Record PO workflow".to_string())
     })?;
-    let po_subworkflow = beginning_workflow
-        .subworkflow("po")
-        .ok_or_else(|| ApplyError::InternalError("Unable to get po subworkflow".to_string()))?;
+    let po_subworkflow = beginning_workflow.subworkflow("po").ok_or_else(|| {
+        ApplyError::InvalidTransaction("Unable to get po subworkflow".to_string())
+    })?;
     let start_state = po_subworkflow.state("create").ok_or_else(|| {
-        ApplyError::InternalError("Unable to get create state from subworkflow".to_string())
+        ApplyError::InvalidTransaction("Unable to get create state from subworkflow".to_string())
     })?;
     // Retrieve the desired workflow state to validate any constraints
     let desired_state = po_subworkflow
         .state(payload.workflow_state())
         .ok_or_else(|| {
-            ApplyError::InternalError(format!(
+            ApplyError::InvalidTransaction(format!(
                 "Unable to get `{}` state from subworkflow",
                 payload.workflow_state()
             ))
@@ -312,7 +318,7 @@ fn create_purchase_order(
             payload.workflow_state(),
         )
         .map_err(|err| {
-            ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
+            ApplyError::InvalidTransaction(format!("Unable to check agent's permission: {}", err))
         })?;
     if !perm_result {
         return Err(ApplyError::InvalidTransaction(format!(
@@ -367,7 +373,7 @@ fn update_purchase_order(
     }?;
 
     let workflow = get_workflow(purchase_order.workflow_type()).ok_or_else(|| {
-        ApplyError::InternalError(format!(
+        ApplyError::InvalidTransaction(format!(
             "Cannot build workflow type {}",
             purchase_order.workflow_type()
         ))
@@ -375,10 +381,10 @@ fn update_purchase_order(
 
     let desired_state = workflow
         .subworkflow("po")
-        .ok_or_else(|| ApplyError::InternalError("Unable to get po subworkflow".to_string()))?
+        .ok_or_else(|| ApplyError::InvalidTransaction("Unable to get po subworkflow".to_string()))?
         .state(payload.workflow_state())
         .ok_or_else(|| {
-            ApplyError::InternalError("Unable to get state from subworkflow".to_string())
+            ApplyError::InvalidTransaction("Unable to get state from subworkflow".to_string())
         })?;
 
     // Check if the agent has permission to update the purchase order
@@ -388,7 +394,7 @@ fn update_purchase_order(
     } else {
         // Updates from one state to another require that specific transition permission
         Permission::can_transition(payload.workflow_state()).ok_or_else(|| {
-            ApplyError::InternalError(format!(
+            ApplyError::InvalidTransaction(format!(
                 "No permission exists to allow transitioning to a state of '{}'",
                 payload.workflow_state()
             ))
@@ -402,16 +408,18 @@ fn update_purchase_order(
             workflow
                 .subworkflow("po")
                 .ok_or_else(|| {
-                    ApplyError::InternalError("Unable to get po subworkflow".to_string())
+                    ApplyError::InvalidTransaction("Unable to get po subworkflow".to_string())
                 })?
                 .state(purchase_order.workflow_state())
                 .ok_or_else(|| {
-                    ApplyError::InternalError("Unable to get state from subworkflow".to_string())
+                    ApplyError::InvalidTransaction(
+                        "Unable to get state from subworkflow".to_string(),
+                    )
                 })?,
             payload.workflow_state(),
         )
         .map_err(|err| {
-            ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
+            ApplyError::InvalidTransaction(format!("Unable to check agent's permission: {}", err))
         })?;
     if !perm_result {
         return Err(ApplyError::InvalidTransaction(format!(
@@ -479,11 +487,11 @@ fn update_purchase_order(
         let version_workflow = workflow
             .subworkflow("version")
             .ok_or_else(|| {
-                ApplyError::InternalError("Unable to get version subworkflow".to_string())
+                ApplyError::InvalidTransaction("Unable to get version subworkflow".to_string())
             })?
             .state(version.workflow_state())
             .ok_or_else(|| {
-                ApplyError::InternalError("Unable to get state from subworkflow".to_string())
+                ApplyError::InvalidTransaction("Unable to get state from subworkflow".to_string())
             })?;
 
         // Validate the version workflow is accepted
@@ -585,15 +593,15 @@ fn create_version(
     let desired_workflow_state_string = payload.workflow_state().to_string();
     let desired_workflow_state = get_workflow(&workflow_type)
         .ok_or_else(|| {
-            ApplyError::InternalError(format!("Unable to get `{}` workflow", &workflow_type))
+            ApplyError::InvalidTransaction(format!("Unable to get `{}` workflow", &workflow_type))
         })?
         .subworkflow("version")
         .ok_or_else(|| {
-            ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
+            ApplyError::InvalidTransaction("Unable to get `version` subworkflow".to_string())
         })?
         .state(&desired_workflow_state_string)
         .ok_or_else(|| {
-            ApplyError::InternalError(format!(
+            ApplyError::InvalidTransaction(format!(
                 "Unable to get `{}` state from `version` subworkflow",
                 desired_workflow_state_string
             ))
@@ -617,15 +625,15 @@ fn create_version(
     // create this version
     let create_workflow_state = get_workflow(&workflow_type)
         .ok_or_else(|| {
-            ApplyError::InternalError(format!("Unable to get `{}` workflow", &workflow_type))
+            ApplyError::InvalidTransaction(format!("Unable to get `{}` workflow", &workflow_type))
         })?
         .subworkflow("version")
         .ok_or_else(|| {
-            ApplyError::InternalError("Unable to get `version` subworkflow".to_string())
+            ApplyError::InvalidTransaction("Unable to get `version` subworkflow".to_string())
         })?
         .state("create")
         .ok_or_else(|| {
-            ApplyError::InternalError(
+            ApplyError::InvalidTransaction(
                 "Unable to get `create` state from `version` subworkflow".to_string(),
             )
         })?;
@@ -640,7 +648,7 @@ fn create_version(
             &desired_workflow_state_string,
         )
         .map_err(|err| {
-            ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
+            ApplyError::InvalidTransaction(format!("Unable to check agent's permission: {}", err))
         })?;
 
     if !perm_result {
@@ -710,14 +718,14 @@ fn update_version(
     })?;
     let version_subworkflow = get_workflow(existing_po.workflow_type())
         .ok_or_else(|| {
-            ApplyError::InternalError(format!(
+            ApplyError::InvalidTransaction(format!(
                 "Cannot build workflow type {}",
                 existing_po.workflow_type(),
             ))
         })?
         .subworkflow("version")
         .ok_or_else(|| {
-            ApplyError::InternalError("Unable to get version subworkflow".to_string())
+            ApplyError::InvalidTransaction("Unable to get version subworkflow".to_string())
         })?;
 
     let desired_state = payload.workflow_state();
@@ -726,7 +734,7 @@ fn update_version(
         Permission::CanUpdatePoVersion
     } else {
         Permission::can_transition(desired_state).ok_or_else(|| {
-            ApplyError::InternalError(format!(
+            ApplyError::InvalidTransaction(format!(
                 "No permission exists to allow transitioning to a state of '{}'",
                 desired_state
             ))
@@ -741,12 +749,14 @@ fn update_version(
             version_subworkflow
                 .state(original_version.workflow_state())
                 .ok_or_else(|| {
-                    ApplyError::InternalError("Unable to get state from subworkflow".to_string())
+                    ApplyError::InvalidTransaction(
+                        "Unable to get state from subworkflow".to_string(),
+                    )
                 })?,
             desired_state,
         )
         .map_err(|err| {
-            ApplyError::InternalError(format!("Unable to check agent's permission: {}", err))
+            ApplyError::InvalidTransaction(format!("Unable to check agent's permission: {}", err))
         })?;
     if !perm_result {
         return Err(ApplyError::InvalidTransaction(format!(
@@ -760,7 +770,7 @@ fn update_version(
     }
 
     let desired_workflow_state = version_subworkflow.state(desired_state).ok_or_else(|| {
-        ApplyError::InternalError("Unable to get state from subworkflow".to_string())
+        ApplyError::InvalidTransaction("Unable to get state from subworkflow".to_string())
     })?;
 
     if desired_workflow_state.has_constraint(&WorkflowConstraint::Draft.to_string()) {
@@ -801,7 +811,7 @@ fn update_version(
         .with_order_xml_v3_4(payload.revision().order_xml_v3_4().to_string())
         .build()
         .map_err(|err| {
-            ApplyError::InternalError(format!("Cannot build purchase order revision: {}", err))
+            ApplyError::InvalidTransaction(format!("Cannot build purchase order revision: {}", err))
         })?;
     let (current_revision_id, current_revisions) = if orig_revisions.contains(&new_revision) {
         (new_revision.revision_id(), orig_revisions)
@@ -811,7 +821,9 @@ fn update_version(
             .into_builder()
             .with_revision_id(next_revision_id)
             .build()
-            .map_err(|err| ApplyError::InternalError(format!("Cannot build revision: {}", err)))?;
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build revision: {}", err))
+            })?;
         // Updating the `current_revision_id` requires adding the revision to the version's
         // `revisions`
         orig_revisions.push(new_revision);
@@ -826,7 +838,7 @@ fn update_version(
         .with_revisions(current_revisions)
         .build()
         .map_err(|err| {
-            ApplyError::InternalError(format!("Cannot build purchase order version: {}", err))
+            ApplyError::InvalidTransaction(format!("Cannot build purchase order version: {}", err))
         })?;
     state.set_purchase_order_version(po_uid, updated_version)?;
     Ok(())

@@ -48,7 +48,9 @@ impl<'a> PurchaseOrderState<'a> {
         if let Some(packed) = self.context.get_state_entry(&address)? {
             let purchase_orders =
                 PurchaseOrderList::from_bytes(packed.as_slice()).map_err(|_| {
-                    ApplyError::InternalError("Cannot deserialize purchase order list".to_string())
+                    ApplyError::InvalidTransaction(
+                        "Cannot deserialize purchase order list".to_string(),
+                    )
                 })?;
             Ok(purchase_orders
                 .purchase_orders()
@@ -70,7 +72,7 @@ impl<'a> PurchaseOrderState<'a> {
             match self.context.get_state_entry(&address)? {
                 Some(packed) => PurchaseOrderList::from_bytes(packed.as_slice())
                     .map_err(|err| {
-                        ApplyError::InternalError(format!(
+                        ApplyError::InvalidTransaction(format!(
                             "Cannot deserialize purchase order list: {:?}",
                             err
                         ))
@@ -125,7 +127,9 @@ impl<'a> PurchaseOrderState<'a> {
         if let Some(packed) = self.context.get_state_entry(&address)? {
             let purchase_orders =
                 PurchaseOrderList::from_bytes(packed.as_slice()).map_err(|_| {
-                    ApplyError::InternalError("Cannot deserialize purchase order list".to_string())
+                    ApplyError::InvalidTransaction(
+                        "Cannot deserialize purchase order list".to_string(),
+                    )
                 })?;
             let po = purchase_orders
                 .purchase_orders()
@@ -133,7 +137,7 @@ impl<'a> PurchaseOrderState<'a> {
                 .find(|p| p.uid() == po_uid)
                 .cloned()
                 .ok_or_else(|| {
-                    ApplyError::InternalError(format!(
+                    ApplyError::InvalidTransaction(format!(
                         "Purchase order with UID {} does not exist",
                         po_uid
                     ))
@@ -158,7 +162,7 @@ impl<'a> PurchaseOrderState<'a> {
             match self.context.get_state_entry(&address)? {
                 Some(packed) => PurchaseOrderList::from_bytes(packed.as_slice())
                     .map_err(|err| {
-                        ApplyError::InternalError(format!(
+                        ApplyError::InvalidTransaction(format!(
                             "Cannot deserialize purchase order list: {:?}",
                             err
                         ))
@@ -239,7 +243,7 @@ impl<'a> PurchaseOrderState<'a> {
         let address = compute_agent_address(public_key);
         if let Some(packed) = self.context.get_state_entry(&address)? {
             let agents = AgentList::from_bytes(packed.as_slice()).map_err(|err| {
-                ApplyError::InternalError(format!("Cannot deserialize agent list: {:?}", err))
+                ApplyError::InvalidTransaction(format!("Cannot deserialize agent list: {:?}", err))
             })?;
             Ok(agents
                 .agents()
@@ -255,7 +259,7 @@ impl<'a> PurchaseOrderState<'a> {
         let address = compute_organization_address(id);
         if let Some(packed) = self.context.get_state_entry(&address)? {
             let orgs = OrganizationList::from_bytes(packed.as_slice()).map_err(|err| {
-                ApplyError::InternalError(format!(
+                ApplyError::InvalidTransaction(format!(
                     "Cannot deserialize organization list: {:?}",
                     err
                 ))
