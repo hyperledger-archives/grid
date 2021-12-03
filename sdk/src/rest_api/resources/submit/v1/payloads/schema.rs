@@ -327,7 +327,6 @@ impl IntoNative<SchemaUpdateAction> for protos::schema_payload::SchemaUpdateActi
 #[derive(Default, Clone)]
 pub struct SchemaUpdateBuilder {
     schema_name: Option<String>,
-    description: Option<String>,
     properties: Vec<PropertyDefinition>,
 }
 

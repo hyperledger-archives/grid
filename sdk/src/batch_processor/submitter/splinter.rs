@@ -170,7 +170,6 @@ struct SubmitErrorMessage {
 struct SplinterBatchStatus {
     id: String,
     status: Status,
-    timestamp: Timestamp,
 }
 
 #[derive(Deserialize, Debug)]
@@ -178,12 +177,6 @@ struct Status {
     #[serde(rename(deserialize = "statusType"))]
     status_type: String,
     message: Vec<ErrorMessage>,
-}
-
-#[derive(Deserialize, Debug)]
-struct Timestamp {
-    secs_since_epoch: u64,
-    nanos_since_epoch: u64,
 }
 
 #[derive(Deserialize, Debug)]
