@@ -69,6 +69,10 @@ COPY --from=gridd-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
 COPY --from=gridd-builder /commit-hash /commit-hash
 
+# Copy over files needed for examples
+COPY sdk/src/data_validation/xml/xsd/product/ /etc/grid/schemas/product/
+COPY sdk/src/data_validation/xml/xsd/po/ /etc/grid/schemas/po/
+
 RUN apt-get update \
  && apt-get install -y -q \
     postgresql-client \
