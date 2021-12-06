@@ -2726,7 +2726,7 @@ fn run() -> Result<(), CliError> {
 
                     let order_xml_path = m.value_of("order_xml").unwrap();
                     let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
-                        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+                        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/po/gs1/ecom");
                     let mut xml_str = String::new();
                     std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
                     validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
@@ -2883,7 +2883,7 @@ fn run() -> Result<(), CliError> {
                         new_xml = true;
                         let order_xml_path = m.value_of("order_xml").unwrap();
                         let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
-                            .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+                            .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/po/gs1/ecom");
                         xml_str = String::new();
                         std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
                         validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
