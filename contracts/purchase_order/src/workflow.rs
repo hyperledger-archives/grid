@@ -401,7 +401,7 @@ fn collaborative_sub_workflow() -> SubWorkflow {
         partner.add_permission(&Permission::CanTransitionObsolete.to_string());
         partner.add_transition("obsolete");
 
-        WorkflowStateBuilder::new("proposed")
+        WorkflowStateBuilder::new("accepted")
             .add_transition("obsolete")
             .add_permission_alias(partner)
             .add_constraint(&WorkflowConstraint::Accepted.to_string())
