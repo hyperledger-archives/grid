@@ -310,7 +310,7 @@ impl IntoBytes for CreatePurchaseOrderPayload {
 impl IntoProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePurchaseOrderPayload {}
 impl IntoNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePurchaseOrderPayload {}
 
-/// Builder used to create the "create agent" payload
+/// Builder used to create the "create purchase order" payload
 #[derive(Default, Debug)]
 pub struct CreatePurchaseOrderPayloadBuilder {
     uid: Option<String>,
