@@ -91,12 +91,12 @@ mod tests {
 
         assert_eq!(
             true,
-            state.can_transition("confirm".to_string(), vec!["po::seller".to_string()]),
+            state.can_transition("confirm".to_string(), &["po::seller".to_string()]),
         );
 
         assert_eq!(
             false,
-            state.can_transition("issued".to_string(), vec!["po::seller".to_string()]),
+            state.can_transition("issued".to_string(), &["po::seller".to_string()]),
         );
     }
 

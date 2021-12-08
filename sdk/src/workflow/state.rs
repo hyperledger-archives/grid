@@ -41,7 +41,7 @@ impl WorkflowState {
     /// * `new_state` - Name of the workflow state an item is attempting to be transitioned to
     /// * `pike_permissions` - List of Grid Pike permissions assigned to the submitter of the
     /// request
-    pub fn can_transition(&self, new_state: String, pike_permissions: Vec<String>) -> bool {
+    pub fn can_transition(&self, new_state: String, pike_permissions: &[String]) -> bool {
         if self.name == new_state {
             return true;
         }
