@@ -19,6 +19,8 @@ use crate::{
     rest_api::resources::paging::v1::Paging,
 };
 
+/// This is the representation of a PurchaseOrder from the REST API. This is a
+/// subset of the fields in the corresponding store struct.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderSlice {
     pub purchase_order_uid: String,
@@ -68,12 +70,16 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
     }
 }
 
+/// This is a struct that contains a list of `PurchaseOrderSlice`s as well as
+/// paging information.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderListSlice {
     pub data: Vec<PurchaseOrderSlice>,
     pub paging: Paging,
 }
 
+/// This is the representation of a PurchaseOrderVersion from the REST API.
+/// This is a subset of the fields in the corresponding store struct.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderVersionSlice {
     version_id: String,
@@ -99,12 +105,16 @@ impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
     }
 }
 
+/// This is a struct that contains a list of `PurchaseOrderVersionSlice`s as
+/// well as paging information.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderVersionListSlice {
     pub data: Vec<PurchaseOrderVersionSlice>,
     pub paging: Paging,
 }
 
+/// This is the representation of a PurchaseOrderRevision from the REST API.
+/// This is a subset of the fields in the corresponding store struct.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderRevisionSlice {
     revision_id: i64,
@@ -124,12 +134,16 @@ impl From<PurchaseOrderVersionRevision> for PurchaseOrderRevisionSlice {
     }
 }
 
+/// This is a struct that contains a list of `PurchaseOrderRevisionSlice`s as
+/// well as paging information.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderRevisionListSlice {
     pub data: Vec<PurchaseOrderRevisionSlice>,
     pub paging: Paging,
 }
 
+/// This is the representation of a PurchaseOrderAlternateId from the REST API.
+/// This is a subset of the fields in the corresponding store struct.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderAlternateIdSlice {
     purchase_order_uid: String,

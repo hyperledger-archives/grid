@@ -27,6 +27,16 @@ use super::payloads::{
     PurchaseOrderSlice, PurchaseOrderVersionListSlice, PurchaseOrderVersionSlice,
 };
 
+/// Makes a request to return the list of purchase orders from the store
+///
+/// # Arguments
+///
+///  * `url` - The base url for the request
+///  * `store` - The store to fetch the orders from
+///  * `filters` - The list of filters to filter the results
+///  * `service_id` - optional - The service ID when running on Splinter
+///  * `offset` - The index of the first purchase order in storage to retrieve
+///  * `limit` - The number of items to retrieve from the offset
 pub fn list_purchase_orders<'a>(
     url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
@@ -67,6 +77,15 @@ pub fn list_purchase_orders<'a>(
     Ok(PurchaseOrderListSlice { data, paging })
 }
 
+/// Makes a request to return a purchase order
+///
+/// # Arguments
+///
+///  * `store` - The store to fetch the order from
+///  * `purchase_order_uid` - The UID of the purchase order
+///  * `version_id` - optional - filter for version
+///  * `revision_number` - optional - filter for version revision
+///  * `service_id` - optional - The service ID when running on Splinter
 pub fn get_purchase_order<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
@@ -102,6 +121,14 @@ pub fn get_purchase_order<'a>(
     )?))
 }
 
+/// Makes a request to return a purchase order version
+///
+/// # Arguments
+///
+///  * `store` - The store to fetch the order from
+///  * `purchase_order_uid` - The UID of the purchase order
+///  * `version_id` - ID for the version
+///  * `service_id` - optional - The service ID when running on Splinter
 pub fn get_purchase_order_version<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
@@ -136,6 +163,17 @@ pub fn get_purchase_order_version<'a>(
     ))
 }
 
+/// Makes a request to return the versions for a purchase order
+///
+/// # Arguments
+///
+///  * `url` - The base url for the request
+///  * `store` - The store to fetch the order from
+///  * `purchase_order_uid` - The UID of the purchase order
+///  * `filters` - The list of filters to filter the results
+///  * `service_id` - optional - The service ID when running on Splinter
+///  * `offset` - The index of the first version in storage to retrieve
+///  * `limit` - The number of items to retrieve from the offset
 pub fn list_purchase_order_versions<'a>(
     url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
@@ -178,6 +216,17 @@ pub fn list_purchase_order_versions<'a>(
     Ok(PurchaseOrderVersionListSlice { data, paging })
 }
 
+/// Makes a request to return the revisions for a purchase order version
+///
+/// # Arguments
+///
+///  * `url` - The base url for the request
+///  * `store` - TThe store to fetch the order from
+///  * `purchase_order_uid` - The UID of the purchase order
+///  * `version_id` - The ID of the version to fetch revisions for
+///  * `service_id` - optional - The service ID when running on Splinter
+///  * `offset` - The index of the first revision in storage to retrieve
+///  * `limit` - The number of items to retrieve from the offset
 pub fn list_purchase_order_revisions<'a>(
     url: Url,
     store: Box<dyn PurchaseOrderStore + 'a>,
@@ -223,6 +272,15 @@ pub fn list_purchase_order_revisions<'a>(
     Ok(PurchaseOrderRevisionListSlice { data, paging })
 }
 
+/// Makes a request to return a purchase order version revision
+///
+/// # Arguments
+///
+///  * `store` - The store to fetch the order from
+///  * `purchase_order_uid` - The UID of the purchase order
+///  * `version_id` - ID for the version the revision belongs to
+///  * `revision_id` - ID for the revision
+///  * `service_id` - optional - The service ID when running on Splinter
 pub fn get_purchase_order_revision<'a>(
     store: Box<dyn PurchaseOrderStore + 'a>,
     purchase_order_uid: String,
