@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! An API for managing a subprocess of a workflow
+//! An API for managing a subprocess within a workflow, which contains the list of states involved
+//! in this subprocess
 
 use super::state::WorkflowState;
 
-/// A subprocess of a workflow
+/// A smaller more specific version of a workflow used to define a more complicated business
+/// process within a workflow
 #[derive(Clone)]
 pub struct SubWorkflow {
     name: String,
-    /// All states an object may be in within this subworkflow
+    /// The states an object may be in within this subworkflow
     states: Vec<WorkflowState>,
     /// The states an object may begin at within this subworkflow
     starting_states: Vec<String>,
@@ -31,6 +33,8 @@ impl SubWorkflow {
         &self.name
     }
 
+    /// Retrieve a specific workflow state from this subworkflow. Returns `None` if the state
+    /// does not exist in this subworkflow.
     pub fn state(&self, name: &str) -> Option<WorkflowState> {
         for state in &self.states {
             if state.name() == name {
@@ -41,6 +45,7 @@ impl SubWorkflow {
         None
     }
 
+    /// Return the workflow states an object must enter the subworkflow at
     pub fn starting_states(&self) -> &[String] {
         &self.starting_states
     }
@@ -62,11 +67,13 @@ impl SubWorkflowBuilder {
         }
     }
 
+    /// Add a workflow state to this subworkflow
     pub fn add_state(mut self, state: WorkflowState) -> Self {
         self.states.push(state);
         self
     }
 
+    /// Add the name of a workflow state an object must enter this subworkflow at
     pub fn add_starting_state(mut self, starting_state: &str) -> Self {
         self.starting_states.push(starting_state.to_string());
         self

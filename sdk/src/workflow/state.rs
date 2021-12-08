@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Representation of a single state within a workflow
+//! Representation of a single state of a process within a workflow which describes the possible
+//! state transitions the SubWorkflow can make, the constraints that need to be met to make said
+//! transitions, and a list of permissions that are required by the acting entity to initiate a
+//! transition.
 
-/// Defines the current state of an item within a workflow. WorkflowState represents a single
-/// point within a workflow and defines the logic used by the smart contract to determine if an
-/// item may be in this workflow state.
+/// Defines the current state of an item within a workflow. A `WorkflowState` contains a list of
+/// constraints for items within this state, permission aliases to allow for operations to be made
+/// within this state, and a list of transitions that can be made from this state.
 #[derive(Clone)]
 pub struct WorkflowState {
     name: String,
@@ -29,7 +32,7 @@ pub struct WorkflowState {
 }
 
 impl WorkflowState {
-    /// Determines if an item may be transitioned to a new workflow state, considering the
+    /// Determines if an entity may execute a transition to a given state, considering the
     /// permissions of the submitter and the `permission_aliases` defined within this workflow
     /// state.
     ///
@@ -58,7 +61,7 @@ impl WorkflowState {
         false
     }
 
-    /// List the workflow permissions available to a permission alias
+    /// List the workflow permissions stored under the specified permission aliases
     ///
     /// # Arguments
     ///
@@ -77,7 +80,8 @@ impl WorkflowState {
         perms
     }
 
-    /// Retrieve the aliases that contain the specified workflow permissions
+    /// Retrieve all aliases defined within this state that contain the specified workflow
+    /// permission
     ///
     /// # Arguments
     ///
@@ -94,7 +98,7 @@ impl WorkflowState {
         aliases
     }
 
-    /// Check if a workflow state contains the specified constraint
+    /// Returns true if this state contains the specified constraint
     ///
     /// # Arguments
     ///
@@ -125,16 +129,22 @@ impl WorkflowStateBuilder {
         }
     }
 
+    /// Add a constraint to this workflow state. A constraint is interpreted by the smart contract
+    /// as a guidelines that must be met before a transition to this workflow state is able to be
+    /// made.
     pub fn add_constraint(mut self, constraint: &str) -> Self {
         self.constraints.push(constraint.to_string());
         self
     }
 
+    /// Add the name of a workflow state that may be transitioned to from this state
     pub fn add_transition(mut self, transition: &str) -> Self {
         self.transitions.push(transition.to_string());
         self
     }
 
+    /// Add a `PermissionAlias` to allow certain entities to perform certain actions within this
+    /// workflow state
     pub fn add_permission_alias(mut self, alias: PermissionAlias) -> Self {
         self.permission_aliases.push(alias);
         self
@@ -150,11 +160,11 @@ impl WorkflowStateBuilder {
     }
 }
 
-/// An alias that houses multiple permissions
+/// An alias for multiple permissions
 #[derive(Clone, Default)]
 pub struct PermissionAlias {
     name: String,
-    /// Permissions granted to this alias
+    /// Permissions assigned to this alias
     permissions: Vec<String>,
     /// Workflow states this alias is able to transition an object to
     transitions: Vec<String>,
@@ -169,22 +179,27 @@ impl PermissionAlias {
         }
     }
 
+    /// Assign a permission to this alias
     pub fn add_permission(&mut self, permission: &str) {
         self.permissions.push(permission.to_string());
     }
 
+    /// Add a workflow state this alias is able to transition objects to
     pub fn add_transition(&mut self, transition: &str) {
         self.transitions.push(transition.to_string());
     }
 
+    /// Return the name of this alias
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Return the permissions assigned to this alias
     pub fn permissions(&self) -> &[String] {
         &self.permissions
     }
 
+    /// Return the state transitions available to this alias
     pub fn transitions(&self) -> &[String] {
         &self.transitions
     }
