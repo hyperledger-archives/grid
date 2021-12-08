@@ -101,7 +101,7 @@ impl TryFrom<&AlternateId> for PurchaseOrderAlternateId {
             .with_purchase_order_uid(id.purchase_order_uid.to_string())
             .build()
             .map_err(|err| {
-                Self::Error::DaemonError(format!("Could not convert Alternate ID: {}", err))
+                Self::Error::InternalError(format!("Could not convert Alternate ID: {}", err))
             })?;
 
         Ok(po)
