@@ -365,8 +365,8 @@ pub fn create_product_payloads_from_xml(
     owner: &str,
 ) -> Result<Vec<ProductCreateAction>, CliError> {
     let trade_items = get_trade_items_from_xml(path)?;
-    let data_validation_dir =
-        env::var(GRID_PRODUCT_SCHEMA_DIR).unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+    let data_validation_dir = env::var(GRID_PRODUCT_SCHEMA_DIR)
+        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/product");
     validate_gdsn_3_1(path, true, &data_validation_dir)?;
 
     let mut payloads = Vec::new();
@@ -404,8 +404,8 @@ pub fn create_product_payloads_from_yaml(
 
 pub fn update_product_payloads_from_xml(path: &str) -> Result<Vec<ProductUpdateAction>, CliError> {
     let trade_items = get_trade_items_from_xml(path)?;
-    let data_validation_dir =
-        env::var(GRID_PRODUCT_SCHEMA_DIR).unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string());
+    let data_validation_dir = env::var(GRID_PRODUCT_SCHEMA_DIR)
+        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/product");
     validate_gdsn_3_1(path, true, &data_validation_dir)?;
 
     let mut payloads = Vec::new();
