@@ -35,7 +35,10 @@ use grid_sdk::{
             Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayload,
             UpdatePurchaseOrderPayload, UpdateVersionPayload,
         },
-        state::{PurchaseOrderBuilder, PurchaseOrderRevisionBuilder, PurchaseOrderVersionBuilder},
+        state::{
+            PurchaseOrderBuilder, PurchaseOrderRevisionBuilder, PurchaseOrderVersion,
+            PurchaseOrderVersionBuilder,
+        },
     },
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
 };
@@ -774,6 +777,27 @@ fn update_version(
     }
 
     if desired_workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+        // Guard against two versions having accepted state
+        let existing_accepted = existing_po
+            .versions()
+            .iter()
+            .filter(|x| {
+                (x.workflow_state() == "accepted")
+                    & (x.version_id() != version_id)
+            })
+            .collect::<Vec<&PurchaseOrderVersion>>();
+        if !existing_accepted.is_empty() {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Purchase order {} already has accepted version {}",
+                po_uid,
+                existing_accepted
+                    .iter()
+                    .map(|v| v.version_id().to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ") // accepted_version should only have length of 1, but collect and join
+                               // allows for bug discovery
+            )));
+        }
         // Validate this purchase order version is able to be accepted
         if payload.is_draft() {
             return Err(ApplyError::InvalidTransaction(format!(
