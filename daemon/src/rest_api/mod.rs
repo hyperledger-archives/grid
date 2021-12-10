@@ -192,6 +192,15 @@ mod test {
         },
         schema::store::{DieselSchemaStore, PropertyDefinition, Schema, SchemaStore},
     };
+    #[cfg(feature = "purchase-order")]
+    use grid_sdk::{
+        purchase_order::store::{
+            DieselPurchaseOrderStore, PurchaseOrder, PurchaseOrderBuilder, PurchaseOrderStore,
+            PurchaseOrderVersion, PurchaseOrderVersionBuilder, PurchaseOrderVersionRevision,
+            PurchaseOrderVersionRevisionBuilder,
+        },
+        rest_api::resources::purchase_order::v1::payloads::*,
+    };
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
         ClientBatchStatus, ClientBatchStatusRequest, ClientBatchStatusResponse,
@@ -436,6 +445,17 @@ mod test {
                     .service(routes::list_records)
                     .service(routes::get_record)
                     .service(routes::get_record_property_name);
+            }
+
+            #[cfg(feature = "purchase-order")]
+            {
+                app = app
+                    .service(routes::list_purchase_orders)
+                    .service(routes::get_purchase_order)
+                    .service(routes::list_purchase_order_versions)
+                    .service(routes::get_purchase_order_version)
+                    .service(routes::list_purchase_order_version_revisions)
+                    .service(routes::get_purchase_order_version_revision)
             }
 
             app
@@ -2818,6 +2838,604 @@ mod test {
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
+    /// Verifies a GET /purchase_order responds with an OK response with a
+    ///     list_purchase_orders request.
+    ///
+    ///     The TestServer will receive a request with no parameters,
+    ///         then will respond with an Ok status and a list of Grid Purchase Orders.
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_list_purchase_orders() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        let expected_purchase_order = get_purchase_order(None);
+        populate_po_table(vec![expected_purchase_order.clone()], pool);
+
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/purchase_order"))
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut body: PurchaseOrderListSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.data.len(), 1);
+
+        let test_po = body.data.pop().unwrap();
+        compare_po_slices(test_po, PurchaseOrderSlice::from(expected_purchase_order));
+    }
+
+    /// Verifies a GET /purchase_order?service_id=test_service responds with an OK response with a
+    ///     list containing one purchase order with a matching service_id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_list_purchase_orders_with_service_id() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        let expected_purchase_order = get_purchase_order(Some(TEST_SERVICE_ID.to_string()));
+        populate_po_table(vec![expected_purchase_order.clone()], pool);
+
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/purchase_order?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut body: PurchaseOrderListSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.data.len(), 1);
+
+        let test_po = body.data.pop().unwrap();
+        compare_po_slices(test_po, PurchaseOrderSlice::from(expected_purchase_order));
+    }
+
+    /// Verifies a GET /purchase_order/{uid} responds with Ok response
+    /// when there is a purchase order with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_ok() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        let expected_po = get_purchase_order(None);
+        populate_po_table(vec![expected_po.clone()], pool);
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/purchase_order/{}", KEY1)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let po: PurchaseOrderSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        compare_po_slices(po, PurchaseOrderSlice::from(expected_po));
+    }
+
+    /// Verifies a GET /purchase_order/{uid} responds with Ok response
+    /// when there is a purchase order with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_updated_ok() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(get_updated_purchase_order(None), pool);
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/purchase_order/{}", KEY1)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let po: PurchaseOrderSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(po.purchase_order_uid, KEY1);
+        assert_eq!(po.workflow_state, "confirmed");
+        assert!(po.versions.is_some());
+        assert_eq!(po.versions.unwrap().len(), 1);
+    }
+
+    /// Verifies a GET /purchase_order/{uid} responds with Ok response
+    /// when there is a purchase order with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_with_service_id_ok() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        let expected_po = get_purchase_order(Some(TEST_SERVICE_ID.to_string()));
+        populate_po_table(vec![expected_po.clone()], pool);
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}?service_id={}",
+                    KEY1, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let po: PurchaseOrderSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        compare_po_slices(po, PurchaseOrderSlice::from(expected_po));
+    }
+
+    /// Verifies a GET /purchase_order/{uid} responds with NotFound response
+    /// when there is not a purchase order with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_not_found() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(vec![get_purchase_order(None)], pool);
+
+        // Making another request to the database
+        let response = srv
+            .request(http::Method::GET, srv.url("/purchase_order/not_found"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    /// Verifies a GET /purchase_order/{uid} responds with NotFound response
+    /// when there is not a purchase order with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_with_service_id_not_found() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(
+            vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
+            pool,
+        );
+
+        // Making another request to the database
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/not_found?service_id={}",
+                    TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version responds with an OK response with a
+    /// list_purchase_order_versions request.
+    ///
+    /// The TestServer will receive a request with no parameters,
+    /// then will respond with an Ok status and a list of Grid Purchase Order versions.
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_list_purchase_order_versions() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        populate_po_table(vec![get_purchase_order(None)], pool);
+        let expected_version = get_po_version(None);
+
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/purchase_order/{}/version", KEY1)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut body: PurchaseOrderVersionListSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.data.len(), 1);
+
+        let mut test_version = body.data.pop().unwrap();
+        compare_po_version_slices(
+            &mut test_version,
+            &mut PurchaseOrderVersionSlice::from(expected_version),
+        );
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version?service_id=test_service responds with an OK
+    /// response with a list containing one purchase order version with a matching service_id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_list_purchase_order_versions_with_service_id() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        populate_po_table(
+            vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
+            pool,
+        );
+        let expected_version = get_po_version(Some(TEST_SERVICE_ID.to_string()));
+
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version?service_id={}",
+                    KEY1, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut body: PurchaseOrderVersionListSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.data.len(), 1);
+
+        let mut test_version = body.data.pop().unwrap();
+        compare_po_version_slices(
+            &mut test_version,
+            &mut PurchaseOrderVersionSlice::from(expected_version),
+        );
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with Ok response
+    /// when there is a purchase order version with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_version_ok() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(vec![get_purchase_order(None)], pool);
+        let expected_version = get_po_version(None);
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/purchase_order/{}/version/{}", KEY1, KEY2)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut test_version: PurchaseOrderVersionSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        compare_po_version_slices(
+            &mut test_version,
+            &mut PurchaseOrderVersionSlice::from(expected_version),
+        );
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with Ok response
+    /// when there is a purchase order with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_version_with_service_id_ok() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(
+            vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
+            pool,
+        );
+        let expected_version = get_po_version(Some(TEST_SERVICE_ID.to_string()));
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/{}?service_id={}",
+                    KEY1, KEY2, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut test_version: PurchaseOrderVersionSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        compare_po_version_slices(
+            &mut test_version,
+            &mut PurchaseOrderVersionSlice::from(expected_version),
+        );
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with NotFound response
+    /// when there is not a purchase order version with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_version_not_found() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(vec![get_purchase_order(None)], pool);
+
+        // Making another request to the database
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/purchase_order/{}/version/not_found", KEY1)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with NotFound response
+    /// when there is not a purchase order version with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_version_with_service_id_not_found() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(
+            vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
+            pool,
+        );
+
+        // Making another request to the database
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/not_found?service_id={}",
+                    KEY1, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision responds with
+    /// an OK response with a list_purchase_order_revisions request.
+    ///
+    /// The TestServer will receive a request with no parameters,
+    /// then will respond with an Ok status and a list of Grid Purchase Order revisions.
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_list_purchase_order_revisions() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        populate_po_table(vec![get_purchase_order(None)], pool);
+        let expected_revision = get_po_revision(None);
+
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/{}/revision",
+                    KEY1, KEY2
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut body: PurchaseOrderRevisionListSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.data.len(), 1);
+
+        let test_revision = body.data.pop().unwrap();
+        compare_po_revision_slices(
+            test_revision,
+            PurchaseOrderRevisionSlice::from(expected_revision),
+        );
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision?service_id=test_service
+    /// responds with an OK response with a list containing one purchase order revision
+    /// with a matching service_id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_list_purchase_order_revisions_with_service_id() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        populate_po_table(
+            vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
+            pool,
+        );
+        let expected_revision = get_po_revision(Some(TEST_SERVICE_ID.to_string()));
+
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/{}/revision?service_id={}",
+                    KEY1, KEY2, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let mut body: PurchaseOrderRevisionListSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.data.len(), 1);
+
+        let test_revision = body.data.pop().unwrap();
+        compare_po_revision_slices(
+            test_revision,
+            PurchaseOrderRevisionSlice::from(expected_revision),
+        );
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision/{revision_id}
+    /// responds with Ok response when there is a purchase order revision with the
+    /// specified id.
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_revision_ok() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(vec![get_purchase_order(None)], pool);
+        let expected_revision = get_po_revision(None);
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/{}/revision/1",
+                    KEY1, KEY2
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let test_revision: PurchaseOrderRevisionSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        compare_po_revision_slices(
+            test_revision,
+            PurchaseOrderRevisionSlice::from(expected_revision),
+        );
+    }
+
+    ///
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision/{revision_id}
+    /// responds with Ok response when there is a purchase order with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_revision_with_service_id_ok() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(
+            vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
+            pool,
+        );
+        let expected_revision = get_po_revision(Some(TEST_SERVICE_ID.to_string()));
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/{}/revision/1?service_id={}",
+                    KEY1, KEY2, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let test_revision: PurchaseOrderRevisionSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        compare_po_revision_slices(
+            test_revision,
+            PurchaseOrderRevisionSlice::from(expected_revision),
+        );
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision/{revision_id}
+    /// responds with NotFound response when there is not a purchase order version
+    /// with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_revision_not_found() {
+        let (srv, pool) =
+            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(vec![get_purchase_order(None)], pool);
+
+        // Making another request to the database
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/{}/revision/not_found",
+                    KEY1, KEY2
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision/{revision_id}?service_id={ID}
+    /// responds with NotFound when there is not a purchase order version
+    /// with the specified id.
+    ///
+    #[actix_rt::test]
+    #[cfg(feature = "purchase-order")]
+    async fn test_fetch_purchase_order_revision_with_service_id_not_found() {
+        let (srv, pool) =
+            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds a purchase order to the test database
+        populate_po_table(
+            vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
+            pool,
+        );
+
+        // Making another request to the database
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/purchase_order/{}/version/{}/revision/not_found?service_id={}",
+                    KEY1, KEY2, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
@@ -2974,6 +3592,41 @@ mod test {
         vec![org_1, org_2]
     }
 
+    #[cfg(feature = "purchase-order")]
+    fn get_updated_purchase_order(service_id: Option<String>) -> Vec<PurchaseOrder> {
+        let po_1 = PurchaseOrderBuilder::default()
+            .with_purchase_order_uid(KEY1.to_string())
+            .with_workflow_state("issued".to_string())
+            .with_buyer_org_id(ORG_NAME_1.to_string())
+            .with_seller_org_id(ORG_NAME_2.to_string())
+            .with_is_closed(false)
+            .with_versions(vec![get_po_version(service_id.clone())])
+            .with_created_at(0)
+            .with_workflow_type("built-in::collaborative::v1".to_string())
+            .with_start_commit_number(2)
+            .with_end_commit_number(4)
+            .with_service_id(service_id.clone())
+            .build()
+            .expect("Unable to build purchase order");
+
+        let po_2 = PurchaseOrderBuilder::default()
+            .with_purchase_order_uid(KEY1.to_string())
+            .with_workflow_state("confirmed".to_string())
+            .with_buyer_org_id(ORG_NAME_1.to_string())
+            .with_seller_org_id(ORG_NAME_2.to_string())
+            .with_is_closed(false)
+            .with_versions(vec![get_po_version(service_id.clone())])
+            .with_created_at(0)
+            .with_workflow_type("built-in::collaborative::v1".to_string())
+            .with_start_commit_number(4)
+            .with_end_commit_number(i64::MAX)
+            .with_service_id(service_id)
+            .build()
+            .expect("Unable to build purchase order");
+
+        vec![po_1, po_2]
+    }
+
     fn populate_organization_table(
         organizations: Vec<Organization>,
         pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -3075,6 +3728,114 @@ mod test {
                 service_id,
             },
         ]
+    }
+
+    #[cfg(feature = "purchase-order")]
+    fn get_purchase_order(service_id: Option<String>) -> PurchaseOrder {
+        PurchaseOrderBuilder::default()
+            .with_purchase_order_uid(KEY1.to_string())
+            .with_workflow_state("issued".to_string())
+            .with_buyer_org_id(ORG_NAME_1.to_string())
+            .with_seller_org_id(ORG_NAME_2.to_string())
+            .with_is_closed(false)
+            .with_versions(vec![get_po_version(service_id.clone())])
+            .with_created_at(0)
+            .with_workflow_type("built-in::collaborative::v1".to_string())
+            .with_start_commit_number(0)
+            .with_end_commit_number(i64::MAX)
+            .with_service_id(service_id)
+            .build()
+            .expect("Unable to build purchase order")
+    }
+
+    #[cfg(feature = "purchase-order")]
+    fn get_po_version(service_id: Option<String>) -> PurchaseOrderVersion {
+        PurchaseOrderVersionBuilder::default()
+            .with_version_id(KEY2.to_string())
+            .with_is_draft(false)
+            .with_current_revision_id(1)
+            .with_revisions(vec![get_po_revision(service_id.clone())])
+            .with_workflow_state("proposed".to_string())
+            .with_start_commit_number(0)
+            .with_end_commit_number(i64::MAX)
+            .with_service_id(service_id)
+            .build()
+            .expect("Unable to build purchase order version")
+    }
+
+    #[cfg(feature = "purchase-order")]
+    fn get_po_revision(service_id: Option<String>) -> PurchaseOrderVersionRevision {
+        PurchaseOrderVersionRevisionBuilder::default()
+            .with_revision_id(1)
+            .with_order_xml_v3_4("order_xml_v3_4_string".to_string())
+            .with_submitter(KEY3.to_string())
+            .with_created_at(0)
+            .with_start_commit_number(0)
+            .with_end_commit_number(i64::MAX)
+            .with_service_id(service_id)
+            .build()
+            .expect("Unable to build purchase order revision")
+    }
+
+    #[cfg(feature = "purchase-order")]
+    fn populate_po_table(
+        purchase_orders: Vec<PurchaseOrder>,
+        pool: Pool<ConnectionManager<SqliteConnection>>,
+    ) {
+        let store = DieselPurchaseOrderStore::new(pool);
+
+        purchase_orders
+            .into_iter()
+            .for_each(|po| store.add_purchase_order(po).unwrap());
+    }
+
+    #[cfg(feature = "purchase-order")]
+    fn compare_po_slices(slice_1: PurchaseOrderSlice, slice_2: PurchaseOrderSlice) {
+        assert_eq!(slice_1.purchase_order_uid, slice_2.purchase_order_uid);
+        assert_eq!(slice_1.workflow_state, slice_2.workflow_state);
+        assert_eq!(slice_1.buyer_org_id, slice_2.buyer_org_id);
+        assert_eq!(slice_1.seller_org_id, slice_2.seller_org_id);
+        assert!(slice_1.versions.is_some());
+        assert!(slice_2.versions.is_some());
+        let mut slice_1_versions = slice_1.versions.unwrap();
+        let mut slice_2_versions = slice_2.versions.unwrap();
+        assert_eq!(slice_1_versions.len(), slice_2_versions.len());
+        assert_eq!(slice_1_versions.len(), 1);
+        assert_eq!(slice_1.is_closed, slice_2.is_closed);
+        assert_eq!(slice_1.created_at, slice_2.created_at);
+        assert_eq!(slice_1.workflow_type, slice_2.workflow_type);
+        compare_po_version_slices(
+            &mut slice_1_versions.pop().unwrap(),
+            &mut slice_2_versions.pop().unwrap(),
+        )
+    }
+
+    #[cfg(feature = "purchase-order")]
+    fn compare_po_version_slices(
+        slice_1: &mut PurchaseOrderVersionSlice,
+        slice_2: &mut PurchaseOrderVersionSlice,
+    ) {
+        assert_eq!(slice_1.version_id, slice_2.version_id);
+        assert_eq!(slice_1.is_draft, slice_2.is_draft);
+        assert_eq!(slice_1.current_revision_id, slice_2.current_revision_id);
+        assert_eq!(slice_1.workflow_state, slice_2.workflow_state);
+        assert_eq!(slice_1.revisions.len(), slice_2.revisions.len());
+        assert_eq!(slice_1.revisions.len(), 1);
+        compare_po_revision_slices(
+            slice_1.revisions.pop().unwrap(),
+            slice_2.revisions.pop().unwrap(),
+        );
+    }
+
+    #[cfg(feature = "purchase-order")]
+    fn compare_po_revision_slices(
+        slice_1: PurchaseOrderRevisionSlice,
+        slice_2: PurchaseOrderRevisionSlice,
+    ) {
+        assert_eq!(slice_1.revision_id, slice_2.revision_id);
+        assert_eq!(slice_1.submitter, slice_2.submitter);
+        assert_eq!(slice_1.created_at, slice_2.created_at);
+        assert_eq!(slice_1.order_xml_v3_4, slice_2.order_xml_v3_4);
     }
 
     #[cfg(feature = "track-and-trace")]
