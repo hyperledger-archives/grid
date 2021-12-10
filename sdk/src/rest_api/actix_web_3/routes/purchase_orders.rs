@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Rest endpoint implementations for Grid Purchase Order, powered by Actix Web 3.
+
 use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpResponse};
 use futures::future;
 
@@ -24,16 +26,30 @@ use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
+/// Represents a `version_id` passed to the endpoint in the query string
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryVersionId {
     pub version_id: Option<String>,
 }
 
+/// Represents a `revision_number` passed to the endpoint in the query string
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryRevisionNumber {
     pub revision_number: Option<i64>,
 }
 
+/// Provides the ability to list purchase orders, with filters and paging
+///
+/// # Arguments
+///
+/// `req` - Request submitted to the endpoint
+/// `store_state` - Provides a `store_factory` to access Grid's stores
+/// `query_filters` - Optional filters that may be applied to the purchase orders listed.
+///  Purchase orders may be filtered using `buyer_org_id`, `seller_org_id`, `has_accepted_version`
+///  `is_open`, and `alternate_ids`.
+/// `query_service_id` - Optional service ID provided in the query string
+/// `query_paging` - Optional paging options, including `offset` and `limit`
+/// `version` - Determines the type of response, corresponding to the versions of the rest API
 #[get("/purchase_order")]
 pub async fn list_purchase_orders(
     req: HttpRequest,
@@ -71,6 +87,16 @@ pub async fn list_purchase_orders(
     }
 }
 
+/// Provides the ability to fetch a purchase order
+///
+/// # Arguments
+///
+/// `store_state` - Provides a `store_factory` to access Grid's stores
+/// `uid` - The unique identifier of the purchase order to list versions from
+/// `version_id` - Optional version ID, specifies the version to return
+/// `revision_number` - Optional revision number, specifies the revision to return
+/// `query_service_id` - Optional service ID provided in the query string
+/// `version` - Determines the type of response, corresponding to the versions of the rest API
 #[get("/purchase_order/{uid}")]
 pub async fn get_purchase_order(
     store_state: web::Data<StoreState>,
@@ -102,6 +128,18 @@ pub async fn get_purchase_order(
     }
 }
 
+/// Provides the ability to list purchase order versions, with filters and paging
+///
+/// # Arguments
+///
+/// `req` - Request submitted to the endpoint
+/// `store_state` - Provides a `store_factory` to access Grid's stores
+/// `uid` - The unique identifier of the purchase order to list versions from
+/// `query_filters` - Optional filters that may be applied to the versions listed from the store.
+///  Versions may be filtered using `is_accepted` and `is_draft`.
+/// `query_service_id` - Optional service ID provided in the query string
+/// `query_paging` - Optional paging options, including `offset` and `limit`
+/// `version` - Determines the type of response, corresponding to the versions of the rest API
 #[get("/purchase_order/{uid}/version")]
 pub async fn list_purchase_order_versions(
     req: HttpRequest,
@@ -139,6 +177,14 @@ pub async fn list_purchase_order_versions(
     }
 }
 
+/// Provides the ability to fetch a purchase order version
+///
+/// # Arguments
+///
+/// `store_state` - Provides a `store_factory` to access Grid's stores
+/// `path` - Used to retrieve the purchase order UID and version ID from the request's path
+/// `query_service_id` - Optional service ID provided in the query string
+/// `version` - Determines the type of response, corresponding to the versions of the rest API
 #[get("/purchase_order/{uid}/version/{version_id}")]
 pub async fn get_purchase_order_version(
     store_state: web::Data<StoreState>,
@@ -168,6 +214,16 @@ pub async fn get_purchase_order_version(
     }
 }
 
+/// Provides the ability to list a purchase order version's revisions
+///
+/// # Arguments
+///
+/// `req` - Request submitted to the endpoint
+/// `store_state` - Provides a `store_factory` to access Grid's stores
+/// `path` - Used to retrieve the purchase order UID and version ID from the request's path
+/// `query_service_id` - Optional service ID provided in the query string
+/// `query_paging` - Optional paging options, including `offset` and `limit`
+/// `version` - Determines the type of response, corresponding to the versions of the rest API
 #[get("/purchase_order/{uid}/version/{version_id}/revision")]
 pub async fn list_purchase_order_version_revisions(
     req: HttpRequest,
@@ -205,6 +261,15 @@ pub async fn list_purchase_order_version_revisions(
     }
 }
 
+/// Provides the ability to fetch a purchase order revision
+///
+/// # Arguments
+///
+/// `store_state` - Provides a `store_factory` to access Grid's stores
+/// `path` - Used to retrieve the purchase order UID, version ID, revision number from the
+///  request's path
+/// `query_service_id` - Optional service ID provided in the query string
+/// `version` - Determines the type of response, corresponding to the versions of the rest API
 #[get("/purchase_order/{uid}/version/{version_id}/revision/{revision_number}")]
 pub async fn get_purchase_order_version_revision(
     store_state: web::Data<StoreState>,
