@@ -25,11 +25,6 @@ use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct QueryOrgId {
-    pub org_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct QueryVersionId {
     pub version_id: Option<String>,
 }
