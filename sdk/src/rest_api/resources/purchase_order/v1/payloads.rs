@@ -37,6 +37,9 @@ pub struct PurchaseOrderSlice {
     pub alternate_ids: Option<Vec<PurchaseOrderAlternateIdSlice>>,
     pub created_at: i64,
     pub workflow_type: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl From<PurchaseOrder> for PurchaseOrderSlice {
@@ -64,6 +67,7 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
             ),
             created_at: *purchase_order.created_at(),
             workflow_type: purchase_order.workflow_type().to_string(),
+            service_id: purchase_order.service_id().map(String::from),
         }
     }
 }
@@ -76,11 +80,14 @@ pub struct PurchaseOrderListSlice {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderVersionSlice {
-    version_id: String,
-    is_draft: bool,
-    current_revision_id: i64,
-    revisions: Vec<PurchaseOrderRevisionSlice>,
-    workflow_state: String,
+    pub version_id: String,
+    pub is_draft: bool,
+    pub current_revision_id: i64,
+    pub revisions: Vec<PurchaseOrderRevisionSlice>,
+    pub workflow_state: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
@@ -95,6 +102,7 @@ impl From<PurchaseOrderVersion> for PurchaseOrderVersionSlice {
                 .map(PurchaseOrderRevisionSlice::from)
                 .collect(),
             workflow_state: purchase_order_version.workflow_state().to_string(),
+            service_id: purchase_order_version.service_id().map(String::from),
         }
     }
 }
@@ -107,10 +115,13 @@ pub struct PurchaseOrderVersionListSlice {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PurchaseOrderRevisionSlice {
-    revision_id: i64,
-    submitter: String,
-    created_at: i64,
-    order_xml_v3_4: String,
+    pub revision_id: i64,
+    pub submitter: String,
+    pub created_at: i64,
+    pub order_xml_v3_4: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl From<PurchaseOrderVersionRevision> for PurchaseOrderRevisionSlice {
@@ -120,6 +131,7 @@ impl From<PurchaseOrderVersionRevision> for PurchaseOrderRevisionSlice {
             submitter: purchase_order_revision.submitter().to_string(),
             created_at: purchase_order_revision.created_at(),
             order_xml_v3_4: purchase_order_revision.order_xml_v3_4().to_string(),
+            service_id: purchase_order_revision.service_id().map(String::from),
         }
     }
 }
@@ -135,6 +147,9 @@ pub struct PurchaseOrderAlternateIdSlice {
     purchase_order_uid: String,
     id_type: String,
     id: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl From<PurchaseOrderAlternateId> for PurchaseOrderAlternateIdSlice {
@@ -143,6 +158,7 @@ impl From<PurchaseOrderAlternateId> for PurchaseOrderAlternateIdSlice {
             purchase_order_uid: alternate_id.purchase_order_uid().to_string(),
             id_type: alternate_id.id_type().to_string(),
             id: alternate_id.id().to_string(),
+            service_id: alternate_id.service_id().map(String::from),
         }
     }
 }
