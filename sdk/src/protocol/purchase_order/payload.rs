@@ -310,7 +310,7 @@ impl IntoBytes for CreatePurchaseOrderPayload {
 impl IntoProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePurchaseOrderPayload {}
 impl IntoNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePurchaseOrderPayload {}
 
-/// Builder used to create the "create agent" payload
+/// Builder used to create the "create purchase order" payload
 #[derive(Default, Debug)]
 pub struct CreatePurchaseOrderPayloadBuilder {
     uid: Option<String>,
@@ -1025,17 +1025,25 @@ impl UpdateVersionPayloadBuilder {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::protocol::purchase_order::state::PurchaseOrderAlternateIdBuilder;
 
     /// Validate UpdatePurchaseOrderPayload protobuf translates to native
     #[test]
     fn update_po_transforms_to_update_po_protobuf_correctly() {
+        let alternate_ids = vec![PurchaseOrderAlternateIdBuilder::new()
+            .with_id_type("type".to_string())
+            .with_id("id".to_string())
+            .with_purchase_order_uid("uid".to_string())
+            .build()
+            .unwrap()];
+
         // Validate with all fields filled out
         let proto_update_po = UpdatePurchaseOrderPayload {
             uid: "uid".to_string(),
             workflow_state: "status".to_string(),
             is_closed: true,
             accepted_version_number: Some("version".to_string()),
-            alternate_ids: Vec::new(),
+            alternate_ids,
         }
         .into_proto()
         .expect("could not transform into proto");
@@ -1060,12 +1068,22 @@ mod test {
     /// Validate UpdatePurchaseOrderPayload native translates to protobuf
     #[test]
     fn update_po_protobuf_transforms_to_update_po_correctly() {
+        let alternate_ids = vec![PurchaseOrderAlternateIdBuilder::new()
+            .with_id_type("type".to_string())
+            .with_id("id".to_string())
+            .with_purchase_order_uid("uid".to_string())
+            .build()
+            .unwrap()
+            .into_proto()
+            .unwrap()];
+
         // Validate with all fields filled out
         let mut proto_update_po = purchase_order_payload::UpdatePurchaseOrderPayload::new();
         proto_update_po.set_po_uid("uid".to_string());
         proto_update_po.set_workflow_state("status".to_string());
         proto_update_po.set_is_closed(true);
         proto_update_po.set_accepted_version_number("version".to_string());
+        proto_update_po.set_alternate_ids(RepeatedField::from(alternate_ids.to_vec()));
 
         let update_po = proto_update_po
             .into_native()
@@ -1074,6 +1092,14 @@ mod test {
         assert_eq!(update_po.workflow_state(), "status");
         assert!(update_po.is_closed());
         assert_eq!(update_po.accepted_version_number(), Some("version"));
+        assert_eq!(
+            update_po.alternate_ids(),
+            alternate_ids
+                .to_vec()
+                .into_iter()
+                .map(|id| PurchaseOrderAlternateId::from_proto(id).unwrap())
+                .collect::<Vec<PurchaseOrderAlternateId>>()
+        );
 
         // Validate with optional fields not filled out
         let mut proto_update_po = purchase_order_payload::UpdatePurchaseOrderPayload::new();
@@ -1086,5 +1112,6 @@ mod test {
             .into_native()
             .expect("could not transform into native");
         assert_eq!(update_po.accepted_version_number(), None);
+        assert_eq!(update_po.alternate_ids(), Vec::new());
     }
 }

@@ -25,15 +25,15 @@ pub const ALTERNATE_ID_PREFIX: &str = "01";
 pub const GRID_PURCHASE_ORDER_PO_NAMESPACE: &str = "621dee0600";
 pub const GRID_PURCHASE_ORDER_ALT_ID_NAMESPACE: &str = "621dee0601";
 
-/// Computes the Merkle address of a Purchase Order based on its UUID.
-pub fn compute_purchase_order_address(uuid: &str) -> String {
+/// Computes the Merkle address of a Purchase Order based on its UID.
+pub fn compute_purchase_order_address(uid: &str) -> String {
     let mut sha = Sha512::new();
-    sha.input(uuid.as_bytes());
+    sha.input(uid.as_bytes());
     let hash_str = String::from(GRID_PURCHASE_ORDER_NAMESPACE) + PO_PREFIX + &sha.result_str();
     hash_str[..70].to_string()
 }
 
-/// Computes the Merkle address of a Alternate ID based on its type and id.
+/// Computes the Merkle address of a Alternate ID based on its type and ID.
 pub fn compute_alternate_id_address(
     po_uid: &str,
     alternate_id_type: &str,

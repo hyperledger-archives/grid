@@ -12,6 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! The structs in these files are the rust representations of what are stored
+//! in the database. These are similar to the Grid structs that they correspond
+//! to but may contain several database-specific fields such as the database ID
+//! and fields for managing slowly-changing dimensions. There should be two
+//! structs for each database table: one representing a new record which will
+//! not contain a field for the database ID, and one representing an existing
+//! record which will. The order of the fields in the struct must match with
+//! the corresponding table declaration in the schema.rs file in this module.
+//!
+//! Additionally, conversion methods for converting these structs to their Grid
+//! counterparts are provided.
+
 use super::{
     PurchaseOrder, PurchaseOrderAlternateId, PurchaseOrderVersion, PurchaseOrderVersionRevision,
 };
