@@ -15,7 +15,6 @@
 #[derive(Clone)]
 pub struct WorkflowState {
     name: String,
-    constraints: Vec<String>,
     permission_aliases: Vec<PermissionAlias>,
     transitions: Vec<String>,
 }
@@ -59,7 +58,6 @@ impl WorkflowState {
 #[derive(Default)]
 pub struct WorkflowStateBuilder {
     name: String,
-    constraints: Vec<String>,
     permission_aliases: Vec<PermissionAlias>,
     transitions: Vec<String>,
 }
@@ -70,11 +68,6 @@ impl WorkflowStateBuilder {
             name: name.to_string(),
             ..Self::default()
         }
-    }
-
-    pub fn add_constraint(mut self, constraint: &str) -> Self {
-        self.constraints.push(constraint.to_string());
-        self
     }
 
     pub fn add_transition(mut self, transition: &str) -> Self {
@@ -90,7 +83,6 @@ impl WorkflowStateBuilder {
     pub fn build(self) -> WorkflowState {
         WorkflowState {
             name: self.name,
-            constraints: self.constraints,
             permission_aliases: self.permission_aliases,
             transitions: self.transitions,
         }
