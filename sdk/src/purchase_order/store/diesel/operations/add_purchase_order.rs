@@ -87,7 +87,7 @@ impl<'a> PurchaseOrderStoreAddPurchaseOrderOperation
                     remove_alternate_id::pg::remove_alternate_id(
                         self.conn,
                         &e,
-                        &order.end_commit_num,
+                        &order.start_commit_num,
                     )?;
                 }
             }
