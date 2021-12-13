@@ -242,7 +242,7 @@ impl<'a> PermissionChecker<'a> {
 
         // Validate the agent is able to make the desired transition, based on the agent's
         // permission aliases
-        let can_transition = workflow_state.can_transition(desired_state.to_string(), agent_perms);
+        let can_transition = workflow_state.can_transition(desired_state.to_string(), &agent_perms);
 
         Ok(has_perm_alias && has_permission && can_transition)
     }
