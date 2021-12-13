@@ -34,6 +34,7 @@ use grid_sdk::{
 use chrono::{DateTime, NaiveDateTime, Utc};
 use cylinder::Signer;
 use rand::{distributions::Alphanumeric, Rng};
+use sawtooth_sdk::messages::batch::BatchList;
 use serde::Serialize;
 
 use crate::error::CliError;
@@ -41,25 +42,19 @@ use crate::transaction::purchase_order_batch_builder;
 
 pub const GRID_ORDER_SCHEMA_DIR: &str = "GRID_ORDER_SCHEMA_DIR";
 
-pub fn do_create_purchase_order(
-    client: &dyn PurchaseOrderClient,
-    signer: Box<dyn Signer>,
-    wait: u64,
-    create_purchase_order: CreatePurchaseOrderPayload,
-    service_id: Option<&str>,
-) -> Result<(), CliError> {
+fn create_po_batchlist(signer: Box<dyn Signer>, action: Action) -> Result<BatchList, CliError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
 
     let payload = PurchaseOrderPayloadBuilder::new()
-        .with_action(Action::CreatePo(create_purchase_order))
+        .with_action(action)
         .with_timestamp(timestamp)
         .build()
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-    let batch_list = purchase_order_batch_builder(signer)
+    Ok(purchase_order_batch_builder(signer)
         .add_transaction(
             &payload.into_proto()?,
             &[
@@ -68,10 +63,35 @@ pub fn do_create_purchase_order(
             ],
             &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
         )?
-        .create_batch_list();
+        .create_batch_list())
+}
 
-    client.post_batches(wait, &batch_list, service_id)?;
-    Ok(())
+fn post_po_batch_action(
+    client: &dyn PurchaseOrderClient,
+    signer: Box<dyn Signer>,
+    wait: u64,
+    service_id: Option<&str>,
+    action: Action,
+) -> Result<(), CliError> {
+    client
+        .post_batches(wait, &create_po_batchlist(signer, action)?, service_id)
+        .map_err(CliError::from)
+}
+
+pub fn do_create_purchase_order(
+    client: &dyn PurchaseOrderClient,
+    signer: Box<dyn Signer>,
+    wait: u64,
+    create_purchase_order: CreatePurchaseOrderPayload,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
+    post_po_batch_action(
+        client,
+        signer,
+        wait,
+        service_id,
+        Action::CreatePo(create_purchase_order),
+    )
 }
 
 pub fn do_update_purchase_order(
@@ -81,30 +101,13 @@ pub fn do_update_purchase_order(
     update_purchase_order: UpdatePurchaseOrderPayload,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
-
-    let payload = PurchaseOrderPayloadBuilder::new()
-        .with_action(Action::UpdatePo(update_purchase_order))
-        .with_timestamp(timestamp)
-        .build()
-        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-    let batch_list = purchase_order_batch_builder(signer)
-        .add_transaction(
-            &payload.into_proto()?,
-            &[
-                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
-                GRID_PIKE_NAMESPACE.to_string(),
-            ],
-            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
-        )?
-        .create_batch_list();
-
-    client.post_batches(wait, &batch_list, service_id)?;
-    Ok(())
+    post_po_batch_action(
+        client,
+        signer,
+        wait,
+        service_id,
+        Action::UpdatePo(update_purchase_order),
+    )
 }
 
 pub fn do_create_version(
@@ -114,30 +117,13 @@ pub fn do_create_version(
     create_version: CreateVersionPayload,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
-
-    let payload = PurchaseOrderPayloadBuilder::new()
-        .with_action(Action::CreateVersion(create_version))
-        .with_timestamp(timestamp)
-        .build()
-        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-    let batch_list = purchase_order_batch_builder(signer)
-        .add_transaction(
-            &payload.into_proto()?,
-            &[
-                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
-                GRID_PIKE_NAMESPACE.to_string(),
-            ],
-            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
-        )?
-        .create_batch_list();
-
-    client.post_batches(wait, &batch_list, service_id)?;
-    Ok(())
+    post_po_batch_action(
+        client,
+        signer,
+        wait,
+        service_id,
+        Action::CreateVersion(create_version),
+    )
 }
 
 pub fn do_fetch_purchase_order(
@@ -149,6 +135,7 @@ pub fn do_fetch_purchase_order(
 
     Ok(po)
 }
+
 pub fn do_update_version(
     client: &dyn PurchaseOrderClient,
     signer: Box<dyn Signer>,
@@ -156,30 +143,13 @@ pub fn do_update_version(
     update_version: UpdateVersionPayload,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
-
-    let payload = PurchaseOrderPayloadBuilder::new()
-        .with_action(Action::UpdateVersion(update_version))
-        .with_timestamp(timestamp)
-        .build()
-        .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-    let batch_list = purchase_order_batch_builder(signer)
-        .add_transaction(
-            &payload.into_proto()?,
-            &[
-                GRID_PURCHASE_ORDER_NAMESPACE.to_string(),
-                GRID_PIKE_NAMESPACE.to_string(),
-            ],
-            &[GRID_PURCHASE_ORDER_NAMESPACE.to_string()],
-        )?
-        .create_batch_list();
-
-    client.post_batches(wait, &batch_list, service_id)?;
-    Ok(())
+    post_po_batch_action(
+        client,
+        signer,
+        wait,
+        service_id,
+        Action::UpdateVersion(update_version),
+    )
 }
 
 pub fn do_fetch_revisions(
@@ -413,6 +383,7 @@ pub fn do_check_alternate_ids_are_unique(
 
     Ok(())
 }
+
 #[derive(Debug, Serialize)]
 struct PurchaseOrderCli {
     buyer_org_id: String,
@@ -766,6 +737,31 @@ fn print_human_readable_list(column_names: Vec<&str>, row_values: Vec<Vec<String
 #[cfg(test)]
 pub mod tests {
     use super::*;
+
+    use cylinder::{secp256k1::Secp256k1Context, Context};
+
+    use grid_sdk::protocol::purchase_order::payload::CreatePurchaseOrderPayloadBuilder;
+
+    #[test]
+    fn test_create_po_batchlist() {
+        let ctx = Secp256k1Context::new();
+        let key = ctx.new_random_private_key();
+        let signer = ctx.new_signer(key);
+
+        let payload = CreatePurchaseOrderPayloadBuilder::new()
+            .with_uid("test_uid".to_string())
+            .with_buyer_org_id("buyer".to_string())
+            .with_seller_org_id("seller".to_string())
+            .with_workflow_state("created".to_string())
+            .with_created_at(100)
+            .build()
+            .expect("Could not build create po payload");
+
+        let batch_list = create_po_batchlist(signer, Action::CreatePo(payload))
+            .expect("post batch action failed");
+
+        assert_eq!(batch_list.batches.len(), 1);
+    }
 
     /// Tests the purchase order revisions are correctly displayed in the CLI
     /// in the format:
