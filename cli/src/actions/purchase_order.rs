@@ -156,12 +156,10 @@ pub fn do_fetch_revisions(
     po_uid: &str,
     version_id: &str,
     service_id: Option<&str>,
-) -> Result<Vec<PurchaseOrderRevision>, CliError> {
-    let revisions = client.list_purchase_order_revisions(
-        po_uid.to_string(),
-        version_id.to_string(),
-        service_id,
-    )?;
+) -> Result<Box<dyn Iterator<Item = Result<PurchaseOrderRevision, ClientError>>>, CliError> {
+    let revisions = client
+        .list_purchase_order_revisions(po_uid.to_string(), version_id.to_string(), service_id)
+        .map_err(CliError::from)?;
 
     Ok(revisions)
 }
@@ -172,12 +170,19 @@ pub fn do_list_revisions(
     version_id: &str,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let revisions = do_fetch_revisions(client, po_uid, version_id, service_id)?
-        .iter()
-        .map(PurchaseOrderRevisionCli::from)
-        .collect::<Vec<PurchaseOrderRevisionCli>>();
+    let res = do_fetch_revisions(client, po_uid, version_id, service_id)?;
+    let mut revisions: Box<dyn Iterator<Item = Result<PurchaseOrderRevisionCli, CliError>>> =
+        Box::new(res.map(|rev_res: Result<PurchaseOrderRevision, _>| {
+            let rev_cli_res: Result<PurchaseOrderRevisionCli, _> = rev_res
+                .map(|rev| {
+                    let rev_cli: PurchaseOrderRevisionCli = PurchaseOrderRevisionCli::from(rev);
+                    rev_cli
+                })
+                .map_err(CliError::from);
+            rev_cli_res
+        }));
 
-    print_formattable_list(PurchaseOrderRevisionCliList(revisions), None)?;
+    print_formattable_list(&mut *revisions, None)?;
     Ok(())
 }
 
@@ -214,12 +219,27 @@ pub fn do_list_versions(
     format: Option<&str>,
     service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let versions = get_versions(client, po_uid, accepted_filter, draft_filter, service_id)?
-        .iter()
-        .map(PurchaseOrderVersionCli::from)
-        .collect::<Vec<PurchaseOrderVersionCli>>();
+    let filters = ListVersionFilters {
+        is_accepted: accepted_filter,
+        is_draft: draft_filter,
+    };
 
-    print_formattable_list(PurchaseOrderVersionCliList(versions), format)?;
+    let res: Box<dyn Iterator<Item = Result<PurchaseOrderVersion, ClientError>>> =
+        client.list_purchase_order_versions(po_uid.to_string(), Some(filters), service_id)?;
+
+    let mut versions: Box<dyn Iterator<Item = Result<PurchaseOrderVersionCli, CliError>>> =
+        Box::new(res.map(|ver_res: Result<PurchaseOrderVersion, _>| {
+            let ver_cli_res: Result<PurchaseOrderVersionCli, _> = ver_res
+                .map(|ver| {
+                    let ver_cli: PurchaseOrderVersionCli = PurchaseOrderVersionCli::from(ver);
+                    ver_cli
+                })
+                .map_err(CliError::from);
+            ver_cli_res
+        }));
+
+    print_formattable_list(&mut *versions, format)?;
+
     Ok(())
 }
 
@@ -258,24 +278,6 @@ pub fn get_latest_revision_id(
     } else {
         Ok(0)
     }
-}
-
-fn get_versions(
-    client: &dyn PurchaseOrderClient,
-    po_uid: &str,
-    accepted_filter: Option<bool>,
-    draft_filter: Option<bool>,
-    service_id: Option<&str>,
-) -> Result<Vec<PurchaseOrderVersion>, CliError> {
-    let filters = ListVersionFilters {
-        is_accepted: accepted_filter,
-        is_draft: draft_filter,
-    };
-
-    let versions =
-        client.list_purchase_order_versions(po_uid.to_string(), Some(filters), service_id)?;
-
-    Ok(versions)
 }
 
 pub fn generate_purchase_order_uid() -> String {
@@ -329,12 +331,19 @@ pub fn do_list_purchase_orders(
     service_id: Option<String>,
     format: Option<&str>,
 ) -> Result<(), CliError> {
-    let res = client.list_purchase_orders(filter, service_id.as_deref())?;
-    let po_list = res
-        .iter()
-        .map(PurchaseOrderCli::from)
-        .collect::<Vec<PurchaseOrderCli>>();
-    print_formattable_list(PurchaseOrderCliList(po_list), format)?;
+    let res: Box<dyn Iterator<Item = Result<PurchaseOrder, ClientError>>> =
+        client.list_purchase_orders(filter, service_id.as_deref())?;
+    let mut po_list: Box<dyn Iterator<Item = Result<PurchaseOrderCli, CliError>>> =
+        Box::new(res.map(|po_res: Result<PurchaseOrder, _>| {
+            let po_cli_res: Result<PurchaseOrderCli, _> = po_res
+                .map(|po| {
+                    let po_cli: PurchaseOrderCli = PurchaseOrderCli::from(po);
+                    po_cli
+                })
+                .map_err(CliError::from);
+            po_cli_res
+        }));
+    print_formattable_list(&mut *po_list, format)?;
 
     Ok(())
 }
@@ -352,7 +361,9 @@ pub fn do_check_alternate_ids_are_unique(
         alternate_ids: Some(alternate_ids.join(",")),
     };
 
-    let res = client.list_purchase_orders(Some(filter), service_id)?;
+    let res = client
+        .list_purchase_orders(Some(filter), service_id)?
+        .collect::<Result<Vec<PurchaseOrder>, _>>()?;
 
     if !res.is_empty() {
         let res_ids: Vec<AlternateId> = res
@@ -416,6 +427,29 @@ impl From<&PurchaseOrder> for PurchaseOrderCli {
     }
 }
 
+impl From<PurchaseOrder> for PurchaseOrderCli {
+    fn from(d: PurchaseOrder) -> Self {
+        Self {
+            buyer_org_id: d.buyer_org_id.to_string(),
+            seller_org_id: d.seller_org_id.to_string(),
+            purchase_order_uid: d.purchase_order_uid.to_string(),
+            workflow_type: d.workflow_type.to_string(),
+            workflow_state: d.workflow_state.to_string(),
+            is_closed: d.is_closed,
+            accepted_version_id: match d.accepted_version_id.as_ref() {
+                Some(a) => Some(a.to_string()),
+                None => Some("none".to_string()),
+            },
+            versions: d
+                .versions
+                .iter()
+                .map(PurchaseOrderVersionCli::from)
+                .collect(),
+            created_at: d.created_at,
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct PurchaseOrderVersionCli {
     pub version_id: String,
@@ -427,6 +461,22 @@ struct PurchaseOrderVersionCli {
 
 impl From<&PurchaseOrderVersion> for PurchaseOrderVersionCli {
     fn from(d: &PurchaseOrderVersion) -> Self {
+        Self {
+            version_id: d.version_id.to_string(),
+            workflow_state: d.workflow_state.to_string(),
+            is_draft: d.is_draft,
+            current_revision_id: d.current_revision_id,
+            revisions: d
+                .revisions
+                .iter()
+                .map(PurchaseOrderRevisionCli::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<PurchaseOrderVersion> for PurchaseOrderVersionCli {
+    fn from(d: PurchaseOrderVersion) -> Self {
         Self {
             version_id: d.version_id.to_string(),
             workflow_state: d.workflow_state.to_string(),
@@ -460,39 +510,14 @@ impl From<&PurchaseOrderRevision> for PurchaseOrderRevisionCli {
     }
 }
 
-#[derive(Serialize)]
-pub struct PurchaseOrderCliList(Vec<PurchaseOrderCli>);
-
-#[derive(Serialize)]
-pub struct PurchaseOrderVersionCliList(Vec<PurchaseOrderVersionCli>);
-
-#[derive(Serialize)]
-pub struct PurchaseOrderRevisionCliList(Vec<PurchaseOrderRevisionCli>);
-
-impl std::fmt::Display for PurchaseOrderCliList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for purchase_order in &self.0 {
-            write!(f, "\n\n{}", purchase_order)?;
+impl From<PurchaseOrderRevision> for PurchaseOrderRevisionCli {
+    fn from(d: PurchaseOrderRevision) -> Self {
+        Self {
+            revision_id: d.revision_id,
+            order_xml_v3_4: d.order_xml_v3_4.to_string(),
+            submitter: d.submitter.to_string(),
+            created_at: d.created_at,
         }
-        Ok(())
-    }
-}
-
-impl std::fmt::Display for PurchaseOrderVersionCliList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for version in &self.0 {
-            write!(f, "\n\n{}", version)?;
-        }
-        Ok(())
-    }
-}
-
-impl std::fmt::Display for PurchaseOrderRevisionCliList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for revision in &self.0 {
-            write!(f, "\n\n{}", revision)?;
-        }
-        Ok(())
     }
 }
 
@@ -567,40 +592,40 @@ impl std::fmt::Display for PurchaseOrderRevisionCli {
     }
 }
 
-trait ListDisplay {
+trait TableDisplay {
     fn header() -> Vec<&'static str>;
-    fn details(&self) -> Vec<Vec<String>>;
+    fn details(&self) -> Vec<String>;
+    fn widths() -> Vec<usize>;
 }
 
-impl ListDisplay for PurchaseOrderCliList {
+impl TableDisplay for PurchaseOrderCli {
     fn header() -> Vec<&'static str> {
         vec![
             "BUYER", "SELLER", "UID", "WORKFLOW", "STATE", "ACCEPTED", "CLOSED",
         ]
     }
 
-    fn details(&self) -> Vec<Vec<String>> {
-        self.0
-            .iter()
-            .map(|po| {
-                vec![
-                    po.buyer_org_id.to_string(),
-                    po.seller_org_id.to_string(),
-                    po.purchase_order_uid.to_string(),
-                    po.workflow_type.to_string(),
-                    po.workflow_state.to_string(),
-                    match &po.accepted_version_id {
-                        Some(s) => s.to_string(),
-                        None => String::new(),
-                    },
-                    po.is_closed.to_string(),
-                ]
-            })
-            .collect::<Vec<_>>()
+    fn details(&self) -> Vec<String> {
+        vec![
+            self.buyer_org_id.to_string(),
+            self.seller_org_id.to_string(),
+            self.purchase_order_uid.to_string(),
+            self.workflow_type.to_string(),
+            self.workflow_state.to_string(),
+            match &self.accepted_version_id {
+                Some(s) => s.to_string(),
+                None => String::new(),
+            },
+            self.is_closed.to_string(),
+        ]
+    }
+
+    fn widths() -> Vec<usize> {
+        vec![12, 12, 13, 36, 18, 8, 6]
     }
 }
 
-impl ListDisplay for PurchaseOrderVersionCliList {
+impl TableDisplay for PurchaseOrderVersionCli {
     fn header() -> Vec<&'static str> {
         vec![
             "VERSION_ID",
@@ -611,38 +636,36 @@ impl ListDisplay for PurchaseOrderVersionCliList {
         ]
     }
 
-    fn details(&self) -> Vec<Vec<String>> {
-        self.0
-            .iter()
-            .map(|version| {
-                vec![
-                    version.version_id.to_string(),
-                    version.workflow_state.to_string(),
-                    version.is_draft.to_string(),
-                    version.current_revision_id.to_string(),
-                    version.revisions.len().to_string(),
-                ]
-            })
-            .collect::<Vec<_>>()
+    fn details(&self) -> Vec<String> {
+        vec![
+            self.version_id.to_string(),
+            self.workflow_state.to_string(),
+            self.is_draft.to_string(),
+            self.current_revision_id.to_string(),
+            self.revisions.len().to_string(),
+        ]
+    }
+
+    fn widths() -> Vec<usize> {
+        vec![10, 16, 8, 16, 9]
     }
 }
 
-impl ListDisplay for PurchaseOrderRevisionCliList {
+impl TableDisplay for PurchaseOrderRevisionCli {
     fn header() -> Vec<&'static str> {
         vec!["REVISION_ID", "CREATED_AT", "SUBMITTER"]
     }
 
-    fn details(&self) -> Vec<Vec<String>> {
-        self.0
-            .iter()
-            .map(|rev| {
-                vec![
-                    rev.revision_id.to_string(),
-                    rev.created_at.to_string(),
-                    rev.submitter.to_string(),
-                ]
-            })
-            .collect::<Vec<_>>()
+    fn details(&self) -> Vec<String> {
+        vec![
+            self.revision_id.to_string(),
+            self.created_at.to_string(),
+            self.submitter.to_string(),
+        ]
+    }
+
+    fn widths() -> Vec<usize> {
+        vec![11, 16, 9]
     }
 }
 
@@ -668,31 +691,86 @@ fn print_formattable<T: std::fmt::Display + Serialize>(
     Ok(())
 }
 
-fn print_formattable_list<T: std::fmt::Display + Serialize + ListDisplay>(
-    object: T,
+fn print_formattable_list<T: TableDisplay + std::fmt::Display + Serialize>(
+    data: &mut dyn Iterator<Item = Result<T, CliError>>,
     format: Option<&str>,
 ) -> Result<(), CliError> {
     match format {
         Some("json") => {
-            print_formattable(object, format)?;
+            for row in &mut *data {
+                match row {
+                    Ok(object) => {
+                        print_formattable(object, format)?;
+                    }
+                    Err(err) => {
+                        println!("{}", err);
+                        return Err(err);
+                    }
+                }
+            }
         }
         Some("yaml") => {
-            print_formattable(object, format)?;
+            for row in &mut *data {
+                match row {
+                    Ok(object) => {
+                        print_formattable(object, format)?;
+                    }
+                    Err(err) => {
+                        println!("{}", err);
+                        return Err(err);
+                    }
+                }
+            }
         }
         Some("csv") => {
-            let details = object
-                .details()
-                .iter()
-                .map(|detail| str_join(detail.to_vec(), ","))
-                .collect::<Vec<String>>()
-                .join("\n");
-
-            println!("{}\n{}", str_join(T::header(), ","), details);
+            println!("{}", str_join(T::header(), ","));
+            for row in &mut *data {
+                match row {
+                    Ok(object) => {
+                        println!("{}", str_join(object.details(), ","))
+                    }
+                    Err(err) => {
+                        println!("{}", err);
+                        return Err(err);
+                    }
+                }
+            }
         }
         _ => {
-            print_human_readable_list(T::header(), object.details());
+            print_table(data)?;
         }
-    };
+    }
+
+    Ok(())
+}
+
+fn print_table<T: TableDisplay>(
+    data: &mut dyn Iterator<Item = Result<T, CliError>>,
+) -> Result<(), CliError> {
+    // print header row
+    let mut header_row = "".to_owned();
+    for i in 0..T::header().len() {
+        header_row += &format!("{:width$} ", T::header()[i], width = T::widths()[i]);
+    }
+    println!("{}", header_row);
+
+    // print each row
+    for row in &mut *data {
+        match row {
+            Ok(res) => {
+                let mut print_row = "".to_owned();
+                for i in 0..T::header().len() {
+                    print_row += &format!("{:width$} ", res.details()[i], width = T::widths()[i]);
+                }
+                println!("{}", print_row);
+            }
+            Err(err) => {
+                println!("{}", err);
+                return Err(err);
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -702,32 +780,6 @@ fn str_join<T: ToString>(array: Vec<T>, delimiter: &str) -> String {
         .map(|x| x.to_string())
         .collect::<Vec<String>>()
         .join(delimiter)
-}
-
-fn print_human_readable_list(column_names: Vec<&str>, row_values: Vec<Vec<String>>) {
-    // Calculate max-widths for columns
-    let mut widths: Vec<usize> = column_names.iter().map(|name| name.len()).collect();
-    row_values.iter().for_each(|row| {
-        for i in 0..widths.len() {
-            widths[i] = cmp::max(widths[i], row[i].len())
-        }
-    });
-
-    // print header row
-    let mut header_row = "".to_owned();
-    for i in 0..column_names.len() {
-        header_row += &format!("{:width$} ", column_names[i], width = widths[i]);
-    }
-    println!("{}", header_row);
-
-    // print each row
-    for row in row_values {
-        let mut print_row = "".to_owned();
-        for i in 0..column_names.len() {
-            print_row += &format!("{:width$} ", row[i], width = widths[i]);
-        }
-        println!("{}", print_row);
-    }
 }
 
 #[cfg(test)]

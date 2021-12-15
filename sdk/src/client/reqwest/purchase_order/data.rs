@@ -61,6 +61,31 @@ impl From<&PurchaseOrder> for ClientPurchaseOrder {
     }
 }
 
+impl From<PurchaseOrder> for ClientPurchaseOrder {
+    fn from(d: PurchaseOrder) -> Self {
+        Self {
+            purchase_order_uid: d.purchase_order_uid.to_string(),
+            workflow_state: d.workflow_state.to_string(),
+            buyer_org_id: d.buyer_org_id.to_string(),
+            seller_org_id: d.seller_org_id.to_string(),
+            is_closed: d.is_closed,
+            alternate_ids: d
+                .alternate_ids
+                .iter()
+                .map(ClientAlternateId::from)
+                .collect(),
+            accepted_version_id: d.accepted_version_id.as_ref().map(String::from),
+            versions: d
+                .versions
+                .iter()
+                .map(ClientPurchaseOrderVersion::from)
+                .collect(),
+            created_at: d.created_at,
+            workflow_type: d.workflow_type.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PurchaseOrderVersion {
     version_id: String,
@@ -86,6 +111,22 @@ impl From<&PurchaseOrderVersion> for ClientPurchaseOrderVersion {
     }
 }
 
+impl From<PurchaseOrderVersion> for ClientPurchaseOrderVersion {
+    fn from(d: PurchaseOrderVersion) -> Self {
+        Self {
+            version_id: d.version_id.to_string(),
+            workflow_state: d.workflow_state.to_string(),
+            is_draft: d.is_draft,
+            current_revision_id: d.current_revision_id,
+            revisions: d
+                .revisions
+                .iter()
+                .map(ClientPurchaseOrderRevision::from)
+                .collect(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PurchaseOrderRevision {
     revision_id: u64,
@@ -96,6 +137,17 @@ pub struct PurchaseOrderRevision {
 
 impl From<&PurchaseOrderRevision> for ClientPurchaseOrderRevision {
     fn from(d: &PurchaseOrderRevision) -> Self {
+        Self {
+            revision_id: d.revision_id,
+            order_xml_v3_4: d.order_xml_v3_4.to_string(),
+            submitter: d.submitter.to_string(),
+            created_at: d.created_at,
+        }
+    }
+}
+
+impl From<PurchaseOrderRevision> for ClientPurchaseOrderRevision {
+    fn from(d: PurchaseOrderRevision) -> Self {
         Self {
             revision_id: d.revision_id,
             order_xml_v3_4: d.order_xml_v3_4.to_string(),

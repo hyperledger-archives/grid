@@ -16,7 +16,7 @@ mod data;
 
 use std::collections::HashMap;
 
-use crate::client::reqwest::{fetch_entities_list, fetch_entity, post_batches};
+use crate::client::reqwest::{fetch_entities_list_stream, fetch_entity, post_batches};
 use crate::client::Client;
 use crate::error::ClientError;
 use crate::purchase_order::store::{ListPOFilters, ListVersionFilters};
@@ -119,32 +119,37 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         &self,
         filters: Option<ListPOFilters>,
         service_id: Option<&str>,
-    ) -> Result<Vec<PurchaseOrder>, ClientError> {
+    ) -> Result<Box<dyn Iterator<Item = Result<PurchaseOrder, ClientError>>>, ClientError> {
         let mut filter_map = HashMap::new();
         if let Some(filters) = filters {
             if let Some(is_open) = filters.is_open {
-                filter_map.insert("is_open", is_open.to_string());
+                filter_map.insert("is_open".to_string(), is_open.to_string());
             }
             if let Some(has_accepted_version) = filters.has_accepted_version {
-                filter_map.insert("has_accepted_version", has_accepted_version.to_string());
+                filter_map.insert(
+                    "has_accepted_version".to_string(),
+                    has_accepted_version.to_string(),
+                );
             }
             if let Some(buyer_org_id) = filters.buyer_org_id {
-                filter_map.insert("buyer_org_id", buyer_org_id);
+                filter_map.insert("buyer_org_id".to_string(), buyer_org_id);
             }
             if let Some(seller_org_id) = filters.seller_org_id {
-                filter_map.insert("seller_org_id", seller_org_id);
+                filter_map.insert("seller_org_id".to_string(), seller_org_id);
             }
             if let Some(alternate_ids) = filters.alternate_ids {
-                filter_map.insert("alternate_ids", alternate_ids);
+                filter_map.insert("alternate_ids".to_string(), alternate_ids);
             }
         }
-        let dto_vec = fetch_entities_list::<data::PurchaseOrder>(
+        let dto_vec = fetch_entities_list_stream::<data::PurchaseOrder>(
             &self.url,
             PO_ROUTE.to_string(),
             service_id,
             Some(filter_map),
-        )?;
-        Ok(dto_vec.iter().map(PurchaseOrder::from).collect())
+        )?
+        .map(|item: Result<data::PurchaseOrder, _>| item.map(PurchaseOrder::from));
+
+        Ok(Box::new(dto_vec))
     }
 
     /// Lists the purchase order versions of a specific purchase order.
@@ -153,24 +158,26 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         id: String,
         filters: Option<ListVersionFilters>,
         service_id: Option<&str>,
-    ) -> Result<Vec<PurchaseOrderVersion>, ClientError> {
+    ) -> Result<Box<dyn Iterator<Item = Result<PurchaseOrderVersion, ClientError>>>, ClientError>
+    {
         let mut filter_map = HashMap::new();
         if let Some(filters) = filters {
             if let Some(is_accepted) = filters.is_accepted {
-                filter_map.insert("is_accepted", is_accepted.to_string());
+                filter_map.insert("is_accepted".to_string(), is_accepted.to_string());
             }
             if let Some(is_draft) = filters.is_draft {
-                filter_map.insert("is_draft", is_draft.to_string());
+                filter_map.insert("is_draft".to_string(), is_draft.to_string());
             }
         }
-        let dto = fetch_entities_list::<data::PurchaseOrderVersion>(
+        let dto = fetch_entities_list_stream::<data::PurchaseOrderVersion>(
             &self.url,
             format!("{}/{}/{}", PO_ROUTE, id, VERSION_ROUTE,),
             service_id,
             Some(filter_map),
-        )?;
+        )?
+        .map(|item: Result<data::PurchaseOrderVersion, _>| item.map(PurchaseOrderVersion::from));
 
-        Ok(dto.iter().map(PurchaseOrderVersion::from).collect())
+        Ok(Box::new(dto))
     }
 
     /// Lists the purchase order revisions of a specific purchase order version.
@@ -179,8 +186,9 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         id: String,
         version_id: String,
         service_id: Option<&str>,
-    ) -> Result<Vec<PurchaseOrderRevision>, ClientError> {
-        let dto = fetch_entities_list::<data::PurchaseOrderRevision>(
+    ) -> Result<Box<dyn Iterator<Item = Result<PurchaseOrderRevision, ClientError>>>, ClientError>
+    {
+        let dto = fetch_entities_list_stream::<data::PurchaseOrderRevision>(
             &self.url,
             format!(
                 "{}/{}/{}/{}/{}",
@@ -188,9 +196,10 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
             ),
             service_id,
             None,
-        )?;
+        )?
+        .map(|item: Result<data::PurchaseOrderRevision, _>| item.map(PurchaseOrderRevision::from));
 
-        Ok(dto.iter().map(PurchaseOrderRevision::from).collect())
+        Ok(Box::new(dto))
     }
 
     fn get_latest_revision_id(
