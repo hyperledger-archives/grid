@@ -946,6 +946,21 @@ pub trait PurchaseOrderStore {
         offset: i64,
         limit: i64,
     ) -> Result<PurchaseOrderAlternateIdList, PurchaseOrderStoreError>;
+
+    /// Fetches a latest revision ID for a purchase order version from the
+    /// underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `purchase_order_uid` - The UID of the purchase order the revision belongs to
+    ///  * `version_id` - The ID of the version the revision is for
+    ///  * `service_id` - The service ID
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, PurchaseOrderStoreError>;
 }
 
 impl<PS> PurchaseOrderStore for Box<PS>
@@ -1030,5 +1045,14 @@ where
             offset,
             limit,
         )
+    }
+
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, PurchaseOrderStoreError> {
+        (**self).get_latest_revision_id(purchase_order_uid, version_id, service_id)
     }
 }
