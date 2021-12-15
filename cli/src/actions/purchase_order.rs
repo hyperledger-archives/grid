@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::cmp;
-use std::convert::TryInto;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use grid_sdk::{
@@ -21,6 +19,7 @@ use grid_sdk::{
         AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision,
         PurchaseOrderVersion,
     },
+    error::ClientError,
     pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::purchase_order::payload::{
         Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayloadBuilder,
@@ -250,15 +249,12 @@ pub fn get_latest_revision_id(
     version_id: &str,
     service_id: Option<&str>,
 ) -> Result<i64, CliError> {
-    let revisions = do_fetch_revisions(client, po_uid, version_id, service_id)?;
+    let revision_id = client
+        .get_latest_revision_id(po_uid.to_string(), version_id.to_string(), service_id)
+        .map_err(CliError::from)?;
 
-    let max = revisions.iter().max_by_key(|r| r.revision_id);
-
-    if let Some(max) = max {
-        Ok(max
-            .revision_id
-            .try_into()
-            .map_err(|err| CliError::UserError(format!("{}", err)))?)
+    if let Some(revision_id) = revision_id {
+        Ok(revision_id)
     } else {
         Ok(0)
     }

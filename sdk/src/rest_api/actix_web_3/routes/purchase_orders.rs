@@ -261,6 +261,44 @@ pub async fn list_purchase_order_version_revisions(
     }
 }
 
+/// Provides the ability to fetch the most recent purchase order revision
+///
+/// # Arguments
+///
+/// `store_state` - Provides a `store_factory` to access Grid's stores
+/// `path` - Used to retrieve the purchase order UID and version ID from the
+///  request's path
+/// `query_service_id` - Optional service ID provided in the query string
+/// `version` - Determines the type of response, corresponding to the versions of the rest API
+#[get("/purchase_order/{uid}/version/{version_id}/revision/latest")]
+pub async fn get_latest_revision_id(
+    store_state: web::Data<StoreState>,
+    path: web::Path<(String, String)>,
+    query_service_id: web::Query<QueryServiceId>,
+    version: ProtocolVersion,
+    _: AcceptServiceIdParam,
+) -> HttpResponse {
+    let store = store_state.store_factory.get_grid_purchase_order_store();
+    let (uid, version_id) = path.into_inner();
+    match version {
+        ProtocolVersion::V1 => {
+            match v1::get_latest_revision_id(
+                store,
+                uid,
+                version_id,
+                query_service_id.into_inner().service_id.as_deref(),
+            ) {
+                Ok(res) => HttpResponse::Ok().json(res),
+                Err(err) => HttpResponse::build(
+                    StatusCode::from_u16(err.status_code())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                )
+                .json(err),
+            }
+        }
+    }
+}
+
 /// Provides the ability to fetch a purchase order revision
 ///
 /// # Arguments

@@ -30,6 +30,7 @@ use sawtooth_sdk::messages::batch::BatchList;
 const PO_ROUTE: &str = "purchase_order";
 const VERSION_ROUTE: &str = "version";
 const REVISION_ROUTE: &str = "revision";
+const LATEST_ROUTE: &str = "latest";
 
 /// The Reqwest implementation of the Purchase Order client
 pub struct ReqwestPurchaseOrderClient {
@@ -190,5 +191,28 @@ impl PurchaseOrderClient for ReqwestPurchaseOrderClient {
         )?;
 
         Ok(dto.iter().map(PurchaseOrderRevision::from).collect())
+    }
+
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: String,
+        version_id: String,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, ClientError> {
+        let dto = fetch_entity::<Option<i64>>(
+            &self.url,
+            format!(
+                "{}/{}/{}/{}/{}/{}",
+                PO_ROUTE,
+                purchase_order_uid,
+                VERSION_ROUTE,
+                version_id,
+                REVISION_ROUTE,
+                LATEST_ROUTE,
+            ),
+            service_id,
+        )?;
+
+        Ok(dto)
     }
 }

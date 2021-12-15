@@ -685,6 +685,47 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
+  /purchase_order/{uid}/version/{version_id}/revision/latest:
+    get:
+      tags:
+        - Purchase Order
+      summary: |
+        Fetches a single purchase order version revision with the latest revision
+        ID for the given version
+      operationId: get_latest_revision_id
+      parameters:
+        - name: version_id
+          in: path
+          description: ID of the version to fetch
+          required: true
+          schema:
+            type: string
+        - name: uid
+          in: path
+          description: ID of the PO to fetch
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/service_id"
+        - $ref: "#/components/parameters/page_offset"
+        - $ref: "#/components/parameters/page_limit"
+      responses:
+        "200":
+          description: |
+            Successful request. The response will include a JSON object
+            representing the purchase order revision ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderRevision"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
 
   # Schema
   /schema:
