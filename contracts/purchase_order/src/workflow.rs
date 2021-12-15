@@ -101,8 +101,6 @@ fn default_sub_workflow() -> SubWorkflow {
         partner.add_transition("confirmed");
         partner.add_transition("closed");
 
-
-
         WorkflowStateBuilder::new("issued")
             .add_transition("confirmed")
             .add_transition("closed")
