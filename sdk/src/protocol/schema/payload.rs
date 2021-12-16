@@ -454,7 +454,6 @@ impl std::fmt::Display for SchemaUpdateBuildError {
 pub struct SchemaUpdateBuilder {
     schema_name: Option<String>,
     owner: Option<String>,
-    description: Option<String>,
     properties: Vec<PropertyDefinition>,
 }
 

@@ -61,7 +61,7 @@ pub async fn list_records(
         .collect();
 
     let proposals = store
-        .list_proposals(&record_ids, service_id.as_deref())
+        .list_proposals(&record_ids, service_id)
         .map_err(|err| match err {
             TrackAndTraceStoreError::InternalError(err) => {
                 ErrorResponse::internal_error(Box::new(err))

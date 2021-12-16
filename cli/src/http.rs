@@ -114,12 +114,10 @@ pub struct BatchStatusLink {
 #[derive(Deserialize, Debug)]
 struct BatchStatusResponse {
     pub data: Vec<BatchStatus>,
-    pub link: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct BatchStatus {
-    pub id: String,
     pub invalid_transactions: Vec<HashMap<String, String>>,
     pub status: String,
 }

@@ -65,7 +65,6 @@ mod tests {
         permission.add_transition("confirm");
 
         let state = WorkflowStateBuilder::new("issued")
-            .add_constraint("active=None")
             .add_transition("issued")
             .add_transition("confirm")
             .add_permission_alias(permission)
@@ -95,7 +94,6 @@ mod tests {
         permission.add_transition("confirm");
 
         let state = WorkflowStateBuilder::new("issued")
-            .add_constraint("active=None")
             .add_transition("issued")
             .add_transition("confirm")
             .add_permission_alias(permission)
@@ -123,7 +121,6 @@ mod tests {
         permission.add_transition("confirm");
 
         let state = WorkflowStateBuilder::new("issued")
-            .add_constraint("active=None")
             .add_transition("issued")
             .add_transition("confirm")
             .add_permission_alias(permission)

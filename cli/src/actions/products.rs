@@ -68,7 +68,11 @@ pub struct GridPropertyValue {
     pub lat_long_value: Option<LatLong>,
 }
 
+// The `LatLong` value is used by the `GridPropertyValue` `lat_long_value` field and returned to
+// the user. Rust 1.57 does not recognize the fields of this struct as being read, therefore we
+// must use the `allow(dead_code)` decorator for this struct.
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct LatLong {
     latitude: i64,
     longitude: i64,
