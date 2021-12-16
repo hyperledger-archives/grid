@@ -73,6 +73,7 @@ pub fn setup_grid(
     splinterd_url: &str,
     service_id: &str,
     circuit_id: &str,
+    authorization: &str,
 ) -> Result<(), AppAuthHandlerError> {
     #[cfg(any(
         feature = "location",
@@ -121,7 +122,9 @@ pub fn setup_grid(
 
     let batch = BatchBuilder::new().with_transactions(txns).build(&signer)?;
 
-    ScabbardClient::new(splinterd_url)
+    let mut client = ScabbardClient::new(splinterd_url);
+    client.set_auth(authorization.to_string());
+    client
         .submit(
             &ServiceId::new(circuit_id, service_id),
             vec![batch],
