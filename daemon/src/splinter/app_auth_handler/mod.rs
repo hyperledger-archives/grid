@@ -190,6 +190,7 @@ fn process_admin_event(
                 splinterd_url,
                 &service.service_id,
                 &msg_proposal.circuit_id,
+                authorization,
             )?;
             Ok(())
         }
