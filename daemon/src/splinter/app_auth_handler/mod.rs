@@ -65,17 +65,12 @@ pub fn run(
     handler: Box<dyn EventHandler>,
     igniter: Igniter,
     scabbard_admin_key: String,
-    #[cfg(feature = "cylinder-jwt-support")] authorization: String,
+    authorization: String,
 ) -> Result<(), AppAuthHandlerError> {
     let registration_route = format!("{}/ws/admin/register/grid", &splinterd_url);
-    let node_id = get_node_id(
-        splinterd_url.clone(),
-        #[cfg(feature = "cylinder-jwt-support")]
-        &authorization,
-    )?;
+    let node_id = get_node_id(splinterd_url.clone(), &authorization)?;
 
     let ws_handler = Arc::new(Mutex::new(handler));
-    #[cfg(feature = "cylinder-jwt-support")]
     let ws_auth = authorization.clone();
     let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
         let handler = {
@@ -95,7 +90,6 @@ pub fn run(
             &node_id,
             &scabbard_admin_key,
             &splinterd_url,
-            #[cfg(feature = "cylinder-jwt-support")]
             &ws_auth,
         ) {
             error!("Failed to process admin event: {}", err);
@@ -103,7 +97,6 @@ pub fn run(
         WsResponse::Empty
     });
 
-    #[cfg(feature = "cylinder-jwt-support")]
     ws.header("Authorization", authorization);
     ws.header(
         "SplinterProtocolVersion",
@@ -141,7 +134,7 @@ fn process_admin_event(
     node_id: &str,
     scabbard_admin_key: &str,
     splinterd_url: &str,
-    #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
+    authorization: &str,
 ) -> Result<(), AppAuthHandlerError> {
     debug!("Received the event at {}", event.timestamp);
     match event.admin_event {
@@ -186,7 +179,6 @@ fn process_admin_event(
                     &msg_proposal.circuit_id,
                     &service.service_id,
                     None,
-                    #[cfg(feature = "cylinder-jwt-support")]
                     authorization,
                     || vec![handler.cloned_box()],
                 )
@@ -198,6 +190,7 @@ fn process_admin_event(
                 splinterd_url,
                 &service.service_id,
                 &msg_proposal.circuit_id,
+                authorization,
             )?;
             Ok(())
         }

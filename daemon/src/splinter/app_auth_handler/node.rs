@@ -35,17 +35,10 @@ impl fmt::Display for GetNodeError {
     }
 }
 
-pub fn get_node_id(
-    splinterd_url: String,
-    #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
-) -> Result<String, GetNodeError> {
+pub fn get_node_id(splinterd_url: String, authorization: &str) -> Result<String, GetNodeError> {
     let uri = format!("{}/status", splinterd_url);
 
-    let body = wait_for_status(
-        &uri,
-        #[cfg(feature = "cylinder-jwt-support")]
-        authorization,
-    )?;
+    let body = wait_for_status(&uri, authorization)?;
 
     let node_id_val = body
         .get("node_id")
@@ -58,22 +51,15 @@ pub fn get_node_id(
     Ok(node_id.to_string())
 }
 
-fn wait_for_status(
-    uri: &str,
-    #[cfg(feature = "cylinder-jwt-support")] authorization: &str,
-) -> Result<Value, GetNodeError> {
+fn wait_for_status(uri: &str, authorization: &str) -> Result<Value, GetNodeError> {
     let mut wait_time = 1;
     let client = reqwest::blocking::Client::new();
     loop {
-        #[allow(unused_mut)]
-        let mut request = client.get(uri);
-
-        #[cfg(feature = "cylinder-jwt-support")]
+        match client
+            .get(uri)
+            .header("Authorization", authorization.to_string())
+            .send()
         {
-            request = request.header("Authorization", authorization.to_string());
-        }
-
-        match request.send() {
             Ok(res) => {
                 return res.json().map_err(|err| {
                     GetNodeError(format!("Failed to parse response body: {}", err))
