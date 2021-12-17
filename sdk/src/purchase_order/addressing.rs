@@ -33,7 +33,7 @@ pub fn compute_purchase_order_address(uid: &str) -> String {
     hash_str[..70].to_string()
 }
 
-/// Computes the Merkle address of a Alternate ID based on its type and ID.
+/// Computes the Merkle address of an Alternate ID based on its type and ID.
 pub fn compute_alternate_id_address(
     po_uid: &str,
     alternate_id_type: &str,
