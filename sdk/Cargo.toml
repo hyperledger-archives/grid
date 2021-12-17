@@ -81,6 +81,7 @@ stable = [
     "postgres",
     "product",
     "product-gdsn",
+    "purchase-order",
     "rest-api",
     "rest-api-endpoint-agent",
     "rest-api-endpoint-batches",
@@ -107,7 +108,6 @@ experimental = [
     # The following features are experimental:
     "batch-processor",
     "batch-store",
-    "purchase-order",
     "rest-api-actix-web-3",
     "rest-api-actix-web-3-run",
     "rest-api-endpoint-purchase-order",
