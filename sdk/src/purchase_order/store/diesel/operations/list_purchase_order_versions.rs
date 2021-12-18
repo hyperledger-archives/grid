@@ -154,8 +154,11 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                     .into_boxed()
                     .select(purchase_order_version_revision::all_columns)
                     .filter(
-                        purchase_order_version_revision::version_id
-                            .eq(&version.version_id)
+                        purchase_order_version_revision::purchase_order_uid
+                            .eq(&purchase_order_uid)
+                            .and(
+                                purchase_order_version_revision::version_id.eq(&version.version_id),
+                            )
                             .and(
                                 purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
                             ),
@@ -304,8 +307,11 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                     .into_boxed()
                     .select(purchase_order_version_revision::all_columns)
                     .filter(
-                        purchase_order_version_revision::version_id
-                            .eq(&version.version_id)
+                        purchase_order_version_revision::purchase_order_uid
+                            .eq(&purchase_order_uid)
+                            .and(
+                                purchase_order_version_revision::version_id.eq(&version.version_id),
+                            )
                             .and(
                                 purchase_order_version_revision::end_commit_num.eq(MAX_COMMIT_NUM),
                             ),
