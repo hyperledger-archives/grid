@@ -1,5 +1,52 @@
 # Release Notes
 
+## Changes in Grid 0.2.3
+
+### Highlights
+
+* Adds support for Splinter v0.6 by supporting Splinter's new authorization
+  capability. Splinter v0.4 and Splinter v0.6 are now both supported by Grid
+  v0.2.
+
+* Fixes a bug that was causing the `PermissionChecker`’s `has_permission`
+  method to not allow roles to be inherited across organizations.
+
+### Grid SDK
+
+* Make the backend client compatible for future versions of splinter by adding
+  an `authorization` field to the splinter backend client
+
+### Grid Daemon
+
+* Update Splinter and Scabbard dependencies to 0.4.3.
+
+* Create a Cylinder JWT when initially connecting to a splinter backend,
+  enabling components to interact with splinter’s authorized endpoints.
+
+* Add a protocol version to the splinter application authorization handler to
+  allow for backwards compatibility.
+
+* Add authorization to the ScabbardClient, allowing for Grid to make authorized
+  requests to Scabbard.
+
+* Add authorization to splinter websocket connections in the splinter
+  application authorization handler.
+
+### Grid UI
+
+* Add whitespaces surrounding plus and minus characters to conform to the CSS
+  standard.
+
+### Grid CLI
+
+* Update default key name with `--system` flag to `gridd`.
+
+### Build
+
+* Add a justfile recipe to build Docker images.
+
+* Switch to GitHub Actions from Travis CI for builds.
+
 ## Changes in Grid 0.2.2
 
 ### Highlights
