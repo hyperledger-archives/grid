@@ -14,7 +14,7 @@
 
 [package]
 name = "grid-pike-tp"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Cargill Incorporated"]
 
 [dependencies]
