@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod handler;
-pub mod payloads;
+mod handler;
+mod payloads;
 
 pub use handler::{
     get_purchase_order, get_purchase_order_revision, get_purchase_order_version,
     list_purchase_order_revisions, list_purchase_order_versions, list_purchase_orders,
 };
 pub use payloads::{
-    PurchaseOrderListSlice, PurchaseOrderRevisionSlice, PurchaseOrderSlice,
-    PurchaseOrderVersionSlice,
+    PurchaseOrderListSlice, PurchaseOrderRevisionListSlice, PurchaseOrderRevisionSlice,
+    PurchaseOrderSlice, PurchaseOrderVersionListSlice, PurchaseOrderVersionSlice,
 };
