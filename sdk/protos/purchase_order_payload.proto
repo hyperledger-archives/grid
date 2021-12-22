@@ -50,6 +50,7 @@ message UpdatePurchaseOrderPayload {
   bool is_closed = 3;
   string accepted_version_number = 4;
   repeated PurchaseOrderAlternateId alternate_ids = 5;
+  repeated UpdateVersionPayload version_updates = 6;
 }
 
 message CreateVersionPayload {

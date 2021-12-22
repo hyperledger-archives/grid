@@ -425,6 +425,7 @@ pub struct UpdatePurchaseOrderPayload {
     is_closed: bool,
     accepted_version_number: Option<String>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
+    version_updates: Vec<UpdateVersionPayload>,
 }
 
 impl UpdatePurchaseOrderPayload {
@@ -447,6 +448,10 @@ impl UpdatePurchaseOrderPayload {
     pub fn alternate_ids(&self) -> &[PurchaseOrderAlternateId] {
         &self.alternate_ids
     }
+
+    pub fn version_updates(&self) -> &[UpdateVersionPayload] {
+        &self.version_updates
+    }
 }
 
 impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePurchaseOrderPayload {
@@ -467,6 +472,12 @@ impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePur
                 .into_iter()
                 .map(PurchaseOrderAlternateId::from_proto)
                 .collect::<Result<Vec<PurchaseOrderAlternateId>, ProtoConversionError>>()?,
+            version_updates: proto
+                .get_version_updates()
+                .to_vec()
+                .into_iter()
+                .map(UpdateVersionPayload::from_proto)
+                .collect::<Result<Vec<UpdateVersionPayload>, ProtoConversionError>>()?,
         })
     }
 }
@@ -488,6 +499,17 @@ impl FromNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
                 .map(PurchaseOrderAlternateId::into_proto)
                 .collect::<Result<
                     Vec<protos::purchase_order_state::PurchaseOrderAlternateId>,
+                    ProtoConversionError,
+                >>()?,
+        ));
+        proto.set_version_updates(RepeatedField::from_vec(
+            native
+                .version_updates()
+                .to_vec()
+                .into_iter()
+                .map(UpdateVersionPayload::into_proto)
+                .collect::<Result<
+                    Vec<protos::purchase_order_payload::UpdateVersionPayload>,
                     ProtoConversionError,
                 >>()?,
         ));
@@ -530,6 +552,7 @@ pub struct UpdatePurchaseOrderPayloadBuilder {
     is_closed: Option<bool>,
     accepted_version_number: Option<String>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
+    version_updates: Vec<UpdateVersionPayload>,
 }
 
 impl UpdatePurchaseOrderPayloadBuilder {
@@ -562,6 +585,11 @@ impl UpdatePurchaseOrderPayloadBuilder {
         self
     }
 
+    pub fn with_version_updates(mut self, value: Vec<UpdateVersionPayload>) -> Self {
+        self.version_updates = value;
+        self
+    }
+
     pub fn build(self) -> Result<UpdatePurchaseOrderPayload, BuilderError> {
         let uid = self
             .uid
@@ -577,12 +605,15 @@ impl UpdatePurchaseOrderPayloadBuilder {
 
         let alternate_ids = self.alternate_ids;
 
+        let version_updates = self.version_updates;
+
         Ok(UpdatePurchaseOrderPayload {
             uid,
             workflow_state,
             is_closed,
             accepted_version_number: self.accepted_version_number,
             alternate_ids,
+            version_updates,
         })
     }
 }
@@ -1062,6 +1093,7 @@ mod test {
             is_closed: true,
             accepted_version_number: Some("version".to_string()),
             alternate_ids,
+            version_updates: Vec::new(),
         }
         .into_proto()
         .expect("could not transform into proto");
@@ -1069,6 +1101,7 @@ mod test {
         assert_eq!(proto_update_po.get_workflow_state(), "status");
         assert!(proto_update_po.get_is_closed());
         assert_eq!(proto_update_po.get_accepted_version_number(), "version");
+        assert!(proto_update_po.get_version_updates().is_empty());
 
         // Validate with optional fields not filled out
         let proto_update_po = UpdatePurchaseOrderPayload {
@@ -1077,6 +1110,7 @@ mod test {
             is_closed: true,
             accepted_version_number: None,
             alternate_ids: Vec::new(),
+            version_updates: Vec::new(),
         }
         .into_proto()
         .expect("could not transform into proto");
