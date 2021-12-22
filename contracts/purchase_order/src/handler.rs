@@ -213,7 +213,7 @@ fn create_purchase_order(
                     &perm_string,
                     signer,
                     agent.org_id(),
-                    start_state,
+                    &start_state,
                     payload_version.workflow_state(),
                 )
                 .map_err(|err| {
@@ -316,7 +316,7 @@ fn create_purchase_order(
             &perm_string,
             signer,
             agent.org_id(),
-            start_state,
+            &start_state,
             payload.workflow_state(),
         )
         .map_err(|err| {
@@ -412,7 +412,7 @@ fn update_purchase_order(
             &perm_string.to_string(),
             signer,
             agent.org_id(),
-            workflow
+            &workflow
                 .subworkflow("po")
                 .ok_or_else(|| {
                     ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
@@ -655,7 +655,7 @@ fn create_version(
             &perm_string,
             signer,
             &agent_org_id,
-            create_workflow_state,
+            &create_workflow_state,
             &desired_workflow_state_string,
         )
         .map_err(|err| {
@@ -757,7 +757,7 @@ fn update_version(
             &perm_string.to_string(),
             signer,
             agent.org_id(),
-            version_subworkflow
+            &version_subworkflow
                 .state(original_version.workflow_state())
                 .ok_or_else(|| {
                     ApplyError::InvalidTransaction(format!(
