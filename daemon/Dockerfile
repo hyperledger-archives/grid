@@ -38,6 +38,10 @@ COPY cli /build/cli
 COPY daemon /build/daemon
 COPY sdk /build/sdk
 
+# Copy over files needed for examples
+COPY sdk/src/data_validation/xml/xsd/product/ /build/daemon/packaging/schemas/product/
+COPY sdk/src/data_validation/xml/xsd/po/ /build/daemon/packaging/schemas/po/
+
 # Build the gridd package
 ARG CARGO_ARGS
 ARG REPO_VERSION
@@ -68,10 +72,6 @@ RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 COPY --from=gridd-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
 COPY --from=gridd-builder /commit-hash /commit-hash
-
-# Copy over files needed for examples
-COPY sdk/src/data_validation/xml/xsd/product/ /etc/grid/schemas/product/
-COPY sdk/src/data_validation/xml/xsd/po/ /etc/grid/schemas/po/
 
 RUN apt-get update \
  && apt-get install -y -q \
