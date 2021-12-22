@@ -289,7 +289,6 @@ mod tests {
     const ROLE_ALPHA_BUYER: &str = "buyer";
     const ROLE_BETA_BUYER: &str = "buyer";
     const ROLE_ALPHA_SELLER: &str = "seller";
-    const ROLE_BETA_SELLER: &str = "seller";
 
     const PERM_ALIAS_BUYER: &str = "po::buyer";
     const PERM_ALIAS_SELLER: &str = "po::seller";
