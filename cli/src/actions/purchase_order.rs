@@ -802,6 +802,7 @@ pub mod tests {
             .with_seller_org_id("seller".to_string())
             .with_workflow_state("created".to_string())
             .with_created_at(100)
+            .with_workflow_id("workflow".to_string())
             .build()
             .expect("Could not build create po payload");
 

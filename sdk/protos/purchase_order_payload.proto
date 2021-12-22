@@ -41,6 +41,7 @@ message CreatePurchaseOrderPayload {
   string workflow_state = 5;
   repeated PurchaseOrderAlternateId alternate_ids = 6;
   CreateVersionPayload create_version_payload = 7;
+  string workflow_id = 8;
 }
 
 message UpdatePurchaseOrderPayload {

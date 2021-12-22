@@ -1215,6 +1215,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
+            .with_workflow_id("workflow".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1241,6 +1242,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
+            .with_workflow_id("workflow".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1265,6 +1267,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
+            .with_workflow_id("workflow".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1291,6 +1294,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
+            .with_workflow_id("workflow".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1319,6 +1323,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("issued".to_string())
+            .with_workflow_id("workflow".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         if let Err(err) =
@@ -1350,6 +1355,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("confirmed".to_string())
+            .with_workflow_id("workflow".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         let expected = "Desired workflow state `confirmed` has `Accepted` constraint, \

@@ -188,6 +188,7 @@ pub struct CreatePurchaseOrderPayload {
     workflow_state: String,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
     create_version_payload: Option<CreateVersionPayload>,
+    workflow_id: String,
 }
 
 impl CreatePurchaseOrderPayload {
@@ -217,6 +218,10 @@ impl CreatePurchaseOrderPayload {
 
     pub fn create_version_payload(&self) -> Option<CreateVersionPayload> {
         self.create_version_payload.clone()
+    }
+
+    pub fn workflow_id(&self) -> &str {
+        &self.workflow_id
     }
 }
 
@@ -249,6 +254,7 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
                 .map(PurchaseOrderAlternateId::from_proto)
                 .collect::<Result<Vec<PurchaseOrderAlternateId>, ProtoConversionError>>()?,
             create_version_payload,
+            workflow_id: proto.take_workflow_id(),
         })
     }
 }
@@ -272,6 +278,7 @@ impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
                 >>()?,
         ));
         proto.set_workflow_state(native.workflow_state().to_string());
+        proto.set_workflow_id(native.workflow_id().to_string());
 
         if let Some(payload) = native.create_version_payload() {
             let proto_payload: purchase_order_payload::CreateVersionPayload =
@@ -320,6 +327,7 @@ pub struct CreatePurchaseOrderPayloadBuilder {
     workflow_state: Option<String>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
     create_version_payload: Option<CreateVersionPayload>,
+    workflow_id: Option<String>,
 }
 
 impl CreatePurchaseOrderPayloadBuilder {
@@ -362,6 +370,11 @@ impl CreatePurchaseOrderPayloadBuilder {
         self
     }
 
+    pub fn with_workflow_id(mut self, value: String) -> Self {
+        self.workflow_id = Some(value);
+        self
+    }
+
     pub fn build(self) -> Result<CreatePurchaseOrderPayload, BuilderError> {
         let uid = self
             .uid
@@ -387,6 +400,10 @@ impl CreatePurchaseOrderPayloadBuilder {
 
         let create_version_payload = self.create_version_payload;
 
+        let workflow_id = self.workflow_id.ok_or_else(|| {
+            BuilderError::MissingField("'workflow_id' field is required".to_string())
+        })?;
+
         Ok(CreatePurchaseOrderPayload {
             uid,
             created_at,
@@ -395,6 +412,7 @@ impl CreatePurchaseOrderPayloadBuilder {
             workflow_state,
             alternate_ids,
             create_version_payload,
+            workflow_id,
         })
     }
 }
