@@ -1682,6 +1682,11 @@ fn run() -> Result<(), CliError> {
                                 .help("Set the supplied version ID as the accepted Purchase Order version"),
                         )
                         .arg(
+                            Arg::with_name("rm_accepted_version")
+                                .long("rm-accepted-version")
+                                .help("Unset the Purchase Order's current accepted version ID")
+                        )
+                        .arg(
                             Arg::with_name("version_id")
                                 .value_name("version-id")
                                 .long("version-id")
@@ -2595,6 +2600,14 @@ fn run() -> Result<(), CliError> {
                         is_closed = true;
                     }
 
+                    if m.is_present("set_accepted_version") & m.is_present("rm_accepted_version") {
+                        return Err(CliError::UserError(
+                            "Both set and remove accepted version flags were supplied; \
+                        only one of these operations is allowed at a time"
+                                .to_string(),
+                        ));
+                    }
+
                     let mut accepted_version = po.accepted_version_id;
                     if m.is_present("set_accepted_version") {
                         match m.value_of("version_id") {
@@ -2606,6 +2619,10 @@ fn run() -> Result<(), CliError> {
                                 ))
                             }
                         }
+                    }
+
+                    if m.is_present("rm_accepted_version") {
+                        accepted_version = Some(String::from(""));
                     }
 
                     let mut alternate_ids = po.alternate_ids.clone();
