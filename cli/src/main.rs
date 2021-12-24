@@ -1677,11 +1677,17 @@ fn run() -> Result<(), CliError> {
                                 .help("Specify the Purchase Order has been closed"),
                         )
                         .arg(
-                            Arg::with_name("accepted_version")
-                                .value_name("version_id")
-                                .long("accepted-version")
+                            Arg::with_name("set_accepted_version")
+                                .long("set-accepted-version")
+                                .help("Set the supplied version ID as the accepted Purchase Order version"),
+                        )
+                        .arg(
+                            Arg::with_name("version_id")
+                                .value_name("version-id")
+                                .long("version-id")
                                 .takes_value(true)
-                                .help("Specify the ID of the accepted Purchase Order version"),
+                                .help("Specify the Purchase Order version to be simultaneously \
+                                    updated or set as accepted")
                         )
                         .arg(
                             Arg::with_name("key")
@@ -2590,13 +2596,16 @@ fn run() -> Result<(), CliError> {
                     }
 
                     let mut accepted_version = po.accepted_version_id;
-
-                    if m.is_present("accepted_version") {
-                        accepted_version = m
-                            .value_of("accepted_version")
-                            .map(String::from)
-                            .map(Some)
-                            .unwrap();
+                    if m.is_present("set_accepted_version") {
+                        match m.value_of("version_id") {
+                            Some(v) => accepted_version = Some(v.to_string()),
+                            None => {
+                                return Err(CliError::UserError(
+                                    "Version ID was not supllied; cannot set accepted version"
+                                        .to_string(),
+                                ))
+                            }
+                        }
                     }
 
                     let mut alternate_ids = po.alternate_ids.clone();
