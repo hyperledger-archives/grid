@@ -39,7 +39,7 @@ log = "0.4"
 flexi_logger = "0.17"
 sawtooth-sdk = "0.4"
 sabre-sdk = "0.5"
-grid-sdk = { path = "../sdk", features = ["postgres", "sqlite", "pike", "schema", "product", "product-gdsn", "location", "client", "client-reqwest", "data-validation"] }
+grid-sdk = { path = "../sdk", features = ["client", "client-reqwest", "data-validation"] }
 rust-crypto = "0.2"
 protobuf = "2.19"
 users = "0.11"
@@ -82,17 +82,19 @@ experimental = [
 database = ["diesel"]
 postgres = [
     "diesel/postgres",
+    "grid-sdk/postgres",
 ]
 sqlite = [
     "diesel/sqlite",
+    "grid-sdk/sqlite",
 ]
 
-location = ["pike", "schema"]
-pike = []
-product = ["pike", "schema"]
+location = ["pike", "schema", "grid-sdk/location"]
+pike = ["grid-sdk/pike"]
+product = ["pike", "schema", "grid-sdk/product", "grid-sdk/product-gdsn"]
 purchase-order = ["chrono", "grid-sdk/purchase-order", "rand", "serde_json"]
 sawtooth = []
-schema = ["pike"]
+schema = ["pike", "grid-sdk/schema"]
 
 [package.metadata.deb]
 maintainer = "The Hyperledger Grid Team"
