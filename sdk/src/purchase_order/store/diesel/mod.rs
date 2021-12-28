@@ -34,6 +34,7 @@ use models::{
 use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_purchase_order::PurchaseOrderStoreAddPurchaseOrderOperation as _;
+use operations::get_latest_revision_id::PurchaseOrderStoreGetLatestRevisionIdOperation as _;
 use operations::get_purchase_order::PurchaseOrderStoreGetPurchaseOrderOperation as _;
 use operations::get_purchase_order_version::PurchaseOrderStoreGetPurchaseOrderVersionOperation as _;
 use operations::get_purchase_order_version_revision::PurchaseOrderStoreGetPurchaseOrderRevisionOperation as _;
@@ -190,6 +191,20 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::pg::PgConnection> {
             limit,
         )
     }
+
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_latest_revision_id(purchase_order_uid, version_id, service_id)
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -322,6 +337,20 @@ impl PurchaseOrderStore for DieselPurchaseOrderStore<diesel::sqlite::SqliteConne
             limit,
         )
     }
+
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            PurchaseOrderStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_latest_revision_id(purchase_order_uid, version_id, service_id)
+    }
 }
 
 pub struct DieselConnectionPurchaseOrderStore<'a, C>
@@ -446,6 +475,19 @@ impl<'a> PurchaseOrderStore for DieselConnectionPurchaseOrderStore<'a, diesel::p
             limit,
         )
     }
+
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(self.connection).get_latest_revision_id(
+            purchase_order_uid,
+            version_id,
+            service_id,
+        )
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -552,6 +594,19 @@ impl<'a> PurchaseOrderStore
             service_id,
             offset,
             limit,
+        )
+    }
+
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: &str,
+        version_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, PurchaseOrderStoreError> {
+        PurchaseOrderStoreOperations::new(self.connection).get_latest_revision_id(
+            purchase_order_uid,
+            version_id,
+            service_id,
         )
     }
 }

@@ -164,7 +164,7 @@ pub trait PurchaseOrderClient: Client {
         &self,
         filters: Option<ListPOFilters>,
         service_id: Option<&str>,
-    ) -> Result<Vec<PurchaseOrder>, ClientError>;
+    ) -> Result<Box<dyn Iterator<Item = Result<PurchaseOrder, ClientError>>>, ClientError>;
 
     /// Lists the purchase order versions of a specific purchase order.
     ///
@@ -178,7 +178,7 @@ pub trait PurchaseOrderClient: Client {
         id: String,
         filters: Option<ListVersionFilters>,
         service_id: Option<&str>,
-    ) -> Result<Vec<PurchaseOrderVersion>, ClientError>;
+    ) -> Result<Box<dyn Iterator<Item = Result<PurchaseOrderVersion, ClientError>>>, ClientError>;
 
     /// Lists the purchase order revisions of a specific purchase order version.
     ///
@@ -193,5 +193,22 @@ pub trait PurchaseOrderClient: Client {
         id: String,
         version_id: String,
         service_id: Option<&str>,
-    ) -> Result<Vec<PurchaseOrderRevision>, ClientError>;
+    ) -> Result<Box<dyn Iterator<Item = Result<PurchaseOrderRevision, ClientError>>>, ClientError>;
+
+    /// Retrieves the purchase order revision with the latest `revision_id` of
+    /// the purchase order version with the given `version_id` of the purchase
+    /// order with the given `purchase_order_uid`
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - the UID of the `PurchaseOrder` containing the `PurchaseOrderRevision` to be retrieved
+    /// * `version_id` - the version ID of the `PurchaseOrderVersion` containing the
+    ///   `PurchaseOrderRevision` to be retrieved
+    /// * `service_id` - optional - the service ID to fetch the revision from
+    fn get_latest_revision_id(
+        &self,
+        purchase_order_uid: String,
+        version_id: String,
+        service_id: Option<&str>,
+    ) -> Result<Option<i64>, ClientError>;
 }

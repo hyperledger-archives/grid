@@ -14,6 +14,7 @@
 
 use crate::error::ClientError;
 use serde::de::DeserializeOwned;
+use std::collections::VecDeque;
 
 use protobuf::Message;
 use reqwest::blocking::Client as BlockingClient;
@@ -120,6 +121,77 @@ pub struct Paging {
     last: String,
 }
 
+pub struct PagingIter<T>
+where
+    T: for<'a> serde::de::Deserialize<'a> + Sized,
+{
+    next: Option<String>,
+    cache: VecDeque<T>,
+    initial_query: Option<Vec<(String, String)>>,
+}
+
+impl<T> PagingIter<T>
+where
+    T: for<'a> serde::de::Deserialize<'a> + Sized,
+{
+    /// Create a new 'PagingIter' which will make a call to the REST API and load the initial
+    /// cache with the first page of items.
+    fn new(url: &str, query_params: Option<Vec<(String, String)>>) -> Result<Self, ClientError> {
+        let mut new_iter = Self {
+            next: Some(url.to_string()),
+            cache: VecDeque::with_capacity(0),
+            initial_query: query_params,
+        };
+        new_iter.reload_cache()?;
+        Ok(new_iter)
+    }
+
+    // If another page of items exists, use the 'next' URL from the current page and
+    /// reload the cache with the next page of items.
+    fn reload_cache(&mut self) -> Result<(), ClientError> {
+        if let Some(url) = &self.next.take() {
+            let mut request = BlockingClient::new().get(url);
+            if let Some(query) = &self.initial_query.take() {
+                request = request.query(&query);
+            }
+            let response = request.send()?;
+            if !response.status().is_success() {
+                return Err(ClientError::InternalError(response.text()?));
+            }
+
+            let page: Page<T> = response.json::<Page<T>>()?;
+
+            self.cache = page.data.into();
+            self.next = page.paging.next.map(String::from);
+            self.initial_query = None;
+        }
+        Ok(())
+    }
+}
+
+impl<T> Iterator for PagingIter<T>
+where
+    T: for<'a> serde::de::Deserialize<'a> + Sized,
+{
+    type Item = Result<T, ClientError>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cache.is_empty() && self.next.is_some() {
+            if let Err(err) = self.reload_cache() {
+                return Some(Err(err));
+            }
+        };
+        self.cache.pop_front().map(Ok)
+    }
+}
+
+/// A struct that represents a page of items, used for deserializing JSON objects.
+#[derive(Debug, Deserialize)]
+struct Page<T: Sized> {
+    #[serde(bound(deserialize = "T: Deserialize<'de>"))]
+    data: Vec<T>,
+    paging: Paging,
+}
+
 /// Reqwest client representation of a slice of a list response
 #[derive(Debug, Deserialize)]
 pub struct ListSlice<T> {
@@ -189,6 +261,23 @@ pub fn fetch_entities_list<T: DeserializeOwned>(
     }
 
     Ok(entities)
+}
+
+pub fn fetch_entities_list_stream<T: 'static + DeserializeOwned + std::fmt::Debug>(
+    url: &str,
+    route: String,
+    service_id: Option<&str>,
+    filters: Option<HashMap<String, String>>,
+) -> Result<Box<dyn Iterator<Item = Result<T, ClientError>>>, ClientError> {
+    let final_url = format!("{}/{}", url, route);
+
+    let query_params: Vec<(String, String)> = service_id
+        .into_iter()
+        .map(|sid| ("service_id".to_string(), sid.to_string()))
+        .chain(filters.unwrap_or_default().into_iter())
+        .collect();
+
+    Ok(Box::new(PagingIter::new(&final_url, Some(query_params))?))
 }
 
 /// Fetches and serializes single `T` Entity from REST API

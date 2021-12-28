@@ -123,6 +123,7 @@ pub fn run(
                         .service(routes::list_purchase_order_versions)
                         .service(routes::get_purchase_order_version)
                         .service(routes::list_purchase_order_version_revisions)
+                        .service(routes::get_latest_revision_id)
                         .service(routes::get_purchase_order_version_revision)
                 }
 
