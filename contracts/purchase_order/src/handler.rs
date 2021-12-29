@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         use sabre_sdk::ApplyError;
@@ -35,10 +37,13 @@ use grid_sdk::{
             Action, CreatePurchaseOrderPayload, CreateVersionPayload, PurchaseOrderPayload,
             UpdatePurchaseOrderPayload, UpdateVersionPayload,
         },
-        state::{PurchaseOrderBuilder, PurchaseOrderRevisionBuilder, PurchaseOrderVersionBuilder},
+        state::{
+            PurchaseOrderBuilder, PurchaseOrderRevision, PurchaseOrderRevisionBuilder,
+            PurchaseOrderVersion, PurchaseOrderVersionBuilder,
+        },
     },
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
-    workflow::WorkflowState,
+    workflow::{Workflow, WorkflowState},
 };
 
 use crate::payload::validate_po_payload;
@@ -370,30 +375,58 @@ fn update_purchase_order(
     state: &mut PurchaseOrderState,
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
-    // Validate the signer exists
+    /* ------------------ Access current state ------------------------ */
+
+    // Validate agent exists
     let agent = state.get_agent(signer)?.ok_or_else(|| {
         ApplyError::InvalidTransaction(format!("The signer is not an agent: {}", signer))
     })?;
-
-    // Check if purchase_order exists
+    // Validate purchase order exists
     let po_uid = payload.uid();
-    let purchase_order = match state.get_purchase_order(po_uid) {
-        Ok(Some(purchase_order)) => Ok(purchase_order),
-        Ok(None) => Err(ApplyError::InvalidTransaction(format!(
+    let purchase_order = match state.get_purchase_order(po_uid)? {
+        Some(purchase_order) => Ok(purchase_order),
+        None => Err(ApplyError::InvalidTransaction(format!(
             "No purchase order exists: {}",
             po_uid
         ))),
-        Err(err) => Err(err),
     }?;
-
+    // Collect the versions from this purchase order
+    let mut existing_versions = purchase_order.versions().to_vec().into_iter();
+    // Lists existing versions if there is also an update payload for the version
+    let mut version_updates = payload
+        .version_updates()
+        .iter()
+        .map(|update| {
+            let corresponding_version = existing_versions
+                .find(|vers| vers.version_id() == update.version_id())
+                .ok_or_else(|| {
+                    ApplyError::InvalidTransaction(format!(
+                        "Cannot update version {} that does not exist",
+                        update.version_id()
+                    ))
+                })?;
+            Ok((update.version_id().to_string(), corresponding_version))
+        })
+        .collect::<Result<HashMap<String, PurchaseOrderVersion>, ApplyError>>()?;
     let workflow = get_workflow(purchase_order.workflow_id()).ok_or_else(|| {
         ApplyError::InvalidTransaction(format!(
             "Cannot build workflow type {}",
             purchase_order.workflow_id()
         ))
     })?;
-
-    let desired_state = workflow
+    let existing_po_workflow_state = workflow
+        .subworkflow("po")
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
+        })?
+        .state(purchase_order.workflow_state())
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction(format!(
+                "Workflow state `{}` does not exist in `po` subworkflow",
+                purchase_order.workflow_state()
+            ))
+        })?;
+    let desired_po_workflow_state = workflow
         .subworkflow("po")
         .ok_or_else(|| {
             ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
@@ -402,9 +435,15 @@ fn update_purchase_order(
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
                 "Workflow state `{}` does not exist in `po` subworkflow",
-                payload.workflow_state()
+                purchase_order.workflow_state()
             ))
         })?;
+
+    let version_subworkflow = workflow.subworkflow("version").ok_or_else(|| {
+        ApplyError::InvalidTransaction("Subworkflow `version` does not exist".to_string())
+    })?;
+
+    /* ------------------ Verify submitter's permissions ------------------------ */
 
     // Check if the agent has permission to update the purchase order
     let perm_string = if payload.workflow_state() == purchase_order.workflow_state() {
@@ -414,7 +453,7 @@ fn update_purchase_order(
         // Updates from one state to another require that specific transition permission
         Permission::can_transition(payload.workflow_state()).ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
-                "No permission exists to allow transitioning to a state of '{}'",
+                "No permission exists to allow transitioning to a state of `{}`",
                 payload.workflow_state()
             ))
         })?
@@ -424,18 +463,7 @@ fn update_purchase_order(
             &perm_string.to_string(),
             signer,
             agent.org_id(),
-            &workflow
-                .subworkflow("po")
-                .ok_or_else(|| {
-                    ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
-                })?
-                .state(purchase_order.workflow_state())
-                .ok_or_else(|| {
-                    ApplyError::InvalidTransaction(format!(
-                        "Workflow state `{}` does not exist in `po` subworkflow",
-                        purchase_order.workflow_state()
-                    ))
-                })?,
+            &existing_po_workflow_state,
             payload.workflow_state(),
         )
         .map_err(|err| {
@@ -451,10 +479,73 @@ fn update_purchase_order(
             payload.workflow_state()
         )));
     }
+    // Validate permissions for version updates and convert to state object
+    let mut updated_versions = payload
+        .version_updates()
+        .iter()
+        .map(|update_payload| {
+            let existing_version = version_updates
+                .remove(update_payload.version_id())
+                .ok_or_else(|| {
+                    ApplyError::InvalidTransaction(format!(
+                        "Cannot update version {} that does not exist",
+                        update_payload.version_id()
+                    ))
+                })?;
+            // check the permission of the individual version update
+            validate_version_update_permissions(
+                &existing_version,
+                update_payload,
+                signer,
+                agent.org_id(),
+                &workflow,
+                perm_checker,
+            )?;
+            convert_update_to_version(existing_version, update_payload)
+        })
+        .collect::<Result<HashMap<String, PurchaseOrderVersion>, ApplyError>>()?;
 
-    if payload.is_closed() {
+    /* ------------------- Create new state ----------------------------- */
+
+    // Meld version updates to those into this purchase order's existing versions
+    let versions = purchase_order
+        .versions()
+        .to_vec()
+        .into_iter()
+        .map(|vers| {
+            if let Some(updated_vers) = updated_versions.remove(vers.version_id()) {
+                Ok(updated_vers)
+            } else {
+                Ok(vers)
+            }
+        })
+        .collect::<Result<Vec<PurchaseOrderVersion>, ApplyError>>()?;
+
+    // Create the updated purchase_order
+    let mut builder = PurchaseOrderBuilder::new()
+        .with_uid(po_uid.to_string())
+        .with_workflow_state(payload.workflow_state().to_string())
+        .with_alternate_ids(payload.alternate_ids().to_vec())
+        .with_is_closed(payload.is_closed())
+        .with_versions(versions)
+        .with_created_at(purchase_order.created_at())
+        .with_buyer_org_id(purchase_order.buyer_org_id().to_string())
+        .with_seller_org_id(purchase_order.seller_org_id().to_string())
+        .with_workflow_id(purchase_order.workflow_id().to_string());
+
+    if let Some(vers) = payload.accepted_version_number() {
+        builder = builder.with_accepted_version_number(vers.to_string());
+    }
+
+    let updated_po = builder.build().map_err(|err| {
+        ApplyError::InvalidTransaction(format!("Cannot build purchase order: {}", err))
+    })?;
+
+    /* ------------------- Validate updated state ----------------------------- */
+
+    if updated_po.is_closed() {
         // Validate the accepted version number
-        if let Some(accepted_version_number) = payload.accepted_version_number() {
+        if let Some(accepted_version_number) = updated_po.accepted_version_number() {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Accepted version number {} set for closed purchase order {}. Expected accepted \
                 version number to be empty",
@@ -463,120 +554,257 @@ fn update_purchase_order(
         }
 
         // Validate the workflow is not set to complete
-        if desired_state.has_constraint(&WorkflowConstraint::Complete.to_string()) {
+        if desired_po_workflow_state.has_constraint(&WorkflowConstraint::Complete.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Workflow state '{}' set for closed purchase order {}. Expected workflow \
+                "Workflow state `{}` set for closed purchase order {}. Expected workflow \
                 state not to be closed for a complete purchase order",
-                payload.workflow_state(),
+                updated_po.workflow_state(),
                 po_uid,
             )));
         }
 
         // Validate the workflow is closed
-        if !desired_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
+        if !desired_po_workflow_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Property `is_closed` for purchase order {} is set to true, but the desired \
-                workflow state {} does not have the `closed` constraint.",
+                "Workflow state `{}` does not have `closed` constraint, but purchase order {} \
+                is closed",
+                updated_po.workflow_state(),
                 po_uid,
-                payload.workflow_state(),
             )));
         }
     } else {
         // Validate the workflow is not closed
-        if desired_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
+        if desired_po_workflow_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
                 "The desired workflow state {} for purchase order {} has the `closed` constraint, \
                 but property `is_closed` was set to false.",
-                payload.workflow_state(),
+                updated_po.workflow_state(),
                 po_uid,
             )));
         }
     }
 
-    if let Some(accepted_version_number) = payload.accepted_version_number() {
-        // Validate the version number exists
-        let version = match state.get_purchase_order_version(po_uid, accepted_version_number) {
-            Ok(Some(purchase_order)) => Ok(purchase_order),
-            Ok(None) => Err(ApplyError::InvalidTransaction(format!(
-                "No version {} exists for purchase order {}",
-                accepted_version_number, po_uid
-            ))),
-            Err(err) => Err(err),
-        }?;
+    if updated_po.accepted_version_number().is_none()
+        && desired_po_workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
+    {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Workflow state `{}` set for purchase order {} has `accepted` constraint, but no \
+            version is accepted",
+            updated_po.workflow_state(),
+            po_uid,
+        )));
+    }
 
-        let version_workflow = workflow
-            .subworkflow("version")
-            .ok_or_else(|| {
-                ApplyError::InvalidTransaction("Subworkflow `version` does not exist".to_string())
-            })?
-            .state(version.workflow_state())
+    let mut updated_version_states = updated_po
+        .versions()
+        .iter()
+        .map(|vers| {
+            let vers_state = version_subworkflow
+                .state(vers.workflow_state())
+                .ok_or_else(|| {
+                    ApplyError::InvalidTransaction(format!(
+                        "Workflow state `{}` does not exist in `version` subworkflow",
+                        vers.workflow_state()
+                    ))
+                })?;
+            Ok((vers.version_id(), vers_state))
+        })
+        .collect::<Result<HashMap<&str, WorkflowState>, ApplyError>>()?;
+
+    if let Some(accepted_version_number) =
+        updated_po.accepted_version_number().map(ToOwned::to_owned)
+    {
+        // Remove the accepted version from the list of versions
+        let accepted_vers_state = updated_version_states
+            .remove(accepted_version_number.as_str())
             .ok_or_else(|| {
                 ApplyError::InvalidTransaction(format!(
-                    "Workflow state `{}` does not exist in `version` subworkflow",
-                    version.workflow_state()
+                    "Cannot accept purchase order {} version {} that does not exist",
+                    updated_po.uid(),
+                    accepted_version_number,
                 ))
             })?;
 
-        // Validate the version workflow is accepted
-        if !version_workflow.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+        // Validate this version is not a draft
+        if accepted_vers_state.has_constraint(&WorkflowConstraint::Draft.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Workflow state '{}' set for accepted version number {} of purchase \
-                    order {}. Expected version workflow state to be accepted when accepted \
-                    version number is set",
-                version.workflow_state(),
-                accepted_version_number,
-                po_uid,
+                "Workflow state `{}` set for purchase order {} version {}, \
+                cannot accept draft version",
+                accepted_vers_state.name(),
+                updated_po.uid(),
+                accepted_version_number
             )));
         }
 
-        // Validate the workflow is accepted
-        if !desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+        // Check that the purchase order is in an "accepted"-constrained state
+        if !desired_po_workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Workflow state '{}' set for purchase order {}. Expected workflow state \
-                    to be accepted when accepted version number is set",
-                payload.workflow_state(),
-                po_uid,
+                "Purchase order {} has accepted version {}, but po workflow state `{}` does not \
+                have an `accepted` costraint",
+                updated_po.uid(),
+                accepted_version_number,
+                updated_po.workflow_state(),
             )));
         }
-    } else {
-        // Validate we're not expecting the accepted version number
-        if desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+
+        // Check that the accepted version is in an "accepted"-constrained state
+        if !accepted_vers_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
             return Err(ApplyError::InvalidTransaction(format!(
-                "Workflow state '{}' set for purchase order {}. Expected purchase order \
-                    accepted version for an accepted purchase order",
-                payload.workflow_state(),
-                po_uid,
+                "Purchase order {} has accepted version {}, but version workflow state `{}` does \
+                not have an `accepted` costraint",
+                updated_po.uid(),
+                accepted_version_number,
+                accepted_vers_state.name(),
+            )));
+        }
+
+        // Retain a list of versions that were not the "accepted_version_number" that are still in
+        // an invalid "accepted"-constraint state
+        if updated_version_states
+            .into_iter()
+            .filter_map(|(vers_id, workflow_state)| {
+                if workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+                    Some(vers_id)
+                } else {
+                    None
+                }
+            })
+            .next()
+            .is_some()
+        {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Attempting to accept purchase order {} version {}, but other versions are already \
+                accepted",
+                updated_po.uid(),
+                accepted_version_number,
             )));
         }
     }
 
-    // Handle updating the purchase_order
-    let builder = PurchaseOrderBuilder::new()
-        .with_uid(po_uid.to_string())
-        .with_workflow_state(payload.workflow_state().to_string())
-        .with_alternate_ids(payload.alternate_ids().to_vec())
-        .with_is_closed(payload.is_closed())
-        .with_versions(purchase_order.versions().to_vec())
-        .with_created_at(purchase_order.created_at())
-        .with_buyer_org_id(purchase_order.buyer_org_id().to_string())
-        .with_seller_org_id(purchase_order.seller_org_id().to_string())
-        .with_workflow_id(purchase_order.workflow_id().to_string());
+    /* ------------------- Persist updated state ----------------------------- */
 
-    state.set_purchase_order(
-        po_uid,
-        match payload.accepted_version_number() {
-            Some(accepted_version_number) => {
-                builder.with_accepted_version_number(accepted_version_number.to_string())
-            }
-            None => builder,
-        }
-        .build()
-        .map_err(|err| {
-            ApplyError::InvalidTransaction(format!("Cannot build purchase order: {}", err))
-        })?,
-    )?;
+    state.set_purchase_order(po_uid, updated_po)?;
 
     Ok(())
+}
+
+fn validate_version_update_permissions(
+    existing_version: &PurchaseOrderVersion,
+    payload: &UpdateVersionPayload,
+    signer: &str,
+    agent_org_id: &str,
+    workflow: &Workflow,
+    perm_checker: &PermissionChecker,
+) -> Result<(), ApplyError> {
+    let existing_version_workflow_state = workflow
+        .subworkflow("version")
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction(format!(
+                "Workflow `{}` does not contain a `po` subworkflow",
+                payload.workflow_state(),
+            ))
+        })?
+        .state(existing_version.workflow_state())
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction(format!(
+                "Workflow state `{}` does not exist in version subworkflow",
+                payload.workflow_state()
+            ))
+        })?;
+    let perm_string = if existing_version.workflow_state() == payload.workflow_state() {
+        Permission::CanUpdatePoVersion.to_string()
+    } else {
+        Permission::can_transition(payload.workflow_state())
+            .ok_or_else(|| {
+                ApplyError::InvalidTransaction(format!(
+                    "Transition permission does not exist for `{}` workflow state",
+                    payload.workflow_state()
+                ))
+            })?
+            .to_string()
+    };
+    let perm_result = perm_checker
+        .check_permission_with_workflow(
+            &perm_string,
+            signer,
+            agent_org_id,
+            &existing_version_workflow_state,
+            payload.workflow_state(),
+        )
+        .map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Unable to check agent's permission: {}", err))
+        })?;
+
+    if !perm_result {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Agent {} does not have permission to update version {} to workflow state `{}`",
+            signer,
+            payload.version_id(),
+            payload.workflow_state(),
+        )));
+    }
+
+    Ok(())
+}
+
+fn convert_update_to_version(
+    existing_version: PurchaseOrderVersion,
+    payload: &UpdateVersionPayload,
+) -> Result<(String, PurchaseOrderVersion), ApplyError> {
+    let version_id = existing_version.version_id().to_string();
+    let new_revision = PurchaseOrderRevisionBuilder::new()
+        .with_revision_id(payload.revision().revision_id())
+        .with_submitter(payload.revision().submitter().to_string())
+        .with_created_at(payload.revision().created_at())
+        .with_order_xml_v3_4(payload.revision().order_xml_v3_4().to_string())
+        .build()
+        .map_err(|err| {
+            ApplyError::InvalidTransaction(format!(
+                "Unable to build revision {} of purchase order version {}: {}",
+                payload.revision().revision_id(),
+                payload.version_id(),
+                err
+            ))
+        })?;
+    // Check if a new revision is included in the update
+    let (current_revision_id, rev_addition): (u64, Option<PurchaseOrderRevision>) =
+        match existing_version.revisions().to_vec().into_iter().last() {
+            Some(last_rev) => {
+                if last_rev == new_revision {
+                    (last_rev.revision_id(), None)
+                } else {
+                    (last_rev.revision_id() + 1, Some(new_revision))
+                }
+            }
+            None => (1, Some(new_revision)),
+        };
+    let mut existing_revisions = existing_version.revisions().to_vec();
+    if let Some(revision) = rev_addition {
+        // Update the revision ID of the payload's revision
+        let new_revision = revision
+            .into_builder()
+            .with_revision_id(current_revision_id)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!(
+                    "Cannot build purchase order version: {}",
+                    err
+                ))
+            })?;
+        existing_revisions.push(new_revision);
+    }
+    // Update the corresponding version
+    let updated_version = existing_version
+        .into_builder()
+        .with_workflow_state(payload.workflow_state().to_string())
+        .with_is_draft(payload.is_draft())
+        .with_current_revision_id(current_revision_id)
+        .with_revisions(existing_revisions)
+        .build()
+        .map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Cannot build purchase order version: {}", err))
+        })?;
+    Ok((version_id, updated_version))
 }
 
 fn create_version(
@@ -634,14 +862,14 @@ fn create_version(
         && payload.is_draft()
     {
         return Err(ApplyError::InvalidTransaction(
-            "Desired workflow state has `Accepted` constraint, version is a draft".to_string(),
+            "Desired workflow state has `accepted` constraint, version is a draft".to_string(),
         ));
     }
     if desired_workflow_state.has_constraint(&WorkflowConstraint::Draft.to_string())
         && !payload.is_draft()
     {
         return Err(ApplyError::InvalidTransaction(
-            "Desired workflow state has `Draft` constraint, version is not a draft".to_string(),
+            "Desired workflow state has `draft` constraint, version is not a draft".to_string(),
         ));
     }
     // Get the "create" state from the version subworkflow, to validate if we are able to
@@ -758,7 +986,7 @@ fn update_version(
     } else {
         Permission::can_transition(desired_state).ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
-                "No permission exists to allow transitioning to a state of '{}'",
+                "No permission exists to allow transitioning to a state of `{}`",
                 desired_state
             ))
         })?
@@ -876,7 +1104,6 @@ mod tests {
     use super::*;
 
     use std::cell::RefCell;
-    use std::collections::HashMap;
 
     use grid_sdk::{
         pike::addressing::{
@@ -1495,9 +1722,9 @@ mod tests {
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
         let expected = format!(
-            "Property `is_closed` for purchase order {} is set to true, but the desired \
-            workflow state {} does not have the `closed` constraint.",
-            PO_UID, to_workflow
+            "Workflow state `{}` does not have `closed` constraint, but purchase order {} \
+            is closed",
+            to_workflow, PO_UID,
         );
         match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
             Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
@@ -1617,10 +1844,9 @@ mod tests {
             .with_workflow_state("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
-
         let expected = format!(
-            "No version {} exists for purchase order {}",
-            PO_VERSION_ID_2, PO_UID
+            "Cannot accept purchase order {} version {} that does not exist",
+            PO_UID, PO_VERSION_ID_2,
         );
         match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
             Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
@@ -1641,9 +1867,8 @@ mod tests {
         let perm_checker = PermissionChecker::new(&ctx);
         ctx.add_seller_agent();
         ctx.add_seller_role();
-        ctx.add_purchase_order(purchase_order_with_versions(vec![
-            purchase_order_version_draft(PO_VERSION_ID_1),
-        ]));
+        let expected_version = purchase_order_version_draft(PO_VERSION_ID_1);
+        ctx.add_purchase_order(purchase_order_with_versions(vec![expected_version]));
 
         let update = UpdatePurchaseOrderPayloadBuilder::new()
             .with_uid(PO_UID.to_string())
@@ -1652,12 +1877,13 @@ mod tests {
             .with_workflow_state("confirmed".to_string())
             .build()
             .expect("Unable to build UpdatePurchaseOrderPayload");
-
+        let expected_version = purchase_order_version_draft(PO_VERSION_ID_1);
         let expected = format!(
-            "Workflow state '{}' set for accepted version number {} of purchase \
-            order {}. Expected version workflow state to be accepted when accepted \
-            version number is set",
-            "editable", PO_VERSION_ID_1, PO_UID
+            "Workflow state `{}` set for purchase order {} version {}, \
+            cannot accept draft version",
+            expected_version.workflow_state(),
+            PO_UID,
+            PO_VERSION_ID_1,
         );
         match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
             Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
@@ -1692,9 +1918,9 @@ mod tests {
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
         let expected = format!(
-            "Workflow state '{}' set for purchase order {}. Expected workflow state \
-            to be accepted when accepted version number is set",
-            to_workflow, PO_UID
+            "Purchase order {} has accepted version {}, but po workflow state `{}` does not have \
+            an `accepted` costraint",
+            PO_UID, PO_VERSION_ID_1, to_workflow,
         );
         match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
             Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
@@ -1726,7 +1952,7 @@ mod tests {
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
         let expected = format!(
-            "Workflow state '{}' set for closed purchase order {}. Expected workflow \
+            "Workflow state `{}` set for closed purchase order {}. Expected workflow \
                 state not to be closed for a complete purchase order",
             to_workflow, PO_UID
         );
@@ -1759,8 +1985,8 @@ mod tests {
             .expect("Unable to build UpdatePurchaseOrderPayload");
 
         let expected = format!(
-            "Workflow state '{}' set for purchase order {}. Expected purchase order \
-                accepted version for an accepted purchase order",
+            "Workflow state `{}` set for purchase order {} has `accepted` constraint, \
+            but no version is accepted",
             to_workflow, PO_UID
         );
         match update_purchase_order(&update, SELLER_PUB_KEY, &mut state, &perm_checker) {
@@ -2152,7 +2378,7 @@ mod tests {
             .build()
             .expect("Unable to build CreateVersionPayload");
         let expected =
-            "Desired workflow state has `Accepted` constraint, version is a draft".to_string();
+            "Desired workflow state has `accepted` constraint, version is a draft".to_string();
 
         match create_version(
             &create_po_vers_payload,
@@ -2514,7 +2740,7 @@ mod tests {
 
     #[test]
     /// This test validates a purchase order version is only able to be updated to the desired
-    /// workflow state if all constraints are met, specifically if the `Accepted` constraint exists
+    /// workflow state if all constraints are met, specifically if the `accepted` constraint exists
     /// on the version's workflow state, the version must not be a draft.
     ///
     /// 1. Add the buyer and seller organizations to state
@@ -2648,7 +2874,7 @@ mod tests {
         PurchaseOrderVersionBuilder::new()
             .with_version_id(version_id.to_string())
             .with_workflow_state("accepted".to_string())
-            .with_is_draft(true)
+            .with_is_draft(false)
             .with_current_revision_id(1)
             .with_revisions(purchase_order_revisions())
             .build()
