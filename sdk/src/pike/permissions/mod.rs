@@ -201,7 +201,7 @@ impl<'a> PermissionChecker<'a> {
         permission: &str,
         signer: &str,
         record_owner: &str,
-        workflow_state: WorkflowState,
+        workflow_state: &WorkflowState,
         desired_state: &str,
     ) -> Result<bool, PermissionCheckerError> {
         let agent = self.get_agent(signer)?.ok_or_else(|| {
@@ -289,7 +289,6 @@ mod tests {
     const ROLE_ALPHA_BUYER: &str = "buyer";
     const ROLE_BETA_BUYER: &str = "buyer";
     const ROLE_ALPHA_SELLER: &str = "seller";
-    const ROLE_BETA_SELLER: &str = "seller";
 
     const PERM_ALIAS_BUYER: &str = "po::buyer";
     const PERM_ALIAS_SELLER: &str = "po::seller";
@@ -674,7 +673,7 @@ mod tests {
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
-                state,
+                &state,
                 "issued",
             )
             .expect("Unable to check permission with workflow");
@@ -749,7 +748,7 @@ mod tests {
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
-                state,
+                &state,
                 "issued",
             )
             .expect("Unable to check permission with workflow");
@@ -813,7 +812,7 @@ mod tests {
                 PERM_CAN_UPDATE_PO_VERSION,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
-                state,
+                &state,
                 "confirmed",
             )
             .expect("Unable to check permission with workflow");
@@ -894,7 +893,7 @@ mod tests {
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_BETA,
                 ORG_ID_ALPHA,
-                state,
+                &state,
                 "issued",
             )
             .expect("Unable to check permission with workflow");
@@ -970,7 +969,7 @@ mod tests {
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_BETA,
                 ORG_ID_ALPHA,
-                state,
+                &state,
                 "issued",
             )
             .expect("Unable to check permission with workflow");
