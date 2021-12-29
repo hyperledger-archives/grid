@@ -101,6 +101,7 @@ stable = [
     "rest-api-resources-schema",
     "schema",
     "sqlite",
+    "workflow"
 ]
 
 experimental = [
@@ -116,8 +117,7 @@ experimental = [
     "rest-api-resources-purchase-order",
     "rest-api-resources-submit",
     "rest-api-resources-track-and-trace",
-    "track-and-trace",
-    "workflow"
+    "track-and-trace"
 ]
 
 backend = ["base64", "futures", "url"]
