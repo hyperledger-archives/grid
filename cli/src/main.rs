@@ -88,7 +88,7 @@ use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyV
 #[cfg(any(feature = "purchase-order"))]
 use grid_sdk::{
     client::purchase_order::AlternateId as POClientAlternateId,
-    data_validation::validate_order_xml_3_4,
+    data_validation::{purchase_order::validate_alt_id_format, validate_order_xml_3_4},
     protocol::purchase_order::payload::{
         CreatePurchaseOrderPayloadBuilder, CreateVersionPayloadBuilder, PayloadRevisionBuilder,
         UpdatePurchaseOrderPayloadBuilder, UpdateVersionPayloadBuilder,
@@ -2518,6 +2518,9 @@ fn run() -> Result<(), CliError> {
                     .collect();
 
                 if !alternate_ids.is_empty() {
+                    for id in &alternate_ids {
+                        validate_alt_id_format(id)?;
+                    }
                     purchase_order::do_check_alternate_ids_are_unique(
                         &*purchase_order_client,
                         alternate_ids.to_vec(),
@@ -2600,7 +2603,9 @@ fn run() -> Result<(), CliError> {
                     if m.is_present("add_id") {
                         let adds: Vec<String> =
                             m.values_of("add_id").unwrap().map(String::from).collect();
-
+                        for id in &adds {
+                            validate_alt_id_format(id)?;
+                        }
                         purchase_order::do_check_alternate_ids_are_unique(
                             &*purchase_order_client,
                             adds.to_vec(),

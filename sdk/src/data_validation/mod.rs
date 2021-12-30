@@ -16,6 +16,8 @@
 */
 
 mod error;
+#[cfg(feature = "purchase-order")]
+pub mod purchase_order;
 mod xml;
 
 pub use error::DataValidationError;

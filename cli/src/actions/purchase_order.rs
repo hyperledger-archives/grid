@@ -19,6 +19,7 @@ use grid_sdk::{
         AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision,
         PurchaseOrderVersion,
     },
+    data_validation::purchase_order::validate_alt_id_format,
     error::ClientError,
     pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::purchase_order::payload::{
@@ -296,13 +297,9 @@ fn generate_random_base62_string(len: usize) -> String {
 }
 
 pub fn make_alternate_id_from_str(uid: &str, id: &str) -> Result<AlternateId, CliError> {
+    validate_alt_id_format(&id.to_string())?;
+
     let split: Vec<&str> = id.split(':').collect();
-    if split.len() != 2 {
-        return Err(CliError::UserError(format!(
-            "Could not parse alternate ID: {}",
-            id
-        )));
-    }
 
     Ok(AlternateId::new(uid, split[0], split[1]))
 }
