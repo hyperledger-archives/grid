@@ -953,6 +953,30 @@ Revision 1:
 
         assert_eq!(format!("{}", po), display);
     }
+
+    /// Tests that alternate IDs are parsed correctly
+    #[test]
+    fn test_alt_id_parsing() {
+        let valid_id = "test:test_id";
+        let invalid_ids = vec![
+            "test_id",
+            "test:test:test_id",
+            "::test_id",
+            ":test_id",
+            "::",
+            ":",
+            ":test:test_id",
+        ];
+        let _valid_output = AlternateId::new("uid", "test", "test_id");
+
+        assert!(matches!(
+            make_alternate_id_from_str(&"uid", &valid_id).unwrap(),
+            _valid_output
+        ));
+        for inv in invalid_ids {
+            assert!(make_alternate_id_from_str(&"uid", &inv).is_err());
+        }
+    }
 }
 
 pub fn get_current_revision_for_version(
