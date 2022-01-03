@@ -137,7 +137,12 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
 
             let mut count_query = purchase_order_version::table
                 .into_boxed()
-                .select(purchase_order_version::all_columns);
+                .select(purchase_order_version::all_columns)
+                .filter(
+                    purchase_order_version::purchase_order_uid
+                        .eq(&purchase_order_uid)
+                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
             if let Some(service_id) = service_id {
                 count_query = count_query.filter(purchase_order_version::service_id.eq(service_id));
@@ -287,7 +292,12 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
 
             let mut count_query = purchase_order_version::table
                 .into_boxed()
-                .select(purchase_order_version::all_columns);
+                .select(purchase_order_version::all_columns)
+                .filter(
+                    purchase_order_version::purchase_order_uid
+                        .eq(&purchase_order_uid)
+                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
 
             if let Some(service_id) = service_id {
                 count_query = count_query.filter(purchase_order_version::service_id.eq(service_id));
