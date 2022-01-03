@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod handler;
-pub mod payloads;
+mod handler;
+mod payloads;
 
 pub use handler::{
     get_latest_revision_id, get_purchase_order, get_purchase_order_revision,
@@ -21,6 +21,6 @@ pub use handler::{
     list_purchase_orders,
 };
 pub use payloads::{
-    PurchaseOrderListSlice, PurchaseOrderRevisionSlice, PurchaseOrderSlice,
-    PurchaseOrderVersionSlice,
+    PurchaseOrderListSlice, PurchaseOrderRevisionListSlice, PurchaseOrderRevisionSlice,
+    PurchaseOrderSlice, PurchaseOrderVersionListSlice, PurchaseOrderVersionSlice,
 };

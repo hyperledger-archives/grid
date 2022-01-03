@@ -200,7 +200,10 @@ mod test {
             PurchaseOrderVersion, PurchaseOrderVersionBuilder, PurchaseOrderVersionRevision,
             PurchaseOrderVersionRevisionBuilder,
         },
-        rest_api::resources::purchase_order::v1::payloads::*,
+        rest_api::resources::purchase_order::v1::{
+            PurchaseOrderListSlice, PurchaseOrderRevisionListSlice, PurchaseOrderRevisionSlice,
+            PurchaseOrderSlice, PurchaseOrderVersionListSlice, PurchaseOrderVersionSlice,
+        },
     };
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
