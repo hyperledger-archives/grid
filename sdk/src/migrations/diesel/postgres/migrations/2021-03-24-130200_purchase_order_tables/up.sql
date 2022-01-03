@@ -22,7 +22,7 @@ CREATE TABLE purchase_order (
     is_closed BOOLEAN NOT NULL,
     accepted_version_id TEXT,
     created_at BIGINT NOT NULL,
-    workflow_type TEXT NOT NULL,
+    workflow_id TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT

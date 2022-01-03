@@ -462,7 +462,7 @@ mod tests {
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
             .with_versions(vec![purchase_order_version(PO_VERSION_ID_1)])
-            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .with_is_closed(false)
             .build()
             .expect("Unable to build purchase order")
@@ -475,7 +475,7 @@ mod tests {
             .with_created_at(2)
             .with_buyer_org_id(ORG_1.to_string())
             .with_seller_org_id(ORG_2.to_string())
-            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .with_versions(vec![
                 purchase_order_version(PO_VERSION_ID_1),
                 purchase_order_version(PO_VERSION_ID_2),

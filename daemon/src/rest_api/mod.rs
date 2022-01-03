@@ -3606,7 +3606,7 @@ mod test {
             .with_is_closed(false)
             .with_versions(vec![get_po_version(service_id.clone())])
             .with_created_at(0)
-            .with_workflow_type("built-in::collaborative::v1".to_string())
+            .with_workflow_id("built-in::collaborative::v1".to_string())
             .with_start_commit_number(2)
             .with_end_commit_number(4)
             .with_service_id(service_id.clone())
@@ -3621,7 +3621,7 @@ mod test {
             .with_is_closed(false)
             .with_versions(vec![get_po_version(service_id.clone())])
             .with_created_at(0)
-            .with_workflow_type("built-in::collaborative::v1".to_string())
+            .with_workflow_id("built-in::collaborative::v1".to_string())
             .with_start_commit_number(4)
             .with_end_commit_number(i64::MAX)
             .with_service_id(service_id)
@@ -3744,7 +3744,7 @@ mod test {
             .with_is_closed(false)
             .with_versions(vec![get_po_version(service_id.clone())])
             .with_created_at(0)
-            .with_workflow_type("built-in::collaborative::v1".to_string())
+            .with_workflow_id("built-in::collaborative::v1".to_string())
             .with_start_commit_number(0)
             .with_end_commit_number(i64::MAX)
             .with_service_id(service_id)
@@ -3807,7 +3807,7 @@ mod test {
         assert_eq!(slice_1_versions.len(), 1);
         assert_eq!(slice_1.is_closed, slice_2.is_closed);
         assert_eq!(slice_1.created_at, slice_2.created_at);
-        assert_eq!(slice_1.workflow_type, slice_2.workflow_type);
+        assert_eq!(slice_1.workflow_id, slice_2.workflow_id);
         compare_po_version_slices(
             &mut slice_1_versions.pop().unwrap(),
             &mut slice_2_versions.pop().unwrap(),

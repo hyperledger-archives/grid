@@ -341,7 +341,7 @@ fn create_purchase_order(
         .with_is_closed(false)
         .with_buyer_org_id(buyer_org_id)
         .with_seller_org_id(seller_org_id)
-        .with_workflow_type(workflow.to_string())
+        .with_workflow_id(workflow.to_string())
         .build()
         .map_err(|err| {
             ApplyError::InvalidTransaction(format!("Cannot build purchase order: {}", err))
@@ -374,10 +374,10 @@ fn update_purchase_order(
         Err(err) => Err(err),
     }?;
 
-    let workflow = get_workflow(purchase_order.workflow_type()).ok_or_else(|| {
+    let workflow = get_workflow(purchase_order.workflow_id()).ok_or_else(|| {
         ApplyError::InvalidTransaction(format!(
             "Cannot build workflow type {}",
-            purchase_order.workflow_type()
+            purchase_order.workflow_id()
         ))
     })?;
 
@@ -548,7 +548,7 @@ fn update_purchase_order(
         .with_created_at(purchase_order.created_at())
         .with_buyer_org_id(purchase_order.buyer_org_id().to_string())
         .with_seller_org_id(purchase_order.seller_org_id().to_string())
-        .with_workflow_type(purchase_order.workflow_type().to_string());
+        .with_workflow_id(purchase_order.workflow_id().to_string());
 
     state.set_purchase_order(
         po_uid,
@@ -583,8 +583,8 @@ fn create_version(
         .to_string();
     let po_uid = payload.po_uid();
     let version_id = payload.version_id();
-    let workflow_type = match state.get_purchase_order(po_uid)? {
-        Some(po) => Ok(po.workflow_type().to_string()),
+    let workflow_id = match state.get_purchase_order(po_uid)? {
+        Some(po) => Ok(po.workflow_id().to_string()),
         None => Err(ApplyError::InvalidTransaction(format!(
             "Purchase order {} does not exist",
             po_uid
@@ -602,9 +602,9 @@ fn create_version(
     }
     // Retrieve the workflow state we will put the version in
     let desired_workflow_state_string = payload.workflow_state().to_string();
-    let desired_workflow_state = get_workflow(&workflow_type)
+    let desired_workflow_state = get_workflow(&workflow_id)
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction(format!("Workflow `{}` does not exist", &workflow_type))
+            ApplyError::InvalidTransaction(format!("Workflow `{}` does not exist", &workflow_id))
         })?
         .subworkflow("version")
         .ok_or_else(|| {
@@ -634,9 +634,9 @@ fn create_version(
     }
     // Get the "create" state from the version subworkflow, to validate if we are able to
     // create this version
-    let create_workflow_state = get_workflow(&workflow_type)
+    let create_workflow_state = get_workflow(&workflow_id)
         .ok_or_else(|| {
-            ApplyError::InvalidTransaction(format!("Workflow `{}` does not exist", &workflow_type))
+            ApplyError::InvalidTransaction(format!("Workflow `{}` does not exist", &workflow_id))
         })?
         .subworkflow("version")
         .ok_or_else(|| {
@@ -727,11 +727,11 @@ fn update_version(
     let existing_po = state.get_purchase_order(po_uid)?.ok_or_else(|| {
         ApplyError::InvalidTransaction(format!("Purchase order {} does not exist", po_uid))
     })?;
-    let version_subworkflow = get_workflow(existing_po.workflow_type())
+    let version_subworkflow = get_workflow(existing_po.workflow_id())
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
                 "Cannot build workflow type {}",
-                existing_po.workflow_type(),
+                existing_po.workflow_id(),
             ))
         })?
         .subworkflow("version")
@@ -2560,7 +2560,7 @@ mod tests {
             .with_is_closed(false)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build purchase order")
     }
@@ -2574,7 +2574,7 @@ mod tests {
             .with_is_closed(false)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build purchase order")
     }
@@ -2588,7 +2588,7 @@ mod tests {
             .with_is_closed(false)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_type(POWorkflow::SystemOfRecord.to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build purchase order")
     }
@@ -2602,7 +2602,7 @@ mod tests {
             .with_versions(vec![])
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_type(POWorkflow::Collaborative.to_string())
+            .with_workflow_id(POWorkflow::Collaborative.to_string())
             .build()
             .expect("Unable to build purchase order")
     }
