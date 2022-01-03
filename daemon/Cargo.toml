@@ -70,6 +70,7 @@ default = [
     "location",
     "pike",
     "product",
+    "purchase-order",
     "rest-api",
     "sawtooth-support",
     "schema",
@@ -87,7 +88,6 @@ experimental = [
     "stable",
     # The following features are experimental:
     "integration",
-    "purchase-order",
     "track-and-trace",
 ]
 
