@@ -22,6 +22,7 @@ mod error;
 #[cfg(feature = "sawtooth")]
 mod sawtooth;
 #[cfg(any(
+    feature = "purchase-order",
     feature = "location",
     feature = "pike",
     feature = "product",
@@ -29,6 +30,7 @@ mod sawtooth;
 ))]
 mod signing;
 #[cfg(any(
+    feature = "purchase-order",
     feature = "location",
     feature = "pike",
     feature = "product",
@@ -54,6 +56,7 @@ use clap::ArgMatches;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 
 #[cfg(any(
+    feature = "purchase-order",
     feature = "location",
     feature = "pike",
     feature = "product",
@@ -122,6 +125,7 @@ const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg(any(
+    feature = "purchase-order",
     feature = "location",
     feature = "pike",
     feature = "product",
