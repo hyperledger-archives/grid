@@ -706,6 +706,7 @@ mod tests {
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
         create_po_payload.set_workflow_state("issued".to_string());
+        create_po_payload.set_workflow_id(POWorkflow::SystemOfRecord.to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
