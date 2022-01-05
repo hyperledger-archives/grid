@@ -61,8 +61,8 @@ fn default_sub_workflow() -> SubWorkflow {
 
         let mut seller = PermissionAlias::new("po::seller");
         seller.add_permission(&Permission::CanCreatePoVersion.to_string());
-        buyer.add_permission(&Permission::CanTransitionIssued.to_string());
-        buyer.add_transition("issued");
+        seller.add_permission(&Permission::CanTransitionIssued.to_string());
+        seller.add_transition("issued");
 
         let mut partner = PermissionAlias::new("po::partner");
         partner.add_permission(&Permission::CanCreatePo.to_string());
