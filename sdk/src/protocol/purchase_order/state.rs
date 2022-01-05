@@ -411,7 +411,7 @@ pub struct PurchaseOrder {
     is_closed: bool,
     buyer_org_id: String,
     seller_org_id: String,
-    workflow_type: String,
+    workflow_id: String,
 }
 
 impl PurchaseOrder {
@@ -451,8 +451,8 @@ impl PurchaseOrder {
         &self.seller_org_id
     }
 
-    pub fn workflow_type(&self) -> &str {
-        &self.workflow_type
+    pub fn workflow_id(&self) -> &str {
+        &self.workflow_id
     }
 
     pub fn into_builder(self) -> PurchaseOrderBuilder {
@@ -465,7 +465,7 @@ impl PurchaseOrder {
             .with_is_closed(self.is_closed)
             .with_buyer_org_id(self.buyer_org_id)
             .with_seller_org_id(self.seller_org_id)
-            .with_workflow_type(self.workflow_type);
+            .with_workflow_id(self.workflow_id);
 
         if let Some(accepted_version) = self.accepted_version_number {
             builder = builder.with_accepted_version_number(accepted_version);
@@ -505,7 +505,7 @@ impl FromProto<purchase_order_state::PurchaseOrder> for PurchaseOrder {
             is_closed: order.get_is_closed(),
             buyer_org_id: order.take_buyer_org_id(),
             seller_org_id: order.take_seller_org_id(),
-            workflow_type: order.take_workflow_type(),
+            workflow_id: order.take_workflow_id(),
         })
     }
 }
@@ -538,7 +538,7 @@ impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
         proto.set_is_closed(order.is_closed());
         proto.set_buyer_org_id(order.buyer_org_id().to_string());
         proto.set_seller_org_id(order.seller_org_id().to_string());
-        proto.set_workflow_type(order.workflow_type().to_string());
+        proto.set_workflow_id(order.workflow_id().to_string());
 
         Ok(proto)
     }
@@ -598,7 +598,7 @@ pub struct PurchaseOrderBuilder {
     is_closed: Option<bool>,
     buyer_org_id: Option<String>,
     seller_org_id: Option<String>,
-    workflow_type: Option<String>,
+    workflow_id: Option<String>,
 }
 
 impl PurchaseOrderBuilder {
@@ -651,8 +651,8 @@ impl PurchaseOrderBuilder {
         self
     }
 
-    pub fn with_workflow_type(mut self, workflow_type: String) -> Self {
-        self.workflow_type = Some(workflow_type);
+    pub fn with_workflow_id(mut self, workflow_id: String) -> Self {
+        self.workflow_id = Some(workflow_id);
         self
     }
 
@@ -689,8 +689,8 @@ impl PurchaseOrderBuilder {
             PurchaseOrderBuildError::MissingField("'seller_org_id' field is required".to_string())
         })?;
 
-        let workflow_type = self.workflow_type.ok_or_else(|| {
-            PurchaseOrderBuildError::MissingField("'workflow_type' field is required".to_string())
+        let workflow_id = self.workflow_id.ok_or_else(|| {
+            PurchaseOrderBuildError::MissingField("'workflow_id' field is required".to_string())
         })?;
 
         Ok(PurchaseOrder {
@@ -703,7 +703,7 @@ impl PurchaseOrderBuilder {
             is_closed,
             buyer_org_id,
             seller_org_id,
-            workflow_type,
+            workflow_id,
         })
     }
 }

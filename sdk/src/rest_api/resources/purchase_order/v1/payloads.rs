@@ -38,7 +38,7 @@ pub struct PurchaseOrderSlice {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alternate_ids: Option<Vec<PurchaseOrderAlternateIdSlice>>,
     pub created_at: i64,
-    pub workflow_type: String,
+    pub workflow_id: String,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
@@ -68,7 +68,7 @@ impl From<PurchaseOrder> for PurchaseOrderSlice {
                     .collect(),
             ),
             created_at: *purchase_order.created_at(),
-            workflow_type: purchase_order.workflow_type().to_string(),
+            workflow_id: purchase_order.workflow_id().to_string(),
             service_id: purchase_order.service_id().map(String::from),
         }
     }

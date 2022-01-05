@@ -22,7 +22,7 @@ table! {
         is_closed -> Bool,
         accepted_version_id -> Nullable<Text>,
         created_at -> Int8,
-        workflow_type -> Text,
+        workflow_id -> Text,
         start_commit_num -> Int8,
         end_commit_num -> Int8,
         service_id -> Nullable<Text>,

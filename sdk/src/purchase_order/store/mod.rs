@@ -47,7 +47,7 @@ pub struct PurchaseOrder {
     versions: Vec<PurchaseOrderVersion>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
     created_at: i64,
-    workflow_type: String,
+    workflow_id: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -100,8 +100,8 @@ impl PurchaseOrder {
     }
 
     /// Returns the created_at timestamp for the PO
-    pub fn workflow_type(&self) -> &str {
-        &self.workflow_type
+    pub fn workflow_id(&self) -> &str {
+        &self.workflow_id
     }
 
     /// Returns the start_commit_num for the PO
@@ -131,7 +131,7 @@ pub struct PurchaseOrderBuilder {
     versions: Vec<PurchaseOrderVersion>,
     alternate_ids: Vec<PurchaseOrderAlternateId>,
     created_at: i64,
-    workflow_type: String,
+    workflow_id: String,
     start_commit_num: i64,
     end_commit_num: i64,
     service_id: Option<String>,
@@ -193,8 +193,8 @@ impl PurchaseOrderBuilder {
     }
 
     /// Sets the workflow type for this PO
-    pub fn with_workflow_type(mut self, workflow_type: String) -> Self {
-        self.workflow_type = workflow_type;
+    pub fn with_workflow_id(mut self, workflow_id: String) -> Self {
+        self.workflow_id = workflow_id;
         self
     }
 
@@ -227,7 +227,7 @@ impl PurchaseOrderBuilder {
             versions,
             alternate_ids,
             created_at,
-            workflow_type,
+            workflow_id,
             start_commit_num,
             end_commit_num,
             service_id,
@@ -257,9 +257,9 @@ impl PurchaseOrderBuilder {
             ));
         };
 
-        if workflow_type.is_empty() {
+        if workflow_id.is_empty() {
             return Err(PurchaseOrderBuilderError::MissingRequiredField(
-                "workflow_type".to_string(),
+                "workflow_id".to_string(),
             ));
         };
 
@@ -285,7 +285,7 @@ impl PurchaseOrderBuilder {
             versions,
             alternate_ids,
             created_at,
-            workflow_type,
+            workflow_id,
             start_commit_num,
             end_commit_num,
             service_id,
