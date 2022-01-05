@@ -396,7 +396,7 @@ struct PurchaseOrderCli {
     buyer_org_id: String,
     seller_org_id: String,
     purchase_order_uid: String,
-    workflow_type: String,
+    workflow_id: String,
     workflow_state: String,
     is_closed: bool,
     accepted_version_id: Option<String>,
@@ -410,7 +410,7 @@ impl From<&PurchaseOrder> for PurchaseOrderCli {
             buyer_org_id: d.buyer_org_id.to_string(),
             seller_org_id: d.seller_org_id.to_string(),
             purchase_order_uid: d.purchase_order_uid.to_string(),
-            workflow_type: d.workflow_type.to_string(),
+            workflow_id: d.workflow_id.to_string(),
             workflow_state: d.workflow_state.to_string(),
             is_closed: d.is_closed,
             accepted_version_id: match d.accepted_version_id.as_ref() {
@@ -433,7 +433,7 @@ impl From<PurchaseOrder> for PurchaseOrderCli {
             buyer_org_id: d.buyer_org_id.to_string(),
             seller_org_id: d.seller_org_id.to_string(),
             purchase_order_uid: d.purchase_order_uid.to_string(),
-            workflow_type: d.workflow_type.to_string(),
+            workflow_id: d.workflow_id.to_string(),
             workflow_state: d.workflow_state.to_string(),
             is_closed: d.is_closed,
             accepted_version_id: match d.accepted_version_id.as_ref() {
@@ -526,7 +526,7 @@ impl std::fmt::Display for PurchaseOrderCli {
         write!(f, "Purchase Order {}:", &self.purchase_order_uid)?;
         write!(f, "\n\t{:18}{}", "Buyer Org", &self.buyer_org_id)?;
         write!(f, "\n\t{:18}{}", "Seller Org", &self.seller_org_id)?;
-        write!(f, "\n\t{:18}{}", "Workflow Name", &self.workflow_type)?;
+        write!(f, "\n\t{:18}{}", "Workflow Name", &self.workflow_id)?;
         write!(f, "\n\t{:18}{}", "Workflow State", &self.workflow_state)?;
         write!(
             f,
@@ -610,7 +610,7 @@ impl TableDisplay for PurchaseOrderCli {
             self.buyer_org_id.to_string(),
             self.seller_org_id.to_string(),
             self.purchase_order_uid.to_string(),
-            self.workflow_type.to_string(),
+            self.workflow_id.to_string(),
             self.workflow_state.to_string(),
             match &self.accepted_version_id {
                 Some(s) => s.to_string(),
@@ -944,7 +944,7 @@ Revision 1:
             buyer_org_id: "test".to_string(),
             seller_org_id: "test2".to_string(),
             purchase_order_uid: "PO-00000-0000".to_string(),
-            workflow_type: "default".to_string(),
+            workflow_id: "default".to_string(),
             workflow_state: "created".to_string(),
             is_closed: false,
             accepted_version_id: Some("1".to_string()),

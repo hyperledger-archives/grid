@@ -34,7 +34,7 @@ pub struct PurchaseOrder {
     pub accepted_version_id: Option<String>,
     pub versions: Vec<PurchaseOrderVersion>,
     pub created_at: i64,
-    pub workflow_type: String,
+    pub workflow_id: String,
 }
 
 /// The client representation of Grid Purchase Order version

@@ -33,7 +33,7 @@ pub struct PurchaseOrder {
     accepted_version_id: Option<String>,
     versions: Vec<PurchaseOrderVersion>,
     created_at: i64,
-    workflow_type: String,
+    workflow_id: String,
 }
 
 impl From<&PurchaseOrder> for ClientPurchaseOrder {
@@ -56,7 +56,7 @@ impl From<&PurchaseOrder> for ClientPurchaseOrder {
                 .map(ClientPurchaseOrderVersion::from)
                 .collect(),
             created_at: d.created_at,
-            workflow_type: d.workflow_type.to_string(),
+            workflow_id: d.workflow_id.to_string(),
         }
     }
 }
@@ -81,7 +81,7 @@ impl From<PurchaseOrder> for ClientPurchaseOrder {
                 .map(ClientPurchaseOrderVersion::from)
                 .collect(),
             created_at: d.created_at,
-            workflow_type: d.workflow_type.to_string(),
+            workflow_id: d.workflow_id.to_string(),
         }
     }
 }
