@@ -105,7 +105,10 @@ impl TransactionHandler for PurchaseOrderTransactionHandler {
         context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
         let payload = PurchaseOrderPayload::from_bytes(request.get_payload()).map_err(|err| {
-            ApplyError::InvalidTransaction(format!("Cannot build po payload: {}", err))
+            ApplyError::InvalidTransaction(format!(
+                "Cannot deserialize purchase order payload: {}",
+                err
+            ))
         })?;
         validate_po_payload(&payload)?;
         let signer = request.get_header().get_signer_public_key();
