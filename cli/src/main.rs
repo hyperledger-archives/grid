@@ -119,7 +119,7 @@ use actions::schema;
 use actions::{agent, organization as orgs, role};
 
 #[cfg(feature = "purchase-order")]
-use actions::{purchase_order::GRID_ORDER_SCHEMA_DIR, DEFAULT_SCHEMA_DIR};
+use actions::purchase_order::get_order_schema_dir;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -2750,8 +2750,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let order_xml_path = m.value_of("order_xml").unwrap();
-                    let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
-                        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/po/gs1/ecom");
+                    let data_validation_dir = get_order_schema_dir();
                     let mut xml_str = String::new();
                     std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
                     validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
@@ -2907,8 +2906,7 @@ fn run() -> Result<(), CliError> {
                     if m.is_present("order_xml") {
                         new_xml = true;
                         let order_xml_path = m.value_of("order_xml").unwrap();
-                        let data_validation_dir = env::var(GRID_ORDER_SCHEMA_DIR)
-                            .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/po/gs1/ecom");
+                        let data_validation_dir = get_order_schema_dir();
                         xml_str = String::new();
                         std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
                         validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;

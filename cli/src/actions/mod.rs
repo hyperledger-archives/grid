@@ -39,7 +39,7 @@ pub mod role;
 pub mod schema;
 
 #[cfg(any(feature = "purchase-order", feature = "product"))]
-pub const DEFAULT_SCHEMA_DIR: &str = "/usr/share/grid/xsd";
+const DEFAULT_SCHEMA_DIR: &str = "/usr/share/grid/xsd";
 
 fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
     let pathstr = path
