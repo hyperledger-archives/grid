@@ -138,10 +138,10 @@ integration = ["grid-sdk/batch-processor", "grid-sdk/rest-api-endpoint-submit"]
 maintainer = "The Hyperledger Grid Team"
 depends = "$auto"
 assets = [
-    ["/build/daemon/packaging/schemas/po/gs1/ecom/*.xsd", "/usr/share/grid/schemas/po/gs1/ecom/", "644"],
-    ["/build/daemon/packaging/schemas/po/gs1/shared/*.xsd", "/usr/share/grid/schemas/po/gs1/shared/", "644"],
-    ["/build/daemon/packaging/schemas/po/sbdh/*.xsd", "/usr/share/grid/schemas/po/sbdh/", "644"],
-    ["/build/daemon/packaging/schemas/product/*.xsd", "/usr/share/grid/schemas/product/", "644"],
+    ["/build/daemon/packaging/xsd/po/gs1/ecom/*.xsd", "/usr/share/grid/xsd/po/gs1/ecom/", "644"],
+    ["/build/daemon/packaging/xsd/po/gs1/shared/*.xsd", "/usr/share/grid/xsd/po/gs1/shared/", "644"],
+    ["/build/daemon/packaging/xsd/po/sbdh/*.xsd", "/usr/share/grid/xsd/po/sbdh/", "644"],
+    ["/build/daemon/packaging/xsd/product/*.xsd", "/usr/share/grid/xsd/product/", "644"],
     ["target/release/gridd", "/usr/bin/gridd", "755"]
 ]
 maintainer-scripts = "packaging/ubuntu"

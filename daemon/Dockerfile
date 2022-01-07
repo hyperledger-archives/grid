@@ -39,8 +39,8 @@ COPY daemon /build/daemon
 COPY sdk /build/sdk
 
 # Copy over files needed for examples
-COPY sdk/src/data_validation/xml/xsd/product/ /build/daemon/packaging/schemas/product/
-COPY sdk/src/data_validation/xml/xsd/po/ /build/daemon/packaging/schemas/po/
+COPY sdk/src/data_validation/xml/xsd/product/ /build/daemon/packaging/xsd/product/
+COPY sdk/src/data_validation/xml/xsd/po/ /build/daemon/packaging/xsd/po/
 
 # Build the gridd package
 ARG CARGO_ARGS
