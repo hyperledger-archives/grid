@@ -176,6 +176,21 @@ const AFTER_HELP_WITH_KEY: &str = r"ENV:
     GRID_DAEMON_KEY        Specifies a default value for -k, --key
     GRID_SERVICE_ID        Specifies a default value for --service-id";
 
+#[cfg(feature = "purchase-order")]
+const AFTER_HELP_PO_CREATE: &str = r"ENV:
+    CYLINDER_PATH          Path to search for private signing keys
+    GRID_DAEMON_ENDPOINT   Specifies a default value for --url
+    GRID_DAEMON_KEY        Specifies a default value for -k, --key
+    GRID_SERVICE_ID        Specifies a default value for --service-id
+
+Details:
+    Built-in workflow IDs:
+      -  built-in::system_of_record::v1     Uses buyer and seller roles
+      -  built-in::collaborative::v1        Uses collaborative partner roles
+
+    For more information regarding these workflows, see the purchase order RFC here:
+    https://github.com/hyperledger/grid-rfcs/pull/25";
+
 // log format for cli that will only show the log message
 pub fn log_format(
     w: &mut dyn std::io::Write,
@@ -1566,6 +1581,13 @@ fn run() -> Result<(), CliError> {
                                 ),
                         )
                         .arg(
+                            Arg::with_name("workflow_id")
+                                .long("workflow-id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("ID of the workflow the Purchase Order will use")
+                        )
+                        .arg(
                             Arg::with_name("workflow_state")
                                 .value_name("status")
                                 .long("workflow-state")
@@ -1586,7 +1608,7 @@ fn run() -> Result<(), CliError> {
                                 .takes_value(true)
                                 .help("How long to wait for transaction to be committed"),
                         )
-                        .after_help(AFTER_HELP_WITH_KEY),
+                        .after_help(AFTER_HELP_PO_CREATE),
                 )
                 .subcommand(
                     SubCommand::with_name("list")
@@ -2550,6 +2572,7 @@ fn run() -> Result<(), CliError> {
                     .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
                     .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
                     .with_alternate_ids(protocol_alternate_ids)
+                    .with_workflow_id(m.value_of("workflow_id").unwrap().into())
                     .with_workflow_state(m.value_of("workflow_state").unwrap().into())
                     .build()
                     .map_err(|err| {

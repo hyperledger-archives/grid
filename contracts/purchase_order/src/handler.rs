@@ -43,7 +43,7 @@ use grid_sdk::{
 use crate::payload::validate_po_payload;
 use crate::permissions::Permission;
 use crate::state::PurchaseOrderState;
-use crate::workflow::{get_workflow, POWorkflow, WorkflowConstraint};
+use crate::workflow::{get_workflow, WorkflowConstraint};
 
 #[cfg(target_arch = "wasm32")]
 fn apply(
@@ -139,6 +139,7 @@ fn create_purchase_order(
 ) -> Result<(), ApplyError> {
     let buyer_org_id = payload.buyer_org_id().to_string();
     let seller_org_id = payload.seller_org_id().to_string();
+    let workflow = payload.workflow_id().to_string();
 
     // Check that the organizations owning the purchase order exist
     state.get_organization(&buyer_org_id)?.ok_or_else(|| {
@@ -165,13 +166,11 @@ fn create_purchase_order(
     // Check if the payload contains a `PurchaseOrderVersion`
     let (workflow, versions) = match payload.create_version_payload() {
         Some(payload_version) => {
-            let workflow = POWorkflow::SystemOfRecord;
             // Check the version permissions
             let perm_string = Permission::CanCreatePoVersion.to_string();
-            let beginning_workflow = get_workflow(&POWorkflow::SystemOfRecord.to_string())
-                .ok_or_else(|| {
-                    ApplyError::InvalidTransaction("Cannot build PO Workflow".to_string())
-                })?;
+            let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
+                ApplyError::InvalidTransaction("Cannot build PO Workflow".to_string())
+            })?;
             let version_subworkflow =
                 beginning_workflow.subworkflow("version").ok_or_else(|| {
                     ApplyError::InvalidTransaction(
@@ -265,11 +264,11 @@ fn create_purchase_order(
                     })?],
             )
         }
-        None => (POWorkflow::Collaborative, vec![]),
+        None => (workflow, vec![]),
     };
 
     // Check the purchase order permissions
-    let beginning_workflow = get_workflow(&workflow.to_string()).ok_or_else(|| {
+    let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
         ApplyError::InvalidTransaction("Cannot build System Of Record PO workflow".to_string())
     })?;
     let po_subworkflow = beginning_workflow.subworkflow("po").ok_or_else(|| {
@@ -341,7 +340,7 @@ fn create_purchase_order(
         .with_is_closed(false)
         .with_buyer_org_id(buyer_org_id)
         .with_seller_org_id(seller_org_id)
-        .with_workflow_id(workflow.to_string())
+        .with_workflow_id(workflow)
         .build()
         .map_err(|err| {
             ApplyError::InvalidTransaction(format!("Cannot build purchase order: {}", err))
@@ -863,6 +862,7 @@ fn update_version(
 mod tests {
     use super::*;
 
+    use crate::workflow::POWorkflow;
     use std::cell::RefCell;
     use std::collections::HashMap;
 
@@ -1323,7 +1323,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("issued".to_string())
-            .with_workflow_id("workflow".to_string())
+            .with_workflow_id("built-in::collaborative::v1".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         if let Err(err) =
@@ -1355,7 +1355,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("confirmed".to_string())
-            .with_workflow_id("workflow".to_string())
+            .with_workflow_id("built-in::collaborative::v1".to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         let expected = "Desired workflow state `confirmed` has `Accepted` constraint, \

@@ -20,8 +20,8 @@ DESCRIPTION
 ===========
 
 This command allows for the creation of Grid Purchase Orders. It submits a
-Sabre transaction to create the purchase order. The options `--buyer-org` and
-`--seller-org` are required.
+Sabre transaction to create the purchase order. The options `--buyer-org`,
+`--seller-org`, `--workflow-state`, and `--workflow-id` are required.
 
 FLAGS
 =====
@@ -73,6 +73,12 @@ will be randomly generated.
 `--workflow-state`
 : Specifies the initial workflow state of the purchase order.
 
+`--workflow-id`
+: Specifies the ID of the workflow to be used for the purchase order.
+Built-in workflows are "built-in::system_of_record::v1", which uses buyer and seller roles, and
+"built-in::collaborative::v1", which uses collaborative partner roles.
+For more information on these workflows, see https://github.com/hyperledger/grid-rfcs/pull/25 .
+
 EXAMPLES
 ========
 
@@ -83,14 +89,15 @@ $ grid po create \
     --buyer-org crgl \
     --seller-org crgl2 \
     --workflow-state issued \
+    --workflow-id built-in::collaborative::v1
     --alternate-id po_number:8329173 \
     --wait 10
 ```
 
 will generate a purchase order owned by the `crgl` organization, with the state
-of `issued`, and an alternate ID of `po_number:8329173`. It will generate
-output similar to the following (the unique ID is randomly generated in this
-case):
+of `issued` in the built-in `collaborative` workflow, and an alternate ID of
+`po_number:8329173`. It will generate output similar to the following (the unique
+ID is randomly generated in this case):
 
 ```
 Submitting request to create purchase order...

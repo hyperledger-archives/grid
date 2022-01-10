@@ -20,6 +20,7 @@ cfg_if! {
     }
 }
 
+use crate::workflow::POWorkflow;
 use grid_sdk::protocol::purchase_order::payload::{
     Action, CreatePurchaseOrderPayload, CreateVersionPayload, PayloadRevision,
     PurchaseOrderPayload, UpdatePurchaseOrderPayload, UpdateVersionPayload,
@@ -75,11 +76,33 @@ pub(crate) fn validate_create_po_payload(
         ));
     }
 
+    validate_workflow_id(payload.workflow_id().to_string())?;
+
     if let Some(create_version_payload) = payload.create_version_payload() {
         validate_create_version_payload(&create_version_payload)?;
     }
 
     Ok(())
+}
+
+fn validate_workflow_id(workflow: String) -> Result<String, ApplyError> {
+    let workflow_ids = get_workflow_ids();
+    if workflow_ids.iter().any(|w| w == &workflow) {
+        Ok(workflow)
+    } else {
+        Err(ApplyError::InvalidTransaction(format!(
+            "No workflow exists with id {}",
+            &workflow
+        )))
+    }
+}
+
+fn get_workflow_ids() -> Vec<String> {
+    // In the future, this should get workflow names from state
+    vec![
+        POWorkflow::SystemOfRecord.to_string(),
+        POWorkflow::Collaborative.to_string(),
+    ]
 }
 
 // Validate a `UpdatePurchaseOrderPayload` has all required fields defined
@@ -683,6 +706,7 @@ mod tests {
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
         create_po_payload.set_workflow_state("issued".to_string());
+        create_po_payload.set_workflow_id(POWorkflow::SystemOfRecord.to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
