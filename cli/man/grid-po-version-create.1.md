@@ -124,7 +124,7 @@ ENVIRONMENT VARIABLES
 **`GRID_ORDER_SCHEMA_DIR`**
 : Specifies the local path to the directory containing the `Order.xsd`
   schema used to validate the purchase order. The default value is
-  "/usr/share/grid/schemas".
+  "/usr/share/grid/xsd".
 
 SEE ALSO
 ========
