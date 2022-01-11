@@ -25,12 +25,12 @@ message PurchaseOrderPayload {
     UPDATE_VERSION = 4;
   }
   Action action = 1;
-  uint64 timestamp = 3;
+  uint64 timestamp = 2;
 
-  CreatePurchaseOrderPayload create_po_payload = 4;
-  UpdatePurchaseOrderPayload update_po_payload = 5;
-  CreateVersionPayload create_version_payload = 6;
-  UpdateVersionPayload update_version_payload = 7;
+  CreatePurchaseOrderPayload create_po_payload = 3;
+  UpdatePurchaseOrderPayload update_po_payload = 4;
+  CreateVersionPayload create_version_payload = 5;
+  UpdateVersionPayload update_version_payload = 6;
 }
 
 message CreatePurchaseOrderPayload {
@@ -66,7 +66,7 @@ message UpdateVersionPayload {
   string po_uid = 2;
   string workflow_state = 3;
   bool is_draft = 4;
-  PayloadRevision revision = 6;
+  PayloadRevision revision = 5;
 }
 
 message PayloadRevision {
