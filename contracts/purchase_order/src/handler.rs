@@ -38,6 +38,7 @@ use grid_sdk::{
         state::{PurchaseOrderBuilder, PurchaseOrderRevisionBuilder, PurchaseOrderVersionBuilder},
     },
     purchase_order::addressing::GRID_PURCHASE_ORDER_NAMESPACE,
+    workflow::WorkflowState,
 };
 
 use crate::payload::validate_po_payload;
@@ -105,7 +106,10 @@ impl TransactionHandler for PurchaseOrderTransactionHandler {
         context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
         let payload = PurchaseOrderPayload::from_bytes(request.get_payload()).map_err(|err| {
-            ApplyError::InvalidTransaction(format!("Cannot build po payload: {}", err))
+            ApplyError::InvalidTransaction(format!(
+                "Cannot deserialize purchase order payload: {}",
+                err
+            ))
         })?;
         validate_po_payload(&payload)?;
         let signer = request.get_header().get_signer_public_key();
@@ -137,9 +141,10 @@ fn create_purchase_order(
     state: &mut PurchaseOrderState,
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
+    /* ------------------ Access current state ------------------------ */
     let buyer_org_id = payload.buyer_org_id().to_string();
     let seller_org_id = payload.seller_org_id().to_string();
-    let workflow = payload.workflow_id().to_string();
+    let workflow_id = payload.workflow_id().to_string();
 
     // Check that the organizations owning the purchase order exist
     state.get_organization(&buyer_org_id)?.ok_or_else(|| {
@@ -148,12 +153,10 @@ fn create_purchase_order(
     state.get_organization(&seller_org_id)?.ok_or_else(|| {
         ApplyError::InvalidTransaction(format!("Organization {} does not exist", &seller_org_id))
     })?;
-
-    // Validate the signer exists
+    // Retrieve agent from state, error if agent does not exist
     let agent = state.get_agent(signer)?.ok_or_else(|| {
         ApplyError::InvalidTransaction(format!("The signer is not an Agent: {}", signer))
     })?;
-
     // Validate the purchase order does not already exist
     let po_uid = payload.uid();
     if state.get_purchase_order(po_uid)?.is_some() {
@@ -162,125 +165,19 @@ fn create_purchase_order(
             po_uid,
         )));
     }
-
-    // Check if the payload contains a `PurchaseOrderVersion`
-    let (workflow, versions) = match payload.create_version_payload() {
-        Some(payload_version) => {
-            // Check the version permissions
-            let perm_string = Permission::CanCreatePoVersion.to_string();
-            let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
-                ApplyError::InvalidTransaction("Cannot build PO Workflow".to_string())
-            })?;
-            let version_subworkflow =
-                beginning_workflow.subworkflow("version").ok_or_else(|| {
-                    ApplyError::InvalidTransaction(
-                        "Subworkflow `version` does not exist".to_string(),
-                    )
-                })?;
-            let start_state = version_subworkflow.state("create").ok_or_else(|| {
-                ApplyError::InvalidTransaction(
-                    "Workflow state `create` does not exist in `version` subworkflow".to_string(),
-                )
-            })?;
-            // Retrieve desired state to validate any constraints
-            let desired_state = version_subworkflow
-                .state(payload_version.workflow_state())
-                .ok_or_else(|| {
-                    ApplyError::InvalidTransaction(format!(
-                        "Workflow state `{}` does not exist in version subworkflow",
-                        payload_version.workflow_state()
-                    ))
-                })?;
-            if desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
-                && payload_version.is_draft()
-            {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Desired workflow state `{}` has `Accepted` constraint, version is a draft",
-                    payload_version.workflow_state()
-                )));
-            }
-            if desired_state.has_constraint(&WorkflowConstraint::Draft.to_string())
-                && !payload_version.is_draft()
-            {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Desired workflow state `{}` has `Draft` constraint, version is not a draft",
-                    payload_version.workflow_state()
-                )));
-            }
-            let perm_result = perm_checker
-                .check_permission_with_workflow(
-                    &perm_string,
-                    signer,
-                    agent.org_id(),
-                    &start_state,
-                    payload_version.workflow_state(),
-                )
-                .map_err(|err| {
-                    ApplyError::InvalidTransaction(format!(
-                        "Unable to check agent's permission: {}",
-                        err
-                    ))
-                })?;
-            if !perm_result {
-                return Err(ApplyError::InvalidTransaction(format!(
-                        "Agent {} does not have permission {} for organization {} to create a version with state {}",
-                        signer,
-                        &perm_string,
-                        agent.org_id(),
-                        payload_version.workflow_state()
-                    )));
-            }
-
-            let payload_revision = payload_version.revision();
-
-            let revision = PurchaseOrderRevisionBuilder::new()
-                .with_revision_id(payload_revision.revision_id())
-                .with_submitter(signer.to_string())
-                .with_created_at(payload_revision.created_at())
-                .with_order_xml_v3_4(payload_revision.order_xml_v3_4().to_string())
-                .build()
-                .map_err(|err| {
-                    ApplyError::InvalidTransaction(format!(
-                        "Cannot build purchase order revision: {}",
-                        err
-                    ))
-                })?;
-
-            (
-                workflow,
-                vec![PurchaseOrderVersionBuilder::new()
-                    .with_version_id(payload_version.version_id().to_string())
-                    .with_is_draft(payload_version.is_draft())
-                    .with_current_revision_id(revision.revision_id())
-                    .with_workflow_state(payload_version.workflow_state().to_string())
-                    .with_revisions(vec![revision])
-                    .with_workflow_state(payload_version.workflow_state().to_string())
-                    .build()
-                    .map_err(|err| {
-                        ApplyError::InvalidTransaction(format!(
-                            "Cannot build purchase order version: {}",
-                            err
-                        ))
-                    })?],
-            )
-        }
-        None => (workflow, vec![]),
-    };
-
-    // Check the purchase order permissions
-    let beginning_workflow = get_workflow(&workflow).ok_or_else(|| {
-        ApplyError::InvalidTransaction("Cannot build System Of Record PO workflow".to_string())
+    // Validate the workflow type of the purchase order
+    let workflow = get_workflow(&workflow_id).ok_or_else(|| {
+        ApplyError::InvalidTransaction(format!("Cannot build `{}` Workflow", workflow_id))
     })?;
-    let po_subworkflow = beginning_workflow.subworkflow("po").ok_or_else(|| {
-        ApplyError::InvalidTransaction("Subworkflow `po` does not exist".to_string())
-    })?;
-    let start_state = po_subworkflow.state("create").ok_or_else(|| {
-        ApplyError::InvalidTransaction(
-            "Workflow state `create` does not exist in `po` subworkflow".to_string(),
-        )
-    })?;
-    // Retrieve the desired workflow state to validate any constraints
-    let desired_state = po_subworkflow
+    // Get the desired workflow state of this purchase order
+    let desired_po_workflow_state = workflow
+        .subworkflow("po")
+        .ok_or_else(|| {
+            ApplyError::InvalidTransaction(format!(
+                "Workflow `{}` does not contain a `po` subworkflow",
+                payload.workflow_id(),
+            ))
+        })?
         .state(payload.workflow_state())
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
@@ -288,34 +185,94 @@ fn create_purchase_order(
                 payload.workflow_state()
             ))
         })?;
-    if desired_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Desired workflow state `{}` has `Accepted` constraint, purchase order does not have \
-            an accepted version",
-            payload.workflow_state()
-        )));
-    }
-    if desired_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Desired workflow state `{}` has `Closed` constraint, creating an open purchase order",
-            payload.workflow_state()
-        )));
-    }
-    if desired_state.has_constraint(&WorkflowConstraint::Complete.to_string())
-        && versions.is_empty()
-    {
-        return Err(ApplyError::InvalidTransaction(format!(
-            "Desired workflow state `{}` has `Complete` constraint, purchase order has no versions",
-            payload.workflow_state()
-        )));
-    }
+
+    // Retrieve the workflow for this purchase order
+    let version_subworkflow = workflow.subworkflow("version").ok_or_else(|| {
+        ApplyError::InvalidTransaction(format!(
+            "Workflow `{}` does not contain a `po` subworkflow",
+            payload.workflow_id(),
+        ))
+    })?;
+    /* ------------------ Verify submitter's permissions ------------------------ */
+    let (versions, version_desired_state): (Vec<_>, Option<WorkflowState>) =
+        match payload.create_version_payload() {
+            Some(payload_version) => {
+                let perm_string = Permission::CanCreatePoVersion.to_string();
+                let desired_version_workflow_state = version_subworkflow
+                    .state(payload_version.workflow_state())
+                    .ok_or_else(|| {
+                        ApplyError::InvalidTransaction(format!(
+                            "Workflow state `{}` does not exist in version subworkflow",
+                            payload_version.workflow_state()
+                        ))
+                    })?;
+                let perm_result = perm_checker
+                    .check_permission_with_workflow(
+                        &perm_string,
+                        signer,
+                        agent.org_id(),
+                        &desired_version_workflow_state,
+                        payload_version.workflow_state(),
+                    )
+                    .map_err(|err| {
+                        ApplyError::InvalidTransaction(format!(
+                            "Unable to check agent's permission: {}",
+                            err
+                        ))
+                    })?;
+                if !perm_result {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Agent {} does not have permission {} for organization {} to create a \
+                        version with state {}",
+                        signer,
+                        &perm_string,
+                        agent.org_id(),
+                        payload_version.workflow_state()
+                    )));
+                }
+                let payload_revision = payload_version.revision();
+
+                let revision = PurchaseOrderRevisionBuilder::new()
+                    .with_revision_id(payload_revision.revision_id())
+                    .with_submitter(signer.to_string())
+                    .with_created_at(payload_revision.created_at())
+                    .with_order_xml_v3_4(payload_revision.order_xml_v3_4().to_string())
+                    .build()
+                    .map_err(|err| {
+                        ApplyError::InvalidTransaction(format!(
+                            "Cannot build purchase order revision: {}",
+                            err
+                        ))
+                    })?;
+
+                (
+                    vec![PurchaseOrderVersionBuilder::new()
+                        .with_version_id(payload_version.version_id().to_string())
+                        .with_is_draft(payload_version.is_draft())
+                        .with_current_revision_id(revision.revision_id())
+                        .with_workflow_state(payload_version.workflow_state().to_string())
+                        .with_revisions(vec![revision])
+                        .with_workflow_state(payload_version.workflow_state().to_string())
+                        .build()
+                        .map_err(|err| {
+                            ApplyError::InvalidTransaction(format!(
+                                "Cannot build purchase order version: {}",
+                                err
+                            ))
+                        })?],
+                    Some(desired_version_workflow_state),
+                )
+            }
+            None => (vec![], None),
+        };
+
     let perm_string = Permission::CanCreatePo.to_string();
     let perm_result = perm_checker
         .check_permission_with_workflow(
             &perm_string,
             signer,
             agent.org_id(),
-            &start_state,
+            &desired_po_workflow_state,
             payload.workflow_state(),
         )
         .map_err(|err| {
@@ -323,7 +280,8 @@ fn create_purchase_order(
         })?;
     if !perm_result {
         return Err(ApplyError::InvalidTransaction(format!(
-            "Agent {} does not have permission {} for organization {} to create a purchase order with state {}",
+            "Agent {} does not have permission {} for organization {} to create a purchase order \
+                with state {}",
             signer,
             &perm_string,
             agent.org_id(),
@@ -331,23 +289,78 @@ fn create_purchase_order(
         )));
     }
 
+    /* ------------------ Build updated state ------------------------ */
+
     let purchase_order = PurchaseOrderBuilder::new()
         .with_uid(po_uid.to_string())
-        .with_versions(versions)
+        .with_versions(versions.to_vec())
         .with_workflow_state(payload.workflow_state().to_string())
         .with_alternate_ids(payload.alternate_ids().to_vec())
         .with_created_at(payload.created_at())
         .with_is_closed(false)
         .with_buyer_org_id(buyer_org_id)
         .with_seller_org_id(seller_org_id)
-        .with_workflow_id(workflow)
+        .with_workflow_id(workflow_id)
         .build()
         .map_err(|err| {
             ApplyError::InvalidTransaction(format!("Cannot build purchase order: {}", err))
         })?;
 
-    state.set_purchase_order(po_uid, purchase_order)?;
+    /* ------------------- Validate updated state ----------------------------- */
+    if desired_po_workflow_state.has_constraint(&WorkflowConstraint::Closed.to_string()) {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Unable to open purchase order {} in workflow state `{}` with `closed` constraint",
+            po_uid,
+            payload.workflow_state(),
+        )));
+    }
+    if desired_po_workflow_state.has_constraint(&WorkflowConstraint::Complete.to_string())
+        && purchase_order.versions().is_empty()
+    {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Unable to open purchase order {} without versions defined in workflow state `{}` with \
+            `complete` constraint",
+            po_uid,
+            payload.workflow_state(),
+        )));
+    }
+    if desired_po_workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Unable to open purchase order {} in workflow state `{}` with `accepted` constraint, \
+            no version has been accepted yet",
+            po_uid,
+            payload.workflow_state(),
+        )));
+    }
+    if let Some(desired_version_state) = version_desired_state {
+        if desired_version_state.has_constraint(&WorkflowConstraint::Accepted.to_string()) {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Unable to open purchase order version {} in workflow state `{}` with `accepted` \
+                constraint, no version has been accepted yet",
+                po_uid,
+                payload.workflow_state(),
+            )));
+        }
+        let version = versions.last().ok_or_else(|| {
+            ApplyError::InvalidTransaction(
+                "Unable to retrieve purchase order's version".to_string(),
+            )
+        })?;
+        if desired_version_state.has_constraint(&WorkflowConstraint::Draft.to_string())
+            && !version.is_draft()
+        {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Unable to open purchase order {} version {} in workflow state `{}` with \
+                    `draft` constraint, version's `is_draft` field is `false`",
+                po_uid,
+                version.version_id(),
+                payload.workflow_state(),
+            )));
+        }
+    }
 
+    /* ------------------- Persist updated state ----------------------------- */
+    state.set_purchase_order(po_uid, purchase_order)?;
     Ok(())
 }
 
@@ -862,7 +875,6 @@ fn update_version(
 mod tests {
     use super::*;
 
-    use crate::workflow::POWorkflow;
     use std::cell::RefCell;
     use std::collections::HashMap;
 
@@ -889,8 +901,9 @@ mod tests {
         protos::IntoBytes,
         purchase_order::addressing::compute_purchase_order_address,
     };
-
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
+
+    use crate::workflow::POWorkflow;
 
     const BUYER_PUB_KEY: &str = "buyer_agent_pub_key";
     const SELLER_PUB_KEY: &str = "seller_agent_pub_key";
@@ -1215,7 +1228,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
-            .with_workflow_id("workflow".to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1242,7 +1255,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
-            .with_workflow_id("workflow".to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1267,7 +1280,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
-            .with_workflow_id("workflow".to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1294,7 +1307,7 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("proposed".to_string())
-            .with_workflow_id("workflow".to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
 
@@ -1322,8 +1335,8 @@ mod tests {
             .with_created_at(1)
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
-            .with_workflow_state("issued".to_string())
-            .with_workflow_id("built-in::collaborative::v1".to_string())
+            .with_workflow_state("create".to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
         if let Err(err) =
@@ -1335,8 +1348,8 @@ mod tests {
 
     #[test]
     /// Validates a purchase order may not be created and put into a workflow state with the
-    /// `Accepted` constraint, as it does not have an accepted version yet. The test follows
-    /// these steps:
+    /// `Accepted` constraint on creation. A purchase order may not be opened in a workflow state
+    /// with the `Accepted` constraint as no versions have been accepted yet.
     ///
     /// 1. Create the necessary organizations and create an agent with the "buyer" role
     /// 2. Build a `CreatePurchaseOrderPayload` with a `workflow_state` of `confirmed`
@@ -1355,12 +1368,14 @@ mod tests {
             .with_buyer_org_id(ORG_ID_1.to_string())
             .with_seller_org_id(ORG_ID_2.to_string())
             .with_workflow_state("confirmed".to_string())
-            .with_workflow_id("built-in::collaborative::v1".to_string())
+            .with_workflow_id(POWorkflow::SystemOfRecord.to_string())
             .build()
             .expect("Unable to build CreatePurchaseOrderPayload");
-        let expected = "Desired workflow state `confirmed` has `Accepted` constraint, \
-                purchase order does not have an accepted version"
-            .to_string();
+        let expected = format!(
+            "Agent {} does not have permission can-create-po for \
+        organization {} to create a purchase order with state confirmed",
+            BUYER_PUB_KEY, ORG_ID_1
+        );
         match create_purchase_order(&create_po_payload, BUYER_PUB_KEY, &mut state, &perm_checker) {
             Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
             value => {

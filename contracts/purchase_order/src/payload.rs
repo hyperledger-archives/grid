@@ -42,10 +42,9 @@ pub(crate) fn validate_po_payload(payload: &PurchaseOrderPayload) -> Result<(), 
     }
 }
 
-// Validate a `CreatePurchaseOrderPayload` has all required fields defined
-pub(crate) fn validate_create_po_payload(
-    payload: &CreatePurchaseOrderPayload,
-) -> Result<(), ApplyError> {
+// Validate a `CreatePurchaseOrderPayload` has all required fields defined, the values of which are
+// also validated.
+fn validate_create_po_payload(payload: &CreatePurchaseOrderPayload) -> Result<(), ApplyError> {
     if payload.uid().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`uid` is required to create a purchase order".to_string(),
@@ -76,9 +75,25 @@ pub(crate) fn validate_create_po_payload(
         ));
     }
 
+    if payload.workflow_id().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "`workflow_id` is required to create a purchase order".to_string(),
+        ));
+    }
+
     validate_workflow_id(payload.workflow_id().to_string())?;
 
     if let Some(create_version_payload) = payload.create_version_payload() {
+        if create_version_payload.po_uid() != payload.uid() {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Version {} must refer to purchase order {} within the payload, \
+                refers to purchase order {}",
+                create_version_payload.version_id(),
+                payload.uid(),
+                create_version_payload.po_uid(),
+            )));
+        }
+
         validate_create_version_payload(&create_version_payload)?;
     }
 
@@ -105,10 +120,41 @@ fn get_workflow_ids() -> Vec<String> {
     ]
 }
 
+// Validate a `CreateVersionPayload` has all required fields defined
+fn validate_create_version_payload(payload: &CreateVersionPayload) -> Result<(), ApplyError> {
+    if payload.version_id().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "`version_id` is required to create a purchase order version".to_string(),
+        ));
+    }
+
+    if payload.po_uid().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "`po_uid` is required to create a purchase order version".to_string(),
+        ));
+    }
+
+    if payload.workflow_state().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "`workflow_state` is required to create a purchase order version".to_string(),
+        ));
+    }
+
+    if payload.revision().revision_id() != 1 {
+        return Err(ApplyError::InvalidTransaction(format!(
+            "Revision IDs begin incrementing at `1`, attempting to create a new version \
+            with revision ID `{}`",
+            payload.revision().revision_id()
+        )));
+    }
+
+    validate_payload_revision(payload.revision())?;
+
+    Ok(())
+}
+
 // Validate a `UpdatePurchaseOrderPayload` has all required fields defined
-pub(crate) fn validate_update_po_payload(
-    payload: &UpdatePurchaseOrderPayload,
-) -> Result<(), ApplyError> {
+fn validate_update_po_payload(payload: &UpdatePurchaseOrderPayload) -> Result<(), ApplyError> {
     if payload.uid().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`uid` is required to update a purchase order".to_string(),
@@ -132,8 +178,33 @@ pub(crate) fn validate_update_po_payload(
     Ok(())
 }
 
+// Validate a `UpdateVersionPayload` has all required fields defined
+fn validate_update_version_payload(payload: &UpdateVersionPayload) -> Result<(), ApplyError> {
+    if payload.version_id().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "`version_id` is required to update a purchase order version".to_string(),
+        ));
+    }
+
+    if payload.po_uid().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "`po_uid` is required to update a purchase order version".to_string(),
+        ));
+    }
+
+    if payload.workflow_state().is_empty() {
+        return Err(ApplyError::InvalidTransaction(
+            "`workflow_state` is required to update a purchase order version".to_string(),
+        ));
+    }
+
+    validate_payload_revision(payload.revision())?;
+
+    Ok(())
+}
+
 // Validate a `PayloadRevision` has all required fields defined
-pub(crate) fn validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyError> {
+fn validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyError> {
     if revision.submitter().is_empty() {
         return Err(ApplyError::InvalidTransaction(
             "`submitter` is required for a po revision".to_string(),
@@ -161,65 +232,13 @@ pub(crate) fn validate_payload_revision(revision: &PayloadRevision) -> Result<()
     Ok(())
 }
 
-// Validate a `CreateVersionPayload` has all required fields defined
-pub(crate) fn validate_create_version_payload(
-    payload: &CreateVersionPayload,
-) -> Result<(), ApplyError> {
-    if payload.version_id().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "`version_id` is required to create a purchase order version".to_string(),
-        ));
-    }
-
-    if payload.po_uid().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "`po_uid` is required to create a purchase order version".to_string(),
-        ));
-    }
-
-    if payload.workflow_state().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "`workflow_state` is required to create a purchase order version".to_string(),
-        ));
-    }
-
-    validate_payload_revision(payload.revision())?;
-
-    Ok(())
-}
-
-// Validate a `UpdateVersionPayload` has all required fields defined
-pub(crate) fn validate_update_version_payload(
-    payload: &UpdateVersionPayload,
-) -> Result<(), ApplyError> {
-    if payload.version_id().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "`version_id` is required to update a purchase order version".to_string(),
-        ));
-    }
-
-    if payload.po_uid().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "`po_uid` is required to update a purchase order version".to_string(),
-        ));
-    }
-
-    if payload.workflow_state().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "`workflow_state` is required to update a purchase order version".to_string(),
-        ));
-    }
-
-    validate_payload_revision(payload.revision())?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use grid_sdk::protos::{self, IntoNative};
+
+    use crate::workflow::POWorkflow;
 
     const SUBMITTER: &str = "submitter";
     const XML_TEST_STRING: &str = "XML_DATA";
@@ -732,6 +751,7 @@ mod tests {
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
         create_po_payload.set_workflow_state("issued".to_string());
+        create_po_payload.set_workflow_id(POWorkflow::SystemOfRecord.to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -757,6 +777,7 @@ mod tests {
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
         create_po_payload.set_workflow_state("issued".to_string());
+        create_po_payload.set_workflow_id(POWorkflow::SystemOfRecord.to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -782,6 +803,7 @@ mod tests {
         create_po_payload.set_created_at(1);
         create_po_payload.set_seller_org_id("seller".to_string());
         create_po_payload.set_workflow_state("issued".to_string());
+        create_po_payload.set_workflow_id(POWorkflow::SystemOfRecord.to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -807,6 +829,7 @@ mod tests {
         create_po_payload.set_created_at(1);
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_workflow_state("issued".to_string());
+        create_po_payload.set_workflow_id(POWorkflow::SystemOfRecord.to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
@@ -832,6 +855,32 @@ mod tests {
         create_po_payload.set_created_at(1);
         create_po_payload.set_buyer_org_id("buyer".to_string());
         create_po_payload.set_seller_org_id("seller".to_string());
+        create_po_payload.set_workflow_id(POWorkflow::SystemOfRecord.to_string());
+        let payload_native = create_po_payload
+            .clone()
+            .into_native()
+            .expect("Unable to create protocol CreatePurchaseOrderPayload");
+        // Validate the create po payload is not successful
+        assert!(validate_create_po_payload(&payload_native).is_err());
+    }
+
+    #[test]
+    /// Validates that a `CreatePurchaseOrderPayload` with an undefind `workflow_id` field is not
+    /// validated. The test follows these steps:
+    ///
+    /// 1. Create an `CreatePurchaseOrderPayload` protobuf message, leaving the `workflow_id` field
+    ///    undefined and filling in the remaining values
+    /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
+    ///
+    /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `workflow_id`
+    /// field is not succesfully validated.
+    fn test_validate_create_po_payload_invalid_workflow_id() {
+        let mut create_po_payload =
+            protos::purchase_order_payload::CreatePurchaseOrderPayload::new();
+        create_po_payload.set_created_at(1);
+        create_po_payload.set_buyer_org_id("buyer".to_string());
+        create_po_payload.set_seller_org_id("seller".to_string());
+        create_po_payload.set_workflow_state("issued".to_string());
         let payload_native = create_po_payload
             .clone()
             .into_native()
