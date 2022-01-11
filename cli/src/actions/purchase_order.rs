@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use grid_sdk::{
@@ -36,10 +37,9 @@ use rand::{distributions::Alphanumeric, Rng};
 use sawtooth_sdk::messages::batch::BatchList;
 use serde::Serialize;
 
+use super::DEFAULT_SCHEMA_DIR;
 use crate::error::CliError;
 use crate::transaction::purchase_order_batch_builder;
-
-pub const GRID_ORDER_SCHEMA_DIR: &str = "GRID_ORDER_SCHEMA_DIR";
 
 fn create_po_batchlist(signer: Box<dyn Signer>, action: Action) -> Result<BatchList, CliError> {
     let timestamp = SystemTime::now()
@@ -999,4 +999,9 @@ pub fn get_purchase_order_version(
             version_id, po_uid
         )))
     }
+}
+
+pub fn get_order_schema_dir() -> String {
+    env::var("GRID_ORDER_SCHEMA_DIR")
+        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/po/gs1/ecom")
 }
