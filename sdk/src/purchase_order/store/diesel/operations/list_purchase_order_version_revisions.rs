@@ -22,7 +22,9 @@ use crate::purchase_order::store::diesel::{
 };
 
 use crate::purchase_order::store::PurchaseOrderStoreError;
+
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchaseOrderRevisionsOperation
 {
@@ -81,19 +83,9 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderRevisionsOperation
                     )))
                 })?;
 
-            let mut count_query = purchase_order_version_revision::table
-                .into_boxed()
-                .select(purchase_order_version_revision::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query =
-                    count_query.filter(purchase_order_version_revision::service_id.eq(service_id));
-            } else {
-                count_query =
-                    count_query.filter(purchase_order_version_revision::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = revision_models.len().try_into().map_err(|err| {
+                PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let revs = revision_models
                 .iter()
@@ -153,19 +145,9 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderRevisionsOperation
                     )))
                 })?;
 
-            let mut count_query = purchase_order_version_revision::table
-                .into_boxed()
-                .select(purchase_order_version_revision::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query =
-                    count_query.filter(purchase_order_version_revision::service_id.eq(service_id));
-            } else {
-                count_query =
-                    count_query.filter(purchase_order_version_revision::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = revision_models.len().try_into().map_err(|err| {
+                PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let revs = revision_models
                 .iter()

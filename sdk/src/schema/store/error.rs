@@ -15,6 +15,8 @@
 use std::error::Error;
 use std::fmt;
 
+#[cfg(feature = "diesel")]
+use crate::error::ConstraintViolationType;
 use crate::error::{ConstraintViolationError, InternalError, ResourceTemporarilyUnavailableError};
 
 /// Represents Store errors
@@ -45,5 +47,41 @@ impl fmt::Display for SchemaStoreError {
             SchemaStoreError::ResourceTemporarilyUnavailableError(err) => err.fmt(f),
             SchemaStoreError::NotFoundError(ref s) => write!(f, "Element not found: {}", s),
         }
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel::result::Error> for SchemaStoreError {
+    fn from(err: diesel::result::Error) -> Self {
+        match err {
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            ) => SchemaStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::Unique,
+                    Box::new(err),
+                ),
+            ),
+            diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ) => SchemaStoreError::ConstraintViolationError(
+                ConstraintViolationError::from_source_with_violation_type(
+                    ConstraintViolationType::ForeignKey,
+                    Box::new(err),
+                ),
+            ),
+            _ => SchemaStoreError::InternalError(InternalError::from_source(Box::new(err))),
+        }
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<diesel::r2d2::PoolError> for SchemaStoreError {
+    fn from(err: diesel::r2d2::PoolError) -> SchemaStoreError {
+        SchemaStoreError::ResourceTemporarilyUnavailableError(
+            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+        )
     }
 }

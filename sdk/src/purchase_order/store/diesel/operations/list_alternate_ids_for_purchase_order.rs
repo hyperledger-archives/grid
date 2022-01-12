@@ -22,7 +22,9 @@ use crate::purchase_order::store::diesel::{
 };
 
 use crate::purchase_order::store::PurchaseOrderStoreError;
+
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
 {
@@ -70,18 +72,9 @@ impl<'a> PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
                     )))
                 })?;
 
-            let mut count_query = purchase_order_alternate_id::table
-                .into_boxed()
-                .select(purchase_order_alternate_id::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query =
-                    count_query.filter(purchase_order_alternate_id::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(purchase_order_alternate_id::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = alt_id_models.len().try_into().map_err(|err| {
+                PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let ids = alt_id_models
                 .iter()
@@ -131,18 +124,9 @@ impl<'a> PurchaseOrderStoreListAlternateIdsForPurchaseOrderOperation
                     )))
                 })?;
 
-            let mut count_query = purchase_order_alternate_id::table
-                .into_boxed()
-                .select(purchase_order_alternate_id::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query =
-                    count_query.filter(purchase_order_alternate_id::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(purchase_order_alternate_id::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = alt_id_models.len().try_into().map_err(|err| {
+                PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let ids = alt_id_models
                 .iter()
