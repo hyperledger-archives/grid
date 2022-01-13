@@ -175,6 +175,41 @@ fn validate_update_po_payload(payload: &UpdatePurchaseOrderPayload) -> Result<()
         }
     }
 
+    let version_ids: Vec<_> = payload
+        .version_updates()
+        .iter()
+        .map(|v| v.version_id().to_owned())
+        .collect();
+
+    payload
+        .version_updates()
+        .iter()
+        .map(|version_update| {
+            if version_ids
+                .iter()
+                .filter(|id| id == &version_update.version_id())
+                .count()
+                > 1
+            {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Multiple update payloads detected for version {}",
+                    version_update.version_id()
+                )));
+            }
+            if version_update.po_uid() != payload.uid() {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Version {} update payload must refer to purchase order {} within payload, \
+                    refers to purchase order {}",
+                    version_update.version_id(),
+                    payload.uid(),
+                    version_update.po_uid(),
+                )));
+            }
+            validate_update_version_payload(version_update)?;
+            Ok(version_update)
+        })
+        .collect::<Result<Vec<&UpdateVersionPayload>, ApplyError>>()?;
+
     Ok(())
 }
 
@@ -235,6 +270,8 @@ fn validate_payload_revision(revision: &PayloadRevision) -> Result<(), ApplyErro
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use protobuf;
 
     use grid_sdk::protos::{self, IntoNative};
 
@@ -700,6 +737,86 @@ mod tests {
         let mut update_po_payload =
             protos::purchase_order_payload::UpdatePurchaseOrderPayload::new();
         update_po_payload.set_po_uid("PO-01".to_string());
+        let payload_native = update_po_payload
+            .clone()
+            .into_native()
+            .expect("Unable to create protocol UpdatePurchaseOrderPayload");
+        // Validate the update po payload is not successful
+        assert!(validate_update_po_payload(&payload_native).is_err());
+    }
+
+    #[test]
+    /// Validates that an `UpdatePurchaseOrderPayload` with multiple "update version" payloads for
+    /// the same version does not validate successfully. The test follows these steps:
+    ///
+    /// 1. Create an `UpdatePurchaseOrderPayload` protobuf message and define all fields, including
+    ///    2 "update version" payloads for `v1`
+    /// 2. Assert this `UpdatePurchaseOrderPayload` does not validate
+    ///
+    /// This test validates that a `UpdatePurchaseOrderPayload` with multiple "update version"
+    /// payloads for the same version returns an error.
+    fn test_validate_update_po_payload_multiple_version_updates() {
+        let mut payload_revision_proto = protos::purchase_order_payload::PayloadRevision::new();
+        payload_revision_proto.set_revision_id(2);
+        payload_revision_proto.set_submitter(SUBMITTER.to_string());
+        payload_revision_proto.set_created_at(1);
+        payload_revision_proto.set_order_xml_v3_4(XML_TEST_STRING.to_string());
+
+        let mut update_version_payload =
+            protos::purchase_order_payload::UpdateVersionPayload::new();
+        update_version_payload.set_version_id("v1".to_string());
+        update_version_payload.set_po_uid("PO-01".to_string());
+        update_version_payload.set_workflow_state("create".to_string());
+        update_version_payload.set_revision(payload_revision_proto);
+        let mut update_po_payload =
+            protos::purchase_order_payload::UpdatePurchaseOrderPayload::new();
+        update_po_payload.set_po_uid("PO-01".to_string());
+        update_po_payload.set_workflow_state("issued".to_string());
+        update_po_payload.set_version_updates(protobuf::RepeatedField::from_vec(vec![
+            update_version_payload.clone(),
+            update_version_payload,
+        ]));
+        let payload_native = update_po_payload
+            .clone()
+            .into_native()
+            .expect("Unable to create protocol UpdatePurchaseOrderPayload");
+        // Validate the update po payload is not successful
+        assert!(validate_update_po_payload(&payload_native).is_err());
+    }
+
+    #[test]
+    /// Validates that an `UpdatePurchaseOrderPayload` with an "update version" payload with a
+    /// purchase order UID that does not match the UID in the top-level payload does not validate
+    /// successfully. The test follows these steps:
+    ///
+    /// 1. Create an `UpdatePurchaseOrderPayload` protobuf message for purchase order "PO-01" and
+    ///    define all fields, including an "update version" payload referring to purchase order
+    ///    "PO-02"
+    /// 2. Assert this `UpdatePurchaseOrderPayload` does not validate
+    ///
+    /// This test validates that a `UpdatePurchaseOrderPayload` with an "update version" payload
+    /// does not validate if the purchase order UID does not match the UID in the "update po"
+    /// payload.
+    fn test_validate_update_po_payload_invalid_version_po_uid() {
+        let mut payload_revision_proto = protos::purchase_order_payload::PayloadRevision::new();
+        payload_revision_proto.set_revision_id(2);
+        payload_revision_proto.set_submitter(SUBMITTER.to_string());
+        payload_revision_proto.set_created_at(1);
+        payload_revision_proto.set_order_xml_v3_4(XML_TEST_STRING.to_string());
+
+        let mut update_version_payload =
+            protos::purchase_order_payload::UpdateVersionPayload::new();
+        update_version_payload.set_version_id("v1".to_string());
+        update_version_payload.set_po_uid("PO-02".to_string());
+        update_version_payload.set_workflow_state("create".to_string());
+        update_version_payload.set_revision(payload_revision_proto);
+        let mut update_po_payload =
+            protos::purchase_order_payload::UpdatePurchaseOrderPayload::new();
+        update_po_payload.set_po_uid("PO-01".to_string());
+        update_po_payload.set_workflow_state("issued".to_string());
+        update_po_payload.set_version_updates(protobuf::RepeatedField::from_vec(vec![
+            update_version_payload,
+        ]));
         let payload_native = update_po_payload
             .clone()
             .into_native()
