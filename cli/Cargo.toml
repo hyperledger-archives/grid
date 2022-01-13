@@ -62,6 +62,7 @@ default = [
     "pike",
     "postgres",
     "product",
+    "purchase-order",
     "schema",
     "sqlite",
 ]
@@ -76,7 +77,6 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
-    "purchase-order",
 ]
 
 database = ["diesel"]
