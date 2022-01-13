@@ -20,6 +20,7 @@ use grid_sdk::{
         AlternateId, PurchaseOrder, PurchaseOrderClient, PurchaseOrderRevision,
         PurchaseOrderVersion,
     },
+    data_validation::purchase_order::validate_alt_id_format,
     error::ClientError,
     pike::addressing::GRID_PIKE_NAMESPACE,
     protocol::purchase_order::payload::{
@@ -296,13 +297,9 @@ fn generate_random_base62_string(len: usize) -> String {
 }
 
 pub fn make_alternate_id_from_str(uid: &str, id: &str) -> Result<AlternateId, CliError> {
+    validate_alt_id_format(&id.to_string())?;
+
     let split: Vec<&str> = id.split(':').collect();
-    if split.len() != 2 {
-        return Err(CliError::UserError(format!(
-            "Could not parse alternate ID: {}",
-            id
-        )));
-    }
 
     Ok(AlternateId::new(uid, split[0], split[1]))
 }
@@ -953,6 +950,30 @@ Revision 1:
         };
 
         assert_eq!(format!("{}", po), display);
+    }
+
+    /// Tests that alternate IDs are parsed correctly
+    #[test]
+    fn test_alt_id_parsing() {
+        let valid_id = "test:test_id";
+        let invalid_ids = vec![
+            "test_id",
+            "test:test:test_id",
+            "::test_id",
+            ":test_id",
+            "::",
+            ":",
+            ":test:test_id",
+        ];
+        let _valid_output = AlternateId::new("uid", "test", "test_id");
+
+        assert!(matches!(
+            make_alternate_id_from_str(&"uid", &valid_id).unwrap(),
+            _valid_output
+        ));
+        for inv in invalid_ids {
+            assert!(make_alternate_id_from_str(&"uid", &inv).is_err());
+        }
     }
 }
 
