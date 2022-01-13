@@ -1699,11 +1699,39 @@ fn run() -> Result<(), CliError> {
                                 .help("Specify the Purchase Order has been closed"),
                         )
                         .arg(
-                            Arg::with_name("accepted_version")
-                                .value_name("version_id")
-                                .long("accepted-version")
+                            Arg::with_name("set_accepted_version")
+                                .long("set-accepted-version")
+                                .help("Set the supplied version ID as the accepted Purchase Order version"),
+                        )
+                        .arg(
+                            Arg::with_name("rm_accepted_version")
+                                .long("rm-accepted-version")
+                                .help("Unset the Purchase Order's current accepted version ID")
+                        )
+                        .arg(
+                            Arg::with_name("version_id")
+                                .value_name("version-id")
+                                .long("version-id")
                                 .takes_value(true)
-                                .help("Specify the ID of the accepted Purchase Order version"),
+                                .help("Specify the Purchase Order version to be simultaneously \
+                                    updated or set as accepted")
+                        )
+                        .arg(
+                            Arg::with_name("version_is_draft")
+                                .long("version-is-draft")
+                                .help("Set the specified version as a draft; version-id must be supplied")
+                        )
+                        .arg(
+                            Arg::with_name("version_not_draft")
+                                .long("version-not-draft")
+                                .help("Set the specified version as not a draft; version-id must be supplied")
+                        )
+                        .arg(
+                            Arg::with_name("version_workflow_state")
+                                .value_name("version-workflow-state")
+                                .long("version-workflow-state")
+                                .takes_value(true)
+                                .help("Update the Purchase Order version's workflow state; version-id must be supplied")
                         )
                         .arg(
                             Arg::with_name("key")
@@ -2612,14 +2640,29 @@ fn run() -> Result<(), CliError> {
                         is_closed = true;
                     }
 
-                    let mut accepted_version = po.accepted_version_id;
+                    if m.is_present("set_accepted_version") & m.is_present("rm_accepted_version") {
+                        return Err(CliError::UserError(
+                            "Both set and remove accepted version flags were supplied; \
+                        only one of these operations is allowed at a time"
+                                .to_string(),
+                        ));
+                    }
 
-                    if m.is_present("accepted_version") {
-                        accepted_version = m
-                            .value_of("accepted_version")
-                            .map(String::from)
-                            .map(Some)
-                            .unwrap();
+                    let mut accepted_version = po.accepted_version_id;
+                    if m.is_present("set_accepted_version") {
+                        match m.value_of("version_id") {
+                            Some(v) => accepted_version = Some(v.to_string()),
+                            None => {
+                                return Err(CliError::UserError(
+                                    "Version ID was not supllied; cannot set accepted version"
+                                        .to_string(),
+                                ))
+                            }
+                        }
+                    }
+
+                    if m.is_present("rm_accepted_version") {
+                        accepted_version = Some(String::from(""));
                     }
 
                     let mut alternate_ids = po.alternate_ids.clone();
@@ -2661,18 +2704,108 @@ fn run() -> Result<(), CliError> {
                         converted_ids.push(converted);
                     }
 
-                    let payload = UpdatePurchaseOrderPayloadBuilder::new()
-                        .with_uid(uid)
+                    let mut payload_builder = UpdatePurchaseOrderPayloadBuilder::new()
+                        .with_uid(uid.clone())
                         .with_workflow_state(workflow_state.to_string())
                         .with_is_closed(is_closed)
                         .with_accepted_version_number(
                             accepted_version.as_deref().map(|s| s.to_string()),
                         )
-                        .with_alternate_ids(converted_ids)
-                        .build()
-                        .map_err(|err| {
-                            CliError::UserError(format!("Could not build Purchase Order: {}", err))
-                        })?;
+                        .with_alternate_ids(converted_ids);
+
+                    if m.is_present("version_id")
+                        && !(m.is_present("version_is_draft")
+                            || m.is_present("version_not_draft")
+                            || m.is_present("version_workflow_state"))
+                    {
+                        return Err(CliError::UserError(
+                            "Version ID was supllied without version-related action".to_string(),
+                        ));
+                    }
+
+                    // If an update to the version is required, add this update to the purchase
+                    // order update builder
+                    if m.is_present("version_is_draft")
+                        || m.is_present("version_not_draft")
+                        || m.is_present("version_workflow_state")
+                    {
+                        if let Some(version_id) = m.value_of("version_id") {
+                            let current_version = purchase_order::get_purchase_order_version(
+                                &*purchase_order_client,
+                                &uid,
+                                version_id,
+                                service_id.as_deref(),
+                            )?;
+
+                            let mut draft_state = current_version.is_draft;
+                            if m.is_present("version_is_draft") & m.is_present("version_not_draft")
+                            {
+                                return Err(CliError::UserError(
+                                    "Both version draft and not-draft flags were supplied; \
+                                only one of these operations is allowed at a time"
+                                        .to_string(),
+                                ));
+                            } else if m.is_present("version_is_draft") {
+                                draft_state = true;
+                            } else if m.is_present("version_not_draft") {
+                                draft_state = false;
+                            }
+
+                            let mut version_workflow_state = current_version.workflow_state.clone();
+                            if let Some(workflow_state) = m.value_of("version_workflow_state") {
+                                version_workflow_state = workflow_state.to_string();
+                            }
+
+                            // Copy current revision since new revisions are not allowed in this command
+                            let current_revision =
+                                purchase_order::get_current_revision_for_version(
+                                    &*purchase_order_client,
+                                    &uid,
+                                    &current_version,
+                                    service_id.as_deref(),
+                                )?;
+                            let created_at = current_revision
+                                .created_at
+                                .try_into()
+                                .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+                            let revision_payload = PayloadRevisionBuilder::new()
+                                .with_revision_id(current_revision.revision_id)
+                                .with_submitter(current_revision.submitter.to_string())
+                                .with_created_at(created_at)
+                                .with_order_xml_v3_4(current_revision.order_xml_v3_4)
+                                .build()
+                                .map_err(|err| {
+                                    CliError::UserError(format!(
+                                        "Could not build PO revision: {}",
+                                        err
+                                    ))
+                                })?;
+                            let version_payload = UpdateVersionPayloadBuilder::new()
+                                .with_po_uid(uid)
+                                .with_version_id(version_id.to_string())
+                                .with_is_draft(draft_state)
+                                .with_workflow_state(version_workflow_state)
+                                .with_revision(revision_payload)
+                                .build()
+                                .map_err(|err| {
+                                    CliError::UserError(format!(
+                                        "Could not build Purchase Order Version: {}",
+                                        err
+                                    ))
+                                })?;
+
+                            payload_builder =
+                                payload_builder.with_version_updates(vec![version_payload]);
+                        } else {
+                            return Err(CliError::UserError(
+                                "Cannot update version: no version ID supplied".to_string(),
+                            ));
+                        }
+                    }
+                    let payload = payload_builder.build().map_err(|err| {
+                        CliError::UserError(format!("Could not build Purchase Order: {}", err))
+                    })?;
 
                     info!("Submitting request to update purchase order...");
                     purchase_order::do_update_purchase_order(

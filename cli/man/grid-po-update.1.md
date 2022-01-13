@@ -30,6 +30,21 @@ ARGS
 FLAGS
 =====
 
+`--is-closed`
+: Specify the Purchase Order has been closed.
+
+`--set-accepted-version`
+: Set the supplied version ID as the accepted Purchase Order version.
+
+`--rm-accepted-version`
+: Unset the Purchase Order's current accepted version ID.
+
+`--version-is-draft`
+: Set the specified version as a draft; version-id must be supplied.
+
+`--version-not-draft`
+: Set the specified version as not a draft; version-id must be supplied.
+
 `-h`, `--help`
 : Prints help information.
 
@@ -46,23 +61,13 @@ FLAGS
 OPTIONS
 =======
 
-`--accepted-version`
-: Specifies the accepted version ID of the purchase order.
-
 `--add-id`
 : Add an alternate ID. This may be specified multiple times.
   An ID is of the format `alternate_id_type:alternate_id`.  Examples:
   `po_number:12348959` and/or `internal_po_id:a8f9fke`.
 
-`--is-closed`
-: Specifies if the purchase order is closed or open. Possible values are `true`
-  or `false`.
-
 `-k`, `--key`
 : base name or path to a private signing key file
-
-`--org`
-: Specify the organization that owns the purchase order.
 
 `--rm-id`
 : Remove an alternate ID. This may be specified multiple times.
@@ -75,6 +80,12 @@ OPTIONS
 
 `--url`
 : URL for the REST API
+
+`--version-id`
+: Specify the Purchase Order version to be simultaneously updated or added as accepted.
+
+`--version-workflow-state`
+: Update the Purchase Order version's workflow state; version-id must be supplied.
 
 `--wait`
 : Maximum number of seconds to wait for the batch to be committed.
@@ -90,7 +101,6 @@ The command
 ```
 
 $ grid po update \
-    --org crgl \
     --add-id po_number:809832081 \
     --wait 10 \
     PO-1234-56789
@@ -109,15 +119,18 @@ The command
 
 ```
 $ grid po update \
-    --org crgl \
     --workflow-state confirmed \
-    --accepted-version v3 \
+    --version-id v3 \
+    --version-workflow-state accepted \
+    --version-not-draft \
+    --set-accepted-version \
     --wait 10 \
     po_number:809832081
 ```
 
-will update the purchase order with alternate ID `po_number:809832081`, set the
-workflow state to `confirmed`, and the accepted version to `v3`. It will
+will update the purchase order with alternate ID `po_number:809832081`, setting its
+workflow state to `confirmed` and the accepted version to `v3` while updating version `v3`
+to no longer be a draft and to have a version workflow state of `accepted`. It will
 generate output like the following:
 
 ```
