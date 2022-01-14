@@ -75,10 +75,9 @@ pub fn display_schemas_info(schemas: &[GridSchema]) {
         }
     });
     println!(
-        "{:<width_name$} {:<width_owner$} {}",
+        "{:<width_name$} {:<width_owner$} DESCRIPTION",
         "NAME",
         "OWNER",
-        "DESCRIPTION".to_string(),
         width_name = name_width,
         width_owner = owner_width,
     );

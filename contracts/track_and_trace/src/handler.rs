@@ -983,11 +983,7 @@ impl TrackAndTraceTransactionHandler {
 }
 
 fn map_builder_error_to_apply_error(err: BuilderError, protocol_name: &str) -> ApplyError {
-    ApplyError::InvalidTransaction(format!(
-        "Failed to build {}. {}",
-        protocol_name,
-        err.to_string()
-    ))
+    ApplyError::InvalidTransaction(format!("Failed to build {}. {}", protocol_name, err))
 }
 
 impl TransactionHandler for TrackAndTraceTransactionHandler {

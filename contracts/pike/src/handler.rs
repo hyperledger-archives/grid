@@ -619,7 +619,7 @@ fn create_org(
         Ok(Some(_)) => {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Agent already exists: {}",
-                signer.to_string(),
+                signer,
             )))
         }
         Err(err) => {
