@@ -35,7 +35,7 @@ pub async fn submit_batches(
         Err(err) => {
             return Err(ErrorResponse::new(
                 400,
-                &format!("Protobuf message was badly formatted. {}", err.to_string()),
+                &format!("Protobuf message was badly formatted. {}", err),
             ));
         }
     };
