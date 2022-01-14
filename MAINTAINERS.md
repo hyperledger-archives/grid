@@ -11,6 +11,7 @@
 | Davey Newhall | dnewh | newhall |
 | Eloá Franca Verona | eloaverona | eloafran |
 | James Mitchell | jsmitchell | jsmitchell |
+| Lee Bradley | leebradley | lbradley |
 | Peter Schwarz | peterschwarz | pschwarz |
 | Richard Berg | rberg2 | rberg2 |
 | Ryan Banks | RyanLassigBanks | RyanBanks |
