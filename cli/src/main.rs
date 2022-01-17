@@ -2627,7 +2627,16 @@ fn run() -> Result<(), CliError> {
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                let uid = m.value_of("id").map(String::from).unwrap();
+                let mut uid = m.value_of("id").map(String::from).unwrap();
+
+                if uid.contains(':') {
+                    validate_alt_id_format(&uid)?;
+                    uid = purchase_order::get_po_uid_from_alternate_id(
+                        &*purchase_order_client,
+                        &uid,
+                        service_id.as_deref(),
+                    )?;
+                }
 
                 let po = purchase_order::do_fetch_purchase_order(
                     &*purchase_order_client,
@@ -2896,13 +2905,22 @@ fn run() -> Result<(), CliError> {
 
                     let version_id = m.value_of("version_id").unwrap();
 
-                    let po = m.value_of("po").unwrap();
+                    let mut po = m.value_of("po").map(String::from).unwrap();
+
+                    if po.contains(':') {
+                        validate_alt_id_format(&po)?;
+                        po = purchase_order::get_po_uid_from_alternate_id(
+                            &*purchase_order_client,
+                            &po,
+                            service_id.as_deref(),
+                        )?;
+                    }
 
                     let workflow_state = m.value_of("workflow_state").unwrap();
 
                     let revision_id = purchase_order::get_latest_revision_id(
                         &*purchase_order_client,
-                        po,
+                        &po,
                         version_id,
                         service_id.as_deref(),
                     )? + 1;
@@ -2912,7 +2930,7 @@ fn run() -> Result<(), CliError> {
                     let action =
                         CreateVersionPayloadBuilder::new()
                             .with_version_id(version_id.to_string())
-                            .with_po_uid(po.to_string())
+                            .with_po_uid(po)
                             .with_workflow_state(workflow_state.to_string())
                             .with_is_draft(draft)
                             .with_revision(
@@ -3017,18 +3035,27 @@ fn run() -> Result<(), CliError> {
 
                     let version_id = m.value_of("version_id").unwrap();
 
-                    let po = m.value_of("po").unwrap();
+                    let mut po = m.value_of("po").map(String::from).unwrap();
+
+                    if po.contains(':') {
+                        validate_alt_id_format(&po)?;
+                        po = purchase_order::get_po_uid_from_alternate_id(
+                            &*purchase_order_client,
+                            &po,
+                            service_id.as_deref(),
+                        )?;
+                    }
 
                     let version = purchase_order::get_purchase_order_version(
                         &*purchase_order_client,
-                        po,
+                        &po,
                         version_id,
                         service_id.as_deref(),
                     )?;
 
                     let current_revision = purchase_order::get_current_revision_for_version(
                         &*purchase_order_client,
-                        po,
+                        &po,
                         &version,
                         service_id.as_deref(),
                     )?;
@@ -3053,7 +3080,7 @@ fn run() -> Result<(), CliError> {
                         current_revision_id = u64::try_from(
                             purchase_order::get_latest_revision_id(
                                 &*purchase_order_client,
-                                po,
+                                &po,
                                 version_id,
                                 service_id.as_deref(),
                             )? + 1,
@@ -3108,7 +3135,7 @@ fn run() -> Result<(), CliError> {
 
                     let action = UpdateVersionPayloadBuilder::new()
                         .with_version_id(version_id.to_string())
-                        .with_po_uid(po.to_string())
+                        .with_po_uid(po)
                         .with_workflow_state(workflow_state.to_string())
                         .with_is_draft(draft)
                         .with_revision(payload_revision)
@@ -3134,13 +3161,22 @@ fn run() -> Result<(), CliError> {
                     let service_id = value_of_service_id(m)?;
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let po_uid = m.value_of("po_uid").unwrap();
+                    let mut po_uid = m.value_of("po_uid").map(String::from).unwrap();
+
+                    if po_uid.contains(':') {
+                        validate_alt_id_format(&po_uid)?;
+                        po_uid = purchase_order::get_po_uid_from_alternate_id(
+                            &*purchase_order_client,
+                            &po_uid,
+                            service_id.as_deref(),
+                        )?;
+                    }
 
                     let version = m.value_of("version_id").unwrap();
 
                     purchase_order::do_list_revisions(
                         &*purchase_order_client,
-                        po_uid,
+                        &po_uid,
                         version,
                         service_id.as_deref(),
                     )?
@@ -3150,7 +3186,16 @@ fn run() -> Result<(), CliError> {
                     let service_id = value_of_service_id(m)?;
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let po_uid = m.value_of("po_uid").unwrap();
+                    let mut po_uid = m.value_of("po_uid").map(String::from).unwrap();
+
+                    if po_uid.contains(':') {
+                        validate_alt_id_format(&po_uid)?;
+                        po_uid = purchase_order::get_po_uid_from_alternate_id(
+                            &*purchase_order_client,
+                            &po_uid,
+                            service_id.as_deref(),
+                        )?;
+                    }
 
                     let version = m.value_of("version_id").unwrap();
 
@@ -3162,7 +3207,7 @@ fn run() -> Result<(), CliError> {
 
                     purchase_order::do_show_revision(
                         &*purchase_order_client,
-                        po_uid,
+                        &po_uid,
                         version,
                         revision,
                         service_id.as_deref(),

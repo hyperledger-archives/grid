@@ -281,6 +281,25 @@ pub fn get_latest_revision_id(
     }
 }
 
+pub fn get_po_uid_from_alternate_id(
+    client: &dyn PurchaseOrderClient,
+    alternate_id: &str,
+    service_id: Option<&str>,
+) -> Result<String, CliError> {
+    let po = client
+        .get_purchase_order(alternate_id.to_string(), service_id)
+        .map_err(CliError::from)?;
+
+    if let Some(po) = po {
+        Ok(po.purchase_order_uid)
+    } else {
+        Err(CliError::UserError(format!(
+            "Could not find purchase order with alternate ID: {}",
+            alternate_id
+        )))
+    }
+}
+
 pub fn generate_purchase_order_uid() -> String {
     format!(
         "PO-{}-{}",
