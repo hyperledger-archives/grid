@@ -16,10 +16,7 @@ pub(in crate::schema) mod models;
 mod operations;
 pub(in crate) mod schema;
 
-use crate::error::{
-    ConstraintViolationError, ConstraintViolationType, InternalError,
-    ResourceTemporarilyUnavailableError,
-};
+use crate::error::ResourceTemporarilyUnavailableError;
 
 use models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema};
 use operations::{
@@ -424,39 +421,5 @@ impl From<(GridPropertyDefinition, Vec<PropertyDefinition>)> for PropertyDefinit
             struct_properties: children,
             service_id: model.service_id,
         }
-    }
-}
-
-impl From<diesel::result::Error> for SchemaStoreError {
-    fn from(err: diesel::result::Error) -> SchemaStoreError {
-        match err {
-            diesel::result::Error::DatabaseError(
-                diesel::result::DatabaseErrorKind::UniqueViolation,
-                _,
-            ) => SchemaStoreError::ConstraintViolationError(
-                ConstraintViolationError::from_source_with_violation_type(
-                    ConstraintViolationType::Unique,
-                    Box::new(err),
-                ),
-            ),
-            diesel::result::Error::DatabaseError(
-                diesel::result::DatabaseErrorKind::ForeignKeyViolation,
-                _,
-            ) => SchemaStoreError::ConstraintViolationError(
-                ConstraintViolationError::from_source_with_violation_type(
-                    ConstraintViolationType::ForeignKey,
-                    Box::new(err),
-                ),
-            ),
-            _ => SchemaStoreError::InternalError(InternalError::from_source(Box::new(err))),
-        }
-    }
-}
-
-impl From<diesel::r2d2::PoolError> for SchemaStoreError {
-    fn from(err: diesel::r2d2::PoolError) -> SchemaStoreError {
-        SchemaStoreError::ResourceTemporarilyUnavailableError(
-            ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
-        )
     }
 }

@@ -22,6 +22,7 @@ use crate::track_and_trace::store::diesel::models::RecordModel;
 use crate::track_and_trace::store::{Record, RecordList};
 
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::track_and_trace::store::diesel) trait TrackAndTraceStoreListRecordsOperation {
     fn list_records(
@@ -55,7 +56,7 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
             query = query.filter(record::service_id.is_null());
         }
 
-        let records = query
+        let records: Vec<Record> = query
             .load::<RecordModel>(self.conn)
             .map(Some)
             .map_err(|err| {
@@ -72,15 +73,9 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
             .map(Record::from)
             .collect();
 
-        let mut count_query = record::table.into_boxed().select(record::all_columns);
-
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(record::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(record::service_id.is_null());
-        }
-
-        let total = count_query.count().get_result(self.conn)?;
+        let total = records.len().try_into().map_err(|err| {
+            TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
+        })?;
 
         Ok(RecordList::new(records, Paging::new(offset, limit, total)))
     }
@@ -109,7 +104,7 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
             query = query.filter(record::service_id.is_null());
         }
 
-        let records = query
+        let records: Vec<Record> = query
             .load::<RecordModel>(self.conn)
             .map(Some)
             .map_err(|err| {
@@ -126,15 +121,9 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
             .map(Record::from)
             .collect();
 
-        let mut count_query = record::table.into_boxed().select(record::all_columns);
-
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(record::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(record::service_id.is_null());
-        }
-
-        let total = count_query.count().get_result(self.conn)?;
+        let total = records.len().try_into().map_err(|err| {
+            TrackAndTraceStoreError::InternalError(InternalError::from_source(Box::new(err)))
+        })?;
 
         Ok(RecordList::new(records, Paging::new(offset, limit, total)))
     }

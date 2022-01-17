@@ -24,7 +24,9 @@ use crate::pike::store::diesel::{
 use crate::commits::MAX_COMMIT_NUM;
 use crate::error::InternalError;
 use crate::pike::store::diesel::models::{AgentModel, RoleAssociationModel};
+
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::pike::store::diesel) trait PikeStoreListAgentsOperation {
     fn list_agents(
@@ -61,17 +63,9 @@ impl<'a> PikeStoreListAgentsOperation for PikeStoreOperations<'a, diesel::pg::Pg
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-            let mut count_query = pike_agent::table
-                .into_boxed()
-                .select(pike_agent::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(pike_agent::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(pike_agent::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = agent_models.len().try_into().map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut agents = Vec::new();
 
@@ -134,17 +128,9 @@ impl<'a> PikeStoreListAgentsOperation
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-            let mut count_query = pike_agent::table
-                .into_boxed()
-                .select(pike_agent::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(pike_agent::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(pike_agent::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = agent_models.len().try_into().map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut agents = Vec::new();
 

@@ -15,6 +15,7 @@
 use super::SchemaStoreOperations;
 
 use crate::{
+    error::InternalError,
     paging::Paging,
     schema::{
         store::{
@@ -28,7 +29,9 @@ use crate::{
         MAX_COMMIT_NUM,
     },
 };
+
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::schema) trait ListSchemasOperation {
     fn list_schemas(
@@ -102,7 +105,7 @@ mod pg {
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
-    ) -> QueryResult<(Vec<GridSchema>, i64)> {
+    ) -> Result<(Vec<GridSchema>, i64), SchemaStoreError> {
         let mut query = grid_schema::table
             .into_boxed()
             .select(grid_schema::all_columns)
@@ -116,19 +119,15 @@ mod pg {
             query = query.filter(grid_schema::service_id.is_null());
         }
 
-        let mut count_query = grid_schema::table
-            .into_boxed()
-            .select(grid_schema::all_columns);
+        let models = query.load(conn).map_err(|err| {
+            SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+        })?;
 
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(grid_schema::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(grid_schema::service_id.is_null());
-        }
+        let total = models.len().try_into().map_err(|err| {
+            SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+        })?;
 
-        let total = count_query.count().get_result(conn)?;
-
-        query.load(conn).map(|list| (list, total))
+        Ok((models, total))
     }
 
     pub fn get_root_definitions(
@@ -181,7 +180,7 @@ mod sqlite {
         service_id: Option<&str>,
         offset: i64,
         limit: i64,
-    ) -> QueryResult<(Vec<GridSchema>, i64)> {
+    ) -> Result<(Vec<GridSchema>, i64), SchemaStoreError> {
         let mut query = grid_schema::table
             .into_boxed()
             .select(grid_schema::all_columns)
@@ -195,19 +194,15 @@ mod sqlite {
             query = query.filter(grid_schema::service_id.is_null());
         }
 
-        let mut count_query = grid_schema::table
-            .into_boxed()
-            .select(grid_schema::all_columns);
+        let models = query.load(conn).map_err(|err| {
+            SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+        })?;
 
-        if let Some(service_id) = service_id {
-            count_query = count_query.filter(grid_schema::service_id.eq(service_id));
-        } else {
-            count_query = count_query.filter(grid_schema::service_id.is_null());
-        }
+        let total = models.len().try_into().map_err(|err| {
+            SchemaStoreError::InternalError(InternalError::from_source(Box::new(err)))
+        })?;
 
-        let total = count_query.count().get_result(conn)?;
-
-        query.load(conn).map(|list| (list, total))
+        Ok((models, total))
     }
 
     pub fn get_root_definitions(

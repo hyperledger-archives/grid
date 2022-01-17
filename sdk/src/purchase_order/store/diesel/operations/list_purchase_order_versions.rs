@@ -23,7 +23,9 @@ use crate::purchase_order::store::diesel::{
 };
 
 use crate::purchase_order::store::PurchaseOrderStoreError;
+
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::purchase_order::store::diesel) trait PurchaseOrderStoreListPurchaseOrderVersionsOperation
 {
@@ -135,22 +137,9 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                         ))
                     })?;
 
-            let mut count_query = purchase_order_version::table
-                .into_boxed()
-                .select(purchase_order_version::all_columns)
-                .filter(
-                    purchase_order_version::purchase_order_uid
-                        .eq(&purchase_order_uid)
-                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(purchase_order_version::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(purchase_order_version::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = version_models.len().try_into().map_err(|err| {
+                PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut versions = Vec::new();
 
@@ -293,22 +282,9 @@ impl<'a> PurchaseOrderStoreListPurchaseOrderVersionsOperation
                         ))
                     })?;
 
-            let mut count_query = purchase_order_version::table
-                .into_boxed()
-                .select(purchase_order_version::all_columns)
-                .filter(
-                    purchase_order_version::purchase_order_uid
-                        .eq(&purchase_order_uid)
-                        .and(purchase_order_version::end_commit_num.eq(MAX_COMMIT_NUM)),
-                );
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(purchase_order_version::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(purchase_order_version::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = version_models.len().try_into().map_err(|err| {
+                PurchaseOrderStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut versions = Vec::new();
 

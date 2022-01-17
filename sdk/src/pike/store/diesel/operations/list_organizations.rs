@@ -31,6 +31,7 @@ use crate::pike::store::diesel::{
 use crate::pike::store::{Organization, OrganizationList};
 
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::pike::store::diesel) trait PikeStoreListOrganizationsOperation {
     fn list_organizations(
@@ -65,17 +66,9 @@ impl<'a> PikeStoreListOrganizationsOperation for PikeStoreOperations<'a, diesel:
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-            let mut count_query = pike_organization::table
-                .into_boxed()
-                .select(pike_organization::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(pike_organization::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(pike_organization::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = org_models.len().try_into().map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut orgs = Vec::new();
 
@@ -187,17 +180,9 @@ impl<'a> PikeStoreListOrganizationsOperation
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-            let mut count_query = pike_organization::table
-                .into_boxed()
-                .select(pike_organization::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(pike_organization::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(pike_organization::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = org_models.len().try_into().map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut orgs = Vec::new();
 

@@ -15,6 +15,7 @@
 use super::ProductStoreOperations;
 
 use crate::{
+    error::InternalError,
     paging::Paging,
     product::{
         store::{
@@ -28,7 +29,9 @@ use crate::{
         MAX_COMMIT_NUM,
     },
 };
+
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::product) trait ListProductsOperation {
     fn list_products(
@@ -50,6 +53,10 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::pg::PgConn
         self.conn.transaction::<_, ProductStoreError, _>(|| {
             let db_products = pg::list_products(&*self.conn, service_id, offset, limit)?;
 
+            let total = db_products.len().try_into().map_err(|err| {
+                ProductStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
             let mut products = Vec::new();
 
             for product in db_products {
@@ -59,16 +66,6 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::pg::PgConn
 
                 products.push(Product::from((product, values)));
             }
-
-            let mut count_query = product::table.into_boxed().select(product::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(product::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(product::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
 
             Ok(ProductList::new(
                 products,
@@ -89,6 +86,10 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::sqlite::Sq
         self.conn.transaction::<_, ProductStoreError, _>(|| {
             let db_products = sqlite::list_products(&*self.conn, service_id, offset, limit)?;
 
+            let total = db_products.len().try_into().map_err(|err| {
+                ProductStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
+
             let mut products = Vec::new();
 
             for product in db_products {
@@ -98,16 +99,6 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::sqlite::Sq
 
                 products.push(Product::from((product, values)));
             }
-
-            let mut count_query = product::table.into_boxed().select(product::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(product::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(product::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
 
             Ok(ProductList::new(
                 products,

@@ -22,13 +22,13 @@ use crate::pike::store::diesel::models::{
     AllowedOrgModel, InheritFromModel, PermissionModel, RoleModel,
 };
 use crate::pike::store::diesel::{
-    schema::{
-        pike_allowed_orgs, pike_inherit_from, pike_organization, pike_permissions, pike_role,
-    },
+    schema::{pike_allowed_orgs, pike_inherit_from, pike_permissions, pike_role},
     PikeStoreError,
 };
 use crate::pike::store::{Role, RoleList};
+
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 pub(in crate::pike::store::diesel) trait PikeStoreListRolesForOrganizationOperation {
     fn list_roles_for_organization(
@@ -71,17 +71,9 @@ impl<'a> PikeStoreListRolesForOrganizationOperation
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-            let mut count_query = pike_organization::table
-                .into_boxed()
-                .select(pike_organization::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(pike_organization::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(pike_organization::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = role_models.len().try_into().map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut roles = Vec::new();
 
@@ -185,17 +177,9 @@ impl<'a> PikeStoreListRolesForOrganizationOperation
                 PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
             })?;
 
-            let mut count_query = pike_organization::table
-                .into_boxed()
-                .select(pike_organization::all_columns);
-
-            if let Some(service_id) = service_id {
-                count_query = count_query.filter(pike_organization::service_id.eq(service_id));
-            } else {
-                count_query = count_query.filter(pike_organization::service_id.is_null());
-            }
-
-            let total = count_query.count().get_result(self.conn)?;
+            let total = role_models.len().try_into().map_err(|err| {
+                PikeStoreError::InternalError(InternalError::from_source(Box::new(err)))
+            })?;
 
             let mut roles = Vec::new();
 
