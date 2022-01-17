@@ -160,6 +160,110 @@ impl WorkflowStateBuilder {
     }
 }
 
+/// Defines the beginning state of an item within a workflow. A `StartWorkflowState` contains a
+/// list of permission aliases and transitions that an object may make once it is created within
+/// the `SubWorkflow`'s `StartWorkflowState`.
+#[derive(Clone, Default)]
+pub struct StartWorkflowState {
+    /// Permission definitions for creating an object in the `SubWorkflow`
+    permission_aliases: Vec<PermissionAlias>,
+    /// Workflow states that may be transitioned to from this workflow state
+    transitions: Vec<String>,
+}
+
+impl StartWorkflowState {
+    /// Determines if an entity may execute a transition to a given state, considering the
+    /// permissions of the submitter and the `permission_aliases` defined within this workflow
+    /// state.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_state` - Name of the workflow state an item is attempting to be transitioned to
+    /// * `pike_permissions` - List of Grid Pike permissions assigned to the submitter of the
+    /// request
+    pub fn can_transition(&self, new_state: String, pike_permissions: &[String]) -> bool {
+        if !self.transitions.contains(&new_state) {
+            return false;
+        }
+
+        for perm in pike_permissions {
+            for alias in &self.permission_aliases {
+                if alias.name() == perm && alias.transitions.contains(&new_state) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// List the workflow permissions stored under the specified permission aliases
+    ///
+    /// # Arguments
+    ///
+    /// `names` - List of names of the permission aliases to expand
+    pub fn expand_permissions(&self, names: &[String]) -> Vec<String> {
+        let mut perms = Vec::new();
+
+        for name in names {
+            for alias in &self.permission_aliases {
+                if alias.name() == name {
+                    perms.append(&mut alias.permissions().to_vec());
+                }
+            }
+        }
+
+        perms
+    }
+
+    /// Retrieve all aliases defined within this state that contain the specified workflow
+    /// permission
+    ///
+    /// # Arguments
+    ///
+    /// `permission` - Permission to search for within the workflow aliases
+    pub fn get_aliases_by_permission(&self, permission: &str) -> Vec<String> {
+        let mut aliases = Vec::new();
+
+        for alias in &self.permission_aliases {
+            if alias.permissions().contains(&permission.to_string()) {
+                aliases.push(alias.name().to_string());
+            }
+        }
+
+        aliases
+    }
+}
+
+/// Builder used to create a `StartWorkflowState` object
+#[derive(Default)]
+pub struct StartWorkflowStateBuilder {
+    permission_aliases: Vec<PermissionAlias>,
+    transitions: Vec<String>,
+}
+
+impl StartWorkflowStateBuilder {
+    /// Add the name of a workflow state that may be transitioned to from this state
+    pub fn add_transition(mut self, transition: &str) -> Self {
+        self.transitions.push(transition.to_string());
+        self
+    }
+
+    /// Add a `PermissionAlias` to allow certain entities to perform certain actions within this
+    /// workflow state
+    pub fn add_permission_alias(mut self, alias: PermissionAlias) -> Self {
+        self.permission_aliases.push(alias);
+        self
+    }
+
+    pub fn build(self) -> StartWorkflowState {
+        StartWorkflowState {
+            permission_aliases: self.permission_aliases,
+            transitions: self.transitions,
+        }
+    }
+}
+
 /// An alias for multiple permissions
 #[derive(Clone, Default)]
 pub struct PermissionAlias {
