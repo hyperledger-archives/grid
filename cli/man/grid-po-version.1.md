@@ -92,4 +92,4 @@ SEE ALSO
 | `grid-po-version-update(1)`
 | `grid-po-version-show(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.1/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

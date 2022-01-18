@@ -48,4 +48,4 @@ SEE ALSO
 ========
 | `grid admin(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.2/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

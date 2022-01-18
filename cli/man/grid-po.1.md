@@ -97,4 +97,4 @@ SEE ALSO
 | `grid-po-update(1)`
 | `grid-po-version(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.1/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

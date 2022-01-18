@@ -72,4 +72,4 @@ SEE ALSO
 | `grid-po-revision-list(1)`
 | `grid-po-revision-show(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.1/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

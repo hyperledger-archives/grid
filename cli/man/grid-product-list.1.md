@@ -86,4 +86,4 @@ SEE ALSO
 | `grid-product-show(1)`
 | `grid-product-list(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.2/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

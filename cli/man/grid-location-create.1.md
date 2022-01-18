@@ -157,4 +157,4 @@ SEE ALSO
 | `grid-location-show(1)`
 | `grid-location-list(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.1/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/
