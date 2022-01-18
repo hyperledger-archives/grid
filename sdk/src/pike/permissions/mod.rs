@@ -718,16 +718,16 @@ mod tests {
         let subworkflow = workflow
             .subworkflow("po")
             .expect("Unable to get po subworkflow");
-        let state = subworkflow
-            .state("create")
-            .expect("Unable to get create state from subworkflow");
+        let start_state = subworkflow
+            .start_state()
+            .expect("Unable to get start state from subworkflow");
         // Validate that the Agent has the correct permission
         let result = perm_checker
             .check_permission_to_enter_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
-                &state,
+                &start_state,
                 "issued",
             )
             .expect("Unable to check permission with workflow");
@@ -794,7 +794,7 @@ mod tests {
             .subworkflow("po")
             .expect("Unable to get po subworkflow");
         let state = subworkflow
-            .state("create")
+            .start_state()
             .expect("Unable to get create state from subworkflow");
         // Validate the Agent does not have the correct permission.
         let result = perm_checker
@@ -938,8 +938,8 @@ mod tests {
             .subworkflow("po")
             .expect("Unable to get po subworkflow");
         let state = subworkflow
-            .state("create")
-            .expect("Unable to get create state from subworkflow");
+            .start_state()
+            .expect("Unable to get start state from subworkflow");
         // Check that the agent is able to transition the state to "issued" and has the
         // "can-create-po" permission for the Alpha organization
         let result = perm_checker
@@ -1015,7 +1015,7 @@ mod tests {
             .subworkflow("po")
             .expect("Unable to get po subworkflow");
         let state = subworkflow
-            .state("create")
+            .start_state()
             .expect("Unable to get create state from subworkflow");
 
         let result = perm_checker
@@ -1047,7 +1047,7 @@ mod tests {
             buyer.add_permission("can-transition-issued");
             buyer.add_transition("issued");
 
-            WorkflowStateBuilder::new("create")
+            StartWorkflowStateBuilder::default()
                 .add_transition("issued")
                 .add_permission_alias(buyer)
                 .add_permission_alias(seller)
@@ -1105,11 +1105,10 @@ mod tests {
         };
 
         SubWorkflowBuilder::new("po")
-            .add_state(create)
+            .with_start_state(create)
             .add_state(issued)
             .add_state(confirmed)
             .add_state(closed)
-            .add_starting_state("create")
             .build()
     }
 }

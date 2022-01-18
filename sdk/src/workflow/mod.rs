@@ -116,20 +116,21 @@ mod tests {
             .add_constraint("active=None")
             .add_transition("issued")
             .add_transition("confirm")
+            .add_permission_alias(permission.clone())
+            .build();
+
+        let start_state = StartWorkflowStateBuilder::default()
             .add_permission_alias(permission)
+            .add_transition("issued")
             .build();
 
         let subworkflow = SubWorkflowBuilder::new("po")
+            .with_start_state(start_state.clone())
             .add_state(state)
-            .add_starting_state("issued")
-            .add_starting_state("proposed")
             .build();
 
         assert_eq!("po", subworkflow.name());
-        assert_eq!(
-            &["issued".to_string(), "proposed".to_string()],
-            subworkflow.starting_states()
-        );
+        assert!(subworkflow.start_state().is_some());
         assert!(subworkflow.state("issued").is_some());
     }
 
@@ -145,13 +146,17 @@ mod tests {
             .add_constraint("active=None")
             .add_transition("issued")
             .add_transition("confirm")
+            .add_permission_alias(permission.clone())
+            .build();
+
+        let start_state = StartWorkflowStateBuilder::default()
             .add_permission_alias(permission)
+            .add_transition("issued")
             .build();
 
         let subworkflow = SubWorkflowBuilder::new("po")
+            .with_start_state(start_state)
             .add_state(state)
-            .add_starting_state("issued")
-            .add_starting_state("proposed")
             .build();
 
         let workflow = Workflow::new(vec![subworkflow]);
