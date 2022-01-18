@@ -15,7 +15,8 @@
 use std::fmt;
 
 use grid_sdk::workflow::{
-    PermissionAlias, SubWorkflow, SubWorkflowBuilder, Workflow, WorkflowStateBuilder,
+    PermissionAlias, StartWorkflowStateBuilder, SubWorkflow, SubWorkflowBuilder, Workflow,
+    WorkflowStateBuilder,
 };
 
 use crate::permissions::Permission;
@@ -52,7 +53,7 @@ fn collaborative_workflow() -> Workflow {
 }
 
 fn default_sub_workflow() -> SubWorkflow {
-    let create = {
+    let start_state = {
         let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission(&Permission::CanCreatePo.to_string());
         buyer.add_permission(&Permission::CanCreatePoVersion.to_string());
@@ -60,7 +61,6 @@ fn default_sub_workflow() -> SubWorkflow {
         buyer.add_transition("issued");
 
         let mut seller = PermissionAlias::new("po::seller");
-        seller.add_permission(&Permission::CanCreatePoVersion.to_string());
         seller.add_permission(&Permission::CanTransitionIssued.to_string());
         seller.add_transition("issued");
 
@@ -69,7 +69,7 @@ fn default_sub_workflow() -> SubWorkflow {
         partner.add_permission(&Permission::CanTransitionIssued.to_string());
         partner.add_transition("issued");
 
-        WorkflowStateBuilder::new("create")
+        StartWorkflowStateBuilder::default()
             .add_transition("issued")
             .add_permission_alias(buyer)
             .add_permission_alias(seller)
@@ -156,16 +156,15 @@ fn default_sub_workflow() -> SubWorkflow {
     };
 
     SubWorkflowBuilder::new("po")
-        .add_state(create)
+        .with_start_state(start_state)
         .add_state(issued)
         .add_state(confirmed)
         .add_state(closed)
-        .add_starting_state("create")
         .build()
 }
 
 fn system_of_record_sub_workflow() -> SubWorkflow {
-    let create = {
+    let start_state = {
         let mut buyer = PermissionAlias::new("po::buyer");
         buyer.add_permission(&Permission::CanCreatePoVersion.to_string());
         buyer.add_permission(&Permission::CanTransitionProposed.to_string());
@@ -178,7 +177,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
         draft.add_permission(&Permission::CanTransitionEditable.to_string());
         draft.add_transition("editable");
 
-        WorkflowStateBuilder::new("create")
+        StartWorkflowStateBuilder::default()
             .add_transition("proposed")
             .add_transition("editable")
             .add_permission_alias(buyer)
@@ -363,7 +362,7 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
     };
 
     SubWorkflowBuilder::new("version")
-        .add_state(create)
+        .with_start_state(start_state)
         .add_state(proposed)
         .add_state(obsolete)
         .add_state(rejected)
@@ -374,19 +373,17 @@ fn system_of_record_sub_workflow() -> SubWorkflow {
         .add_state(declined)
         .add_state(composed)
         .add_state(cancelled)
-        .add_starting_state("proposed")
-        .add_starting_state("editable")
         .build()
 }
 
 fn collaborative_sub_workflow() -> SubWorkflow {
-    let create = {
+    let start_state = {
         let mut partner = PermissionAlias::new("po::partner");
         partner.add_permission(&Permission::CanCreatePoVersion.to_string());
         partner.add_permission(&Permission::CanTransitionProposed.to_string());
         partner.add_transition("proposed");
 
-        WorkflowStateBuilder::new("create")
+        StartWorkflowStateBuilder::default()
             .add_transition("proposed")
             .add_permission_alias(partner)
             .build()
@@ -467,13 +464,12 @@ fn collaborative_sub_workflow() -> SubWorkflow {
     };
 
     SubWorkflowBuilder::new("version")
-        .add_state(create)
+        .with_start_state(start_state)
         .add_state(proposed)
         .add_state(obsolete)
         .add_state(rejected)
         .add_state(modified)
         .add_state(accepted)
-        .add_starting_state("create")
         .build()
 }
 
