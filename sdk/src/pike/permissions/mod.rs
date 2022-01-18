@@ -17,7 +17,7 @@ use crate::pike::addressing::{compute_agent_address, compute_role_address};
 use crate::pike::permissions::error::PermissionCheckerError;
 use crate::protocol::pike::state::{Agent, AgentList, Role, RoleList};
 use crate::protos::FromBytes;
-use crate::workflow::WorkflowState;
+use crate::workflow::{StartWorkflowState, WorkflowState};
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -196,7 +196,7 @@ impl<'a> PermissionChecker<'a> {
         }
     }
 
-    pub fn check_permission_with_workflow(
+    pub fn check_permission_within_workflow(
         &self,
         permission: &str,
         signer: &str,
@@ -246,6 +246,58 @@ impl<'a> PermissionChecker<'a> {
 
         Ok(has_perm_alias && has_permission && can_transition)
     }
+
+    pub fn check_permission_to_enter_workflow(
+        &self,
+        permission: &str,
+        signer: &str,
+        record_owner: &str,
+        start_state: &StartWorkflowState,
+        desired_state: &str,
+    ) -> Result<bool, PermissionCheckerError> {
+        let agent = self.get_agent(signer)?.ok_or_else(|| {
+            PermissionCheckerError::InvalidPublicKey(format!(
+                "Agent with public key {} does not exist",
+                signer
+            ))
+        })?;
+
+        // Collect the agent's permission aliases
+        let mut agent_perms = Vec::new();
+        agent.roles().iter().for_each(|r| {
+            let mut org_id = Some(record_owner);
+            if r.contains('.') {
+                org_id = None;
+            }
+
+            let role = self.get_role(r, org_id).ok().flatten();
+
+            if let Some(role) = role {
+                agent_perms.extend_from_slice(role.permissions());
+            }
+        });
+        let mut has_perm_alias = false;
+        // Retrieve the aliases assigned the permission being validating
+        let perm_aliases = start_state.get_aliases_by_permission(permission);
+        for alias in perm_aliases {
+            // If the agent has a permission alias within this list, the agent presumably has
+            // the permission being validated (as this list was collected using the
+            // `WorkflowState`'s `get_aliases_by_permission` method).
+            if self.has_permission(signer, &alias, record_owner)? {
+                has_perm_alias = true;
+            }
+        }
+        // Retrieve the agent's permissions, as determined by their assigned permission aliases
+        let agent_workflow_permissions = start_state.expand_permissions(&agent_perms);
+        // Validate the aliases used by the agent has the correct permission assigned to it
+        let has_permission = agent_workflow_permissions.contains(&permission.to_string());
+
+        // Validate the agent is able to make the desired transition, based on the agent's
+        // permission aliases
+        let can_transition = start_state.can_transition(desired_state.to_string(), &agent_perms);
+
+        Ok(has_perm_alias && has_permission && can_transition)
+    }
 }
 
 #[cfg(test)]
@@ -260,7 +312,8 @@ mod tests {
     };
     use crate::protos::IntoBytes;
     use crate::workflow::{
-        PermissionAlias, SubWorkflow, SubWorkflowBuilder, Workflow, WorkflowStateBuilder,
+        PermissionAlias, StartWorkflowStateBuilder, SubWorkflow, SubWorkflowBuilder, Workflow,
+        WorkflowStateBuilder,
     };
 
     use sawtooth_sdk::processor::handler::ContextError;
@@ -628,10 +681,11 @@ mod tests {
     /// 3. Create an agent with the "buyer" role and set this agent in state.
     /// 4. Create a Workflow that contains a permission alias "po::buyer", corresponding to the
     ///    permission assigned to the "buyer" role in Pike.
-    /// 5. Check that `check_permission_with_workflow`, when given the permission "can-create-po"
-    ///    and a desired state of "issued", is able to successfully validate the agent, added to
-    ///    state in the previous step, has the correct permission, "can-create-po", to transition
-    ///    the workflow state to "issued" in order to create a purchase order in state.
+    /// 5. Check that `check_permission_to_enter_workflow`, when given the permission
+    ///    "can-create-po" and a desired state of "issued", is able to successfully validate the
+    ///    agent, added to state in the previous step, has the correct permission, "can-create-po",
+    ///    to transition the workflow state to "issued" in order to create a purchase order in
+    ///    state.
     fn test_permission_with_workflow() {
         let context = MockTransactionContext::default();
         let perm_checker = PermissionChecker::new(&context);
@@ -669,7 +723,7 @@ mod tests {
             .expect("Unable to get create state from subworkflow");
         // Validate that the Agent has the correct permission
         let result = perm_checker
-            .check_permission_with_workflow(
+            .check_permission_to_enter_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
@@ -692,7 +746,7 @@ mod tests {
     /// 5. Create a Workflow that contains a permission aliases "po::seller", corresponding to the
     ///    permission assigned to the "seller" role in Pike, and "po::buyer" which was not assigned
     ///    to the agent.
-    /// 6. Check that `check_permission_with_workflow`, when given the permission "can-create-po"
+    /// 6. Check that `check_permission_within_workflow`, when given the permission "can-create-po"
     ///    and a desired state of "issued", is able to successfully validate the agent does not
     ///    have the correct permission, "can-create-po" to transition the workflow state to "issued"
     ///    in order to create a purchase order.
@@ -744,7 +798,7 @@ mod tests {
             .expect("Unable to get create state from subworkflow");
         // Validate the Agent does not have the correct permission.
         let result = perm_checker
-            .check_permission_with_workflow(
+            .check_permission_to_enter_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
@@ -766,7 +820,7 @@ mod tests {
     /// 4. Create a Workflow that contains a permission alias "po::buyer", corresponding to the
     ///    permission assigned to the "buyer" role in Pike. This permission alias does not have
     ///    the ability to transition the "issued" state to "confirmed".
-    /// 5. Check that `check_permission_with_workflow`, when given the permission
+    /// 5. Check that `check_permission_within_workflow`, when given the permission
     ///    "can-update-po-version" and a desired state of "confirmed", is able to successfully
     ///    validate the agent has a permission that does not allow them to transition the
     ///    "issued" state to "confirmed", though the "po::buyer" alias does have the
@@ -808,7 +862,7 @@ mod tests {
             .expect("Unable to get issued state from subworkflow");
 
         let result = perm_checker
-            .check_permission_with_workflow(
+            .check_permission_within_workflow(
                 PERM_CAN_UPDATE_PO_VERSION,
                 PUBLIC_KEY_ALPHA,
                 ORG_ID_ALPHA,
@@ -835,11 +889,11 @@ mod tests {
     /// 4. Create an agent with the Beta organization's "buyer" role and set this agent in state.
     /// 5. Create a Workflow that contains a permission alias "po::buyer", corresponding to the
     ///    permission assigned to the "buyer" role in Pike.
-    /// 6. Check that `check_permission_with_workflow`, when given the permission "can-create-po"
-    ///    and a desired state of "issued", is able to successfully validate the agent has the
-    ///    correct permission, "can-create-po", for the Alpha organization in order to transition
-    ///    the workflow state to "issued" and create a purchase order in state.
-    fn test_permission_with_workflow_allowed_org() {
+    /// 6. Check that `check_permission_to_enter_workflow`, when given the permission
+    ///    "can-create-po" and a desired state of "issued", is able to successfully validate the
+    ///    agent has the correct permission, "can-create-po", for the Alpha organization in order
+    ///    to transition the workflow state to "issued" and create a purchase order in state.
+    fn test_permission_to_enter_workflow_allowed_org() {
         let context = MockTransactionContext::default();
         let perm_checker = PermissionChecker::new(&context);
         // Add the alpha buyer role to state
@@ -889,7 +943,7 @@ mod tests {
         // Check that the agent is able to transition the state to "issued" and has the
         // "can-create-po" permission for the Alpha organization
         let result = perm_checker
-            .check_permission_with_workflow(
+            .check_permission_to_enter_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_BETA,
                 ORG_ID_ALPHA,
@@ -913,7 +967,7 @@ mod tests {
     /// 4. Create an agent with the Beta organization's "buyer" role and set this agent in state.
     /// 5. Create a Workflow that contains a permission alias "po::buyer", corresponding to the
     ///    permission assigned to the "buyer" role in Pike.
-    /// 6. Check that `check_permission_with_workflow`, when given the permission "can-create-po"
+    /// 6. Check that `check_permission_within_workflow`, when given the permission "can-create-po"
     ///    and a desired state of "issued" and the Alpha organization as the `record_owner`, is
     ///    able to succesfully evaluate the Beta org's agent does not have the correct permission
     ///    for the Alpha organization to create a purchase order and transition state to "issued".
@@ -965,7 +1019,7 @@ mod tests {
             .expect("Unable to get create state from subworkflow");
 
         let result = perm_checker
-            .check_permission_with_workflow(
+            .check_permission_to_enter_workflow(
                 PERM_CAN_CREATE_PO,
                 PUBLIC_KEY_BETA,
                 ORG_ID_ALPHA,

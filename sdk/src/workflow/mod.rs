@@ -21,7 +21,10 @@
 mod state;
 mod subworkflow;
 
-pub use state::{PermissionAlias, WorkflowState, WorkflowStateBuilder};
+pub use state::{
+    PermissionAlias, StartWorkflowState, StartWorkflowStateBuilder, WorkflowState,
+    WorkflowStateBuilder,
+};
 pub use subworkflow::{SubWorkflow, SubWorkflowBuilder};
 
 /// A single workflow may involve multiple processes; these processes are defined by the list of

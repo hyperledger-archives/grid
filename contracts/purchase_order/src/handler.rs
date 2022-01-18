@@ -212,7 +212,7 @@ fn create_purchase_order(
                         ))
                     })?;
                 let perm_result = perm_checker
-                    .check_permission_with_workflow(
+                    .check_permission_within_workflow(
                         &perm_string,
                         signer,
                         agent.org_id(),
@@ -273,7 +273,7 @@ fn create_purchase_order(
 
     let perm_string = Permission::CanCreatePo.to_string();
     let perm_result = perm_checker
-        .check_permission_with_workflow(
+        .check_permission_within_workflow(
             &perm_string,
             signer,
             agent.org_id(),
@@ -459,7 +459,7 @@ fn update_purchase_order(
         })?
     };
     let perm_result = perm_checker
-        .check_permission_with_workflow(
+        .check_permission_within_workflow(
             &perm_string.to_string(),
             signer,
             agent.org_id(),
@@ -724,7 +724,7 @@ fn validate_version_update_permissions(
             .to_string()
     };
     let perm_result = perm_checker
-        .check_permission_with_workflow(
+        .check_permission_within_workflow(
             &perm_string,
             signer,
             agent_org_id,
@@ -891,7 +891,7 @@ fn create_version(
     // Validate the agent is able to create the purchase order version
     let perm_string = Permission::CanCreatePoVersion.to_string();
     let perm_result = perm_checker
-        .check_permission_with_workflow(
+        .check_permission_within_workflow(
             &perm_string,
             signer,
             &agent_org_id,
@@ -993,7 +993,7 @@ fn update_version(
     };
     // Validate the submitter is allowed to perform the action
     let perm_result = perm_checker
-        .check_permission_with_workflow(
+        .check_permission_within_workflow(
             &perm_string.to_string(),
             signer,
             agent.org_id(),
