@@ -1043,9 +1043,8 @@ mod tests {
             buyer.add_transition("issued");
 
             let mut seller = PermissionAlias::new("po::seller");
-            seller.add_permission("can-create-po-version");
-            buyer.add_permission("can-transition-issued");
-            buyer.add_transition("issued");
+            seller.add_permission("can-transition-issued");
+            seller.add_transition("issued");
 
             StartWorkflowStateBuilder::default()
                 .add_transition("issued")
