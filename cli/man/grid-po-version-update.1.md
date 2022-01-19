@@ -117,10 +117,10 @@ ENVIRONMENT VARIABLES
 **`GRID_SERVICE_ID`**
 : Specifies a default value for `--service-id`
 
-**`GRID_ORDER_SCHEMA_DIR`**
-: Specifies the local path to the directory containing the `Order.xsd`
-  schema used to validate the purchase order. The default value is
-  "/usr/share/grid/xsd".
+**`GRID_STATE_DIR`**
+: Specifies the local path to the directory containing Grid state, which would
+  contain "xsd/po/gs1/ecom/Order.xsd" for validating purchase orders. The default
+  value is "/var/lib/grid".
 
 SEE ALSO
 ========

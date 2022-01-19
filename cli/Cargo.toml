@@ -50,9 +50,15 @@ serde_yaml = "0.8"
 diesel_migrations = "1.4"
 whoami = "1"
 rand = { version = "0.7", optional = true }
+zip = { version = "0.5.13", optional = true }
+reqwest = { version = "0.11", features = ["blocking", "json"], optional = true }
+sha2 = { version = "0.10.1", optional = true }
+hex-literal = { version = "0.3.4", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
+mockito = "0.30.0"
+pretty_assertions = "1.0.0"
 
 [features]
 default = [
@@ -77,6 +83,7 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "xsd-downloader"
 ]
 
 database = ["diesel"]
@@ -95,6 +102,7 @@ product = ["pike", "schema", "grid-sdk/product", "grid-sdk/product-gdsn"]
 purchase-order = ["chrono", "grid-sdk/purchase-order", "rand", "serde_json"]
 sawtooth = []
 schema = ["pike", "grid-sdk/schema"]
+xsd-downloader = ["zip", "reqwest", "sha2", "hex-literal"]
 
 [package.metadata.deb]
 maintainer = "The Hyperledger Grid Team"

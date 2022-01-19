@@ -115,11 +115,10 @@ use actions::product;
 use actions::purchase_order;
 #[cfg(feature = "schema")]
 use actions::schema;
+#[cfg(feature = "xsd-downloader")]
+use actions::xsd_downloader::{self, DownloadConfig};
 #[cfg(feature = "pike")]
 use actions::{agent, organization as orgs, role};
-
-#[cfg(feature = "purchase-order")]
-use actions::purchase_order::get_order_schema_dir;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -1775,6 +1774,52 @@ fn run() -> Result<(), CliError> {
         );
     }
 
+    #[cfg(feature = "xsd-downloader")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("download-xsd")
+                .about("Download xsd files for grid")
+                .arg(
+                    Arg::with_name("no_download")
+                        .long("no-download")
+                        .conflicts_with("force_download")
+                        .help("Never download a file, only extract the cached file"),
+                )
+                .arg(
+                    Arg::with_name("force")
+                        .long("force")
+                        .help("Continue even if a checksum on the cached file is incorrect"),
+                )
+                .arg(
+                    Arg::with_name("copy_from")
+                        .takes_value(true)
+                        .conflicts_with("force_download")
+                        .long("copy-from")
+                        .help("Replenish the cache from a directory resource and use that"),
+                )
+                .arg(
+                    Arg::with_name("force_download")
+                        .hidden(true)
+                        .long("force-download")
+                        .conflicts_with("no_download")
+                        .conflicts_with("copy_from")
+                        .help(
+                            "Force the xsd downloader to download even if \
+                            a cached file already exists",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("cache_dir")
+                        .hidden(true)
+                        .takes_value(true)
+                        .long("cache-dir")
+                        .help("Cache directory used to store downloaded artifacts"),
+                ),
+        );
+    }
+
     let matches = app.get_matches();
 
     let log_level = if matches.is_present("quiet") {
@@ -1802,6 +1847,27 @@ fn run() -> Result<(), CliError> {
     let client_factory = Box::new(ReqwestClientFactory::new());
 
     match matches.subcommand() {
+        #[cfg(feature = "xsd-downloader")]
+        ("download-xsd", Some(m)) => {
+            let download_config = if m.is_present("force_download") {
+                DownloadConfig::Always
+            } else if m.is_present("no_download") {
+                DownloadConfig::CacheOnly
+            } else {
+                DownloadConfig::IfNotCached
+            };
+
+            let do_checksum = !m.is_present("force");
+            let cache_dir = m.value_of("cache_dir");
+            let copy_from = m.value_of("copy_from").map(String::from);
+
+            xsd_downloader::fetch_and_extract_xsds(
+                cache_dir,
+                download_config,
+                do_checksum,
+                copy_from,
+            )?;
+        }
         #[cfg(feature = "pike")]
         ("agent", Some(m)) => match m.subcommand() {
             ("create", Some(m)) => {
@@ -2897,7 +2963,7 @@ fn run() -> Result<(), CliError> {
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                     let order_xml_path = m.value_of("order_xml").unwrap();
-                    let data_validation_dir = get_order_schema_dir();
+                    let data_validation_dir = purchase_order::get_order_schema_dir_string()?;
                     let mut xml_str = String::new();
                     std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
                     validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
@@ -3071,7 +3137,7 @@ fn run() -> Result<(), CliError> {
                     if m.is_present("order_xml") {
                         new_xml = true;
                         let order_xml_path = m.value_of("order_xml").unwrap();
-                        let data_validation_dir = get_order_schema_dir();
+                        let data_validation_dir = purchase_order::get_order_schema_dir_string()?;
                         xml_str = String::new();
                         std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
                         validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::env;
+use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use grid_sdk::{
@@ -38,7 +38,7 @@ use rand::{distributions::Alphanumeric, Rng};
 use sawtooth_sdk::messages::batch::BatchList;
 use serde::Serialize;
 
-use super::DEFAULT_SCHEMA_DIR;
+use crate::actions;
 use crate::error::CliError;
 use crate::transaction::purchase_order_batch_builder;
 
@@ -1041,7 +1041,13 @@ pub fn get_purchase_order_version(
     }
 }
 
-pub fn get_order_schema_dir() -> String {
-    env::var("GRID_ORDER_SCHEMA_DIR")
-        .unwrap_or_else(|_| DEFAULT_SCHEMA_DIR.to_string() + "/po/gs1/ecom")
+pub fn get_order_schema_dir() -> PathBuf {
+    actions::get_grid_xsd_dir().join("po/gs1/ecom")
+}
+
+pub fn get_order_schema_dir_string() -> Result<String, CliError> {
+    get_order_schema_dir()
+        .into_os_string()
+        .into_string()
+        .map_err(|_| CliError::UserError("could not parse schema dir".to_string()))
 }
