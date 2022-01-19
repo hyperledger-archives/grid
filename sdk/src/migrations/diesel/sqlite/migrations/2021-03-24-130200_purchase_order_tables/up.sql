@@ -15,14 +15,11 @@
 
 CREATE TABLE purchase_order (
     id INTEGER PRIMARY KEY,
-    purchase_order_uid TEXT NOT NULL,
-    workflow_state TEXT NOT NULL,
-    buyer_org_id VARCHAR(256) NOT NULL,
-    seller_org_id VARCHAR(256) NOT NULL,
+    uuid TEXT NOT NULL,
+    org_id VARCHAR(256) NOT NULL,
+    workflow_status TEXT NOT NULL,
     is_closed BOOLEAN NOT NULL,
-    accepted_version_id TEXT,
-    created_at BIGINT NOT NULL,
-    workflow_id TEXT NOT NULL,
+    accepted_version_id TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
@@ -30,11 +27,11 @@ CREATE TABLE purchase_order (
 
 CREATE TABLE purchase_order_version (
     id INTEGER PRIMARY KEY,
-    purchase_order_uid TEXT NOT NULL,
+    purchase_order_uuid TEXT NOT NULL,
+    org_id VARCHAR(256) NOT NULL,
     version_id TEXT NOT NULL,
     is_draft BOOLEAN NOT NULL,
-    current_revision_id BIGINT NOT NULL,
-    workflow_state TEXT NOT NULL,
+    current_revision_id TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
     end_commit_num BIGINT NOT NULL,
     service_id TEXT
@@ -42,9 +39,9 @@ CREATE TABLE purchase_order_version (
 
 CREATE TABLE purchase_order_version_revision (
     id INTEGER PRIMARY KEY,
-    purchase_order_uid TEXT NOT NULL,
     version_id TEXT NOT NULL,
-    revision_id BIGINT NOT NULL,
+    org_id VARCHAR(256) NOT NULL,
+    revision_id TEXT NOT NULL,
     order_xml_v3_4 TEXT NOT NULL,
     submitter TEXT NOT NULL,
     created_at BIGINT NOT NULL,
@@ -55,7 +52,8 @@ CREATE TABLE purchase_order_version_revision (
 
 CREATE TABLE purchase_order_alternate_id (
     id INTEGER PRIMARY KEY,
-    purchase_order_uid TEXT NOT NULL,
+    purchase_order_uuid TEXT NOT NULL,
+    org_id VARCHAR(256) NOT NULL,
     alternate_id_type TEXT NOT NULL,
     alternate_id TEXT NOT NULL,
     start_commit_num BIGINT NOT NULL,
