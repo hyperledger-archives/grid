@@ -76,6 +76,7 @@ RUN apt-get update \
  && apt-get install -y -q \
     postgresql-client \
     libsqlite3-dev \
+    curl \
     man \
  && mandb \
  && dpkg --unpack /tmp/grid*.deb \
