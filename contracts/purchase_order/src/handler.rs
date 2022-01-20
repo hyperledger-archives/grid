@@ -826,6 +826,7 @@ fn create_version(
     state: &mut PurchaseOrderState,
     perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
+    /* ------------------ Access current state ------------------------ */
     // Validate the signer exists as an agent and retrieve the agent's organization ID
     let agent_org_id = state
         .get_agent(signer)?
@@ -834,27 +835,27 @@ fn create_version(
         })?
         .org_id()
         .to_string();
-    let po_uid = payload.po_uid();
-    let version_id = payload.version_id();
-    let workflow_id = match state.get_purchase_order(po_uid)? {
+    // Retrieve the workflow this version belongs to, by obtaining the specified purchase order
+    let workflow_id = match state.get_purchase_order(payload.po_uid())? {
         Some(po) => Ok(po.workflow_id().to_string()),
         None => Err(ApplyError::InvalidTransaction(format!(
             "Purchase order {} does not exist",
-            po_uid
+            payload.po_uid(),
         ))),
     }?;
     // Validate this version does not already exist
     if state
-        .get_purchase_order_version(po_uid, version_id)?
+        .get_purchase_order_version(payload.po_uid(), payload.version_id())?
         .is_some()
     {
         return Err(ApplyError::InvalidTransaction(format!(
             "Version {} already exists for Purchase Order {}",
-            version_id, po_uid,
+            payload.version_id(),
+            payload.po_uid(),
         )));
     }
+
     // Retrieve the workflow state we will put the version in
-    let desired_workflow_state_string = payload.workflow_state().to_string();
     let desired_workflow_state = get_workflow(&workflow_id)
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(format!("Workflow `{}` does not exist", &workflow_id))
@@ -863,28 +864,13 @@ fn create_version(
         .ok_or_else(|| {
             ApplyError::InvalidTransaction("Subworkflow `version` does not exist".to_string())
         })?
-        .state(&desired_workflow_state_string)
+        .state(payload.workflow_state())
         .ok_or_else(|| {
             ApplyError::InvalidTransaction(format!(
                 "Workflow state `{}` does not exist in `version` subworkflow",
-                desired_workflow_state_string
+                payload.workflow_state()
             ))
         })?;
-    // Check the desired workflow state for any constraints it may have related to the version
-    if desired_workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
-        && payload.is_draft()
-    {
-        return Err(ApplyError::InvalidTransaction(
-            "Desired workflow state has `accepted` constraint, version is a draft".to_string(),
-        ));
-    }
-    if desired_workflow_state.has_constraint(&WorkflowConstraint::Draft.to_string())
-        && !payload.is_draft()
-    {
-        return Err(ApplyError::InvalidTransaction(
-            "Desired workflow state has `draft` constraint, version is not a draft".to_string(),
-        ));
-    }
     // Get the start state from the version subworkflow, to validate if we are able to
     // create this version
     let version_subworkflow = get_workflow(&workflow_id)
@@ -900,6 +886,9 @@ fn create_version(
             "Workflow start state does not exist in `version` subworkflow".to_string(),
         )
     })?;
+
+    /* ------------------ Verify submitter's permissions ------------------------ */
+
     // Validate the agent is able to create the purchase order version
     let perm_string = Permission::CanCreatePoVersion.to_string();
     let perm_result = perm_checker
@@ -908,7 +897,7 @@ fn create_version(
             signer,
             &agent_org_id,
             start_workflow_state,
-            &desired_workflow_state_string,
+            payload.workflow_state(),
         )
         .map_err(|err| {
             ApplyError::InvalidTransaction(format!("Unable to check agent's permission: {}", err))
@@ -921,9 +910,11 @@ fn create_version(
             signer,
             &agent_org_id,
             payload.version_id(),
-            desired_workflow_state_string,
+            payload.workflow_state(),
         )));
     }
+
+    /* ------------------ Build updated state ------------------------ */
 
     // Create the PurchaseOrderRevision to be added to the version
     let payload_revision = payload.revision();
@@ -939,7 +930,7 @@ fn create_version(
     // Create the PurchaseOrderVersion to be added to state
     let new_version = PurchaseOrderVersionBuilder::new()
         .with_version_id(payload.version_id().to_string())
-        .with_workflow_state(desired_workflow_state_string)
+        .with_workflow_state(payload.workflow_state().to_string())
         .with_is_draft(payload.is_draft())
         .with_current_revision_id(revision.revision_id())
         .with_revisions(vec![revision])
@@ -947,9 +938,27 @@ fn create_version(
         .map_err(|err| {
             ApplyError::InvalidTransaction(format!("Cannot build purchase order version: {}", err))
         })?;
-    // Set the purchase order version in state
-    state.set_purchase_order_version(po_uid, new_version)?;
 
+    /* ------------------- Validate updated state ----------------------------- */
+
+    // Check the desired workflow state for any constraints it may have related to the version
+    if desired_workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
+        && new_version.is_draft()
+    {
+        return Err(ApplyError::InvalidTransaction(
+            "Desired workflow state has `accepted` constraint, version is a draft".to_string(),
+        ));
+    }
+    if desired_workflow_state.has_constraint(&WorkflowConstraint::Draft.to_string())
+        && !new_version.is_draft()
+    {
+        return Err(ApplyError::InvalidTransaction(
+            "Desired workflow state has `draft` constraint, version is not a draft".to_string(),
+        ));
+    }
+
+    /* ------------------- Persist updated state ----------------------------- */
+    state.set_purchase_order_version(payload.po_uid(), new_version)?;
     Ok(())
 }
 
@@ -2384,13 +2393,16 @@ mod tests {
         let create_po_vers_payload = CreateVersionPayloadBuilder::new()
             .with_version_id(PO_VERSION_ID_2.to_string())
             .with_po_uid(PO_UID.to_string())
-            .with_is_draft(true)
+            .with_is_draft(false)
             .with_workflow_state("accepted".to_string())
             .with_revision(payload_revision)
             .build()
             .expect("Unable to build CreateVersionPayload");
-        let expected =
-            "Desired workflow state has `accepted` constraint, version is a draft".to_string();
+        let expected = format!(
+            "Agent {} does not have the correct permissions for organization {} \
+            to create purchase order version {} in the {} workflow state",
+            BUYER_PUB_KEY, ORG_ID_1, PO_VERSION_ID_2, "accepted"
+        );
 
         match create_version(
             &create_po_vers_payload,
