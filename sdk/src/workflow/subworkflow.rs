@@ -15,7 +15,7 @@
 //! An API for managing a subprocess within a workflow, which contains the list of states involved
 //! in this subprocess
 
-use super::state::WorkflowState;
+use super::state::{StartWorkflowState, WorkflowState};
 
 /// A smaller more specific version of a workflow used to define a more complicated business
 /// process within a workflow
@@ -24,8 +24,8 @@ pub struct SubWorkflow {
     name: String,
     /// The states an object may be in within this subworkflow
     states: Vec<WorkflowState>,
-    /// The states an object may begin at within this subworkflow
-    starting_states: Vec<String>,
+    /// The state an object begins at within this subworkflow
+    start_state: Option<StartWorkflowState>,
 }
 
 impl SubWorkflow {
@@ -45,9 +45,9 @@ impl SubWorkflow {
         None
     }
 
-    /// Return the workflow states an object must enter the subworkflow at
-    pub fn starting_states(&self) -> &[String] {
-        &self.starting_states
+    /// Return the workflow state an object must enter the subworkflow at
+    pub fn start_state(&self) -> Option<&StartWorkflowState> {
+        self.start_state.as_ref()
     }
 }
 
@@ -56,7 +56,7 @@ impl SubWorkflow {
 pub struct SubWorkflowBuilder {
     name: String,
     states: Vec<WorkflowState>,
-    starting_states: Vec<String>,
+    start_state: Option<StartWorkflowState>,
 }
 
 impl SubWorkflowBuilder {
@@ -74,8 +74,8 @@ impl SubWorkflowBuilder {
     }
 
     /// Add the name of a workflow state an object must enter this subworkflow at
-    pub fn add_starting_state(mut self, starting_state: &str) -> Self {
-        self.starting_states.push(starting_state.to_string());
+    pub fn with_start_state(mut self, start_state: StartWorkflowState) -> Self {
+        self.start_state = Some(start_state);
         self
     }
 
@@ -83,7 +83,7 @@ impl SubWorkflowBuilder {
         SubWorkflow {
             name: self.name,
             states: self.states,
-            starting_states: self.starting_states,
+            start_state: self.start_state,
         }
     }
 }
