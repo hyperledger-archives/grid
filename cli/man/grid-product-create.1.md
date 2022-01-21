@@ -278,7 +278,7 @@ ENVIRONMENT VARIABLES
 **`GRID_PRODUCT_SCHEMA_DIR`**
 : Specifies the local path to the directory containing the `GridTradeItems.xsd`
   schema used to validate the product. The default value is
-  "/usr/share/grid/xsd".
+  "/var/lib/grid/xsd".
 
 SEE ALSO
 ========
