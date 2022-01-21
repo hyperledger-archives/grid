@@ -82,4 +82,4 @@ SEE ALSO
 | `grid location show(1)`
 | `grid location update(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.2/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

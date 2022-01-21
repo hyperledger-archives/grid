@@ -99,4 +99,4 @@ SEE ALSO
 | `grid agent show(1)`
 | `grid role(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.2/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

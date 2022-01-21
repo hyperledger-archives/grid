@@ -68,4 +68,4 @@ SEE ALSO
 | `grid schema update(1)`
 | `grid schema list(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.2/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/

@@ -125,4 +125,4 @@ SEE ALSO
 | `grid role(1)`
 | `grid schema(1)`
 |
-| Grid documentation: https://grid.hyperledger.org/docs/0.2/
+| Grid documentation: https://grid.hyperledger.org/docs/0.3/
