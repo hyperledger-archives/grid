@@ -692,6 +692,23 @@ fn update_purchase_order(
                 accepted_version_number,
             )));
         }
+    } else {
+        // Check if we have removed a version as "accepted"
+        if let Some((vers_id, workflow_state)) =
+            updated_version_states
+                .into_iter()
+                .find(|(_vers_id, workflow_state)| {
+                    workflow_state.has_constraint(&WorkflowConstraint::Accepted.to_string())
+                })
+        {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Purchase order {} does not specify an accepted version, but version \
+                    {} workflow state {} has `accepted` constraint",
+                updated_po.uid(),
+                vers_id,
+                workflow_state.name(),
+            )));
+        }
     }
 
     /* ------------------- Persist updated state ----------------------------- */
