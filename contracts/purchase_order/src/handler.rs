@@ -2140,6 +2140,45 @@ mod tests {
     }
 
     #[test]
+    // Test that the update po not accepted with an accepted version number fails
+    fn test_update_po_not_accepted_with_accepted_version_number_fails() {
+        let ctx = MockTransactionContext::default();
+        let mut state = PurchaseOrderState::new(&ctx);
+        let perm_checker = PermissionChecker::new(&ctx);
+        ctx.add_buyer_agent();
+        ctx.add_buyer_role();
+        ctx.add_purchase_order(purchase_order_confirmed(
+            vec![purchase_order_version_accepted(PO_VERSION_ID_1)],
+            Some(PO_VERSION_ID_1.to_string()),
+        ));
+
+        let to_workflow = "issued";
+        let update = UpdatePurchaseOrderPayloadBuilder::new()
+            .with_uid(PO_UID.to_string())
+            .with_is_closed(false)
+            .with_workflow_state(to_workflow.to_string())
+            .with_accepted_version_number(None)
+            .build()
+            .expect("Unable to build UpdatePurchaseOrderPayload");
+
+        let expected = format!(
+            "Purchase order {} does not specify an accepted version, but version \
+                    {} workflow state accepted has `accepted` constraint",
+            PO_UID, PO_VERSION_ID_1
+        );
+
+        match update_purchase_order(&update, BUYER_PUB_KEY, &mut state, &perm_checker) {
+            Err(ApplyError::InvalidTransaction(ref value)) if value == &expected => (),
+            value => {
+                panic!(
+                    "Got {:?} expected ApplyError::InvalidTransaction({:?})",
+                    value, expected
+                )
+            }
+        }
+    }
+
+    #[test]
     // Test that the update po works when everything is set
     fn test_update_po_valid() {
         let ctx = MockTransactionContext::default();
