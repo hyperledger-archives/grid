@@ -187,6 +187,7 @@ mod tests {
     // Purchase Order
     /// Test a valid GS1 Order 3.4 xml string validates successfully
     #[test]
+    #[ignore = "file not yet available to this test"]
     fn test_validate_order_xml_3_4() {
         let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         test_gdsn_xml_path.push("src/data_validation/test_files/order.xml");
@@ -211,6 +212,7 @@ mod tests {
 
     /// Test a path to a valid GS1 Order 3.4 xml file validates successfully
     #[test]
+    #[ignore = "file not yet available to this test"]
     fn test_validate_order_xml_3_4_path() {
         let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         test_gdsn_xml_path.push("src/data_validation/test_files/order.xml");
@@ -231,6 +233,7 @@ mod tests {
 
     /// Test an invalid GS1 Order 3.4 xml string doesn't validate
     #[test]
+    #[ignore = "file not yet available to this test"]
     fn test_validate_order_xml_3_4_invalid() {
         let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         test_gdsn_xml_path.push("src/data_validation/test_files/order_invalid.xml");
@@ -260,6 +263,7 @@ mod tests {
 
     /// Test a path to an invalid GS1 Order 3.4 xml file doesn't validate
     #[test]
+    #[ignore = "file not yet available to this test"]
     fn test_validate_order_xml_3_4_path_invalid() {
         let mut test_gdsn_xml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         test_gdsn_xml_path.push("src/data_validation/test_files/order_invalid.xml");
