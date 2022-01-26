@@ -2962,7 +2962,13 @@ fn run() -> Result<(), CliError> {
                     let signer = signing::load_signer(key)?;
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let order_xml_path = m.value_of("order_xml").unwrap();
+                    let order_xml_path = PathBuf::from(m.value_of("order_xml").unwrap());
+                    if !order_xml_path.exists() {
+                        return Err(CliError::UserError(format!(
+                            "The specified file {} does not exist.",
+                            order_xml_path.to_string_lossy()
+                        )));
+                    }
                     let data_validation_dir = purchase_order::get_order_schema_dir_string()?;
                     let mut xml_str = String::new();
                     std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
