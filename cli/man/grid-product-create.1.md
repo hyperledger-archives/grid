@@ -275,10 +275,10 @@ ENVIRONMENT VARIABLES
 **`GRID_SERVICE_ID`**
 : Specifies a default value for `--service-id`.
 
-**`GRID_PRODUCT_SCHEMA_DIR`**
-: Specifies the local path to the directory containing the `GridTradeItems.xsd`
-  schema used to validate the product. The default value is
-  "/usr/share/grid/xsd".
+**`GRID_STATE_DIR`**
+: Specifies the local path to the directory containing Grid state, which would
+  contain "xsd/product/GridTradeItem.xsd" for validating product. The default
+  value is "/var/lib/grid".
 
 SEE ALSO
 ========

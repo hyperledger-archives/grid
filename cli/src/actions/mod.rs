@@ -15,8 +15,20 @@
  * -----------------------------------------------------------------------------
  */
 
+#[cfg(any(
+    feature = "purchase-order",
+    feature = "product",
+    feature = "xsd-downloader"
+))]
+use std::env;
 use std::ffi::CString;
 use std::path::Path;
+#[cfg(any(
+    feature = "purchase-order",
+    feature = "product",
+    feature = "xsd-downloader"
+))]
+use std::path::PathBuf;
 
 use super::error::CliError;
 
@@ -37,9 +49,22 @@ pub mod purchase_order;
 pub mod role;
 #[cfg(feature = "schema")]
 pub mod schema;
+#[cfg(feature = "xsd-downloader")]
+pub mod xsd_downloader;
 
-#[cfg(any(feature = "purchase-order", feature = "product"))]
-const DEFAULT_SCHEMA_DIR: &str = "/usr/share/grid/xsd";
+#[cfg(any(
+    feature = "purchase-order",
+    feature = "product",
+    feature = "xsd-downloader"
+))]
+const ENV_GRID_STATE_DIR: &str = "GRID_STATE_DIR";
+
+#[cfg(any(
+    feature = "purchase-order",
+    feature = "product",
+    feature = "xsd-downloader"
+))]
+const DEFAULT_GRID_STATE_DIR: &str = "/var/lib/grid";
 
 fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
     let pathstr = path
@@ -54,4 +79,22 @@ fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
             pathstr, code
         ))),
     }
+}
+
+#[cfg(any(
+    feature = "purchase-order",
+    feature = "product",
+    feature = "xsd-downloader"
+))]
+fn get_grid_state_dir() -> String {
+    env::var(ENV_GRID_STATE_DIR).unwrap_or_else(|_| DEFAULT_GRID_STATE_DIR.to_string())
+}
+
+#[cfg(any(
+    feature = "purchase-order",
+    feature = "product",
+    feature = "xsd-downloader"
+))]
+fn get_grid_xsd_dir() -> PathBuf {
+    PathBuf::from(get_grid_state_dir()).join("xsd")
 }
