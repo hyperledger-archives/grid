@@ -30,7 +30,7 @@ To avoid downloading from the internet (for example, if a firewall rule
 would prevent access to the remote website), use the --copy-from and
 --no-download arguments.
 
-If --copy-from is used without --no-download, artfacts will be copied from
+If --copy-from is used without --no-download, artifacts will be copied from
 the directory provided via --copy-from and any missing artifacts will be
 downloaded as usual.
 
