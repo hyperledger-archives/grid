@@ -71,6 +71,7 @@ default = [
     "purchase-order",
     "schema",
     "sqlite",
+    "xsd-downloader"
 ]
 
 stable = [
@@ -83,7 +84,6 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
-    "xsd-downloader"
 ]
 
 database = ["diesel"]
