@@ -2982,14 +2982,20 @@ fn run() -> Result<(), CliError> {
                         )?;
                     }
 
-                    let workflow_state = m.value_of("workflow_state").unwrap();
-
-                    let revision_id = purchase_order::get_latest_revision_id(
-                        &*purchase_order_client,
-                        &po,
-                        version_id,
+                    if let Ok(Some(vers)) = purchase_order_client.get_purchase_order_version(
+                        po.to_string(),
+                        version_id.to_string(),
                         service_id.as_deref(),
-                    )? + 1;
+                    ) {
+                        return Err(CliError::PayloadError(format!(
+                            "Purchase order {} version {} already exists",
+                            po, vers.version_id,
+                        )));
+                    }
+
+                    let workflow_state = m.value_of("workflow_state").unwrap();
+                    // As we are creating a version, the revision included will be the first
+                    let revision_id = 1;
 
                     let draft = !m.is_present("not_draft");
 
