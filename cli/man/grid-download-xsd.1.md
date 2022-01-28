@@ -77,6 +77,26 @@ OPTIONS
   should contain the following files:
   /GS1\_XML\_3-4-1\_Publication.zip
 
+EXAMPLES
+========
+
+The command
+
+```
+$ grid download-xsd \
+    --no-download \
+    --copy-from ./local-dir
+```
+
+will copy from a local directory ./local-dir without attempting to download any
+assets. It will still validate the hashes of the assets as they are copied, and
+error unless the `--force` option is enabled.
+
+```
+validating hash of ./local-dir/GS1_XML_3-4-1_Publication.zip
+extracting to schema directory
+```
+
 ENVIRONMENT VARIABLES
 =====================
 
