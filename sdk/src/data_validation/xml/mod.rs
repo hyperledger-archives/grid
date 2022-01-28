@@ -92,6 +92,19 @@ fn load_schema(schema_type: Schema, schema_dir: &str) -> Result<XmlSchema, DataV
     let schema: Vec<u8> = match schema_type {
         Schema::OrderXmlV3_4 => {
             schema_dir_path.push("Order.xsd");
+            if !schema_dir_path.exists() {
+                return Err(DataValidationError::InvalidArgument(
+                    InvalidArgumentError::new(
+                        "xml validation".to_string(),
+                        format!(
+                            "Cannot validate XML file against XSD file: XSD file {} is \
+                                missing. Hint: You may need to use the Grid XSD download tool to \
+                                get this file, or the file may have an incorrect name.",
+                            schema_dir_path.to_string_lossy()
+                        ),
+                    ),
+                ));
+            }
             fs::read_to_string(schema_dir_path.as_path())
                 .map_err(|err| {
                     DataValidationError::Internal(InternalError::from_source(Box::new(err)))
@@ -100,6 +113,18 @@ fn load_schema(schema_type: Schema, schema_dir: &str) -> Result<XmlSchema, DataV
         }
         Schema::GdsnXmlV3_1 => {
             schema_dir_path.push("GridTradeItems.xsd");
+            if !schema_dir_path.exists() {
+                return Err(DataValidationError::InvalidArgument(
+                    InvalidArgumentError::new(
+                        "xml validation".to_string(),
+                        format!(
+                            "Cannot validate XML file against XSD file: XSD file {} is \
+                            missing.",
+                            schema_dir_path.to_string_lossy()
+                        ),
+                    ),
+                ));
+            }
             fs::read_to_string(schema_dir_path.as_path())
                 .map_err(|err| {
                     DataValidationError::Internal(InternalError::from_source(Box::new(err)))
