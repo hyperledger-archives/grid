@@ -1143,7 +1143,7 @@ mod test {
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
-    /// Verifies a GET /schema responds with an OK response with a
+    /// Verifies a GET /schemas responds with an OK response with a
     ///     list_grid_schemas request.
     ///
     ///     The TestServer will receive a request with no parameters,
@@ -1156,7 +1156,7 @@ mod test {
         populate_grid_schema_table(get_grid_schema(None), pool);
 
         let mut response = srv
-            .request(http::Method::GET, srv.url("/schema"))
+            .request(http::Method::GET, srv.url("/schemas"))
             .send()
             .await
             .unwrap();
@@ -1171,7 +1171,7 @@ mod test {
         assert_eq!(test_schema.properties.len(), 2);
     }
 
-    /// Verifies a GET /schema?service_id=test_service responds with an OK response with a
+    /// Verifies a GET /schemas?service_id=test_service responds with an OK response with a
     ///     list_grid_schemas request.
     ///
     ///     The TestServer will receive a request with the service ID,
@@ -1186,7 +1186,7 @@ mod test {
         let mut response = srv
             .request(
                 http::Method::GET,
-                srv.url(&format!("/schema?service_id={}", TEST_SERVICE_ID)),
+                srv.url(&format!("/schemas?service_id={}", TEST_SERVICE_ID)),
             )
             .send()
             .await
@@ -1204,7 +1204,7 @@ mod test {
     }
 
     ///
-    /// Verifies a GET /schema/{name} responds with an OK response
+    /// Verifies a GET /schemas/{name} responds with an OK response
     ///     and the Grid Schema with the specified name
     ///
     #[actix_rt::test]
@@ -1216,7 +1216,7 @@ mod test {
         let mut response = srv
             .request(
                 http::Method::GET,
-                srv.url(&format!("/schema/{}", "TestGridSchema".to_string())),
+                srv.url(&format!("/schemas/{}", "TestGridSchema".to_string())),
             )
             .send()
             .await
@@ -1230,7 +1230,7 @@ mod test {
     }
 
     ///
-    /// Verifies a GET /schema/{name}?service_id=test_service responds with an OK response
+    /// Verifies a GET /schemas/{name}?service_id=test_service responds with an OK response
     ///     and the Grid Schema with the specified name and service_id.
     ///
     #[actix_rt::test]
@@ -1244,7 +1244,7 @@ mod test {
             .request(
                 http::Method::GET,
                 srv.url(&format!(
-                    "/schema/{}?service_id={}",
+                    "/schemas/{}?service_id={}",
                     "TestGridSchema", TEST_SERVICE_ID
                 )),
             )
@@ -1261,7 +1261,7 @@ mod test {
     }
 
     ///
-    /// Verifies a GET /schema/{name} responds with a Not Found error
+    /// Verifies a GET /schemas/{name} responds with a Not Found error
     ///     when there is no Grid Schema with the specified name
     ///
     #[actix_rt::test]
@@ -1270,7 +1270,7 @@ mod test {
             setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         let response = srv
-            .request(http::Method::GET, srv.url("/schema/not_in_database"))
+            .request(http::Method::GET, srv.url("/schemas/not_in_database"))
             .send()
             .await
             .unwrap();
@@ -1278,7 +1278,7 @@ mod test {
     }
 
     ///
-    /// Verifies a GET /schema/{name}?service_id=test_service responds with a Not Found error
+    /// Verifies a GET /schemas/{name}?service_id=test_service responds with a Not Found error
     ///     when there is no Grid Schema with the specified name and service id.
     ///
     #[actix_rt::test]
@@ -1291,7 +1291,7 @@ mod test {
             .request(
                 http::Method::GET,
                 srv.url(&format!(
-                    "/schema/not_in_database?service_id={}",
+                    "/schemas/not_in_database?service_id={}",
                     TEST_SERVICE_ID
                 )),
             )

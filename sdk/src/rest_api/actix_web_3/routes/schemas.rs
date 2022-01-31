@@ -22,7 +22,7 @@ use crate::rest_api::{
 
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
-#[get("/schema/{name}")]
+#[get("/schemas/{name}")]
 pub async fn get_schema(
     store_state: web::Data<StoreState>,
     name: web::Path<String>,
@@ -49,7 +49,7 @@ pub async fn get_schema(
     }
 }
 
-#[get("/schema")]
+#[get("/schemas")]
 pub async fn list_schemas(
     req: HttpRequest,
     store_state: web::Data<StoreState>,

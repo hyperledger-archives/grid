@@ -22,7 +22,7 @@ use crate::error::ClientError;
 
 use sawtooth_sdk::messages::batch::BatchList;
 
-const SCHEMA_ROUTE: &str = "schema";
+const SCHEMA_ROUTE: &str = "schemas";
 
 /// The Reqwest implementation of the Schema client
 pub struct ReqwestSchemaClient {
