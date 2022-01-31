@@ -30,6 +30,15 @@ pub enum CliError {
         feature = "database",
     ))]
     ActionError(String),
+    #[cfg(any(
+        feature = "location",
+        feature = "pike",
+        feature = "product",
+        feature = "purchase-order",
+        feature = "schema",
+        feature = "database",
+    ))]
+    RequiredArgError(String),
     LoggingInitializationError(Box<flexi_logger::FlexiLoggerError>),
     InvalidYamlError(String),
     #[cfg(any(
@@ -76,6 +85,15 @@ impl StdError for CliError {
                 feature = "database",
             ))]
             CliError::ActionError(_) => None,
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "purchase-order",
+                feature = "schema",
+                feature = "database",
+            ))]
+            CliError::RequiredArgError(_) => None,
             CliError::LoggingInitializationError(err) => Some(err),
             CliError::InvalidYamlError(_) => None,
             #[cfg(any(
@@ -124,6 +142,15 @@ impl std::fmt::Display for CliError {
                 feature = "database",
             ))]
             CliError::ActionError(ref err) => write!(f, "Subcommand encountered an error: {}", err),
+            #[cfg(any(
+                feature = "location",
+                feature = "pike",
+                feature = "product",
+                feature = "purchase-order",
+                feature = "schema",
+                feature = "database",
+            ))]
+            CliError::RequiredArgError(ref arg) => write!(f, "argument required: {}", arg),
             CliError::UserError(ref err) => write!(f, "Error: {}", err),
             CliError::InvalidYamlError(ref err) => write!(f, "InvalidYamlError: {}", err),
             #[cfg(any(

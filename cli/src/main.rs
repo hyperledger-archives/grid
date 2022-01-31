@@ -1891,8 +1891,8 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let create_agent = CreateAgentActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_public_key(m.value_of("public_key").unwrap().into())
+                    .with_org_id(value_of_required(m, "org_id")?.into())
+                    .with_public_key(value_of_required(m, "public_key")?.into())
                     .with_active(active)
                     .with_roles(
                         m.values_of("role")
@@ -1928,8 +1928,8 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let update_agent = UpdateAgentActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_public_key(m.value_of("public_key").unwrap().into())
+                    .with_org_id(value_of_required(m, "org_id")?.into())
+                    .with_public_key(value_of_required(m, "public_key")?.into())
                     .with_active(active)
                     .with_roles(
                         m.values_of("role")
@@ -1952,7 +1952,7 @@ fn run() -> Result<(), CliError> {
                 agent::do_list_agents(
                     pike_client,
                     service_id,
-                    m.value_of("format").unwrap(),
+                    value_of_required(m, "format")?,
                     m.is_present("line-per-role"),
                 )?;
             }
@@ -1961,7 +1961,7 @@ fn run() -> Result<(), CliError> {
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let pike_client = client_factory.get_pike_client(url);
-                agent::do_show_agents(pike_client, m.value_of("public_key").unwrap(), service_id)?
+                agent::do_show_agents(pike_client, value_of_required(m, "public_key")?, service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
@@ -1977,8 +1977,8 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let create_org = CreateOrganizationActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_name(m.value_of("name").unwrap().into())
+                    .with_org_id(value_of_required(m, "org_id")?.into())
+                    .with_name(value_of_required(m, "name")?.into())
                     .with_alternate_ids(parse_alternate_ids(m)?)
                     .with_metadata(parse_metadata(m)?)
                     .build()
@@ -1997,8 +1997,8 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let update_org = UpdateOrganizationActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_name(m.value_of("name").unwrap().into())
+                    .with_org_id(value_of_required(m, "org_id")?.into())
+                    .with_name(value_of_required(m, "name")?.into())
                     .with_locations(
                         m.values_of("locations")
                             .unwrap_or_default()
@@ -2021,7 +2021,7 @@ fn run() -> Result<(), CliError> {
                 orgs::do_list_organizations(
                     pike_client,
                     service_id,
-                    m.value_of("format").unwrap(),
+                    value_of_required(m, "format")?,
                     m.is_present("alternate_ids"),
                 )?
             }
@@ -2030,7 +2030,11 @@ fn run() -> Result<(), CliError> {
                 let service_id_str = value_of_service_id(m)?;
                 let service_id = service_id_str.as_deref();
                 let pike_client = client_factory.get_pike_client(url);
-                orgs::do_show_organization(pike_client, service_id, m.value_of("org_id").unwrap())?
+                orgs::do_show_organization(
+                    pike_client,
+                    service_id,
+                    value_of_required(m, "org_id")?,
+                )?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
@@ -2052,8 +2056,8 @@ fn run() -> Result<(), CliError> {
                 };
 
                 let create_role = CreateRoleActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_name(m.value_of("name").unwrap().into())
+                    .with_org_id(value_of_required(m, "org_id")?.into())
+                    .with_name(value_of_required(m, "name")?.into())
                     .with_description(m.value_of("description").unwrap_or("").into())
                     .with_permissions(
                         m.values_of("permissions")
@@ -2096,8 +2100,8 @@ fn run() -> Result<(), CliError> {
                 };
 
                 let update_role = UpdateRoleActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_name(m.value_of("name").unwrap().into())
+                    .with_org_id(value_of_required(m, "org_id")?.into())
+                    .with_name(value_of_required(m, "name")?.into())
                     .with_description(m.value_of("description").unwrap_or("").into())
                     .with_permissions(
                         m.values_of("permissions")
@@ -2134,8 +2138,8 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let delete_role = DeleteRoleActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_name(m.value_of("name").unwrap().into())
+                    .with_org_id(value_of_required(m, "org_id")?.into())
+                    .with_name(value_of_required(m, "name")?.into())
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
@@ -2149,8 +2153,8 @@ fn run() -> Result<(), CliError> {
                 let pike_client = client_factory.get_pike_client(url);
                 role::do_show_role(
                     pike_client,
-                    m.value_of("org_id").unwrap().into(),
-                    m.value_of("name").unwrap().into(),
+                    value_of_required(m, "org_id")?.into(),
+                    value_of_required(m, "name")?.into(),
                     service_id,
                 )?
             }
@@ -2161,7 +2165,7 @@ fn run() -> Result<(), CliError> {
                 let pike_client = client_factory.get_pike_client(url);
                 role::do_list_roles(
                     pike_client,
-                    m.value_of("org_id").unwrap().into(),
+                    value_of_required(m, "org_id")?.into(),
                     service_id,
                 )?
             }
@@ -2183,7 +2187,7 @@ fn run() -> Result<(), CliError> {
                     schema_client,
                     signer,
                     wait,
-                    m.value_of("path").unwrap(),
+                    value_of_required(m, "path")?,
                     service_id,
                 )?;
             }
@@ -2201,7 +2205,7 @@ fn run() -> Result<(), CliError> {
                     schema_client,
                     signer,
                     wait,
-                    m.value_of("path").unwrap(),
+                    value_of_required(m, "path")?,
                     service_id,
                 )?;
             }
@@ -2219,7 +2223,7 @@ fn run() -> Result<(), CliError> {
                 let schema_client = client_factory.get_schema_client(url);
                 schema::do_show_schema(
                     schema_client,
-                    m.value_of("name").unwrap().into(),
+                    value_of_required(m, "name")?.into(),
                     service_id,
                 )?
             }
@@ -2278,7 +2282,7 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let actions = product::create_product_payloads_from_file(
-                    m.values_of("file").unwrap().collect(),
+                    values_of_required(m, "file")?.collect(),
                     schema_client,
                     service_id,
                     m.value_of("owner"),
@@ -2315,8 +2319,8 @@ fn run() -> Result<(), CliError> {
                 )?;
 
                 let action = ProductCreateActionBuilder::new()
-                    .with_product_id(m.value_of("product_id").unwrap().into())
-                    .with_owner(m.value_of("owner").unwrap().into())
+                    .with_product_id(value_of_required(m, "product_id")?.into())
+                    .with_owner(value_of_required(m, "owner")?.into())
                     .with_product_namespace(namespace)
                     .with_properties(properties)
                     .build()
@@ -2342,7 +2346,7 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let actions = product::update_product_payloads_from_file(
-                    m.values_of("file").unwrap().collect(),
+                    values_of_required(m, "file")?.collect(),
                     schema_client,
                     service_id,
                 )?;
@@ -2378,7 +2382,7 @@ fn run() -> Result<(), CliError> {
                 )?;
 
                 let action = ProductUpdateActionBuilder::new()
-                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_product_id(value_of_required(m, "product_id")?.into())
                     .with_product_namespace(namespace)
                     .with_properties(properties)
                     .build()
@@ -2413,7 +2417,7 @@ fn run() -> Result<(), CliError> {
                 };
 
                 let action = ProductDeleteActionBuilder::new()
-                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_product_id(value_of_required(m, "product_id")?.into())
                     .with_product_namespace(namespace)
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
@@ -2435,7 +2439,7 @@ fn run() -> Result<(), CliError> {
                 let product_client = client_factory.get_product_client(url);
                 product::do_show_products(
                     product_client,
-                    m.value_of("product_id").unwrap().into(),
+                    value_of_required(m, "product_id")?.into(),
                     service_id,
                 )?
             }
@@ -2454,7 +2458,7 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let actions = location::create_location_payloads_from_file(
-                    m.value_of("file").unwrap(),
+                    value_of_required(m, "file")?,
                     schema_client,
                     service_id,
                 )?;
@@ -2490,8 +2494,8 @@ fn run() -> Result<(), CliError> {
                 )?;
 
                 let action = LocationCreateActionBuilder::new()
-                    .with_location_id(m.value_of("location_id").unwrap().into())
-                    .with_owner(m.value_of("owner").unwrap().into())
+                    .with_location_id(value_of_required(m, "location_id")?.into())
+                    .with_owner(value_of_required(m, "owner")?.into())
                     .with_namespace(namespace)
                     .with_properties(properties)
                     .build()
@@ -2517,7 +2521,7 @@ fn run() -> Result<(), CliError> {
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
                 let actions = location::update_location_payloads_from_file(
-                    m.value_of("file").unwrap(),
+                    value_of_required(m, "file")?,
                     schema_client,
                     service_id,
                 )?;
@@ -2553,7 +2557,7 @@ fn run() -> Result<(), CliError> {
                 )?;
 
                 let action = LocationUpdateActionBuilder::new()
-                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_location_id(value_of_required(m, "location_id")?.into())
                     .with_namespace(namespace)
                     .with_properties(properties)
                     .build()
@@ -2588,7 +2592,7 @@ fn run() -> Result<(), CliError> {
                 };
 
                 let action = LocationDeleteActionBuilder::new()
-                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_location_id(value_of_required(m, "location_id")?.into())
                     .with_namespace(namespace)
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
@@ -2610,7 +2614,7 @@ fn run() -> Result<(), CliError> {
                 let location_client = client_factory.get_location_client(url);
                 location::do_show_location(
                     location_client,
-                    m.value_of("location_id").unwrap(),
+                    value_of_required(m, "location_id")?,
                     service_id,
                 )?
             }
@@ -2666,11 +2670,11 @@ fn run() -> Result<(), CliError> {
                             .map(|d| d.as_secs())
                             .map_err(|err| CliError::PayloadError(format!("{}", err)))?,
                     )
-                    .with_buyer_org_id(m.value_of("buyer_org_id").unwrap().into())
-                    .with_seller_org_id(m.value_of("seller_org_id").unwrap().into())
+                    .with_buyer_org_id(value_of_required(m, "buyer_org_id")?.into())
+                    .with_seller_org_id(value_of_required(m, "seller_org_id")?.into())
                     .with_alternate_ids(protocol_alternate_ids)
-                    .with_workflow_id(m.value_of("workflow_id").unwrap().into())
-                    .with_workflow_state(m.value_of("workflow_state").unwrap().into())
+                    .with_workflow_id(value_of_required(m, "workflow_id")?.into())
+                    .with_workflow_state(value_of_required(m, "workflow_state")?.into())
                     .build()
                     .map_err(|err| {
                         CliError::UserError(format!("Could not build Purchase Order: {}", err))
@@ -2693,7 +2697,7 @@ fn run() -> Result<(), CliError> {
                 let signer = signing::load_signer(key)?;
                 let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                let mut uid = m.value_of("id").map(String::from).unwrap();
+                let mut uid = value_of_required(m, "id")?.to_string();
 
                 if uid.contains(':') {
                     validate_alt_id_format(&uid)?;
@@ -2747,7 +2751,7 @@ fn run() -> Result<(), CliError> {
 
                     if m.is_present("add_id") {
                         let adds: Vec<String> =
-                            m.values_of("add_id").unwrap().map(String::from).collect();
+                            values_of_required(m, "add_id")?.map(String::from).collect();
                         for id in &adds {
                             validate_alt_id_format(id)?;
                         }
@@ -2764,7 +2768,7 @@ fn run() -> Result<(), CliError> {
                     }
 
                     if m.is_present("rm_id") {
-                        let rms: Vec<&str> = m.values_of("rm_id").unwrap().collect();
+                        let rms: Vec<&str> = values_of_required(m, "rm_id")?.collect();
 
                         for r in rms {
                             let converted = purchase_order::make_alternate_id_from_str(&uid, r)?;
@@ -2920,12 +2924,12 @@ fn run() -> Result<(), CliError> {
                         None
                     },
                     buyer_org_id: if m.is_present("buyer_org") {
-                        Some(m.value_of("buyer_org").unwrap().to_string())
+                        Some(value_of_required(m, "buyer_org")?.to_string())
                     } else {
                         None
                     },
                     seller_org_id: if m.is_present("seller_org") {
-                        Some(m.value_of("seller_org").unwrap().to_string())
+                        Some(value_of_required(m, "seller_org")?.to_string())
                     } else {
                         None
                     },
@@ -2944,7 +2948,7 @@ fn run() -> Result<(), CliError> {
                 let url = value_of_url(m)?;
                 let service_id = value_of_service_id(m)?;
                 let purchase_order_client = client_factory.get_purchase_order_client(url);
-                let purchase_order_id = m.value_of("id").unwrap();
+                let purchase_order_id = value_of_required(m, "id")?;
                 let format = m.value_of("format");
                 purchase_order::do_show_purchase_order(
                     &*purchase_order_client,
@@ -2962,7 +2966,7 @@ fn run() -> Result<(), CliError> {
                     let signer = signing::load_signer(key)?;
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let order_xml_path = PathBuf::from(m.value_of("order_xml").unwrap());
+                    let order_xml_path = PathBuf::from(value_of_required(m, "order_xml")?);
                     if !order_xml_path.exists() {
                         return Err(CliError::UserError(format!(
                             "The specified file {} does not exist.",
@@ -2975,9 +2979,9 @@ fn run() -> Result<(), CliError> {
                     validate_order_xml_3_4(&xml_str, false, &data_validation_dir)?;
                     info!("Purchase order was valid.");
 
-                    let version_id = m.value_of("version_id").unwrap();
+                    let version_id = value_of_required(m, "version_id")?;
 
-                    let mut po = m.value_of("po").map(String::from).unwrap();
+                    let mut po = value_of_required(m, "po")?.to_string();
 
                     if po.contains(':') {
                         validate_alt_id_format(&po)?;
@@ -2999,7 +3003,7 @@ fn run() -> Result<(), CliError> {
                         )));
                     }
 
-                    let workflow_state = m.value_of("workflow_state").unwrap();
+                    let workflow_state = value_of_required(m, "workflow_state")?;
                     // As we are creating a version, the revision included will be the first
                     let revision_id = 1;
 
@@ -3058,7 +3062,7 @@ fn run() -> Result<(), CliError> {
                     let service_id = value_of_service_id(m)?;
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let po_uid = m.value_of("po_uid").unwrap();
+                    let po_uid = value_of_required(m, "po_uid")?;
 
                     let mut accepted_filter = None;
                     let mut draft_filter = None;
@@ -3075,7 +3079,7 @@ fn run() -> Result<(), CliError> {
                         draft_filter = Some(false);
                     }
 
-                    let format = Some(m.value_of("format").unwrap());
+                    let format = Some(value_of_required(m, "format")?);
 
                     purchase_order::do_list_versions(
                         &*purchase_order_client,
@@ -3091,9 +3095,9 @@ fn run() -> Result<(), CliError> {
                     let service_id = value_of_service_id(m)?;
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let po_uid = m.value_of("po_uid").unwrap();
+                    let po_uid = value_of_required(m, "po_uid")?;
 
-                    let version = m.value_of("version_id").unwrap();
+                    let version = value_of_required(m, "version_id")?;
 
                     purchase_order::do_show_version(
                         &*purchase_order_client,
@@ -3111,9 +3115,9 @@ fn run() -> Result<(), CliError> {
 
                     let wait = value_t!(m, "wait", u64).unwrap_or(0);
 
-                    let version_id = m.value_of("version_id").unwrap();
+                    let version_id = value_of_required(m, "version_id")?;
 
-                    let mut po = m.value_of("po").map(String::from).unwrap();
+                    let mut po = value_of_required(m, "po")?.to_string();
 
                     if po.contains(':') {
                         validate_alt_id_format(&po)?;
@@ -3148,7 +3152,7 @@ fn run() -> Result<(), CliError> {
                     let mut xml_str = current_revision.order_xml_v3_4.to_string();
                     if m.is_present("order_xml") {
                         new_xml = true;
-                        let order_xml_path = m.value_of("order_xml").unwrap();
+                        let order_xml_path = value_of_required(m, "order_xml")?;
                         let data_validation_dir = purchase_order::get_order_schema_dir_string()?;
                         xml_str = String::new();
                         std::fs::File::open(order_xml_path)?.read_to_string(&mut xml_str)?;
@@ -3239,7 +3243,7 @@ fn run() -> Result<(), CliError> {
                     let service_id = value_of_service_id(m)?;
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let mut po_uid = m.value_of("po_uid").map(String::from).unwrap();
+                    let mut po_uid = value_of_required(m, "po_uid")?.to_string();
 
                     if po_uid.contains(':') {
                         validate_alt_id_format(&po_uid)?;
@@ -3250,7 +3254,7 @@ fn run() -> Result<(), CliError> {
                         )?;
                     }
 
-                    let version = m.value_of("version_id").unwrap();
+                    let version = value_of_required(m, "version_id")?;
 
                     purchase_order::do_list_revisions(
                         &*purchase_order_client,
@@ -3264,7 +3268,7 @@ fn run() -> Result<(), CliError> {
                     let service_id = value_of_service_id(m)?;
                     let purchase_order_client = client_factory.get_purchase_order_client(url);
 
-                    let mut po_uid = m.value_of("po_uid").map(String::from).unwrap();
+                    let mut po_uid = value_of_required(m, "po_uid")?.to_string();
 
                     if po_uid.contains(':') {
                         validate_alt_id_format(&po_uid)?;
@@ -3275,9 +3279,9 @@ fn run() -> Result<(), CliError> {
                         )?;
                     }
 
-                    let version = m.value_of("version_id").unwrap();
+                    let version = value_of_required(m, "version_id")?;
 
-                    let revision_str = m.value_of("revision_number").unwrap();
+                    let revision_str = value_of_required(m, "revision_number")?;
 
                     let revision = revision_str
                         .parse::<u64>()
@@ -3299,6 +3303,29 @@ fn run() -> Result<(), CliError> {
     }
 
     Ok(())
+}
+
+#[cfg(any(
+    feature = "location",
+    feature = "pike",
+    feature = "product",
+    feature = "schema",
+    feature = "purchase-order",
+))]
+fn value_of_required<'a>(matches: &'a ArgMatches, arg: &str) -> Result<&'a str, CliError> {
+    matches
+        .value_of(arg)
+        .ok_or_else(|| CliError::RequiredArgError(arg.to_string()))
+}
+
+#[cfg(any(feature = "product", feature = "purchase-order",))]
+fn values_of_required<'a>(
+    matches: &'a ArgMatches,
+    arg: &str,
+) -> Result<clap::Values<'a>, CliError> {
+    matches
+        .values_of(arg)
+        .ok_or_else(|| CliError::RequiredArgError(arg.to_string()))
 }
 
 #[cfg(any(
