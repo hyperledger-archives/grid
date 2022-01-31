@@ -138,7 +138,7 @@ integration = ["grid-sdk/batch-processor", "grid-sdk/rest-api-endpoint-submit"]
 maintainer = "The Hyperledger Grid Team"
 depends = "$auto"
 assets = [
-    ["/build/daemon/packaging/xsd/product/*.xsd", "/usr/share/grid/xsd/product/", "644"],
+    ["/build/daemon/packaging/xsd/product/*.xsd", "/var/lib/grid/xsd/product/", "644"],
     ["target/release/gridd", "/usr/bin/gridd", "755"]
 ]
 maintainer-scripts = "packaging/ubuntu"
