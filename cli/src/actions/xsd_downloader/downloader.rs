@@ -52,6 +52,7 @@ pub struct CachingDownloadConfig {
     pub url: Url,
     pub file_path: PathBuf,
     pub temp_file_path: PathBuf,
+    #[cfg(feature = "xsd-downloader-force-download")]
     pub force_download: bool,
     pub hash: &'static str,
 }
@@ -81,7 +82,13 @@ where
         );
     }
 
-    if !cached || config.force_download {
+    #[cfg(not(feature = "xsd-downloader-force-download"))]
+    let download_file = !cached;
+
+    #[cfg(feature = "xsd-downloader-force-download")]
+    let download_file = !cached || config.force_download;
+
+    if download_file {
         if cached {
             debug!("downloading anyway due to force download option",);
         }
@@ -246,6 +253,7 @@ mod tests {
             url: Url::parse("http://localhost/fake").expect("could not create url"),
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
+            #[cfg(feature = "xsd-downloader-force-download")]
             force_download: false,
             hash: TEST_HASH,
         };
@@ -285,6 +293,7 @@ mod tests {
             url: url.clone(),
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
+            #[cfg(feature = "xsd-downloader-force-download")]
             force_download: false,
             hash: TEST_HASH,
         };
@@ -316,6 +325,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "xsd-downloader-force-download")]
     // Test that CachingDownloader downloads if file is cached, but force_download is enabled
     fn caching_download_downloads_cached_file_with_force_download() -> Result<(), CliError> {
         let temp_dir = TempDir::new("example").expect("could not create tempdir");
@@ -370,6 +380,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "xsd-downloader-force-download")]
     // Test that CachingDownloader fails if the temporary file already exists
     fn caching_download_fails_if_temp_file_exists() {
         let temp_dir = TempDir::new("example").expect("could not create tempdir");
@@ -432,6 +443,7 @@ mod tests {
             url: url.clone(),
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
+            #[cfg(feature = "xsd-downloader-force-download")]
             force_download: false,
             hash: TEST_HASH,
         };

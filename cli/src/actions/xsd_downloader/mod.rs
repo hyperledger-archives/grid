@@ -50,6 +50,7 @@ const DOWNLOADS: &[UrlFile] = &[UrlFile {
 /// Defines how file downloads will be handled in a cached context
 #[derive(Clone, Debug, PartialEq)]
 pub enum DownloadConfig {
+    #[cfg(feature = "xsd-downloader-force-download")]
     Always,
     CacheOnly,
     IfNotCached,
@@ -143,7 +144,10 @@ fn fetch_and_extract_with_callbacks(
         }
 
         match config.download_config {
-            DownloadConfig::Always | DownloadConfig::IfNotCached => {
+            DownloadConfig::CacheOnly => {
+                debug!("skipping download, using cache only");
+            }
+            _ => {
                 let url =
                     Url::parse(file.url).map_err(|err| CliError::InternalError(err.to_string()))?;
 
@@ -151,6 +155,7 @@ fn fetch_and_extract_with_callbacks(
                     url,
                     file_path: file_path.to_path_buf(),
                     temp_file_path: config.artifact_dir.join(format!("{filename}.download")),
+                    #[cfg(feature = "xsd-downloader-force-download")]
                     force_download: config.download_config == DownloadConfig::Always,
                     hash: file.hash,
                 };
@@ -160,9 +165,6 @@ fn fetch_and_extract_with_callbacks(
                 // Make sure we don't revalidate later
                 // (hashing can take a non-trivial amount of time)
                 checksum_validated = true;
-            }
-            DownloadConfig::CacheOnly => {
-                debug!("skipping download, using cache only");
             }
         }
 
@@ -351,7 +353,7 @@ mod tests {
         let mut extractor = MockExtractor::new(vec![Ok(())]);
 
         let config = FetchAndExtractConfig {
-            download_config: DownloadConfig::Always,
+            download_config: DownloadConfig::IfNotCached,
             copy_from: None,
             do_checksum: true,
             url_files: &[UrlFile {
@@ -385,7 +387,8 @@ mod tests {
                             "{filename}.download",
                             filename = file.artifact_name
                         )),
-                        force_download: true,
+                        #[cfg(feature = "xsd-downloader-force-download")]
+                        force_download: false,
                         hash: file.hash,
                     }
                 })
@@ -488,7 +491,7 @@ mod tests {
         let mut extractor = MockExtractor::new(vec![Ok(())]);
 
         let config = FetchAndExtractConfig {
-            download_config: DownloadConfig::Always,
+            download_config: DownloadConfig::IfNotCached,
             copy_from: None,
             do_checksum: false,
             url_files: &[UrlFile {
@@ -522,7 +525,8 @@ mod tests {
                             "{filename}.download",
                             filename = file.artifact_name
                         )),
-                        force_download: true,
+                        #[cfg(feature = "xsd-downloader-force-download")]
+                        force_download: false,
                         hash: file.hash,
                     }
                 })
@@ -685,6 +689,7 @@ mod tests {
                             "{filename}.download",
                             filename = file.artifact_name
                         )),
+                        #[cfg(feature = "xsd-downloader-force-download")]
                         force_download: false,
                         hash: file.hash,
                     }

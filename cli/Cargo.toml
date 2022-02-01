@@ -83,6 +83,8 @@ experimental = [
     # The experimental feature extends stable:
     "stable",
     # The following features are experimental:
+    "xsd-downloader-cache-dir",
+    "xsd-downloader-force-download",
 ]
 
 database = ["diesel"]
@@ -102,6 +104,8 @@ purchase-order = ["chrono", "grid-sdk/purchase-order", "rand", "serde_json"]
 sawtooth = []
 schema = ["pike", "grid-sdk/schema"]
 xsd-downloader = ["zip", "reqwest", "sha2"]
+xsd-downloader-cache-dir = ["xsd-downloader"]
+xsd-downloader-force-download = ["xsd-downloader"]
 
 [package.metadata.deb]
 maintainer = "The Hyperledger Grid Team"

@@ -1778,46 +1778,53 @@ fn run() -> Result<(), CliError> {
     {
         use clap::{Arg, SubCommand};
 
-        app = app.subcommand(
-            SubCommand::with_name("download-xsd")
-                .about("Download xsd files for grid")
-                .arg(
-                    Arg::with_name("no_download")
-                        .long("no-download")
-                        .conflicts_with("force_download")
-                        .help("Never download a file, only extract the cached file"),
-                )
-                .arg(
-                    Arg::with_name("force")
-                        .long("force")
-                        .help("Continue even if a checksum on the cached file is incorrect"),
-                )
-                .arg(
-                    Arg::with_name("copy_from")
-                        .takes_value(true)
-                        .conflicts_with("force_download")
-                        .long("copy-from")
-                        .help("Replenish the cache from a directory resource and use that"),
-                )
-                .arg(
-                    Arg::with_name("force_download")
-                        .hidden(true)
-                        .long("force-download")
-                        .conflicts_with("no_download")
-                        .conflicts_with("copy_from")
-                        .help(
-                            "Force the xsd downloader to download even if \
-                            a cached file already exists",
-                        ),
-                )
-                .arg(
-                    Arg::with_name("cache_dir")
-                        .hidden(true)
-                        .takes_value(true)
-                        .long("cache-dir")
-                        .help("Cache directory used to store downloaded artifacts"),
-                ),
-        );
+        #[allow(unused_mut)]
+        let mut subcommand = SubCommand::with_name("download-xsd")
+            .about("Download xsd files for grid")
+            .arg(
+                Arg::with_name("no_download")
+                    .long("no-download")
+                    .conflicts_with("force_download")
+                    .help("Never download a file, only extract the cached file"),
+            )
+            .arg(
+                Arg::with_name("force")
+                    .long("force")
+                    .help("Continue even if a checksum on the cached file is incorrect"),
+            )
+            .arg(
+                Arg::with_name("copy_from")
+                    .takes_value(true)
+                    .conflicts_with("force_download")
+                    .long("copy-from")
+                    .help("Replenish the cache from a directory resource and use that"),
+            );
+
+        #[cfg(feature = "xsd-downloader-force-download")]
+        {
+            subcommand = subcommand.arg(
+                Arg::with_name("force_download")
+                    .long("force-download")
+                    .conflicts_with("no_download")
+                    .conflicts_with("copy_from")
+                    .help(
+                        "Force the xsd downloader to download even if \
+                    a cached file already exists",
+                    ),
+            );
+        }
+
+        #[cfg(feature = "xsd-downloader-cache-dir")]
+        {
+            subcommand = subcommand.arg(
+                Arg::with_name("cache_dir")
+                    .takes_value(true)
+                    .long("cache-dir")
+                    .help("Cache directory used to store downloaded artifacts"),
+            );
+        }
+
+        app = app.subcommand(subcommand);
     }
 
     let matches = app.get_matches();
@@ -1849,20 +1856,23 @@ fn run() -> Result<(), CliError> {
     match matches.subcommand() {
         #[cfg(feature = "xsd-downloader")]
         ("download-xsd", Some(m)) => {
-            let download_config = if m.is_present("force_download") {
-                DownloadConfig::Always
-            } else if m.is_present("no_download") {
-                DownloadConfig::CacheOnly
-            } else {
-                DownloadConfig::IfNotCached
-            };
+            let download_config =
+                match (m.is_present("no_download"), m.is_present("force_download")) {
+                    (true, false) => DownloadConfig::CacheOnly,
+                    #[cfg(feature = "xsd-downloader-force-download")]
+                    (false, true) => DownloadConfig::Always,
+                    (false, false) => DownloadConfig::IfNotCached,
+                    _ => return Err(CliError::InternalError("invalid arguments".to_string())),
+                };
 
             let do_checksum = !m.is_present("force");
-            let cache_dir = m.value_of("cache_dir");
             let copy_from = m.value_of("copy_from").map(String::from);
 
             xsd_downloader::fetch_and_extract_xsds(
-                cache_dir,
+                #[cfg(feature = "xsd-downloader-cache-dir")]
+                m.value_of("cache_dir"),
+                #[cfg(not(feature = "xsd-downloader-cache-dir"))]
+                None,
                 download_config,
                 do_checksum,
                 copy_from,
