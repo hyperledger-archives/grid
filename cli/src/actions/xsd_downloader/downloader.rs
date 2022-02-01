@@ -97,8 +97,8 @@ where
 
         if config.temp_file_path.exists() {
             return Err(CliError::ActionError(format!(
-                "cannot proceed, as temp file {temp_file_path} already exists. is a \
-                download already in progress? if not, please delete the temp file",
+                "cannot proceed, as temp file \"{temp_file_path}\" already exists; \
+                please delete the temp file",
                 temp_file_path = &fs::canonicalize(config.temp_file_path.clone())
                     .unwrap_or(config.temp_file_path)
                     .as_os_str()
