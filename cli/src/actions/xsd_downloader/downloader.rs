@@ -48,12 +48,12 @@ pub fn download(url: &Url, file_name: &str) -> Result<(), CliError> {
 
 /// Configuration for the caching downloader
 #[derive(Debug, PartialEq)]
-pub struct CachingDownloadConfig<Hash> {
+pub struct CachingDownloadConfig {
     pub url: Url,
     pub file_path: PathBuf,
     pub temp_file_path: PathBuf,
     pub force_download: bool,
-    pub hash: Hash,
+    pub hash: &'static str,
 }
 
 /// Cache a file
@@ -61,10 +61,10 @@ pub struct CachingDownloadConfig<Hash> {
 /// * `config` - The configuration for caching and downloading the file
 /// * `download` - The function to use to download the file
 /// * `validate_hash` - The function to use to validate the hash
-pub fn caching_download<T, Hash>(
-    config: CachingDownloadConfig<Hash>,
+pub fn caching_download<T>(
+    config: CachingDownloadConfig,
     download: T,
-    validate_hash: impl FnOnce(&PathBuf, &Hash) -> Result<(), CliError>,
+    validate_hash: impl FnOnce(&PathBuf, &str) -> Result<(), CliError>,
 ) -> Result<(), CliError>
 where
     T: FnOnce(&Url, &str) -> Result<(), CliError>,
@@ -106,7 +106,7 @@ where
 
         info!("download finished");
 
-        if let Err(result) = (validate_hash)(&config.temp_file_path, &config.hash) {
+        if let Err(result) = (validate_hash)(&config.temp_file_path, config.hash) {
             fs::remove_file(config.temp_file_path)
                 .map_err(|err| CliError::InternalError(err.to_string()))?;
 
@@ -247,14 +247,14 @@ mod tests {
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
             force_download: false,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         let result = caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         );
 
         assert_eq!(validator.get_calls(), &[]);
@@ -286,14 +286,14 @@ mod tests {
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
             force_download: false,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         )?;
 
         assert_eq!(
@@ -341,14 +341,14 @@ mod tests {
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
             force_download: true,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         )?;
 
         assert_eq!(
@@ -393,14 +393,14 @@ mod tests {
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
             force_download: true,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         let result = caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         );
 
         assert_eq!(validator.get_calls(), &[]);
@@ -433,14 +433,14 @@ mod tests {
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
             force_download: false,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         let result = caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         );
 
         assert_eq!(

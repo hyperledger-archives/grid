@@ -25,7 +25,13 @@ use crate::error::CliError;
 ///
 /// * `file` - The file to check the hash of
 /// * `hash` - The expected sha256 hash
-pub fn validate_hash(file: &Path, hash: &[u8; 32]) -> Result<(), CliError> {
+pub fn validate_hash(file: &Path, hash: &str) -> Result<(), CliError> {
+    let hash = (0..hash.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hash[i..i + 2], 16))
+        .collect::<Result<Vec<u8>, _>>()
+        .map_err(|_| CliError::InternalError(format!("error parsing file hash \"{hash}\"")))?;
+
     info!("validating hash of {file}", file = file.to_string_lossy());
     if !file.exists() {
         return Err(CliError::ActionError(format!(
@@ -62,13 +68,11 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
 
-    use hex_literal::hex;
     use pretty_assertions::assert_eq;
     use tempdir::TempDir;
 
     const TEST_DATA: &str = "lagomorpha";
-    const TEST_HASH: [u8; 32] =
-        hex!("9b44a9cb40096bf6767dec8e97bdc5a36ead7bc6200025cac801bf445307aba0");
+    const TEST_HASH: &str = "9b44a9cb40096bf6767dec8e97bdc5a36ead7bc6200025cac801bf445307aba0";
 
     #[test]
     fn validate_hash_succeeds_on_valid_hash() {
@@ -79,7 +83,7 @@ mod tests {
         write!(output, "{}", TEST_DATA).expect("could not write file");
 
         assert_eq!(
-            format!("{:?}", validate_hash(&file_path, &TEST_HASH)),
+            format!("{:?}", validate_hash(&file_path, TEST_HASH)),
             "Ok(())"
         );
     }
@@ -93,7 +97,7 @@ mod tests {
         write!(output, "deus ex machina").expect("could not write file");
 
         assert_eq!(
-            format!("{:?}", validate_hash(&file_path, &TEST_HASH)), 
+            format!("{:?}", validate_hash(&file_path, TEST_HASH)), 
             "Err(ActionError(\"expected file to have hash of 9b44a9cb40096bf6767dec8e97bdc5a36ead7bc6200025cac801bf445307aba0, but it was 79909d2507886e03b19dded20d453c048a9e2f05f2e3553e4a399926505df260\"))".to_string()
             );
     }
@@ -102,7 +106,7 @@ mod tests {
     fn validate_hash_returns_error_if_file_does_not_exist() {
         let file_path = Path::new("fakefile.zip");
         assert_eq!(
-            format!("{:?}", validate_hash(file_path, &TEST_HASH)),
+            format!("{:?}", validate_hash(file_path, TEST_HASH)),
             "Err(ActionError(\"file \\\"fakefile.zip\\\" does not exist\"))".to_string()
         );
     }

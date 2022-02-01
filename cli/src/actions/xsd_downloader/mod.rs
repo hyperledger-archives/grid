@@ -22,7 +22,6 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use hex_literal::hex;
 use reqwest::Url;
 
 use crate::actions;
@@ -33,17 +32,17 @@ const ENV_GRID_CACHE_DIR: &str = "GRID_CACHE_DIR";
 const DEFAULT_GRID_CACHE_DIR: &str = "/var/cache/grid";
 
 #[derive(Clone, Debug, PartialEq)]
-struct UrlFile<Hash> {
+struct UrlFile {
     url: &'static str,
-    hash: Hash,
+    hash: &'static str,
     artifact_name: &'static str,
     extract_to: &'static str,
 }
 
 /// Files to be downloaded, and where they go
-const DOWNLOADS: &[UrlFile<[u8; 32]>] = &[UrlFile {
+const DOWNLOADS: &[UrlFile] = &[UrlFile {
     url: "https://www.gs1.org/docs/EDI/xml/3.4.1/GS1_XML_3-4-1_Publication.zip",
-    hash: hex!("4a10f96d32fd0f73b39b0d969cb7b822f49b1bd1e7c0782cfe3648b70dd77376"),
+    hash: "4a10f96d32fd0f73b39b0d969cb7b822f49b1bd1e7c0782cfe3648b70dd77376",
     artifact_name: "GS1_XML_3-4-1_Publication.zip",
     extract_to: "po",
 }];
@@ -57,11 +56,11 @@ pub enum DownloadConfig {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct FetchAndExtractConfig<Hash: 'static> {
+struct FetchAndExtractConfig {
     download_config: DownloadConfig,
     copy_from: Option<String>,
     do_checksum: bool,
-    url_files: &'static [UrlFile<Hash>],
+    url_files: &'static [UrlFile],
     artifact_dir: PathBuf,
     schema_dir: PathBuf,
 }
@@ -72,10 +71,10 @@ struct FetchAndExtractConfig<Hash: 'static> {
 /// * `download` - Function to download the files
 /// * `validate_hash` - Function to validate file hashes
 /// * `extract` - Function to extract the files
-fn fetch_and_extract_with_callbacks<Hash: Clone>(
-    config: FetchAndExtractConfig<Hash>,
-    mut download: impl FnMut(CachingDownloadConfig<Hash>) -> Result<(), CliError>,
-    mut validate_hash: impl FnMut(&Path, &Hash) -> Result<(), CliError>,
+fn fetch_and_extract_with_callbacks(
+    config: FetchAndExtractConfig,
+    mut download: impl FnMut(CachingDownloadConfig) -> Result<(), CliError>,
+    mut validate_hash: impl FnMut(&Path, &str) -> Result<(), CliError>,
     mut extract: impl FnMut(&Path, &Path) -> Result<(), CliError>,
 ) -> Result<(), CliError> {
     let copy_path = if let Some(ref dir) = config.copy_from {
@@ -117,7 +116,7 @@ fn fetch_and_extract_with_callbacks<Hash: Clone>(
             if copy_file_path.exists() {
                 if config.do_checksum {
                     // Do a validation of the file before copying to cache
-                    (validate_hash)(&copy_file_path, &file.hash)?;
+                    (validate_hash)(&copy_file_path, file.hash)?;
 
                     // Make sure we don't revalidate later
                     // (hashing can take a non-trivial amount of time)
@@ -153,7 +152,7 @@ fn fetch_and_extract_with_callbacks<Hash: Clone>(
                     file_path: file_path.to_path_buf(),
                     temp_file_path: config.artifact_dir.join(format!("{filename}.download")),
                     force_download: config.download_config == DownloadConfig::Always,
-                    hash: file.hash.clone(),
+                    hash: file.hash,
                 };
 
                 (download)(config)?;
@@ -176,7 +175,7 @@ fn fetch_and_extract_with_callbacks<Hash: Clone>(
 
         if !checksum_validated && config.do_checksum {
             // Do a validation of the final file
-            (validate_hash)(&file_path, &file.hash)?;
+            (validate_hash)(&file_path, file.hash)?;
         } else {
             debug!("skipping checksum");
         }
@@ -226,7 +225,7 @@ pub fn fetch_and_extract_xsds(
             downloader::caching_download(
                 config,
                 downloader::download,
-                |path_buf: &PathBuf, hash: &[u8; 32]| validator::validate_hash(path_buf, hash),
+                |path_buf: &PathBuf, hash: &str| validator::validate_hash(path_buf, hash),
             )
         },
         validator::validate_hash,
@@ -245,7 +244,7 @@ mod tests {
 
     #[derive(Debug, PartialEq)]
     struct MockCacheDownloaderCall {
-        pub config: CachingDownloadConfig<&'static str>,
+        pub config: CachingDownloadConfig,
     }
 
     struct MockCacheDownloader {
@@ -261,10 +260,7 @@ mod tests {
             }
         }
 
-        pub fn download(
-            &mut self,
-            config: CachingDownloadConfig<&'static str>,
-        ) -> Result<(), CliError> {
+        pub fn download(&mut self, config: CachingDownloadConfig) -> Result<(), CliError> {
             self.calls.push(MockCacheDownloaderCall { config });
             self.responses.pop().unwrap()
         }
