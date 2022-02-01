@@ -100,8 +100,6 @@ fn fetch_and_extract_with_callbacks(
         None
     };
 
-    fs::create_dir_all(&config.artifact_dir)?;
-
     for file in config.url_files {
         let filename = file.artifact_name;
         let file_path = config.artifact_dir.join(filename);
@@ -214,6 +212,25 @@ pub fn fetch_and_extract_xsds(
         artifact_dir.to_string_lossy()
     );
 
+    if !artifact_dir.exists() {
+        fs::create_dir(&artifact_dir).map_err(|e| {
+            CliError::ActionError(format!(
+                "could not create artifact directory \"{dir}\": {e}",
+                dir = artifact_dir.to_string_lossy()
+            ))
+        })?;
+    }
+
+    let schema_dir = actions::get_grid_xsd_dir();
+    if !schema_dir.exists() {
+        fs::create_dir(&schema_dir).map_err(|e| {
+            CliError::ActionError(format!(
+                "could not create schema directory \"{dir}\": {e}",
+                dir = schema_dir.to_string_lossy()
+            ))
+        })?;
+    }
+
     fetch_and_extract_with_callbacks(
         FetchAndExtractConfig {
             download_config,
@@ -221,7 +238,7 @@ pub fn fetch_and_extract_xsds(
             do_checksum,
             url_files: DOWNLOADS,
             artifact_dir,
-            schema_dir: actions::get_grid_xsd_dir(),
+            schema_dir,
         },
         |config| {
             downloader::caching_download(
@@ -416,6 +433,8 @@ mod tests {
         let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
         let path = temp_dir.into_path();
         let artifact_dir = path.join("artifact");
+        fs::create_dir(&artifact_dir).expect("could not create directory");
+
         let schema_dir = path.join("schema");
 
         let copy_dir = path.join("copy_from");
