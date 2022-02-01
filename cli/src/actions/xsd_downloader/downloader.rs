@@ -31,8 +31,9 @@ pub fn download(url: &Url, file_name: &str) -> Result<(), CliError> {
         .map_err(|err| CliError::InternalError(err.to_string()))?;
     if res.status().is_server_error() {
         return Err(CliError::ActionError(format!(
-            "received server error {:?}",
-            res.status()
+            "During {scheme} GET request to {url}: received server error {status:?}",
+            scheme = url.scheme(),
+            status = res.status()
         )));
     }
     let body = res
@@ -224,7 +225,10 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", result),
-            "Err(ActionError(\"received server error 503\"))"
+            format!(
+                "Err(ActionError(\"During http GET request to {url}: \
+                received server error 503\"))"
+            )
         );
         assert!(!file_path.exists());
         mock_endpoint.assert();
