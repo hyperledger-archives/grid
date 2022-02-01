@@ -86,8 +86,12 @@ fn fetch_and_extract_with_callbacks(
             )));
         }
 
-        let metadata =
-            fs::metadata(path).map_err(|err| CliError::InternalError(err.to_string()))?;
+        let metadata = fs::metadata(path).map_err(|err| {
+            CliError::InternalError(format!(
+                "could not read metadata from directory \"{dir}\": {err}",
+                dir = path.to_string_lossy()
+            ))
+        })?;
 
         if !metadata.is_dir() {
             return Err(CliError::ActionError(format!(
@@ -125,8 +129,13 @@ fn fetch_and_extract_with_callbacks(
                 }
 
                 debug!("skipping download for {filename}, copying from {dir}");
-                fs::copy(copy_file_path, &file_path)
-                    .map_err(|err| CliError::InternalError(err.to_string()))?;
+                fs::copy(&copy_file_path, &file_path).map_err(|err| {
+                    CliError::InternalError(format!(
+                        "could not copy \"{copy_file_path}\" to \"{file_path}\": {err}",
+                        copy_file_path = copy_file_path.to_string_lossy(),
+                        file_path = file_path.to_string_lossy()
+                    ))
+                })?;
             } else if config.download_config == DownloadConfig::CacheOnly {
                 // If we are copying and not downloading, we expect all
                 // necessary files to exist in the copy directory, regardless
@@ -146,8 +155,12 @@ fn fetch_and_extract_with_callbacks(
                 debug!("skipping download, using cache only");
             }
             _ => {
-                let url =
-                    Url::parse(file.url).map_err(|err| CliError::InternalError(err.to_string()))?;
+                let url = Url::parse(file.url).map_err(|err| {
+                    CliError::InternalError(format!(
+                        "sanity check fail: unable to parse \"{url}\": {err}",
+                        url = file.url
+                    ))
+                })?;
 
                 let config = CachingDownloadConfig {
                     url,
