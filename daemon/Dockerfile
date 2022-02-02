@@ -84,4 +84,6 @@ RUN apt-get update \
 
 RUN echo ". /usr/share/bash-completion/bash_completion" >> ~/.bashrc
 
+RUN mkdir /var/cache/grid
+
 CMD ["gridd"]
