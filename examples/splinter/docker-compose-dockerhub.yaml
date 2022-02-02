@@ -32,11 +32,12 @@ services:
       - contracts-shared:/usr/share/scar
     entrypoint: |
       bash -c "
-        curl https://grid.hyperledger.org/scar/0.2.2/grid-track-and-trace_0.2.2.scar -o /usr/share/scar/grid-track-and-trace_0.2.2.scar
-        curl https://grid.hyperledger.org/scar/0.2.2/grid-schema_0.2.2.scar -o /usr/share/scar/grid-schema_0.2.2.scar
-        curl https://grid.hyperledger.org/scar/0.2.2/grid-pike_0.2.2.scar -o /usr/share/scar/grid-pike_0.2.2.scar
-        curl https://grid.hyperledger.org/scar/0.2.2/grid-product_0.2.2.scar -o /usr/share/scar/grid-product_0.2.2.scar
-        curl https://grid.hyperledger.org/scar/0.2.2/grid-location_0.2.2.scar -o /usr/share/scar/grid-location_0.2.2.scar
+        curl https://grid.hyperledger.org/scar/0.3.1/grid-track-and-trace_0.3.1.scar -o /usr/share/scar/grid-track-and-trace_0.3.1.scar
+        curl https://grid.hyperledger.org/scar/0.3.1/grid-schema_0.3.1.scar -o /usr/share/scar/grid-schema_0.3.1.scar
+        curl https://grid.hyperledger.org/scar/0.3.1/grid-pike_0.3.1.scar -o /usr/share/scar/grid-pike_0.3.1.scar
+        curl https://grid.hyperledger.org/scar/0.3.1/grid-product_0.3.1.scar -o /usr/share/scar/grid-product_0.3.1.scar
+        curl https://grid.hyperledger.org/scar/0.3.1/grid-location_0.3.1.scar -o /usr/share/scar/grid-location_0.3.1.scar
+        curl https://grid.hyperledger.org/scar/0.3.1/grid-purchase-order_0.3.1.scar -o /usr/share/scar/grid-purchase-order_0.3.1.scar
       "
 
   generate-registry:
