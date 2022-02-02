@@ -14,6 +14,9 @@
  * limitations under the License.
  * -----------------------------------------------------------------------------
  */
+
+//! Validation logic for the XSD downloader
+
 use std::fmt::Write;
 use std::path::Path;
 

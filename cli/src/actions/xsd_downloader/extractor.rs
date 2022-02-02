@@ -14,6 +14,11 @@
  * limitations under the License.
  * -----------------------------------------------------------------------------
  */
+
+//! Extraction logic for the XSD downloader
+//!
+//! These functions are specific to the file format provided by GS1.
+
 use std::fs::{self, File};
 use std::io::{self, Cursor, Read, Seek};
 use std::path::Path;

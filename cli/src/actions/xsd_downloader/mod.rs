@@ -14,6 +14,14 @@
  * limitations under the License.
  * -----------------------------------------------------------------------------
  */
+
+//! Tool to fetch, validate, and extract prerequisite Grid XSD files
+//!
+//! The files are downloaded from sources like GS1, validated against known hashes, and extracted
+//! to the Grid state directory.
+//!
+//! For more information and technical details, view the CLI manpage for `grid xsd-download`
+
 mod downloader;
 mod extractor;
 mod validator;

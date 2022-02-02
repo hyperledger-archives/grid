@@ -14,6 +14,9 @@
  * limitations under the License.
  * -----------------------------------------------------------------------------
  */
+
+//! Download and caching utilities for the XSD downloader
+
 use std::fs::{self, File};
 use std::io::{self, Cursor};
 use std::path::PathBuf;
