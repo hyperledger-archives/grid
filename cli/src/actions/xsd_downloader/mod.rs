@@ -665,9 +665,9 @@ mod tests {
         let path = temp_dir.into_path();
         let schema_dir = path.join("schema");
 
-        let mut downloader = MockCacheDownloader::new(vec![Ok(())]);
-        let mut validator = MockValidator::new(vec![Ok(())]);
-        let mut extractor = MockExtractor::new(vec![Ok(())]);
+        let mut downloader = MockCacheDownloader::new(vec![]);
+        let mut validator = MockValidator::new(vec![]);
+        let mut extractor = MockExtractor::new(vec![]);
 
         let config = FetchAndExtractConfig {
             download_config: DownloadConfig::CacheOnly,
@@ -705,9 +705,9 @@ mod tests {
         let path = temp_dir.into_path();
         let schema_dir = path.join("schema");
 
-        let mut downloader = MockCacheDownloader::new(vec![Ok(())]);
-        let mut validator = MockValidator::new(vec![Ok(())]);
-        let mut extractor = MockExtractor::new(vec![Ok(())]);
+        let mut downloader = MockCacheDownloader::new(vec![]);
+        let mut validator = MockValidator::new(vec![]);
+        let mut extractor = MockExtractor::new(vec![]);
 
         let copy_dir = path.join("copy_from");
         let copy_dir_string = copy_dir.to_string_lossy().to_string();
