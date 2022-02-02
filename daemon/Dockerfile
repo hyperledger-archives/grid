@@ -74,6 +74,7 @@ COPY --from=gridd-builder /commit-hash /commit-hash
 
 RUN apt-get update \
  && apt-get install -y -q \
+    ca-certificates \
     curl \
     libsqlite3-dev \
     man \

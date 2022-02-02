@@ -67,7 +67,9 @@ COPY --from=grid-cli-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=grid-cli-builder /commit-hash /commit-hash
 
 RUN apt-get update \
- && apt-get install -y -q man \
+ && apt-get install -y -q \
+   ca-certificates \
+    man \
  && mandb \
  && dpkg --unpack /tmp/grid-cli*.deb \
  && apt-get -f -y install
