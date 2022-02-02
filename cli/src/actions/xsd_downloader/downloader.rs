@@ -23,6 +23,9 @@ use reqwest::{blocking::Client, Url};
 use crate::error::CliError;
 
 /// Uses the Reqwest library to download a file
+///
+/// * `url` - The URL of the file to download
+/// * `file_name` - The resulting file path
 pub fn download(url: &Url, file_name: &str) -> Result<(), CliError> {
     let client = Client::new();
     let res = client

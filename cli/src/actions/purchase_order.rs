@@ -1041,10 +1041,12 @@ pub fn get_purchase_order_version(
     }
 }
 
+/// Get the purchase order schema directory
 pub fn get_order_schema_dir() -> PathBuf {
     actions::get_grid_xsd_dir().join("po/gs1/ecom")
 }
 
+/// Get the purchase order schema directory as a string
 pub fn get_order_schema_dir_string() -> Result<String, CliError> {
     get_order_schema_dir()
         .into_os_string()
