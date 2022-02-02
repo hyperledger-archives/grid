@@ -74,10 +74,10 @@ COPY --from=gridd-builder /commit-hash /commit-hash
 
 RUN apt-get update \
  && apt-get install -y -q \
-    postgresql-client \
-    libsqlite3-dev \
     curl \
+    libsqlite3-dev \
     man \
+    postgresql-client \
  && mandb \
  && dpkg --unpack /tmp/grid*.deb \
  && apt-get -f -y install
