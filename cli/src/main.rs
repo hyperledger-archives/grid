@@ -1781,6 +1781,26 @@ fn run() -> Result<(), CliError> {
         #[allow(unused_mut)]
         let mut subcommand = SubCommand::with_name("download-xsd")
             .about("Download xsd files for grid")
+            .after_help(
+                "ENV:
+    GRID_CACHE_DIR    GRID cache directory. The default value is \"/var/cache/grid\".
+    GRID_STATE_DIR    GRID state directory. The default value is \"/var/lib/grid\".
+
+DETAILS:
+    This command downloads GS1 XSD files used by various Grid features. The
+    downloaded artifacts are first copied into a cache directory. They are then
+    expanded into Grid's state directory. If the desired artifacts are in the
+    cache directory, Grid will not attempt to re-download them, and instead
+    prefer the cache contents.
+
+    To avoid downloading from the internet (for example, if a firewall rule
+    would prevent access to the remote website), use the --copy-from and
+    --no-download arguments.
+
+    If --copy-from is used without --no-download, artfacts will be copied from
+    the directory provided via --copy-from and any missing artifacts will be
+    downloaded as usual.",
+            )
             .arg(
                 Arg::with_name("no_download")
                     .long("no-download")
@@ -1797,6 +1817,7 @@ fn run() -> Result<(), CliError> {
                     .takes_value(true)
                     .conflicts_with("force_download")
                     .long("copy-from")
+                    .value_name("directory")
                     .help("Replenish the cache from a directory resource and use that"),
             );
 
