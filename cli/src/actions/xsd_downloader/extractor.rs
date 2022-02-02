@@ -159,6 +159,7 @@ mod tests {
         Ok(())
     }
 
+    // Create an example zip that roughly mirrors the expected GS1 format
     fn create_example_zip(path: &Path) -> ZipResult<()> {
         let mut order_file: Vec<u8> = vec![];
         let order_cursor = Cursor::new(&mut order_file);
@@ -256,6 +257,8 @@ mod tests {
     }
 
     #[test]
+    // Validate that extract() will extract a zip file in the expected zipception format
+    // without failure, and that the resulting files are in the expected locations.
     fn extract_works() {
         let source_temp = TempDir::new("zipstuff").expect("could not create tempdir");
         let source_path = source_temp.into_path().join("test.zip");

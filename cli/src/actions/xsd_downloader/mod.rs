@@ -448,6 +448,11 @@ mod tests {
     }
 
     #[test]
+    // Test that fetch_and_extract_with_callbacks will function as expected when
+    // extracting under ideal conditions.
+    //
+    // The downloader, validator, and extractor are mocked as successful, and
+    // the calls to them are each compared against expected calls.
     fn fae_default_configuration_downloads_and_extracts() {
         let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
         let path = temp_dir.into_path();
@@ -519,8 +524,14 @@ mod tests {
         );
     }
 
-    // Validate that files are copied if that download option is selected
     #[test]
+    // Test that fetch_and_extract_with_callbacks will function as expected when
+    // copying from a folder with a single file, out.zip.
+    //
+    // The validator and extractor are mocked as successful, and
+    // the calls to them are each compared against expected calls.
+    //
+    // The downloader expects zero calls.
     fn fae_files_copy_if_copy_option_enabled() {
         let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
         let path = temp_dir.into_path();
@@ -586,8 +597,14 @@ mod tests {
         );
     }
 
-    // Validate that hash checking is disabled if the option is not selected
     #[test]
+    // Test that fetch_and_extract_with_callbacks will function as expected when
+    // hash checking is disabled.
+    //
+    // The downloader and extractor are mocked as successful, and
+    // the calls to them are each compared against expected calls.
+    //
+    // The validator expects zero calls.
     fn fae_files_validation_does_not_happen_if_disabled() {
         let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
         let path = temp_dir.into_path();
@@ -660,6 +677,10 @@ mod tests {
     }
 
     #[test]
+    // Test that fetch_and_extract_with_callbacks will function as expected when
+    // the artifact is missing.
+    //
+    // The downloader, validator, and extractor expect zero calls.
     fn fae_cache_only_with_missing_artifact_fails() {
         let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
         let path = temp_dir.into_path();
@@ -700,6 +721,10 @@ mod tests {
     }
 
     #[test]
+    // Test that fetch_and_extract_with_callbacks will function as expected when
+    // the expected file in the copy directory is missing.
+    //
+    // The downloader, validator, and extractor expect zero calls.
     fn fae_cache_only_copy_from_missing_file_fails() {
         let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
         let path = temp_dir.into_path();
@@ -747,6 +772,11 @@ mod tests {
     }
 
     #[test]
+    // Test that fetch_and_extract_with_callbacks will function as expected when
+    // the cached copy of a file is missing.
+    //
+    // The downloader, validator, and extractor are mocked as successful, and
+    // the calls to them are each compared against expected calls.
     fn fae_if_not_cached_copy_from_missing_file_downloads() {
         let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
         let path = temp_dir.into_path();
