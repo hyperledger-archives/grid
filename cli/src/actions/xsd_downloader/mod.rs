@@ -225,6 +225,46 @@ fn fetch_and_extract_with_callbacks(
     Ok(())
 }
 
+/// Test that the given path is directory and writable.
+/// Return the appropriate error if not.
+///
+/// * `path` - The path of the directory to check
+fn test_directory_writable(ctx: &str, path: &Path) -> Result<(), CliError> {
+    if !path.exists() {
+        return Err(CliError::ActionError(format!(
+            "{ctx} path \"{path}\" does not exist",
+            path = path.display()
+        )));
+    }
+
+    if !path.is_dir() {
+        return Err(CliError::ActionError(format!(
+            "{ctx} path \"{path}\" is not a directory",
+            path = path.display()
+        )));
+    }
+
+    let permissions = path
+        .metadata()
+        .map_err(|err| {
+            CliError::ActionError(format!(
+                "{ctx} path \"{path}\" is not writable: {err}",
+                path = path.display(),
+                err = err
+            ))
+        })?
+        .permissions();
+
+    if permissions.readonly() {
+        return Err(CliError::ActionError(format!(
+            "{ctx} path \"{path}\" is not writable",
+            path = path.display()
+        )));
+    }
+
+    Ok(())
+}
+
 /// Fetch xsds and extract them
 ///
 /// * `artifact_dir` - Location to store and retrieve artifacts from
@@ -236,26 +276,40 @@ pub fn fetch_and_extract_xsds(
     do_checksum: bool,
     copy_from: Option<String>,
 ) -> Result<(), CliError> {
-    let artifact_dir = artifact_dir.map(PathBuf::from).unwrap_or_else(|| {
-        PathBuf::from(
-            env::var(ENV_GRID_CACHE_DIR).unwrap_or_else(|_| DEFAULT_GRID_CACHE_DIR.to_string()),
-        )
-        .join("xsd_artifact_cache")
-    });
+    let artifact_dir = match artifact_dir {
+        Some(dir) => {
+            let path = PathBuf::from(dir);
+            test_directory_writable("cache", &path).map(|_| path)
+        }
+        None => {
+            let parent_path = PathBuf::from(
+                env::var(ENV_GRID_CACHE_DIR).unwrap_or_else(|_| DEFAULT_GRID_CACHE_DIR.to_string()),
+            );
 
-    debug!(
-        "using artifact directory of {}",
-        artifact_dir.to_string_lossy()
-    );
+            test_directory_writable("cache", &parent_path)?;
 
-    if !artifact_dir.exists() {
-        fs::create_dir(&artifact_dir).map_err(|e| {
-            CliError::ActionError(format!(
-                "could not create artifact directory \"{dir}\": {e}",
-                dir = artifact_dir.to_string_lossy()
-            ))
-        })?;
-    }
+            let path = parent_path.join("xsd_artifact_cache");
+
+            if !path.exists() {
+                fs::create_dir(&path).map_err(|e| {
+                    CliError::ActionError(format!(
+                        "could not create artifact directory \"{dir}\": {e}",
+                        dir = path.display()
+                    ))
+                })?;
+            }
+
+            Ok(path)
+        }
+    }?;
+
+    debug!("using artifact directory of {}", artifact_dir.display());
+
+    // Make sure the state directory exists and is writable, since the schema directory
+    // is contained within this directory
+    let state_dir = actions::get_grid_state_dir();
+    let state_dir = PathBuf::from(state_dir);
+    test_directory_writable("state", &state_dir)?;
 
     let schema_dir = actions::get_grid_xsd_dir();
     if !schema_dir.exists() {
@@ -266,6 +320,8 @@ pub fn fetch_and_extract_xsds(
             ))
         })?;
     }
+
+    debug!("using schema directory of {}", schema_dir.display());
 
     fetch_and_extract_with_callbacks(
         FetchAndExtractConfig {
@@ -764,6 +820,27 @@ mod tests {
                     dest: schema_dir.join(file.extract_to),
                 })
                 .collect::<Vec<MockExtractorCall>>()
+        );
+    }
+
+    #[test]
+    fn test_directory_writable_succeeds_if_writable() {
+        let temp_dir = TempDir::new("writable").expect("could not create tempdir");
+        let path = temp_dir.into_path();
+
+        test_directory_writable("test", &path).expect("could not write to directory");
+    }
+
+    #[test]
+    fn test_directory_writable_fails_if_not_directory() {
+        let path = Path::new("/fake/directory/is/fake");
+
+        let result = test_directory_writable("test", path);
+
+        assert_eq!(
+            format!("{:?}", result),
+            "Err(ActionError(\"test path \\\"/fake/directory/is/fake\\\" \
+                does not exist\"))"
         );
     }
 }
