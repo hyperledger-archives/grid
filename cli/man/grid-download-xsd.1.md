@@ -52,10 +52,10 @@ FLAGS
 =====
 
 `--no-download`
-: Do not download the XSD even if there is no artifact cached
+: Do not download the XSD even if there is no artifact cached.
 
 `--force`
-: Continue even if a checksum on the cached file is incorrect
+: Continue even if a checksum on the cached file is incorrect.
 
 `-h`, `--help`
 : Prints help information.
