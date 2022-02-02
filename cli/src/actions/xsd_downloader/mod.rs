@@ -107,7 +107,26 @@ fn fetch_and_extract_with_callbacks(
     for file in config.url_files {
         let filename = file.artifact_name;
         let file_path = config.artifact_dir.join(filename);
+        let file_name = file_path
+            .file_name()
+            .ok_or_else(|| {
+                CliError::InternalError(format!(
+                    "error getting filename of \"{file_path}\"",
+                    file_path = file_path.to_string_lossy()
+                ))
+            })?
+            .to_string_lossy();
         let mut checksum_validated = false;
+
+        let mut validate = |file_path: &Path| {
+            let result = (validate_hash)(file_path, file.hash);
+
+            if result.is_ok() {
+                info!("Hash of \"{file_name}\" verified: {hash}", hash = file.hash);
+            }
+
+            result
+        };
 
         if let Some(ref dir) = config.copy_from {
             let copy_path = copy_path.ok_or_else(|| {
@@ -119,7 +138,7 @@ fn fetch_and_extract_with_callbacks(
             if copy_file_path.exists() {
                 if config.do_checksum {
                     // Do a validation of the file before copying to cache
-                    (validate_hash)(&copy_file_path, file.hash)?;
+                    validate(&copy_file_path)?;
 
                     // Make sure we don't revalidate later
                     // (hashing can take a non-trivial amount of time)
@@ -188,14 +207,18 @@ fn fetch_and_extract_with_callbacks(
 
         if !checksum_validated && config.do_checksum {
             // Do a validation of the final file
-            (validate_hash)(&file_path, file.hash)?;
+            validate(&file_path)?;
         } else {
             debug!("skipping checksum");
         }
 
-        info!("extracting to schema directory");
-
         let dest_dir = config.schema_dir.join(file.extract_to);
+
+        info!(
+            "Extracting \"{file_name}\" to \"{dest_dir}\"",
+            dest_dir = dest_dir.to_string_lossy()
+        );
+
         (extract)(&file_path, &dest_dir)?;
     }
 

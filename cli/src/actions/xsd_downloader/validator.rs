@@ -32,7 +32,7 @@ pub fn validate_hash(file: &Path, hash: &str) -> Result<(), CliError> {
         .collect::<Result<Vec<u8>, _>>()
         .map_err(|_| CliError::InternalError(format!("error parsing file hash \"{hash}\"")))?;
 
-    info!("validating hash of {file}", file = file.to_string_lossy());
+    debug!("validating hash of {file}", file = file.to_string_lossy());
     if !file.exists() {
         return Err(CliError::ActionError(format!(
             "file \"{file}\" does not exist",

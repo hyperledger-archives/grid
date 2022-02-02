@@ -107,12 +107,12 @@ where
             )));
         }
 
-        info!("downloading file from {url_name}", url_name = config.url);
+        info!("Downloading file {url_name}", url_name = config.url);
 
         let url = &config.url;
         download(url, temp_path_name)?;
 
-        info!("download finished");
+        debug!("download finished");
 
         if let Err(result) = (validate_hash)(&config.temp_file_path, config.hash) {
             fs::remove_file(config.temp_file_path)
