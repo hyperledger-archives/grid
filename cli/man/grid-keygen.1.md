@@ -14,10 +14,22 @@ NAME
 SYNOPSIS
 ========
 
-**grid keygen** \[**FLAGS**\] \[**OPTIONS**\]
+**grid keygen** \[**FLAGS**\] \[**OPTIONS**\] <KEY_NAME>
+
+ARGS
+====
+
+`KEY_NAME`
+: The name of the keys to create. If not provided, the local username will be
+used by default. If not provided, but the `--system` option is present the name
+`gridd` will be used.
 
 FLAGS
 =====
+
+`-d`, `--key-dir`
+: Specify the directory for the key files;
+  defaults to $HOME/.grid/keys. Conflicts with `--system`.
 
 `--force`
 : Overwrite files if they exist.
@@ -28,21 +40,17 @@ FLAGS
 `-q`, `--quiet`
 : Do not display output.
 
+`--skip`
+: Check if files exist; generate if missing.
+
+`--system`
+: Generate system keys in /etc/grid/keys.
+
 `-V`, `--version`
 : Prints version information.
 
 `-v`
 : Log verbosely.
-
-OPTIONS
-=======
-
-`-d`, `--key-dir`
-: Specify the directory for the key files; 
-  defaults to $HOME/.grid/keys. Conflicts with `--system`.
-
-`--system`
-: Generate system keys in /etc/grid/keys.
 
 SEE ALSO
 ========
