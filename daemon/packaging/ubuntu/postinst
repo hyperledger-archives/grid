@@ -37,6 +37,10 @@ case "$1" in
         chmod 775 /etc/grid
         chmod 750 /etc/grid/keys
 
+        mkdir -p /var/cache/grid
+        chown -R root:$group /var/cache/grid
+        chmod 775 /var/cache/grid
+
         if [ ! -d /usr/share/splinter/circuit-templates ]; then
           mkdir -p /usr/share/splinter/circuit-templates
         fi
