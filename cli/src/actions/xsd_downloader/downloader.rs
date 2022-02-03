@@ -14,6 +14,9 @@
  * limitations under the License.
  * -----------------------------------------------------------------------------
  */
+
+//! Download and caching utilities for the XSD downloader
+
 use std::fs::{self, File};
 use std::io::{self, Cursor};
 use std::path::PathBuf;
@@ -23,6 +26,9 @@ use reqwest::{blocking::Client, Url};
 use crate::error::CliError;
 
 /// Uses the Reqwest library to download a file
+///
+/// * `url` - The URL of the file to download
+/// * `file_name` - The resulting file path
 pub fn download(url: &Url, file_name: &str) -> Result<(), CliError> {
     let client = Client::new();
     let res = client
@@ -31,8 +37,9 @@ pub fn download(url: &Url, file_name: &str) -> Result<(), CliError> {
         .map_err(|err| CliError::InternalError(err.to_string()))?;
     if res.status().is_server_error() {
         return Err(CliError::ActionError(format!(
-            "received server error {:?}",
-            res.status()
+            "During {scheme} GET request to {url}: received server error {status:?}",
+            scheme = url.scheme(),
+            status = res.status()
         )));
     }
     let body = res
@@ -48,12 +55,13 @@ pub fn download(url: &Url, file_name: &str) -> Result<(), CliError> {
 
 /// Configuration for the caching downloader
 #[derive(Debug, PartialEq)]
-pub struct CachingDownloadConfig<Hash> {
+pub struct CachingDownloadConfig {
     pub url: Url,
     pub file_path: PathBuf,
     pub temp_file_path: PathBuf,
+    #[cfg(feature = "xsd-downloader-force-download")]
     pub force_download: bool,
-    pub hash: Hash,
+    pub hash: &'static str,
 }
 
 /// Cache a file
@@ -61,10 +69,10 @@ pub struct CachingDownloadConfig<Hash> {
 /// * `config` - The configuration for caching and downloading the file
 /// * `download` - The function to use to download the file
 /// * `validate_hash` - The function to use to validate the hash
-pub fn caching_download<T, Hash>(
-    config: CachingDownloadConfig<Hash>,
+pub fn caching_download<T>(
+    config: CachingDownloadConfig,
     download: T,
-    validate_hash: impl FnOnce(&PathBuf, &Hash) -> Result<(), CliError>,
+    validate_hash: impl FnOnce(&PathBuf, &str) -> Result<(), CliError>,
 ) -> Result<(), CliError>
 where
     T: FnOnce(&Url, &str) -> Result<(), CliError>,
@@ -81,7 +89,13 @@ where
         );
     }
 
-    if !cached || config.force_download {
+    #[cfg(not(feature = "xsd-downloader-force-download"))]
+    let download_file = !cached;
+
+    #[cfg(feature = "xsd-downloader-force-download")]
+    let download_file = !cached || config.force_download;
+
+    if download_file {
         if cached {
             debug!("downloading anyway due to force download option",);
         }
@@ -90,8 +104,8 @@ where
 
         if config.temp_file_path.exists() {
             return Err(CliError::ActionError(format!(
-                "cannot proceed, as temp file {temp_file_path} already exists. is a \
-                download already in progress? if not, please delete the temp file",
+                "cannot proceed, as temp file \"{temp_file_path}\" already exists; \
+                please delete the temp file",
                 temp_file_path = &fs::canonicalize(config.temp_file_path.clone())
                     .unwrap_or(config.temp_file_path)
                     .as_os_str()
@@ -99,14 +113,14 @@ where
             )));
         }
 
-        info!("downloading file from {url_name}", url_name = config.url);
+        info!("Downloading file {url_name}", url_name = config.url);
 
         let url = &config.url;
         download(url, temp_path_name)?;
 
-        info!("download finished");
+        debug!("download finished");
 
-        if let Err(result) = (validate_hash)(&config.temp_file_path, &config.hash) {
+        if let Err(result) = (validate_hash)(&config.temp_file_path, config.hash) {
             fs::remove_file(config.temp_file_path)
                 .map_err(|err| CliError::InternalError(err.to_string()))?;
 
@@ -217,7 +231,10 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", result),
-            "Err(ActionError(\"received server error 503\"))"
+            format!(
+                "Err(ActionError(\"During http GET request to {url}: \
+                received server error 503\"))"
+            )
         );
         assert!(!file_path.exists());
         mock_endpoint.assert();
@@ -246,15 +263,16 @@ mod tests {
             url: Url::parse("http://localhost/fake").expect("could not create url"),
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
+            #[cfg(feature = "xsd-downloader-force-download")]
             force_download: false,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         let result = caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         );
 
         assert_eq!(validator.get_calls(), &[]);
@@ -285,15 +303,16 @@ mod tests {
             url: url.clone(),
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
+            #[cfg(feature = "xsd-downloader-force-download")]
             force_download: false,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         )?;
 
         assert_eq!(
@@ -316,6 +335,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "xsd-downloader-force-download")]
     // Test that CachingDownloader downloads if file is cached, but force_download is enabled
     fn caching_download_downloads_cached_file_with_force_download() -> Result<(), CliError> {
         let temp_dir = TempDir::new("example").expect("could not create tempdir");
@@ -341,14 +361,14 @@ mod tests {
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
             force_download: true,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         )?;
 
         assert_eq!(
@@ -370,6 +390,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "xsd-downloader-force-download")]
     // Test that CachingDownloader fails if the temporary file already exists
     fn caching_download_fails_if_temp_file_exists() {
         let temp_dir = TempDir::new("example").expect("could not create tempdir");
@@ -393,14 +414,14 @@ mod tests {
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
             force_download: true,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         let result = caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         );
 
         assert_eq!(validator.get_calls(), &[]);
@@ -432,15 +453,16 @@ mod tests {
             url: url.clone(),
             file_path: file_path.to_path_buf(),
             temp_file_path: temp_file_path.to_path_buf(),
+            #[cfg(feature = "xsd-downloader-force-download")]
             force_download: false,
-            hash: TEST_HASH.to_string(),
+            hash: TEST_HASH,
         };
 
         // Run the test
         let result = caching_download(
             config,
             |url: &Url, file_name: &str| downloader.download(url, file_name),
-            |path_buf: &PathBuf, hash: &String| validator.validate(path_buf, hash),
+            |path_buf: &PathBuf, hash: &str| validator.validate(path_buf, hash),
         );
 
         assert_eq!(
