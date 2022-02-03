@@ -20,6 +20,7 @@ volumes:
   gridd-alpha:
   gridd-beta:
   templates-shared:
+  cache-shared:
 
 services:
   # ---== Griddle Load Balancer ==---
@@ -130,6 +131,7 @@ services:
       - contracts-shared:/usr/share/scar
       - gridd-alpha:/etc/grid/keys
       - templates-shared:/usr/share/splinter/circuit-templates
+      - cache-shared:/var/cache/grid
     expose:
       - 8080
     ports:
@@ -336,6 +338,7 @@ services:
       - contracts-shared:/usr/share/scar
       - gridd-beta:/etc/grid/keys
       - templates-shared:/usr/share/splinter/circuit-templates
+      - cache-shared:/var/cache/grid
     expose:
       - 8080
     ports:
