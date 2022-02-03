@@ -21,6 +21,7 @@ volumes:
   gridd-beta:
   gridd-gamma:
   templates-shared:
+  cache-shared:
 
 services:
   # ---== shared services ==---
@@ -119,6 +120,7 @@ services:
       - contracts-shared:/usr/share/scar
       - gridd-alpha:/etc/grid/keys
       - templates-shared:/usr/share/splinter/circuit-templates
+      - cache-shared:/var/cache/grid
     expose:
       - 8080
     ports:
@@ -235,6 +237,7 @@ services:
       - contracts-shared:/usr/share/scar
       - gridd-beta:/etc/grid/keys
       - templates-shared:/usr/share/splinter/circuit-templates
+      - cache-shared:/var/cache/grid
     expose:
       - 8080
     ports:
@@ -350,6 +353,7 @@ services:
       - contracts-shared:/usr/share/scar
       - gridd-gamma:/etc/grid/keys
       - templates-shared:/usr/share/splinter/circuit-templates
+      - cache-shared:/var/cache/grid
     expose:
       - 8080
     ports:
