@@ -1,5 +1,42 @@
 # Release Notes
 
+## Changes in Grid 0.3.2
+
+### Grid CLI
+
+* Handle errors when accessing all Clap arguments
+
+* Remove `hex-literal` dependency
+
+* Add experimental `xsd-downloader-cache-dir` feature. This feature protects
+  the ability to specify a cache directory to use with the `grid-download-xsd`
+  command.
+
+* Add experimental `xsd-downloader-force-download` feature. This feature
+  protects the ability to force the GS1 schema files to be downloaded,
+  regardless if the cache is full.
+
+* Improve logging and error messages when downloading XSDs to specify URLs,
+  file paths and directories used by the command
+
+* When downloading XSDs, validate cache and state directories exist and are
+  writable, and error on failure rather than attempt to create them
+
+### Build
+
+* Update Dockerhub compose file to pull in most recently published smart
+  contract
+
+### Packaging
+
+* Add ca-certificates to Docker images with grid-cli
+
+* Update Grid Daemon postinstall script to create cache directory,
+  `/var/cache/grid`
+
+* Update example Docker compose files to create a Grid cache volume to persist
+  cached data between restarts
+
 ## Changes in Grid 0.3.1
 
 ### Highlights
