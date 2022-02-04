@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v5 as grid-cli-builder
+FROM hyperledger/grid-dev:v9 as grid-cli-builder
 
 # Install dependencies
 RUN apt-get update \
@@ -20,10 +20,6 @@ RUN apt-get update \
     libxml2-dev \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
-
-# Temporary workaround until sabre is updated to focal
-RUN USER=root cargo new --bin griddle
-RUN USER=root cargo new --bin contracts/purchase_order
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -57,7 +53,9 @@ WORKDIR /tmp
 RUN git rev-parse HEAD > /commit-hash
 
 # -------------=== grid-cli docker build ===-------------
-FROM hyperledger/sawtooth-sabre-cli:0.5
+FROM ubuntu:focal
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS

@@ -115,7 +115,7 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     let content = protobuf::Message::write_to_bytes(message).map_err(|err| {
         BatchSubmitterError::BadRequestError(format!(
             "Failed to serialize batch submit request. {}",
-            err.to_string()
+            err
         ))
     })?;
 
@@ -126,7 +126,7 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
         .map_err(|err| {
             BatchSubmitterError::ConnectionError(format!(
                 "Failed to send message to validator. {}",
-                err.to_string()
+                err
             ))
         })?;
 
@@ -139,7 +139,7 @@ pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSe
     .map_err(|err| {
         BatchSubmitterError::InternalError(format!(
             "Failed to parse validator response from bytes. {}",
-            err.to_string()
+            err
         ))
     })
 }
