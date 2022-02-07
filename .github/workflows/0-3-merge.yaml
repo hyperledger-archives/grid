@@ -1,4 +1,4 @@
-name: Merge
+name: 0-3 Merge
 
 on:
   push:

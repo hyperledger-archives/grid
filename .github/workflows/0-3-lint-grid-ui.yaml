@@ -1,14 +1,18 @@
-name: Lint OpenAPI spec
+name: 0-3 Lint Grid UI
 
 on:
   pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
 
 concurrency:
   group: "${{ github.ref }}-${{ github.workflow }}"
   cancel-in-progress: true
 
 jobs:
-  lint_openapi:
+
+  lint_grid_ui:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -19,8 +23,8 @@ jobs:
       - name: Install Just
         run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
 
-      - name: Lint OpenAPI files
-        run: just ci-lint-openapi
+      - name: Lint Grid UI
+        run: just ci-lint-ui
 
       - name: Notify Slack of Failure
         if: failure()

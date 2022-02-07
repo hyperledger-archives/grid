@@ -1,4 +1,4 @@
-name: Lint Grid
+name: 0-3 Test Grid UI
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
 
-  lint_grid:
+  test-grid-ui:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -23,8 +23,8 @@ jobs:
       - name: Install Just
         run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
 
-      - name: Run Lint/Clippy on Grid
-        run: just ci-lint
+      - name: Grid UI Tests
+        run: just ci-test-ui
 
       - name: Notify Slack of Failure
         if: failure()
