@@ -26,6 +26,16 @@ services:
         - CARGO_ARGS=${CARGO_ARGS}
         - REPO_VERSION=${REPO_VERSION}
 
+  griddle:
+    image: ${REGISTRY}${NAMESPACE}griddle:${ISOLATION_ID}
+    container_name: griddle
+    build:
+      context: .
+      dockerfile: griddle/Dockerfile
+      args:
+        - CARGO_ARGS=${CARGO_ARGS}
+        - REPO_VERSION=${REPO_VERSION}
+
   grid-cli:
     image: ${REGISTRY}${NAMESPACE}grid-cli:${ISOLATION_ID}
     container_name: grid-cli
