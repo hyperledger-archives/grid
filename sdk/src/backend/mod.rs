@@ -72,7 +72,7 @@ pub struct BatchStatus {
     pub status: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InvalidTransaction {
     pub id: String,
     pub message: String,

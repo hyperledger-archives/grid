@@ -21,6 +21,7 @@ use transact::protocol::{
 };
 use transact::protos::FromBytes;
 
+use crate::backend::InvalidTransaction as BackendInvalidTransaction;
 use crate::batch_tracking::store::diesel::models::is_data_change_id;
 use crate::error::{InternalError, InvalidArgumentError};
 use crate::scope_id::{GlobalScopeId, ServiceScopeId};
@@ -125,6 +126,28 @@ impl InvalidTransaction {
 
     pub fn external_error_message(&self) -> Option<&str> {
         self.external_error_message.as_deref()
+    }
+}
+
+impl From<BackendInvalidTransaction> for InvalidTransaction {
+    fn from(txn: BackendInvalidTransaction) -> InvalidTransaction {
+        InvalidTransaction {
+            transaction_id: txn.id,
+            error_message: if txn.message.is_empty() {
+                None
+            } else {
+                Some(txn.message)
+            },
+            error_data: if txn.extended_data.is_empty() {
+                None
+            } else {
+                // TODO: Handle extended data
+                unimplemented!();
+                //Some(txn.extended_data)
+            },
+            external_error_status: None,
+            external_error_message: None,
+        }
     }
 }
 
