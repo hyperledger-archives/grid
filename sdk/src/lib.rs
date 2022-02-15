@@ -45,6 +45,8 @@ pub mod client;
 pub mod commits;
 #[cfg(feature = "data-validation")]
 pub mod data_validation;
+#[cfg(feature = "dlt-monitor")]
+pub mod dlt_monitor;
 pub mod error;
 mod hex;
 #[cfg(feature = "location")]

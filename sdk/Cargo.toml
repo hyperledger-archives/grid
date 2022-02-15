@@ -49,6 +49,7 @@ serde_json = { version = "1.0", optional = true }
 transact = { version = "0.4", optional = true }
 url = { version = "2.1", optional = true, features = ["serde"] }
 uuid = { version = "0.8", features = ["v4"], optional = true }
+tokio = { version = "1", optional = true, features = ["rt", "rt-multi-thread", "time"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rust-crypto-wasm = "0.3"
@@ -123,6 +124,7 @@ experimental = [
     "batch-tracking",
     "batch-store",
     "lifecycle",
+    "dlt-monitor",
     "proxy",
     "proxy-run",
     "proxy-client",
@@ -147,6 +149,7 @@ client = ["log"]
 client-reqwest = ["client", "reqwest"]
 data-validation = [ "libc", "quick-xml", "reqwest"]
 lifecycle = []
+dlt-monitor = ["futures", "tokio", "batch-tracking"]
 location = ["pike", "schema"]
 pike = ["cfg-if", "workflow"]
 product-gdsn = [ "libc", "quick-xml", "reqwest" ]

@@ -89,12 +89,14 @@ experimental = [
     # The following features are experimental:
     "integration",
     "track-and-trace",
+    "dlt-monitor",
 ]
 
 event = ["database"]
 database = []
 database-postgres = ["grid-sdk/postgres"]
 database-sqlite = ["grid-sdk/sqlite"]
+dlt-monitor = ["grid-sdk/dlt-monitor"]
 location = ["grid-sdk/location", "grid-sdk/rest-api-endpoint-location", "pike", "schema"]
 pike = [
     "grid-sdk/pike",
