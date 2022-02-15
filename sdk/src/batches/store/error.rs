@@ -87,3 +87,34 @@ impl From<PoolError> for BatchStoreError {
         )
     }
 }
+
+/// Represents BatchBuilder errors
+#[derive(Debug)]
+pub enum BatchBuilderError {
+    /// Returned when a required field was not set
+    MissingRequiredField(String),
+    /// Returned when an error occurs building the Batch
+    BuildError(Box<dyn Error>),
+}
+
+impl Error for BatchBuilderError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            BatchBuilderError::MissingRequiredField(_) => None,
+            BatchBuilderError::BuildError(err) => Some(&**err),
+        }
+    }
+}
+
+impl fmt::Display for BatchBuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BatchBuilderError::MissingRequiredField(ref s) => {
+                write!(f, "Missing required field: {}", s)
+            }
+            BatchBuilderError::BuildError(ref s) => {
+                write!(f, "Failed to build batch object: {}", s)
+            }
+        }
+    }
+}

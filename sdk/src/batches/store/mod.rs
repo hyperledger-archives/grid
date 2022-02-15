@@ -23,63 +23,212 @@ use crate::paging::Paging;
 
 #[cfg(feature = "diesel")]
 pub use self::diesel::{DieselBatchStore, DieselConnectionBatchStore};
-pub use error::BatchStoreError;
+pub use error::{BatchBuilderError, BatchStoreError};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Batch {
-    pub header_signature: String,
-    pub data_change_id: Option<String>,
-    pub signer_public_key: String,
-    pub trace: bool,
-    pub serialized_batch: String,
-    pub submitted: bool,
-    pub submission_error: Option<String>,
-    pub submission_error_message: Option<String>,
-    pub dlt_status: Option<String>,
-    pub claim_expires: Option<NaiveDateTime>,
-    pub created: Option<NaiveDateTime>,
-    pub service_id: Option<String>,
-    pub transactions: Vec<Transaction>,
+    header_signature: String,
+    data_change_id: Option<String>,
+    signer_public_key: String,
+    trace: bool,
+    serialized_batch: String,
+    submitted: bool,
+    submission_error: Option<String>,
+    submission_error_message: Option<String>,
+    dlt_status: Option<String>,
+    claim_expires: Option<NaiveDateTime>,
+    created: Option<NaiveDateTime>,
+    service_id: Option<String>,
+    transactions: Vec<Transaction>,
 }
 
 impl Batch {
-    pub fn new(
-        header_signature: String,
-        signer_public_key: String,
-        trace: bool,
-        serialized_batch: &[u8],
-        service_id: Option<String>,
-    ) -> Self {
-        Self {
-            header_signature,
-            data_change_id: None,
-            signer_public_key,
-            trace,
-            serialized_batch: hex::to_hex(serialized_batch),
-            submitted: false,
-            submission_error: None,
-            submission_error_message: None,
-            dlt_status: None,
-            claim_expires: None,
-            created: None,
-            service_id,
-            transactions: vec![],
-        }
+    pub fn header_signature(&self) -> &str {
+        &self.header_signature
     }
 
-    pub fn add_transaction(
-        &mut self,
-        header_signature: &str,
-        family_name: &str,
-        family_version: &str,
-    ) {
-        self.transactions.push(Transaction {
-            header_signature: header_signature.to_string(),
-            batch_id: self.header_signature.clone(),
-            family_name: family_name.to_string(),
-            family_version: family_version.to_string(),
-            signer_public_key: self.signer_public_key.clone(),
-        });
+    pub fn data_change_id(&self) -> Option<&str> {
+        self.data_change_id.as_deref()
+    }
+
+    pub fn signer_public_key(&self) -> &str {
+        &self.signer_public_key
+    }
+
+    pub fn trace(&self) -> bool {
+        self.trace
+    }
+
+    pub fn serialized_batch(&self) -> &str {
+        &self.serialized_batch
+    }
+
+    pub fn submitted(&self) -> bool {
+        self.submitted
+    }
+
+    pub fn submission_error(&self) -> Option<&str> {
+        self.submission_error.as_deref()
+    }
+
+    pub fn submission_error_message(&self) -> Option<&str> {
+        self.submission_error_message.as_deref()
+    }
+
+    pub fn dlt_status(&self) -> Option<&str> {
+        self.dlt_status.as_deref()
+    }
+
+    pub fn claim_expires(&self) -> Option<NaiveDateTime> {
+        self.claim_expires
+    }
+
+    pub fn created(&self) -> Option<NaiveDateTime> {
+        self.created
+    }
+
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
+    }
+
+    pub fn transactions(&self) -> Vec<Transaction> {
+        self.transactions.to_vec()
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct BatchBuilder {
+    header_signature: String,
+    data_change_id: Option<String>,
+    signer_public_key: String,
+    trace: bool,
+    serialized_batch: String,
+    submitted: bool,
+    submission_error: Option<String>,
+    submission_error_message: Option<String>,
+    dlt_status: Option<String>,
+    claim_expires: Option<NaiveDateTime>,
+    created: Option<NaiveDateTime>,
+    service_id: Option<String>,
+    transactions: Vec<Transaction>,
+}
+
+impl BatchBuilder {
+    pub fn with_header_signature(mut self, signature: String) -> Self {
+        self.header_signature = signature;
+        self
+    }
+
+    pub fn with_data_change_id(mut self, id: String) -> Self {
+        self.data_change_id = Some(id);
+        self
+    }
+
+    pub fn with_signer_public_key(mut self, key: String) -> Self {
+        self.signer_public_key = key;
+        self
+    }
+
+    pub fn with_trace(mut self, trace: bool) -> Self {
+        self.trace = trace;
+        self
+    }
+
+    pub fn with_serialized_batch(mut self, batch: &[u8]) -> Self {
+        self.serialized_batch = hex::to_hex(batch);
+        self
+    }
+
+    pub fn with_submitted(mut self, submitted: bool) -> Self {
+        self.submitted = submitted;
+        self
+    }
+
+    pub fn with_submission_error(mut self, error: String) -> Self {
+        self.submission_error = Some(error);
+        self
+    }
+
+    pub fn with_submission_error_message(mut self, message: String) -> Self {
+        self.submission_error_message = Some(message);
+        self
+    }
+
+    pub fn with_dlt_status(mut self, status: String) -> Self {
+        self.dlt_status = Some(status);
+        self
+    }
+
+    pub fn with_claim_expires(mut self, expires: NaiveDateTime) -> Self {
+        self.claim_expires = Some(expires);
+        self
+    }
+
+    pub fn with_created(mut self, created: NaiveDateTime) -> Self {
+        self.created = Some(created);
+        self
+    }
+
+    pub fn with_service_id(mut self, service_id: Option<String>) -> Self {
+        self.service_id = service_id;
+        self
+    }
+
+    pub fn add_transactions(mut self, transactions: &[Transaction]) -> Self {
+        self.transactions = transactions.to_vec();
+        self
+    }
+
+    pub fn build(self) -> Result<Batch, BatchBuilderError> {
+        let BatchBuilder {
+            header_signature,
+            data_change_id,
+            signer_public_key,
+            trace,
+            serialized_batch,
+            submitted,
+            submission_error,
+            submission_error_message,
+            dlt_status,
+            claim_expires,
+            created,
+            service_id,
+            transactions,
+        } = self;
+
+        if header_signature.is_empty() {
+            return Err(BatchBuilderError::MissingRequiredField(
+                "header_signature".to_string(),
+            ));
+        }
+
+        if signer_public_key.is_empty() {
+            return Err(BatchBuilderError::MissingRequiredField(
+                "signer_public_key".to_string(),
+            ));
+        }
+
+        if serialized_batch.is_empty() {
+            return Err(BatchBuilderError::MissingRequiredField(
+                "serialized_batch".to_string(),
+            ));
+        }
+
+        Ok(Batch {
+            header_signature,
+            data_change_id,
+            signer_public_key,
+            trace,
+            serialized_batch,
+            submitted,
+            submission_error,
+            submission_error_message,
+            dlt_status,
+            claim_expires,
+            created,
+            service_id,
+            transactions,
+        })
     }
 }
 

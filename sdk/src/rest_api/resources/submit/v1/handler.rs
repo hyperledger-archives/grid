@@ -24,7 +24,9 @@ use sabre_sdk::{
 };
 use sawtooth_sdk::messages::{batch, transaction};
 
-use crate::batches::store::{Batch as DbBatch, BatchStore, BatchStoreError};
+use crate::batches::store::{
+    Batch as DbBatch, BatchBuilder, BatchStore, BatchStoreError, Transaction,
+};
 use crate::protos::IntoBytes;
 use crate::rest_api::resources::error::ErrorResponse;
 
@@ -56,9 +58,9 @@ pub fn submit_batches<'a>(
     let mut ids = Vec::new();
 
     for db_batch in db_batches {
-        let id = db_batch.header_signature.clone();
+        let id = &(*db_batch.header_signature());
 
-        store.add_batch(db_batch).map_err(|err| match err {
+        store.add_batch(db_batch.clone()).map_err(|err| match err {
             BatchStoreError::ConstraintViolationError(err) => {
                 ErrorResponse::new(400, &format!("{}", err))
             }
@@ -71,7 +73,7 @@ pub fn submit_batches<'a>(
             }
         })?;
 
-        ids.push(id);
+        ids.push(id.to_string());
     }
 
     Ok(SubmitBatchResponse::new(ids))
@@ -242,14 +244,29 @@ fn batches_into_bytes(
             ErrorResponse::internal_error(Box::new(err))
         })?;
 
-        let mut db_batch = DbBatch::new(header_signature, public_key, trace, &bytes, service_id);
-        transactions.iter().for_each(|t| {
-            db_batch.add_transaction(
-                t.get_header_signature(),
-                SABRE_FAMILY_NAME,
-                SABRE_FAMILY_VERSION,
-            );
-        });
+        let db_transactions: Vec<Transaction> = transactions
+            .iter()
+            .map(|t| Transaction {
+                header_signature: t.get_header_signature().to_string(),
+                batch_id: header_signature.to_string(),
+                family_name: SABRE_FAMILY_NAME.to_string(),
+                family_version: SABRE_FAMILY_VERSION.to_string(),
+                signer_public_key: public_key.to_string(),
+            })
+            .collect();
+
+        let db_batch = BatchBuilder::default()
+            .with_header_signature(header_signature)
+            .with_signer_public_key(public_key)
+            .with_trace(trace)
+            .with_serialized_batch(&bytes)
+            .with_service_id(service_id)
+            .add_transactions(&db_transactions)
+            .build()
+            .map_err(|err| {
+                error!("{}", err);
+                ErrorResponse::internal_error(Box::new(err))
+            })?;
 
         batches.push(db_batch);
     }
