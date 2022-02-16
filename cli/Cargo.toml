@@ -67,7 +67,6 @@ default = [
     "postgres",
     "product",
     "purchase-order",
-    "sawtooth",
     "schema",
     "sqlite",
     "xsd-downloader"
@@ -101,7 +100,6 @@ location = ["pike", "schema", "grid-sdk/location"]
 pike = ["grid-sdk/pike"]
 product = ["pike", "schema", "grid-sdk/product", "grid-sdk/product-gdsn"]
 purchase-order = ["chrono", "grid-sdk/purchase-order", "rand", "serde_json"]
-sawtooth = []
 schema = ["pike", "grid-sdk/schema"]
 xsd-downloader = ["zip", "reqwest", "sha2", "grid-sdk/data-validation"]
 xsd-downloader-cache-dir = ["xsd-downloader"]

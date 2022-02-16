@@ -19,8 +19,6 @@ extern crate log;
 
 mod actions;
 mod error;
-#[cfg(feature = "sawtooth")]
-mod sawtooth;
 #[cfg(any(
     feature = "purchase-order",
     feature = "location",
