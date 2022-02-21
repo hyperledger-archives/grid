@@ -46,13 +46,32 @@ discussion](https://grid.hyperledger.org/community/join_the_discussion.html).
 
 ## Building Grid
 
-To build Grid, run `cargo build` from the root directory. This command
-builds all of the Grid components, including `gridd` (the grid daemon),
-the CLI, and all of the smart contracts in the `contracts` directory.
+Grid is built using latest stable [rust](https://www.rust-lang.org/), which
+you should install via [rustup](https://rustup.rs/).
+
+To install the remaining dependencies using a package manager, run one of the
+following commands.
+
+Homebrew (OS X):
+```bash
+brew install openssl zeromq pkg-config protobuf postgresql
+```
+
+APT (Ubuntu):
+```bash
+apt install libssl-dev libzmq3-dev pkg-config libprotobuf-dev postgresql
+```
+
+Once you have the prerequisites installed, run `cargo build` from the root
+directory. This command builds all of the Grid components, including `gridd`
+(the grid daemon), the CLI, and all of the smart contracts in the `contracts`
+directory.
 
 To build individual components, run `cargo build` in the component directories.
 For example, to build only the grid-cli, navigate to `cli`, then run
 `cargo build`.
+
+### Building with Docker
 
 To build Grid using Docker, run `docker-compose build` from the root directory.
 This command builds Docker images for all of the Grid components, including
