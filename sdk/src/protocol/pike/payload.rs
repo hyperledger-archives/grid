@@ -82,8 +82,8 @@ impl FromProto<protos::pike_payload::CreateAgentAction> for CreateAgentAction {
             roles: create_agent.get_roles().to_vec(),
             metadata: create_agent
                 .get_metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::from_proto)
                 .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
@@ -102,8 +102,8 @@ impl FromNative<CreateAgentAction> for protos::pike_payload::CreateAgentAction {
         proto_create_agent.set_metadata(RepeatedField::from_vec(
             create_agent
                 .metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
                 )?,
@@ -275,8 +275,8 @@ impl FromProto<protos::pike_payload::UpdateAgentAction> for UpdateAgentAction {
             roles: update_agent.get_roles().to_vec(),
             metadata: update_agent
                 .get_metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::from_proto)
                 .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
@@ -295,8 +295,8 @@ impl FromNative<UpdateAgentAction> for protos::pike_payload::UpdateAgentAction {
         proto_update_agent.set_metadata(RepeatedField::from_vec(
             update_agent
                 .metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
                 )?,
@@ -527,14 +527,14 @@ impl FromProto<protos::pike_payload::CreateOrganizationAction> for CreateOrganiz
             name: create_org.get_name().to_string(),
             alternate_ids: create_org
                 .get_alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateId::from_proto)
                 .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             metadata: create_org
                 .get_metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::from_proto)
                 .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
@@ -550,16 +550,16 @@ impl FromNative<CreateOrganizationAction> for protos::pike_payload::CreateOrgani
         proto_create_org.set_alternate_ids(RepeatedField::from_vec(
             create_org
                 .alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateId::into_proto)
                 .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         proto_create_org.set_metadata(RepeatedField::from_vec(
             create_org
                 .metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
                 )?,
@@ -733,14 +733,14 @@ impl FromProto<protos::pike_payload::UpdateOrganizationAction> for UpdateOrganiz
             locations: create_org.get_locations().to_vec(),
             alternate_ids: create_org
                 .get_alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateId::from_proto)
                 .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             metadata: create_org
                 .get_metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::from_proto)
                 .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
@@ -757,16 +757,16 @@ impl FromNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
         proto_update_org.set_alternate_ids(RepeatedField::from_vec(
             update_org
                 .alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateId::into_proto)
                 .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         proto_update_org.set_metadata(RepeatedField::from_vec(
             update_org
                 .metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
                 )?,

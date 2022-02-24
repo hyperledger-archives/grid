@@ -262,8 +262,8 @@ impl FromProto<track_and_trace_state::Property> for Property {
             )?,
             reporters: proto
                 .get_reporters()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Reporter::from_proto)
                 .collect::<Result<Vec<Reporter>, ProtoConversionError>>()?,
             current_page: proto.get_current_page(),
@@ -280,8 +280,8 @@ impl FromNative<Property> for track_and_trace_state::Property {
         proto.set_property_definition(native.property_definition().clone().into_proto()?);
         proto.set_reporters(RepeatedField::from_vec(
             native.reporters()
-            .to_vec()
-            .into_iter()
+            .iter()
+            .cloned()
             .map(Reporter::into_proto)
             .collect::<Result<Vec<track_and_trace_state::Property_Reporter>, ProtoConversionError>>()?));
         proto.set_current_page(*native.current_page());
@@ -357,8 +357,8 @@ impl FromProto<track_and_trace_state::PropertyList> for PropertyList {
         Ok(PropertyList {
             properties: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Property::from_proto)
                 .collect::<Result<Vec<Property>, ProtoConversionError>>()?,
         })
@@ -371,8 +371,8 @@ impl FromNative<PropertyList> for track_and_trace_state::PropertyList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Property::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::Property>, ProtoConversionError>>()?,
         ));
@@ -604,8 +604,8 @@ impl FromProto<track_and_trace_state::PropertyPage> for PropertyPage {
             record_id: proto.get_record_id().to_string(),
             reported_values: proto
                 .get_reported_values()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(ReportedValue::from_proto)
                 .collect::<Result<Vec<ReportedValue>, ProtoConversionError>>()?,
         })
@@ -620,8 +620,8 @@ impl FromNative<PropertyPage> for track_and_trace_state::PropertyPage {
         proto.set_reported_values(RepeatedField::from_vec(
             native
                 .reported_values()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(ReportedValue::into_proto)
                 .collect::<Result<
                     Vec<track_and_trace_state::PropertyPage_ReportedValue>,
@@ -703,8 +703,8 @@ impl FromProto<track_and_trace_state::PropertyPageList> for PropertyPageList {
         Ok(PropertyPageList {
             property_pages: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyPage::from_proto)
                 .collect::<Result<Vec<PropertyPage>, ProtoConversionError>>()?,
         })
@@ -717,8 +717,8 @@ impl FromNative<PropertyPageList> for track_and_trace_state::PropertyPageList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .property_pages()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyPage::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::PropertyPage>, ProtoConversionError>>(
                 )?,
@@ -985,8 +985,8 @@ impl FromProto<track_and_trace_state::Proposal> for Proposal {
             role: Role::from_proto(proto.get_role())?,
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(String::from)
                 .collect(),
             status: Status::from_proto(proto.get_status())?,
@@ -1079,8 +1079,8 @@ impl FromProto<track_and_trace_state::ProposalList> for ProposalList {
         Ok(ProposalList {
             proposals: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Proposal::from_proto)
                 .collect::<Result<Vec<Proposal>, ProtoConversionError>>()?,
         })
@@ -1093,8 +1093,8 @@ impl FromNative<ProposalList> for track_and_trace_state::ProposalList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .proposals()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Proposal::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::Proposal>, ProtoConversionError>>()?,
         ));
@@ -1338,14 +1338,14 @@ impl FromProto<track_and_trace_state::Record> for Record {
             schema: proto.get_schema().to_string(),
             owners: proto
                 .get_owners()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AssociatedAgent::from_proto)
                 .collect::<Result<Vec<AssociatedAgent>, ProtoConversionError>>()?,
             custodians: proto
                 .get_custodians()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AssociatedAgent::from_proto)
                 .collect::<Result<Vec<AssociatedAgent>, ProtoConversionError>>()?,
             field_final: proto.get_field_final(),
@@ -1362,8 +1362,8 @@ impl FromNative<Record> for track_and_trace_state::Record {
             RepeatedField::from_vec(
                 native
                     .owners()
-                    .to_vec()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(AssociatedAgent::into_proto)
                     .collect::<Result<
                         Vec<track_and_trace_state::Record_AssociatedAgent>,
@@ -1375,8 +1375,8 @@ impl FromNative<Record> for track_and_trace_state::Record {
             RepeatedField::from_vec(
                 native
                     .custodians()
-                    .to_vec()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(AssociatedAgent::into_proto)
                     .collect::<Result<
                         Vec<track_and_trace_state::Record_AssociatedAgent>,
@@ -1454,8 +1454,8 @@ impl FromProto<track_and_trace_state::RecordList> for RecordList {
         Ok(RecordList {
             records: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Record::from_proto)
                 .collect::<Result<Vec<Record>, ProtoConversionError>>()?,
         })
@@ -1468,8 +1468,8 @@ impl FromNative<RecordList> for track_and_trace_state::RecordList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .records()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Record::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::Record>, ProtoConversionError>>()?,
         ));
