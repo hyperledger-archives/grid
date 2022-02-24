@@ -404,7 +404,7 @@ fn update_purchase_order(
         ))),
     }?;
     // Collect the versions from this purchase order
-    let mut existing_versions = purchase_order.versions().to_vec().into_iter();
+    let mut existing_versions = purchase_order.versions().iter().cloned();
     // Lists existing versions if there is also an update payload for the version
     let mut version_updates = payload
         .version_updates()
@@ -523,8 +523,8 @@ fn update_purchase_order(
     // Meld version updates to those into this purchase order's existing versions
     let versions = purchase_order
         .versions()
-        .to_vec()
-        .into_iter()
+        .iter()
+        .cloned()
         .map(|vers| {
             if let Some(updated_vers) = updated_versions.remove(vers.version_id()) {
                 Ok(updated_vers)
@@ -798,7 +798,7 @@ fn convert_update_to_version(
         })?;
     // Check if a new revision is included in the update
     let (current_revision_id, rev_addition): (u64, Option<PurchaseOrderRevision>) =
-        match existing_version.revisions().to_vec().into_iter().last() {
+        match existing_version.revisions().iter().cloned().last() {
             Some(last_rev) => {
                 if last_rev == new_revision {
                     (last_rev.revision_id(), None)

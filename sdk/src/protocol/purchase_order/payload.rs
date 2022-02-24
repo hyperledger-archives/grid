@@ -249,8 +249,8 @@ impl FromProto<purchase_order_payload::CreatePurchaseOrderPayload> for CreatePur
             workflow_state: proto.take_workflow_state(),
             alternate_ids: proto
                 .get_alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PurchaseOrderAlternateId::from_proto)
                 .collect::<Result<Vec<PurchaseOrderAlternateId>, ProtoConversionError>>()?,
             create_version_payload,
@@ -269,8 +269,8 @@ impl FromNative<CreatePurchaseOrderPayload> for purchase_order_payload::CreatePu
         proto.set_alternate_ids(RepeatedField::from_vec(
             native
                 .alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PurchaseOrderAlternateId::into_proto)
                 .collect::<Result<
                     Vec<protos::purchase_order_state::PurchaseOrderAlternateId>,
@@ -468,14 +468,14 @@ impl FromProto<purchase_order_payload::UpdatePurchaseOrderPayload> for UpdatePur
             },
             alternate_ids: proto
                 .get_alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PurchaseOrderAlternateId::from_proto)
                 .collect::<Result<Vec<PurchaseOrderAlternateId>, ProtoConversionError>>()?,
             version_updates: proto
                 .get_version_updates()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(UpdateVersionPayload::from_proto)
                 .collect::<Result<Vec<UpdateVersionPayload>, ProtoConversionError>>()?,
         })
@@ -494,8 +494,8 @@ impl FromNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
         proto.set_alternate_ids(RepeatedField::from_vec(
             native
                 .alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PurchaseOrderAlternateId::into_proto)
                 .collect::<Result<
                     Vec<protos::purchase_order_state::PurchaseOrderAlternateId>,
@@ -505,8 +505,8 @@ impl FromNative<UpdatePurchaseOrderPayload> for purchase_order_payload::UpdatePu
         proto.set_version_updates(RepeatedField::from_vec(
             native
                 .version_updates()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(UpdateVersionPayload::into_proto)
                 .collect::<Result<
                     Vec<protos::purchase_order_payload::UpdateVersionPayload>,
