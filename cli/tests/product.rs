@@ -48,14 +48,15 @@ mod integration {
     #[test]
     fn test_product_create() {
         get_setup();
-        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
+        let url =
+            env::var("INTEGRATION_TEST_URL").unwrap_or_else(|_| "http://gridd:8080".to_string());
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
             .args(&["--url", &url])
             .arg("create")
-            .args(&["--file", &PRODUCT_CREATE_FILE])
+            .args(&["--file", PRODUCT_CREATE_FILE])
             .args(&["--wait", "300000"]);
         cmd_product_create.assert().success();
     }
@@ -69,14 +70,15 @@ mod integration {
     #[test]
     fn test_product_update() {
         get_setup();
-        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
+        let url =
+            env::var("INTEGRATION_TEST_URL").unwrap_or_else(|_| "http://gridd:8080".to_string());
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
             .args(&["--url", &url])
             .arg("create")
-            .args(&["--file", &PRODUCT_CREATE_FILE])
+            .args(&["--file", PRODUCT_CREATE_FILE])
             .args(&["--wait", "300000"]);
         cmd_product_create.assert().success();
 
@@ -86,7 +88,7 @@ mod integration {
             .arg("product")
             .args(&["--url", &url])
             .arg("update")
-            .args(&["--file", &PRODUCT_UPDATE_FILE])
+            .args(&["--file", PRODUCT_UPDATE_FILE])
             .args(&["--wait", "300000"]);
         cmd_product_update.assert().success();
     }
@@ -100,14 +102,15 @@ mod integration {
     #[test]
     fn test_product_delete() {
         get_setup();
-        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
+        let url =
+            env::var("INTEGRATION_TEST_URL").unwrap_or_else(|_| "http://gridd:8080".to_string());
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
             .args(&["--url", &url])
             .arg("create")
-            .args(&["--file", &PRODUCT_CREATE_FILE])
+            .args(&["--file", PRODUCT_CREATE_FILE])
             .args(&["--wait", "300000"]);
         cmd_product_create.assert().success();
 
@@ -128,7 +131,8 @@ mod integration {
     ///     Necessary to run product commands
     ///
     fn setup() {
-        let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
+        let url =
+            env::var("INTEGRATION_TEST_URL").unwrap_or_else(|_| "http://gridd:8080".to_string());
         //run `grid keygen`
         let key_name: String = get_current_username().unwrap().into_string().unwrap();
         println!("key name: {}", &key_name);
@@ -172,7 +176,7 @@ mod integration {
             .arg(&ORG_ID)
             .arg("test")
             .args(&["-d", "Schema/product perms"])
-            .args(&["--permissions", &permissions])
+            .args(&["--permissions", permissions])
             .arg("--active")
             .args(&["--wait", "300000"]);
         cmd_role_create.assert().success();
@@ -211,7 +215,7 @@ mod integration {
     fn make_grid_command() -> Command {
         let mut cmd = Command::cargo_bin("grid").unwrap();
         cmd.arg("-vv");
-        return cmd;
+        cmd
     }
 
     /// Gets a memoized setup

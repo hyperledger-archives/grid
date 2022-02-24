@@ -232,12 +232,10 @@ mod tests {
         let mut payload_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         payload_path.push(path);
 
-        let payload = read_to_string(payload_path)
+        read_to_string(payload_path)
             .unwrap()
             .replace("    ", "")
-            .replace("\n", "");
-
-        payload
+            .replace('\n', "")
     }
 
     /// Test that a well-formed and valid XML file with a gridTradeItems element

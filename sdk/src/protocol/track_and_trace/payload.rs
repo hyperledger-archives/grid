@@ -96,8 +96,8 @@ impl FromProto<track_and_trace_payload::CreateRecordAction> for CreateRecordActi
             schema: proto.get_schema().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -112,8 +112,8 @@ impl FromNative<CreateRecordAction> for track_and_trace_payload::CreateRecordAct
         proto.set_properties(RepeatedField::from_vec(
             create_record_action
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,
@@ -278,8 +278,8 @@ impl FromProto<track_and_trace_payload::UpdatePropertiesAction> for UpdateProper
             record_id: proto.get_record_id().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -293,8 +293,8 @@ impl FromNative<UpdatePropertiesAction> for track_and_trace_payload::UpdatePrope
         proto.set_properties(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,
@@ -424,8 +424,8 @@ impl FromProto<track_and_trace_payload::CreateProposalAction> for CreateProposal
             role: Role::from_proto(proto.get_role())?,
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(String::from)
                 .collect(),
             terms: proto.get_terms().to_string(),
@@ -700,8 +700,8 @@ impl FromProto<track_and_trace_payload::RevokeReporterAction> for RevokeReporter
             reporter_id: proto.get_reporter_id().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(String::from)
                 .collect(),
         })
@@ -947,7 +947,7 @@ mod tests {
         let action = CreateRecordActionBuilder::new()
             .with_record_id("32".into())
             .with_schema("schema".into())
-            .with_properties(vec![property_value.clone()])
+            .with_properties(vec![property_value])
             .build()
             .unwrap();
 
@@ -1004,7 +1004,7 @@ mod tests {
 
         let action = UpdatePropertiesActionBuilder::new()
             .with_record_id("32".into())
-            .with_properties(vec![property_value.clone()])
+            .with_properties(vec![property_value])
             .build()
             .unwrap();
 
@@ -1127,7 +1127,7 @@ mod tests {
             .unwrap();
 
         let payload = TrackAndTracePayloadBuilder::new()
-            .with_action(Action::RevokeReporter(action.clone()))
+            .with_action(Action::RevokeReporter(action))
             .with_timestamp(0)
             .build()
             .unwrap();

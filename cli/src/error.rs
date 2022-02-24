@@ -127,7 +127,7 @@ impl std::fmt::Display for CliError {
                 feature = "product",
                 feature = "schema",
             ))]
-            CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
+            CliError::DaemonError(ref err) => write!(f, "{}", err.replace('\"', "")),
         }
     }
 }

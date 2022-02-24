@@ -471,7 +471,7 @@ mod tests {
 
     fn create_state_change(address: String, value: Option<Vec<u8>>) -> SawtoothStateChange {
         let mut state_change = SawtoothStateChange::new();
-        state_change.set_address(address.clone());
+        state_change.set_address(address);
 
         match value {
             Some(value) => {
