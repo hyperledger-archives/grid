@@ -237,8 +237,8 @@ impl FromProto<protos::schema_state::PropertyDefinition> for PropertyDefinition 
             enum_options: property_definition.get_enum_options().to_vec(),
             struct_properties: property_definition
                 .get_struct_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyDefinition::from_proto)
                 .collect::<Result<Vec<PropertyDefinition>, ProtoConversionError>>()?,
         })
@@ -259,7 +259,7 @@ impl FromNative<PropertyDefinition> for protos::schema_state::PropertyDefinition
         ));
         proto_property_definition.set_struct_properties(
             RepeatedField::from_vec(
-            property_definition.struct_properties().to_vec().into_iter()
+            property_definition.struct_properties().iter().cloned()
             .map(PropertyDefinition::into_proto)
             .collect::<Result<Vec<protos::schema_state::PropertyDefinition>, ProtoConversionError>>()?,));
         Ok(proto_property_definition)
@@ -482,8 +482,8 @@ impl FromProto<protos::schema_state::Schema> for Schema {
             owner: schema.get_owner().to_string(),
             properties: schema
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyDefinition::from_proto)
                 .collect::<Result<Vec<PropertyDefinition>, ProtoConversionError>>()?,
         })
@@ -499,8 +499,8 @@ impl FromNative<Schema> for protos::schema_state::Schema {
         proto_schema.set_properties(RepeatedField::from_vec(
             schema
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyDefinition::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyDefinition>, ProtoConversionError>>()?,
         ));
@@ -644,8 +644,8 @@ impl FromProto<protos::schema_state::SchemaList> for SchemaList {
         Ok(SchemaList {
             schemas: schema_list
                 .get_schemas()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Schema::from_proto)
                 .collect::<Result<Vec<Schema>, ProtoConversionError>>()?,
         })
@@ -659,8 +659,8 @@ impl FromNative<SchemaList> for protos::schema_state::SchemaList {
         schema_list_proto.set_schemas(RepeatedField::from_vec(
             schema_list
                 .schemas()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Schema::into_proto)
                 .collect::<Result<Vec<protos::schema_state::Schema>, ProtoConversionError>>()?,
         ));
@@ -824,8 +824,8 @@ impl FromProto<protos::schema_state::PropertyValue> for PropertyValue {
             enum_value: property_value.get_enum_value(),
             struct_values: property_value
                 .get_struct_values()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
             lat_long_value: property_value.get_lat_long_value().clone().into_native()?,
@@ -846,8 +846,8 @@ impl FromNative<PropertyValue> for protos::schema_state::PropertyValue {
         proto_property_value.set_struct_values(RepeatedField::from_vec(
             property_value
                 .struct_values()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,

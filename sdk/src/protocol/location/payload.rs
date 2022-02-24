@@ -268,8 +268,8 @@ impl FromProto<location_payload::LocationCreateAction> for LocationCreateAction 
             owner: proto.get_owner().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -285,8 +285,8 @@ impl FromNative<LocationCreateAction> for location_payload::LocationCreateAction
         proto.set_properties(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,
@@ -404,8 +404,8 @@ impl FromProto<protos::location_payload::LocationUpdateAction> for LocationUpdat
             location_id: proto.get_location_id().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -420,8 +420,8 @@ impl FromNative<LocationUpdateAction> for protos::location_payload::LocationUpda
         proto.set_properties(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,

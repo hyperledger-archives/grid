@@ -115,8 +115,8 @@ impl FromProto<protos::location_state::Location> for Location {
             owner: location.get_owner().to_string(),
             properties: location
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -132,8 +132,8 @@ impl FromNative<Location> for protos::location_state::Location {
         proto.set_properties(RepeatedField::from_vec(
             location
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<schema_state::PropertyValue>, ProtoConversionError>>()?,
         ));
@@ -273,8 +273,8 @@ impl FromProto<protos::location_state::LocationList> for LocationList {
         Ok(LocationList {
             locations: location_list
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Location::from_proto)
                 .collect::<Result<Vec<Location>, ProtoConversionError>>()?,
         })
@@ -288,8 +288,8 @@ impl FromNative<LocationList> for protos::location_state::LocationList {
         location_list_proto.set_entries(RepeatedField::from_vec(
             location_list
                 .locations()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Location::into_proto)
                 .collect::<Result<Vec<protos::location_state::Location>, ProtoConversionError>>()?,
         ));
