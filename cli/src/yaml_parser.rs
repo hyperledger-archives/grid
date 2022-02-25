@@ -236,7 +236,7 @@ mod test {
         );
         assert_eq!(
             parse_value_as_string(&property_valid, &key).unwrap(),
-            Some(string_value.clone())
+            Some(string_value)
         );
 
         // Check method returns an error when key is found but value cannot be parsed into a
@@ -262,10 +262,10 @@ mod test {
 
         // Check method can properly parse a boolean value
         let mut property_valid = Mapping::new();
-        property_valid.insert(Value::String(key.clone()), Value::Bool(bool_value.clone()));
+        property_valid.insert(Value::String(key.clone()), Value::Bool(bool_value));
         assert_eq!(
             parse_value_as_boolean(&property_valid, &key).unwrap(),
-            Some(bool_value.clone())
+            Some(bool_value)
         );
 
         // Check method returns an error when key is found but value cannot be parsed into a
@@ -293,11 +293,11 @@ mod test {
         let mut property_valid = Mapping::new();
         property_valid.insert(
             Value::String(key.clone()),
-            Value::Number(number_value.clone().into()),
+            Value::Number(number_value.into()),
         );
         assert_eq!(
             parse_value_as_i32(&property_valid, &key).unwrap(),
-            Some(number_value.clone())
+            Some(number_value)
         );
 
         // Check method returns an error when key is found but value overflows an i32 capacity.
@@ -336,7 +336,7 @@ mod test {
         property_valid.insert(Value::String(key.clone()), Value::Sequence(sequence_value));
         assert_eq!(
             parse_value_as_vec_string(&property_valid, &key).unwrap(),
-            Some(vec![string_value.clone()])
+            Some(vec![string_value])
         );
 
         // Check method returns an error when key is found but values inside the sequence cannot

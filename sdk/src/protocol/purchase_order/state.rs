@@ -444,8 +444,8 @@ impl FromNative<PurchaseOrder> for purchase_order_state::PurchaseOrder {
         proto.set_versions(RepeatedField::from_vec(
             order
                 .versions()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(|version| version.into_proto())
                 .collect::<Result<_, _>>()?,
         ));
@@ -602,8 +602,8 @@ impl FromProto<purchase_order_state::PurchaseOrderList> for PurchaseOrderList {
         Ok(PurchaseOrderList {
             purchase_orders: order_list
                 .get_purchase_orders()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PurchaseOrder::from_proto)
                 .collect::<Result<Vec<PurchaseOrder>, ProtoConversionError>>()?,
         })
@@ -617,8 +617,8 @@ impl FromNative<PurchaseOrderList> for purchase_order_state::PurchaseOrderList {
         order_list_proto.set_purchase_orders(RepeatedField::from_vec(
             order_list
                 .purchase_orders()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PurchaseOrder::into_proto)
                 .collect::<Result<Vec<purchase_order_state::PurchaseOrder>, ProtoConversionError>>(
                 )?,
@@ -862,8 +862,8 @@ impl FromProto<purchase_order_state::PurchaseOrderAlternateIdList>
         Ok(PurchaseOrderAlternateIdList {
             alternate_ids: id_list
                 .get_alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PurchaseOrderAlternateId::from_proto)
                 .collect::<Result<Vec<PurchaseOrderAlternateId>, ProtoConversionError>>()?,
         })
@@ -880,8 +880,8 @@ impl FromNative<PurchaseOrderAlternateIdList>
             RepeatedField::from_vec(
                 id_list
                     .alternate_ids()
-                    .to_vec()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(PurchaseOrderAlternateId::into_proto)
                     .collect::<Result<
                         Vec<purchase_order_state::PurchaseOrderAlternateId>,

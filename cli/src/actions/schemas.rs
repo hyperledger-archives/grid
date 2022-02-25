@@ -529,9 +529,9 @@ mod test {
         run_test(|test_yaml_file_path| {
             let mut file =
                 File::create(test_yaml_file_path).expect("Error creating test schema yaml file.");
-            file.write(LIGHTBULB_YAML_EXAMPLE)
+            file.write_all(LIGHTBULB_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
-            file.write(PHONE_YAML_EXAMPLE)
+            file.write_all(PHONE_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
 
             let payload = parse_yaml(
@@ -577,9 +577,9 @@ mod test {
         run_test(|test_yaml_file_path| {
             let mut file =
                 File::create(test_yaml_file_path).expect("Error creating test schema yaml file.");
-            file.write(LIGHTBULB_YAML_EXAMPLE)
+            file.write_all(LIGHTBULB_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
-            file.write(PHONE_YAML_EXAMPLE)
+            file.write_all(PHONE_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
 
             let payload = parse_yaml(
@@ -748,9 +748,9 @@ mod test {
             .unwrap()
     }
 
-    fn run_test<T>(test: T) -> ()
+    fn run_test<T>(test: T)
     where
-        T: FnOnce(&str) -> () + panic::UnwindSafe,
+        T: FnOnce(&str) + panic::UnwindSafe,
     {
         let test_yaml_file = temp_yaml_file_path();
 

@@ -250,8 +250,8 @@ impl FromProto<track_and_trace_state::Property> for Property {
             )?,
             reporters: proto
                 .get_reporters()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Reporter::from_proto)
                 .collect::<Result<Vec<Reporter>, ProtoConversionError>>()?,
             current_page: proto.get_current_page(),
@@ -268,8 +268,8 @@ impl FromNative<Property> for track_and_trace_state::Property {
         proto.set_property_definition(native.property_definition().clone().into_proto()?);
         proto.set_reporters(RepeatedField::from_vec(
             native.reporters()
-            .to_vec()
-            .into_iter()
+            .iter()
+            .cloned()
             .map(Reporter::into_proto)
             .collect::<Result<Vec<track_and_trace_state::Property_Reporter>, ProtoConversionError>>()?));
         proto.set_current_page(*native.current_page());
@@ -343,8 +343,8 @@ impl FromProto<track_and_trace_state::PropertyList> for PropertyList {
         Ok(PropertyList {
             properties: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Property::from_proto)
                 .collect::<Result<Vec<Property>, ProtoConversionError>>()?,
         })
@@ -357,8 +357,8 @@ impl FromNative<PropertyList> for track_and_trace_state::PropertyList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Property::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::Property>, ProtoConversionError>>()?,
         ));
@@ -580,8 +580,8 @@ impl FromProto<track_and_trace_state::PropertyPage> for PropertyPage {
             record_id: proto.get_record_id().to_string(),
             reported_values: proto
                 .get_reported_values()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(ReportedValue::from_proto)
                 .collect::<Result<Vec<ReportedValue>, ProtoConversionError>>()?,
         })
@@ -596,8 +596,8 @@ impl FromNative<PropertyPage> for track_and_trace_state::PropertyPage {
         proto.set_reported_values(RepeatedField::from_vec(
             native
                 .reported_values()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(ReportedValue::into_proto)
                 .collect::<Result<
                     Vec<track_and_trace_state::PropertyPage_ReportedValue>,
@@ -677,8 +677,8 @@ impl FromProto<track_and_trace_state::PropertyPageList> for PropertyPageList {
         Ok(PropertyPageList {
             property_pages: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyPage::from_proto)
                 .collect::<Result<Vec<PropertyPage>, ProtoConversionError>>()?,
         })
@@ -691,8 +691,8 @@ impl FromNative<PropertyPageList> for track_and_trace_state::PropertyPageList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .property_pages()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyPage::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::PropertyPage>, ProtoConversionError>>(
                 )?,
@@ -952,8 +952,8 @@ impl FromProto<track_and_trace_state::Proposal> for Proposal {
             role: Role::from_proto(proto.get_role())?,
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(String::from)
                 .collect(),
             status: Status::from_proto(proto.get_status())?,
@@ -1044,8 +1044,8 @@ impl FromProto<track_and_trace_state::ProposalList> for ProposalList {
         Ok(ProposalList {
             proposals: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Proposal::from_proto)
                 .collect::<Result<Vec<Proposal>, ProtoConversionError>>()?,
         })
@@ -1058,8 +1058,8 @@ impl FromNative<ProposalList> for track_and_trace_state::ProposalList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .proposals()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Proposal::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::Proposal>, ProtoConversionError>>()?,
         ));
@@ -1294,14 +1294,14 @@ impl FromProto<track_and_trace_state::Record> for Record {
             schema: proto.get_schema().to_string(),
             owners: proto
                 .get_owners()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AssociatedAgent::from_proto)
                 .collect::<Result<Vec<AssociatedAgent>, ProtoConversionError>>()?,
             custodians: proto
                 .get_custodians()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AssociatedAgent::from_proto)
                 .collect::<Result<Vec<AssociatedAgent>, ProtoConversionError>>()?,
             field_final: proto.get_field_final(),
@@ -1318,8 +1318,8 @@ impl FromNative<Record> for track_and_trace_state::Record {
             RepeatedField::from_vec(
                 native
                     .owners()
-                    .to_vec()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(AssociatedAgent::into_proto)
                     .collect::<Result<
                         Vec<track_and_trace_state::Record_AssociatedAgent>,
@@ -1331,8 +1331,8 @@ impl FromNative<Record> for track_and_trace_state::Record {
             RepeatedField::from_vec(
                 native
                     .custodians()
-                    .to_vec()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(AssociatedAgent::into_proto)
                     .collect::<Result<
                         Vec<track_and_trace_state::Record_AssociatedAgent>,
@@ -1408,8 +1408,8 @@ impl FromProto<track_and_trace_state::RecordList> for RecordList {
         Ok(RecordList {
             records: proto
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Record::from_proto)
                 .collect::<Result<Vec<Record>, ProtoConversionError>>()?,
         })
@@ -1422,8 +1422,8 @@ impl FromNative<RecordList> for track_and_trace_state::RecordList {
         proto.set_entries(RepeatedField::from_vec(
             native
                 .records()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Record::into_proto)
                 .collect::<Result<Vec<track_and_trace_state::Record>, ProtoConversionError>>()?,
         ));
@@ -1484,7 +1484,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(reporter.public_key(), "1234");
-        assert_eq!(*reporter.authorized(), true);
+        assert!(*reporter.authorized(), "{}", true);
         assert_eq!(*reporter.index(), 0);
     }
 
@@ -1549,7 +1549,7 @@ mod tests {
         assert_eq!(*property.property_definition(), property_definition);
         assert!(property.reporters().iter().any(|x| *x == reporter));
         assert_eq!(*property.current_page(), 0);
-        assert_eq!(*property.wrapped(), true);
+        assert!(*property.wrapped(), "{}", true);
     }
 
     #[test]
@@ -1609,8 +1609,8 @@ mod tests {
         let property = PropertyBuilder::new()
             .with_name("taco".into())
             .with_record_id("taco1234".into())
-            .with_property_definition(property_definition.clone())
-            .with_reporters(vec![reporter.clone()])
+            .with_property_definition(property_definition)
+            .with_reporters(vec![reporter])
             .with_current_page(0)
             .with_wrapped(true)
             .build()
@@ -1639,8 +1639,8 @@ mod tests {
         let property = PropertyBuilder::new()
             .with_name("taco".into())
             .with_record_id("taco1234".into())
-            .with_property_definition(property_definition.clone())
-            .with_reporters(vec![reporter.clone()])
+            .with_property_definition(property_definition)
+            .with_reporters(vec![reporter])
             .with_current_page(0)
             .with_wrapped(true)
             .build()
@@ -1674,8 +1674,8 @@ mod tests {
         let property = PropertyBuilder::new()
             .with_name("taco".into())
             .with_record_id("taco1234".into())
-            .with_property_definition(property_definition.clone())
-            .with_reporters(vec![reporter.clone()])
+            .with_property_definition(property_definition)
+            .with_reporters(vec![reporter])
             .with_current_page(0)
             .with_wrapped(true)
             .build()
@@ -1711,8 +1711,8 @@ mod tests {
         let property = PropertyBuilder::new()
             .with_name("taco".into())
             .with_record_id("taco1234".into())
-            .with_property_definition(property_definition.clone())
-            .with_reporters(vec![reporter.clone()])
+            .with_property_definition(property_definition)
+            .with_reporters(vec![reporter])
             .with_current_page(0)
             .with_wrapped(true)
             .build()
@@ -1806,7 +1806,7 @@ mod tests {
         let property_page = PropertyPageBuilder::new()
             .with_name("egg".into())
             .with_record_id("egg1234".into())
-            .with_reported_values(vec![reported_value.clone()])
+            .with_reported_values(vec![reported_value])
             .build()
             .unwrap();
 
@@ -1832,7 +1832,7 @@ mod tests {
         let property_page = PropertyPageBuilder::new()
             .with_name("egg".into())
             .with_record_id("egg1234".into())
-            .with_reported_values(vec![reported_value.clone()])
+            .with_reported_values(vec![reported_value])
             .build()
             .unwrap();
 
@@ -1866,7 +1866,7 @@ mod tests {
         let property_page = PropertyPageBuilder::new()
             .with_name("egg".into())
             .with_record_id("egg1234".into())
-            .with_reported_values(vec![reported_value.clone()])
+            .with_reported_values(vec![reported_value])
             .build()
             .unwrap();
 
@@ -1899,12 +1899,12 @@ mod tests {
         let property_page = PropertyPageBuilder::new()
             .with_name("egg".into())
             .with_record_id("egg1234".into())
-            .with_reported_values(vec![reported_value.clone()])
+            .with_reported_values(vec![reported_value])
             .build()
             .unwrap();
 
         let property_page_list = PropertyPageListBuilder::new()
-            .with_property_pages(vec![property_page.clone()])
+            .with_property_pages(vec![property_page])
             .build()
             .unwrap();
 
@@ -2039,7 +2039,7 @@ mod tests {
             .unwrap();
 
         let proposal_list = ProposalListBuilder::new()
-            .with_proposals(vec![proposal.clone()])
+            .with_proposals(vec![proposal])
             .build()
             .unwrap();
 
@@ -2092,7 +2092,7 @@ mod tests {
         assert_eq!(builder.record_id, Some("egg1234".to_string()));
         assert_eq!(builder.schema, Some("egg".to_string()));
         assert_eq!(builder.owners, Some(vec![associated_agent.clone()]));
-        assert_eq!(builder.custodians, Some(vec![associated_agent.clone()]));
+        assert_eq!(builder.custodians, Some(vec![associated_agent]));
         assert_eq!(builder.field_final, Some(false));
     }
 
@@ -2108,7 +2108,7 @@ mod tests {
             .with_record_id("egg1234".into())
             .with_schema("egg".into())
             .with_owners(vec![associated_agent.clone()])
-            .with_custodians(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent])
             .with_field_final(false)
             .build()
             .unwrap();
@@ -2128,7 +2128,7 @@ mod tests {
             .with_record_id("egg1234".into())
             .with_schema("egg".into())
             .with_owners(vec![associated_agent.clone()])
-            .with_custodians(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent])
             .with_field_final(false)
             .build()
             .unwrap();
@@ -2153,7 +2153,7 @@ mod tests {
             .with_record_id("egg1234".into())
             .with_schema("egg".into())
             .with_owners(vec![associated_agent.clone()])
-            .with_custodians(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent])
             .with_field_final(false)
             .build()
             .unwrap();
@@ -2180,13 +2180,13 @@ mod tests {
             .with_record_id("egg1234".into())
             .with_schema("egg".into())
             .with_owners(vec![associated_agent.clone()])
-            .with_custodians(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent])
             .with_field_final(false)
             .build()
             .unwrap();
 
         let record_list = RecordListBuilder::new()
-            .with_records(vec![record.clone()])
+            .with_records(vec![record])
             .build()
             .unwrap();
 

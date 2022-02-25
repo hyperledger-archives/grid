@@ -223,8 +223,8 @@ impl FromProto<product_payload::ProductCreateAction> for ProductCreateAction {
             owner: proto.get_owner().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -240,8 +240,8 @@ impl FromNative<ProductCreateAction> for product_payload::ProductCreateAction {
         proto.set_properties(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,
@@ -358,8 +358,8 @@ impl FromProto<protos::product_payload::ProductUpdateAction> for ProductUpdateAc
             product_id: proto.get_product_id().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -374,8 +374,8 @@ impl FromNative<ProductUpdateAction> for protos::product_payload::ProductUpdateA
         proto.set_properties(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,
@@ -708,7 +708,7 @@ mod tests {
             .unwrap();
 
         let payload = ProductPayloadBuilder::new()
-            .with_action(Action::ProductCreate(action.clone()))
+            .with_action(Action::ProductCreate(action))
             .with_timestamp(0)
             .build()
             .unwrap();
@@ -730,10 +730,7 @@ mod tests {
             .build()
             .unwrap();
 
-        vec![
-            property_value_description.clone(),
-            property_value_price.clone(),
-        ]
+        vec![property_value_description, property_value_price]
     }
 
     fn test_from_bytes<T: FromBytes<T> + Clone + PartialEq + IntoBytes + Debug, F>(

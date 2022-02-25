@@ -161,7 +161,6 @@ mod test {
     use diesel::r2d2::{ConnectionManager, Pool};
     use diesel::SqliteConnection;
     use futures::prelude::*;
-    use serde_json;
 
     use grid_sdk::backend::BackendClientError;
     use grid_sdk::backend::{
@@ -288,7 +287,7 @@ mod test {
                             .collect::<Vec<_>>()
                             .join(",");
 
-                        let mut response_url = msg.response_url.clone();
+                        let mut response_url = msg.response_url;
                         response_url.set_query(Some(&format!("id={}", batch_query)));
 
                         Ok(BatchStatusLink {
@@ -1191,7 +1190,7 @@ mod test {
         let mut response = srv
             .request(
                 http::Method::GET,
-                srv.url(&format!("/schema/{}", "TestGridSchema".to_string())),
+                srv.url(&format!("/schema/{}", "TestGridSchema")),
             )
             .send()
             .await
@@ -1420,7 +1419,7 @@ mod test {
         let mut response = srv
             .request(
                 http::Method::GET,
-                srv.url(&format!("/product/{}", "041205707820".to_string())),
+                srv.url(&format!("/product/{}", "041205707820")),
             )
             .send()
             .await
@@ -1449,7 +1448,7 @@ mod test {
         let mut response = srv
             .request(
                 http::Method::GET,
-                srv.url(&format!("/location/{}", "0653114000000".to_string())),
+                srv.url(&format!("/location/{}", "0653114000000")),
             )
             .send()
             .await
@@ -2889,7 +2888,7 @@ mod test {
             .with_end_commit_num(i64::MAX);
 
         if let Some(service_id) = service_id {
-            agent = agent.with_service_id(service_id.to_string())
+            agent = agent.with_service_id(service_id)
         }
 
         vec![agent.build().expect("Unable to build Pike Agent")]
@@ -2945,7 +2944,7 @@ mod test {
                 .with_start_commit_num(1)
                 .with_end_commit_num(i64::MAX);
             if let Some(id) = service_id {
-                builder = builder.with_service_id(id.to_string());
+                builder = builder.with_service_id(id);
             }
             builder.build().expect("Unable to build organization")
         };
@@ -3483,7 +3482,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                service_id: service_id,
+                service_id,
             },
         ]
     }
@@ -3602,7 +3601,7 @@ mod test {
                 .with_lat_long_value(None)
                 .with_start_commit_number(0)
                 .with_end_commit_number(i64::MAX)
-                .with_service_id(service_id.clone())
+                .with_service_id(service_id)
                 .build()
                 .unwrap(),
         ]

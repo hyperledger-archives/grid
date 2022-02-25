@@ -283,14 +283,14 @@ mod tests {
 
     fn agent_to_bytes(agent: Agent) -> Vec<u8> {
         let builder = AgentListBuilder::new();
-        let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
-        return agent_list.into_bytes().unwrap();
+        let agent_list = builder.with_agents(vec![agent]).build().unwrap();
+        agent_list.into_bytes().unwrap()
     }
 
     fn role_to_bytes(role: Role) -> Vec<u8> {
         let builder = RoleListBuilder::new();
-        let role_list = builder.with_roles(vec![role.clone()]).build().unwrap();
-        return role_list.into_bytes().unwrap();
+        let role_list = builder.with_roles(vec![role]).build().unwrap();
+        role_list.into_bytes().unwrap()
     }
 
     /// These tests are based on the example in the Grid Identity RFC.
@@ -542,7 +542,7 @@ mod tests {
             .build()
             .unwrap();
         let builder = AgentListBuilder::new();
-        let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
+        let agent_list = builder.with_agents(vec![agent]).build().unwrap();
         let agent_bytes = agent_list.into_bytes().unwrap();
         let agent_address = compute_agent_address(PUBLIC_KEY);
         context.set_state_entry(agent_address, agent_bytes).unwrap();
