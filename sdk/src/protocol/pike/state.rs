@@ -383,8 +383,8 @@ impl FromProto<protos::pike_state::RoleList> for RoleList {
         Ok(RoleList {
             roles: role_list
                 .get_roles()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Role::from_proto)
                 .collect::<Result<Vec<Role>, ProtoConversionError>>()?,
         })
@@ -398,8 +398,8 @@ impl FromNative<RoleList> for protos::pike_state::RoleList {
         role_list_proto.set_roles(RepeatedField::from_vec(
             role_list
                 .roles()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Role::into_proto)
                 .collect::<Result<Vec<protos::pike_state::Role>, ProtoConversionError>>()?,
         ));
@@ -676,8 +676,8 @@ impl FromProto<protos::pike_state::AlternateIdIndexEntryList> for AlternateIdInd
         Ok(AlternateIdIndexEntryList {
             entries: entry_list
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateIdIndexEntry::from_proto)
                 .collect::<Result<Vec<AlternateIdIndexEntry>, ProtoConversionError>>()?,
         })
@@ -691,8 +691,8 @@ impl FromNative<AlternateIdIndexEntryList> for protos::pike_state::AlternateIdIn
         entry_list_proto.set_entries(RepeatedField::from_vec(
             entry_list
                 .entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateIdIndexEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::AlternateIdIndexEntry>, ProtoConversionError>>()?,
         ));
@@ -969,8 +969,8 @@ impl FromProto<protos::pike_state::Agent> for Agent {
             roles: agent.get_roles().to_vec(),
             metadata: agent
                 .get_metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::from_proto)
                 .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
@@ -989,8 +989,8 @@ impl FromNative<Agent> for protos::pike_state::Agent {
         agent_proto.set_metadata(RepeatedField::from_vec(
             agent
                 .metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
                 )?,
@@ -1131,8 +1131,8 @@ impl FromProto<protos::pike_state::AgentList> for AgentList {
         Ok(AgentList {
             agents: agent_list
                 .get_agents()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Agent::from_proto)
                 .collect::<Result<Vec<Agent>, ProtoConversionError>>()?,
         })
@@ -1146,8 +1146,8 @@ impl FromNative<AgentList> for protos::pike_state::AgentList {
         agent_list_proto.set_agents(RepeatedField::from_vec(
             agent_list
                 .agents()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Agent::into_proto)
                 .collect::<Result<Vec<protos::pike_state::Agent>, ProtoConversionError>>()?,
         ));
@@ -1286,14 +1286,14 @@ impl FromProto<protos::pike_state::Organization> for Organization {
             locations: org.get_locations().to_vec(),
             alternate_ids: org
                 .get_alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateId::from_proto)
                 .collect::<Result<Vec<AlternateId>, ProtoConversionError>>()?,
             metadata: org
                 .get_metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::from_proto)
                 .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
@@ -1309,15 +1309,15 @@ impl FromNative<Organization> for protos::pike_state::Organization {
         org_proto.set_locations(RepeatedField::from_vec(org.locations().to_vec()));
         org_proto.set_alternate_ids(RepeatedField::from_vec(
             org.alternate_ids()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(AlternateId::into_proto)
                 .collect::<Result<Vec<protos::pike_state::AlternateId>, ProtoConversionError>>()?,
         ));
         org_proto.set_metadata(RepeatedField::from_vec(
             org.metadata()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(KeyValueEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
                 )?,
@@ -1467,8 +1467,8 @@ impl FromProto<protos::pike_state::OrganizationList> for OrganizationList {
         Ok(OrganizationList {
             organizations: organization_list
                 .get_organizations()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Organization::from_proto)
                 .collect::<Result<Vec<Organization>, ProtoConversionError>>()?,
         })
@@ -1482,8 +1482,8 @@ impl FromNative<OrganizationList> for protos::pike_state::OrganizationList {
         org_list_proto.set_organizations(RepeatedField::from_vec(
             org_list
                 .organizations()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Organization::into_proto)
                 .collect::<Result<Vec<protos::pike_state::Organization>, ProtoConversionError>>()?,
         ));

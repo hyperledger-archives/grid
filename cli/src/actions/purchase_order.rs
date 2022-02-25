@@ -316,7 +316,7 @@ fn generate_random_base62_string(len: usize) -> String {
 }
 
 pub fn make_alternate_id_from_str(uid: &str, id: &str) -> Result<AlternateId, CliError> {
-    validate_alt_id_format(&id.to_string())?;
+    validate_alt_id_format(id)?;
 
     let split: Vec<&str> = id.split(':').collect();
 

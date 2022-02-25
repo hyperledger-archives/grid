@@ -201,8 +201,8 @@ impl FromProto<protos::schema_payload::SchemaCreateAction> for SchemaCreateActio
             description: schema_create.get_description().to_string(),
             properties: schema_create
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyDefinition::from_proto)
                 .collect::<Result<Vec<PropertyDefinition>, ProtoConversionError>>()?,
         })
@@ -218,7 +218,7 @@ impl FromNative<SchemaCreateAction> for protos::schema_payload::SchemaCreateActi
         proto_schema_create.set_description(schema_create.description().to_string());
         proto_schema_create.set_properties(
             RepeatedField::from_vec(
-            schema_create.properties().to_vec().into_iter()
+            schema_create.properties().iter().cloned()
             .map(PropertyDefinition::into_proto)
             .collect::<Result<Vec<protos::schema_state::PropertyDefinition>, ProtoConversionError>>()?,));
 
@@ -377,8 +377,8 @@ impl FromProto<protos::schema_payload::SchemaUpdateAction> for SchemaUpdateActio
             owner: schema_update.get_owner().to_string(),
             properties: schema_update
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyDefinition::from_proto)
                 .collect::<Result<Vec<PropertyDefinition>, ProtoConversionError>>()?,
         })
@@ -393,7 +393,7 @@ impl FromNative<SchemaUpdateAction> for protos::schema_payload::SchemaUpdateActi
         proto_schema_update.set_owner(schema_update.owner().to_string());
         proto_schema_update.set_properties(
             RepeatedField::from_vec(
-            schema_update.properties().to_vec().into_iter()
+            schema_update.properties().iter().cloned()
             .map(PropertyDefinition::into_proto)
             .collect::<Result<Vec<protos::schema_state::PropertyDefinition>, ProtoConversionError>>()?,));
 

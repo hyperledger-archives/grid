@@ -112,8 +112,8 @@ impl FromProto<protos::product_state::Product> for Product {
             owner: product.get_owner().to_string(),
             properties: product
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -129,8 +129,8 @@ impl FromNative<Product> for protos::product_state::Product {
         proto.set_properties(RepeatedField::from_vec(
             product
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<schema_state::PropertyValue>, ProtoConversionError>>()?,
         ));
@@ -280,8 +280,8 @@ impl FromProto<protos::product_state::ProductList> for ProductList {
         Ok(ProductList {
             products: product_list
                 .get_entries()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Product::from_proto)
                 .collect::<Result<Vec<Product>, ProtoConversionError>>()?,
         })
@@ -295,8 +295,8 @@ impl FromNative<ProductList> for protos::product_state::ProductList {
         product_list_proto.set_entries(RepeatedField::from_vec(
             product_list
                 .products()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(Product::into_proto)
                 .collect::<Result<Vec<protos::product_state::Product>, ProtoConversionError>>()?,
         ));

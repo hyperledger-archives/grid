@@ -203,8 +203,8 @@ impl FromProto<product_payload::ProductCreateAction> for ProductCreateAction {
             owner: proto.get_owner().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -220,8 +220,8 @@ impl FromNative<ProductCreateAction> for product_payload::ProductCreateAction {
         proto.set_properties(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,
@@ -337,8 +337,8 @@ impl FromProto<protos::product_payload::ProductUpdateAction> for ProductUpdateAc
             product_id: proto.get_product_id().to_string(),
             properties: proto
                 .get_properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
         })
@@ -353,8 +353,8 @@ impl FromNative<ProductUpdateAction> for protos::product_payload::ProductUpdateA
         proto.set_properties(RepeatedField::from_vec(
             native
                 .properties()
-                .to_vec()
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(PropertyValue::into_proto)
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,

@@ -176,7 +176,7 @@ impl std::fmt::Display for CliError {
                 feature = "purchase-order",
                 feature = "schema",
             ))]
-            CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
+            CliError::DaemonError(ref err) => write!(f, "{}", err.replace('\"', "")),
             #[cfg(any(
                 feature = "location",
                 feature = "pike",
@@ -184,7 +184,7 @@ impl std::fmt::Display for CliError {
                 feature = "purchase-order",
                 feature = "schema",
             ))]
-            CliError::InternalError(ref err) => write!(f, "{}", err.replace("\"", "")),
+            CliError::InternalError(ref err) => write!(f, "{}", err.replace('\"', "")),
         }
     }
 }
