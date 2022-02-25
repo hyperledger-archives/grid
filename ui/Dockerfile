@@ -36,7 +36,7 @@ RUN git rev-parse HEAD > /commit-hash
 # Sapling build stage
 FROM node:14.18.1-alpine3.11 as sapling-build-stage
 
-RUN apk update && apk add git
+RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
 
 RUN npm config set unsafe-perm true
 
