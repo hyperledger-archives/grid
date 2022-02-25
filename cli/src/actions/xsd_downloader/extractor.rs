@@ -156,7 +156,7 @@ mod tests {
     use super::*;
 
     use std::io::Write;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
     use zip::{result::ZipResult, ZipWriter};
 
     fn dummy(zip: &mut ZipWriter<impl Write + Seek>, filename: &str) -> ZipResult<()> {
@@ -265,10 +265,10 @@ mod tests {
     // Validate that extract() will extract a zip file in the expected zipception format
     // without failure, and that the resulting files are in the expected locations.
     fn extract_works() {
-        let source_temp = TempDir::new("zipstuff").expect("could not create tempdir");
+        let source_temp = TempDir::new().expect("could not create tempdir");
         let source_path = source_temp.into_path().join("test.zip");
 
-        let dest_temp = TempDir::new("dest").expect("could not create tempdir");
+        let dest_temp = TempDir::new().expect("could not create tempdir");
         let dest_path = dest_temp.into_path();
 
         create_example_zip(&source_path).unwrap();
