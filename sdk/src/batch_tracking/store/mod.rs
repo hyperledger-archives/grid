@@ -607,3 +607,158 @@ impl TransactionReceiptBuilder {
         self
     }
 }
+
+pub trait BatchTrackingStore {
+    /// Gets the status of a batch from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The ID or data change ID of the batch with the status to
+    ///    fetch
+    ///  * `service_id` - The service ID
+    fn get_batch_status(
+        &self,
+        id: &str,
+        service_id: Option<&str>,
+    ) -> Result<BatchStatus, BatchTrackingStoreError>;
+
+    /// Updates the status of a batch in the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The ID or data change ID of the batch with the status to
+    ///    update
+    ///  * `service_id` - The service ID
+    ///  * `status` - The new status for the batch
+    ///  * `errors` - Any errors encountered while attempting to submit the
+    ///    batch
+    fn update_batch_status(
+        &self,
+        id: String,
+        service_id: Option<&str>,
+        status: BatchStatus,
+        errors: Vec<SubmissionError>,
+    ) -> Result<(), BatchTrackingStoreError>;
+
+    /// Adds batches to the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `batches` - The batches to be added
+    fn add_batches(&self, batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError>;
+
+    /// Updates a batch's status to a submitted state
+    ///
+    /// # Arguments
+    ///
+    ///  * `batch_id` - The ID or data change ID of the batch to update
+    ///  * `service_id` - The service ID
+    fn change_batch_to_submitted(
+        &self,
+        batch_id: &str,
+        service_id: Option<&str>,
+    ) -> Result<(), BatchTrackingStoreError>;
+
+    /// Gets a batch from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The ID or data change ID of the batch to fetch
+    fn get_batch(
+        &self,
+        id: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError>;
+
+    /// Lists batches with a given status from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `status` - The status to fetch batches for
+    fn list_batches_by_status(
+        &self,
+        status: BatchStatus,
+    ) -> Result<TrackingBatchList, BatchTrackingStoreError>;
+
+    /// Removes records for batches and batch submissions before a given time
+    ///
+    /// # Arguments
+    ///
+    ///  * `submitted_by` - The timestamp for which to delete records submitted before
+    fn clean_stale_records(
+        &self,
+        submitted_by: &str,
+    ) -> Result<TrackingBatchList, BatchTrackingStoreError>;
+
+    /// Gets batches that have not yet been submitted from the underlying storage
+    fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError>;
+
+    /// Gets batches that failed either due to validation or submission errors
+    /// from the underlying storage
+    fn get_failed_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError>;
+}
+
+impl<BS> BatchTrackingStore for Box<BS>
+where
+    BS: BatchTrackingStore + ?Sized,
+{
+    fn get_batch_status(
+        &self,
+        _id: &str,
+        _service_id: Option<&str>,
+    ) -> Result<BatchStatus, BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn update_batch_status(
+        &self,
+        _id: String,
+        _service_id: Option<&str>,
+        _status: BatchStatus,
+        _errors: Vec<SubmissionError>,
+    ) -> Result<(), BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn add_batches(&self, _batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn change_batch_to_submitted(
+        &self,
+        _batch_id: &str,
+        _service_id: Option<&str>,
+    ) -> Result<(), BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn get_batch(
+        &self,
+        _id: &str,
+        _service_id: Option<&str>,
+    ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn list_batches_by_status(
+        &self,
+        _status: BatchStatus,
+    ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn clean_stale_records(
+        &self,
+        _submitted_by: &str,
+    ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
+        unimplemented!();
+    }
+
+    fn get_failed_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
+        unimplemented!();
+    }
+}
