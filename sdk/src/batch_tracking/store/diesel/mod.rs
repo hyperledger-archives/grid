@@ -12,4 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod models;
 pub(in crate) mod schema;
+
+use super::{
+    BatchStatus, InvalidTransaction, SubmissionError, TrackingBatch, TrackingTransaction,
+    TransactionReceipt, ValidTransaction,
+};
