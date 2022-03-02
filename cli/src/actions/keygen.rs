@@ -200,12 +200,12 @@ pub fn generate_keys(
 mod tests {
     use super::*;
     use std::fs::File;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     /// Validate that create_key_pair skips when the keypairs already exist
     #[test]
     fn create_keypair_mode_skip_skips_existing_keypairs() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -242,7 +242,7 @@ mod tests {
     /// missing
     #[test]
     fn create_keypair_mode_skip_fails_missing_private_key() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -283,7 +283,7 @@ mod tests {
     /// missing
     #[test]
     fn create_keypair_mode_skip_fails_missing_public_key() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -323,7 +323,7 @@ mod tests {
     /// Validate that create_key_pair writes new keys successfully on a success condition
     #[test]
     fn create_keypair_mode_skip_successfully_writes_new_keys() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -344,7 +344,7 @@ mod tests {
     /// Validate that create_key_pair force option will overwrite an existing pubkey
     #[test]
     fn create_keypair_mode_force_returns_different_pubkey() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -385,7 +385,7 @@ mod tests {
     /// Validate that create_key_pair force successfully creates both a private and public key
     #[test]
     fn create_keypair_mode_force_successfully_writes_new_keys() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -406,7 +406,7 @@ mod tests {
     /// Validate that create_key_pair Error fails on existing keypairs
     #[test]
     fn create_keypair_mode_fail_fails_on_existing_keypairs() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -457,7 +457,7 @@ mod tests {
     /// Validate that create_key_pair Error succeeds if there are no existing keypairs
     #[test]
     fn create_keypair_mode_fail_successfully_writes_new_keys() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("public_key");
         let private_key_path = temp_dir.path().join("private_key");
@@ -479,7 +479,7 @@ mod tests {
     /// path
     #[test]
     fn generate_keys_succeeds() {
-        let temp_dir = TempDir::new("test_files_exist").expect("Failed to create temp dir");
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         let public_key_path = temp_dir.path().join("grid_key.pub");
         let private_key_path = temp_dir.path().join("grid_key.priv");

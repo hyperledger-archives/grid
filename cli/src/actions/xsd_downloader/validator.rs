@@ -72,14 +72,14 @@ mod tests {
     use std::io::Write;
 
     use pretty_assertions::assert_eq;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     const TEST_DATA: &str = "lagomorpha";
     const TEST_HASH: &str = "9b44a9cb40096bf6767dec8e97bdc5a36ead7bc6200025cac801bf445307aba0";
 
     #[test]
     fn validate_hash_succeeds_on_valid_hash() {
-        let temp_dir = TempDir::new("example").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let file_path = temp_dir.path().join("gs1.zip");
 
         let mut output = File::create(&file_path).expect("could not create file");
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn validate_hash_fails_on_invalid_hash() {
-        let temp_dir = TempDir::new("example").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let file_path = temp_dir.path().join("gs1.zip");
 
         let mut output = File::create(&file_path).expect("could not create file");

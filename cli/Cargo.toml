@@ -57,7 +57,7 @@ zip = { version = "0.5", optional = true }
 [dev-dependencies]
 mockito = "0.31"
 pretty_assertions = "1"
-tempdir = "0.3"
+tempfile = "3"
 
 [features]
 default = [
