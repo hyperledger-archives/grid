@@ -36,7 +36,7 @@ cylinder = { version = "0.2.2", features = ["key-load"] }
 diesel = { version = "1.0", features = ["postgres"], optional = true }
 diesel_migrations = "1.4"
 dirs = "4"
-flexi_logger = "0.17"
+flexi_logger = "0.22"
 grid-sdk = { path = "../sdk", features = ["client", "client-reqwest", "data-validation"] }
 libc = "0.2"
 log = "0.4"
