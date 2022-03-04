@@ -40,7 +40,7 @@ ctrlc = "3.0"
 cylinder = { version = "0.2.2", features = ["jwt"], optional = true }
 diesel = { version = "1.0.0", features = ["r2d2", "serde_json"] }
 diesel_migrations = "1.4"
-flexi_logger = "0.17"
+flexi_logger = "0.22"
 futures = "0.3"
 
 grid-sdk = { path = "../sdk"}
