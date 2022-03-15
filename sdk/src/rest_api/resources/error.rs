@@ -16,7 +16,7 @@ use std::error;
 use std::fmt;
 
 /// Generic error designed with the expectation that it may be converted into an HTTP response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ErrorResponse {
     /// A corresponding HTTP status code for the error
     status_code: u16,
@@ -26,6 +26,7 @@ pub struct ErrorResponse {
 
     /// Wrapped error that is not exposed in the HTTP resposne
     #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
     source: Option<Box<dyn error::Error>>,
 }
 
