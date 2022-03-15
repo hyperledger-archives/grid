@@ -37,6 +37,7 @@ diesel_migrations = { version = "1.4", optional = true }
 log = { version = "0.4", optional = true }
 futures = { version = "0.3", optional = true }
 futures-util = { version = "0.3", optional = true }
+http = { version = "0.2", optional = true }
 reqwest = { version = "0.10.1", features = ["blocking", "json"], optional = true }
 protobuf = "2.19"
 regex = { version = "1", optional = true }
@@ -124,6 +125,7 @@ experimental = [
     "proxy-client",
     "rest-api-actix-web-3",
     "rest-api-actix-web-3-run",
+    "rest-api-endpoint-proxy",
     "rest-api-endpoint-record",
     "rest-api-endpoint-submit",
     "rest-api-resources-submit",
@@ -168,6 +170,7 @@ rest-api-endpoint-batches = ["backend", "rest-api-resources-batches"]
 rest-api-endpoint-location = ["location", "rest-api-resources-location"]
 rest-api-endpoint-organization = ["pike", "rest-api-resources-organization"]
 rest-api-endpoint-product = ["product", "rest-api-resources-product"]
+rest-api-endpoint-proxy = ["proxy-client"]
 rest-api-endpoint-purchase-order = ["purchase-order", "rest-api-resources-purchase-order"]
 rest-api-endpoint-record = ["rest-api-resources-track-and-trace", "track-and-trace"]
 rest-api-endpoint-role = ["pike", "rest-api-resources-role"]
