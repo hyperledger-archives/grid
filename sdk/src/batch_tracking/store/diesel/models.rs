@@ -125,6 +125,7 @@ impl From<TransactionModel> for TrackingTransaction {
         Self {
             family_name: transaction.family_name.to_string(),
             family_version: transaction.family_version.to_string(),
+            transaction_id: transaction.transaction_id.to_string(),
             payload: transaction.payload.to_vec(),
             signer_public_key: transaction.signer_public_key.to_string(),
             service_id: transaction.service_id.clone(),
@@ -276,4 +277,46 @@ impl TryFrom<TransactionReceipt> for ValidTransaction {
             transaction_id: receipt.transaction_id,
         })
     }
+}
+
+pub fn make_batch_models(batches: &[TrackingBatch]) -> Vec<BatchModel> {
+    let mut models = Vec::new();
+    for batch in batches {
+        let model = BatchModel {
+            service_id: batch.service_id().to_string(),
+            batch_id: batch.batch_header().to_string(),
+            data_change_id: batch.data_change_id().map(String::from),
+            signer_public_key: batch.signer_public_key().to_string(),
+            trace: batch.trace(),
+            serialized_batch: batch.serialized_batch().to_vec(),
+            submitted: batch.submitted(),
+            created_at: NaiveDateTime::from_timestamp(batch.created_at(), 0),
+        };
+
+        models.push(model)
+    }
+
+    models
+}
+
+pub fn make_transaction_models(batches: &[TrackingBatch]) -> Vec<TransactionModel> {
+    let mut models = Vec::new();
+    for batch in batches {
+        for transaction in batch.transactions() {
+            let model = TransactionModel {
+                service_id: transaction.service_id().to_string(),
+                transaction_id: transaction.transaction_id().to_string(),
+                batch_id: batch.batch_header().to_string(),
+                batch_service_id: batch.service_id().to_string(),
+                payload: transaction.payload().to_vec(),
+                family_name: transaction.family_name().to_string(),
+                family_version: transaction.family_version().to_string(),
+                signer_public_key: transaction.signer_public_key().to_string(),
+            };
+
+            models.push(model)
+        }
+    }
+
+    models
 }
