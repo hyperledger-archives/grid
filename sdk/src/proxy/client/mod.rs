@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "proxy-client-reqwest")]
+pub mod reqwest;
+
 use crate::proxy::{request::ProxyRequestBuilder, response::ProxyResponse};
 
 pub trait ProxyClient: Send {

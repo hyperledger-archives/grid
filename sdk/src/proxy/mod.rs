@@ -16,6 +16,8 @@
 
 #[cfg(feature = "proxy-client")]
 mod client;
+#[cfg(feature = "proxy-client-reqwest")]
+pub use client::reqwest::ReqwestProxyClient;
 #[cfg(feature = "proxy-client")]
 pub use client::ProxyClient;
 pub mod error;
