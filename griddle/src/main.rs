@@ -26,14 +26,13 @@ use clap::{App, Arg};
 #[cfg(feature = "diesel")]
 use diesel::r2d2::{ConnectionManager, Pool};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
+#[cfg(feature = "proxy")]
+use grid_sdk::proxy::ReqwestProxyClient;
 #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
 use grid_sdk::store::ConnectionUri;
 use grid_sdk::{
-    batch_processor::{
-        submitter::{
-            BatchSubmitter, SawtoothBatchSubmitter, SawtoothConnection, SplinterBatchSubmitter,
-        },
-        BatchProcessorBuilder,
+    batch_processor::submitter::{
+        BatchSubmitter, SawtoothBatchSubmitter, SawtoothConnection, SplinterBatchSubmitter,
     },
     rest_api::actix_web_3::{self, Endpoint, KeyState, StoreState},
 };
@@ -96,7 +95,8 @@ fn batch_submitter(endpoint: Endpoint) -> Arc<dyn BatchSubmitter> {
 }
 
 async fn run() -> Result<(), Error> {
-    let matches = App::new("griddle")
+    #[allow(unused_mut)]
+    let mut app = App::new("griddle")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Contributors to Hyperledger Grid")
         .about("Grid Integration Component")
@@ -141,8 +141,19 @@ async fn run() -> Result<(), Error> {
                 .long("key")
                 .takes_value(true)
                 .help("Base name for private signing key file"),
-        )
-        .get_matches();
+        );
+
+    #[cfg(feature = "proxy")]
+    {
+        app = app.arg(
+            Arg::with_name("forward_url")
+                .long("forward-url")
+                .takes_value(true)
+                .help("URL for Grid node to be used by griddle"),
+        );
+    }
+
+    let matches = app.get_matches();
 
     let log_level = if matches.is_present("quiet") {
         log::LevelFilter::Error
@@ -188,20 +199,31 @@ async fn run() -> Result<(), Error> {
         .or_else(|| env::var("GRIDDLE_DATABASE_URL").ok())
         .unwrap_or_else(|| "sqlite_db_file".into());
 
+    #[cfg(feature = "proxy")]
+    let forward_url = matches
+        .value_of("forward_url")
+        .map(String::from)
+        .or_else(|| env::var("GRIDDLE_FORWARD_URL").ok())
+        .unwrap_or_else(|| "http://localhost:8080".into());
+
+    #[cfg(feature = "proxy")]
+    let client = ReqwestProxyClient::new(&forward_url)
+        .map_err(|err| Error::from_message(&format!("Unable to create proxy client: {err}")))?;
+
     let store_state = griddle_store_state(&database_url)?;
     let key_state = KeyState::new(&key);
 
-    let batch_submitter = batch_submitter(Endpoint::from(connect.as_ref()));
-    let batch_processor =
-        BatchProcessorBuilder::new(store_state.store_factory.clone_box(), batch_submitter);
+    let _batch_submitter = batch_submitter(Endpoint::from(connect.as_ref()));
 
-    batch_processor
-        .start()
-        .map_err(|err| Error::from_message(&format!("Failed to start batch processor: {}", err)))?;
-
-    actix_web_3::run(&bind, store_state, key_state)
-        .await
-        .map_err(|err| Error::from_message(&format!("{}", err)))?;
+    actix_web_3::run(
+        &bind,
+        store_state,
+        key_state,
+        #[cfg(feature = "proxy")]
+        Box::new(client),
+    )
+    .await
+    .map_err(|err| Error::from_message(&format!("{}", err)))?;
 
     Ok(())
 }

@@ -32,7 +32,13 @@ experimental = [
     # The following features are experimental:
     "database-postgres",
     "database-sqlite",
+    "proxy",
 ]
 
 database-postgres = ["diesel", "grid-sdk/postgres"]
 database-sqlite = ["diesel", "grid-sdk/sqlite"]
+proxy = [
+  "grid-sdk/proxy-run",
+  "grid-sdk/proxy-client-reqwest",
+  "grid-sdk/rest-api-endpoint-proxy",
+]

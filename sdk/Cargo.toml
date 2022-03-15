@@ -122,6 +122,7 @@ experimental = [
     "batch-tracking",
     "batch-store",
     "proxy",
+    "proxy-run",
     "proxy-client",
     "rest-api-actix-web-3",
     "rest-api-actix-web-3-run",
@@ -147,6 +148,7 @@ product = ["pike", "schema"]
 proxy = []
 proxy-client = ["proxy", "serde_json", "rest-api-resources"]
 proxy-client-reqwest = ["reqwest", "proxy-client"]
+proxy-run = ["proxy-client", "rest-api-endpoint-proxy"]
 schema = ["pike"]
 track-and-trace = ["base64"]
 batch-tracking = ["transact"]
