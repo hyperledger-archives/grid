@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Traits and implementations useful for proxying requests to a REST API.
+use crate::proxy::{request::ProxyRequestBuilder, response::ProxyResponse};
 
-#[cfg(feature = "proxy-client")]
-mod client;
-#[cfg(feature = "proxy-client")]
-pub use client::ProxyClient;
-pub mod error;
-pub mod request;
-pub mod response;
+pub trait ProxyClient: Send {
+    fn proxy(&self, req_builder: ProxyRequestBuilder) -> ProxyResponse;
+
+    fn cloned_box(&self) -> Box<dyn ProxyClient>;
+}
+
+impl Clone for Box<dyn ProxyClient> {
+    fn clone(&self) -> Box<dyn ProxyClient> {
+        self.cloned_box()
+    }
+}
