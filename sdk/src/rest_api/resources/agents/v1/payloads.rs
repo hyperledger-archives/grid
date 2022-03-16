@@ -19,7 +19,7 @@ use crate::{
     rest_api::resources::{error::ErrorResponse, paging::v1::Paging},
 };
 
-use serde_json::Value as JsonValue;
+use serde_json::{json, Value as JsonValue};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentSlice {
