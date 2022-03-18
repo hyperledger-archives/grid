@@ -56,6 +56,8 @@ pub mod pike;
 pub mod product;
 pub mod protocol;
 pub mod protos;
+#[cfg(feature = "proxy")]
+pub mod proxy;
 #[cfg(feature = "purchase-order")]
 pub mod purchase_order;
 #[cfg(feature = "rest-api")]

@@ -120,6 +120,7 @@ experimental = [
     "batch-processor",
     "batch-tracking",
     "batch-store",
+    "proxy",
     "rest-api-actix-web-3",
     "rest-api-actix-web-3-run",
     "rest-api-endpoint-record",
@@ -140,6 +141,7 @@ pike = ["cfg-if", "workflow"]
 product-gdsn = [ "libc", "quick-xml", "reqwest" ]
 purchase-order = ["pike", "regex"]
 product = ["pike", "schema"]
+proxy = []
 schema = ["pike"]
 track-and-trace = ["base64"]
 batch-tracking = ["transact"]
