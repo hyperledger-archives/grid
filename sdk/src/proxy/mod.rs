@@ -15,3 +15,4 @@
 //! Traits and implementations useful for proxying requests to a REST API.
 
 pub mod error;
+pub mod request;
