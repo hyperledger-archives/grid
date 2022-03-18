@@ -16,6 +16,7 @@ use std::error::Error;
 use std::fmt;
 
 use crate::error::{InternalError, InvalidArgumentError};
+use crate::proxy::response::ProxyResponse;
 
 /// Represents Store errors
 #[derive(Debug)]
@@ -38,6 +39,19 @@ impl fmt::Display for ProxyError {
         match self {
             ProxyError::InternalError(err) => err.fmt(f),
             ProxyError::InvalidArgumentError(err) => err.fmt(f),
+        }
+    }
+}
+
+impl From<ProxyError> for ProxyResponse {
+    fn from(err: ProxyError) -> Self {
+        match err {
+            ProxyError::InternalError(err) => {
+                ProxyResponse::new(500, format!("{err}").as_bytes().to_owned())
+            }
+            ProxyError::InvalidArgumentError(err) => {
+                ProxyResponse::new(400, format!("{err}").as_bytes().to_owned())
+            }
         }
     }
 }
