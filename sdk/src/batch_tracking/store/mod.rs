@@ -27,7 +27,7 @@ pub use error::{BatchBuilderError, BatchTrackingStoreError};
 
 const NON_SPLINTER_SERVICE_ID_DEFAULT: &str = "----";
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BatchStatus {
     Unknown,
     Pending,
@@ -36,7 +36,7 @@ pub enum BatchStatus {
     Committed(Vec<ValidTransaction>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct InvalidTransaction {
     transaction_id: String,
     error_message: String,
@@ -112,7 +112,7 @@ impl InvalidTransactionBuilder {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ValidTransaction {
     transaction_id: String,
 }
@@ -146,7 +146,7 @@ impl ValidTransactionBuilder {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SubmissionError {
     error_type: String,
     error_message: String,
@@ -203,6 +203,7 @@ impl SubmissionErrorBuilder {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct TrackingBatch {
     service_id: String,
     batch_header: String,
@@ -298,6 +299,11 @@ impl TrackingBatchBuilder {
 
     pub fn with_submitted(mut self, submitted: bool) -> Self {
         self.submitted = submitted;
+        self
+    }
+
+    pub fn with_created_at(mut self, created_at: i64) -> Self {
+        self.created_at = created_at;
         self
     }
 
@@ -407,6 +413,7 @@ pub struct TrackingBatchList {
     pub batches: Vec<TrackingBatch>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct TrackingTransaction {
     family_name: String,
     family_version: String,
@@ -677,10 +684,11 @@ pub trait BatchTrackingStore {
     /// # Arguments
     ///
     ///  * `id` - The ID or data change ID of the batch to fetch
+    ///  * `service_id` - The service ID
     fn get_batch(
         &self,
         id: &str,
-        service_id: Option<&str>,
+        service_id: &str,
     ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError>;
 
     /// Lists batches with a given status from the underlying storage
@@ -748,7 +756,7 @@ where
     fn get_batch(
         &self,
         _id: &str,
-        _service_id: Option<&str>,
+        _service_id: &str,
     ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
         unimplemented!();
     }

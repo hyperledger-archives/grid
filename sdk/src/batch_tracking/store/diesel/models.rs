@@ -50,7 +50,7 @@ pub struct TransactionModel {
     pub signer_public_key: String,
 }
 
-#[derive(Insertable, PartialEq, Debug)]
+#[derive(Insertable, Queryable, PartialEq, Debug)]
 #[table_name = "transaction_receipts"]
 pub struct TransactionReceiptModel {
     pub service_id: String,
@@ -63,7 +63,7 @@ pub struct TransactionReceiptModel {
     pub external_error_message: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Debug)]
+#[derive(Insertable, Queryable, PartialEq, Debug)]
 #[table_name = "batch_statuses"]
 pub struct BatchStatusModel {
     pub service_id: String,
@@ -74,7 +74,7 @@ pub struct BatchStatusModel {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Insertable, PartialEq, Debug)]
+#[derive(Insertable, Queryable, PartialEq, Debug)]
 #[table_name = "submissions"]
 pub struct SubmissionModel {
     pub service_id: String,
@@ -122,6 +122,19 @@ impl
 
 impl From<TransactionModel> for TrackingTransaction {
     fn from(transaction: TransactionModel) -> Self {
+        Self {
+            family_name: transaction.family_name.to_string(),
+            family_version: transaction.family_version.to_string(),
+            transaction_id: transaction.transaction_id.to_string(),
+            payload: transaction.payload.to_vec(),
+            signer_public_key: transaction.signer_public_key.to_string(),
+            service_id: transaction.service_id.clone(),
+        }
+    }
+}
+
+impl From<&TransactionModel> for TrackingTransaction {
+    fn from(transaction: &TransactionModel) -> Self {
         Self {
             family_name: transaction.family_name.to_string(),
             family_version: transaction.family_version.to_string(),
@@ -275,6 +288,35 @@ impl TryFrom<TransactionReceipt> for ValidTransaction {
 
         Ok(Self {
             transaction_id: receipt.transaction_id,
+        })
+    }
+}
+
+impl TryFrom<SubmissionModel> for SubmissionError {
+    type Error = BatchTrackingStoreError;
+
+    fn try_from(submission: SubmissionModel) -> Result<Self, Self::Error> {
+        if submission.error_message.is_none() {
+            return Err(BatchTrackingStoreError::InternalError(
+                InternalError::with_message(
+                    "Submission errors must have an error message".to_string(),
+                ),
+            ));
+        }
+        let error_message = submission.error_message.as_ref().unwrap().to_string();
+
+        if submission.error_type.is_none() {
+            return Err(BatchTrackingStoreError::InternalError(
+                InternalError::with_message(
+                    "Submission errors must have an error type".to_string(),
+                ),
+            ));
+        }
+        let error_type = submission.error_type.as_ref().unwrap().to_string();
+
+        Ok(Self {
+            error_message,
+            error_type,
         })
     }
 }
