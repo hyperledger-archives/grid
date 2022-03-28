@@ -179,6 +179,7 @@ impl
         match batch_status.dlt_status.as_str() {
             "UNKNOWN" => Ok(BatchStatus::Unknown),
             "PENDING" => Ok(BatchStatus::Pending),
+            "DELAYED" => Ok(BatchStatus::Delayed),
             "INVALID" => {
                 if invalid_transactions.is_empty() {
                     return Err(BatchTrackingStoreError::InternalError(

@@ -31,6 +31,7 @@ const NON_SPLINTER_SERVICE_ID_DEFAULT: &str = "----";
 pub enum BatchStatus {
     Unknown,
     Pending,
+    Delayed,
     Invalid(Vec<InvalidTransaction>),
     Valid(Vec<ValidTransaction>),
     Committed(Vec<ValidTransaction>),
