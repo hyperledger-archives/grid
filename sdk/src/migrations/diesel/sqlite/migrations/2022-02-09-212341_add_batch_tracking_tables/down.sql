@@ -13,6 +13,9 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
+DROP TRIGGER set_batch_statuses_updated_at_timestamp;
+DROP TRIGGER set_submissions_updated_at_timestamp;
+
 DROP TABLE batches;
 DROP TABLE transactions;
 DROP TABLE transaction_receipts;

@@ -17,6 +17,25 @@ DROP TABLE batches CASCADE;
 DROP TABLE transactions;
 DROP TABLE transaction_receipts;
 
+CREATE OR REPLACE FUNCTION utc_timestamp()
+RETURNS INTEGER AS $$
+DECLARE
+	res INTEGER;
+BEGIN
+	SELECT extract(epoch from NOW())
+    INTO res;
+    RETURN res;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = utc_timestamp();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TABLE batches
   (
      service_id        VARCHAR(17) NOT NULL,
@@ -26,7 +45,7 @@ CREATE TABLE batches
      trace             BOOLEAN NOT NULL,
      serialized_batch  BYTEA NOT NULL,
      submitted         BOOLEAN NOT NULL,
-     created_at        TIMESTAMP NOT NULL,
+     created_at        INTEGER NOT NULL DEFAULT utc_timestamp(),
      PRIMARY KEY (service_id, batch_id)
   );
 
@@ -62,12 +81,12 @@ CREATE TABLE submissions
      service_id            VARCHAR(17) NOT NULL,
      batch_id              VARCHAR(128) NOT NULL,
      batch_service_id      VARCHAR(17) NOT NULL,
-     last_checked          TIMESTAMP,
+     last_checked          INTEGER,
      times_checked         VARCHAR(32),
      error_type            VARCHAR(64),
      error_message         TEXT,
-     created_at            TIMESTAMP NOT NULL,
-     updated_at            TIMESTAMP NOT NULL,
+     created_at            INTEGER NOT NULL DEFAULT utc_timestamp(),
+     updated_at            INTEGER NOT NULL DEFAULT utc_timestamp(),
      FOREIGN KEY (batch_service_id, batch_id) REFERENCES batches(service_id, batch_id) ON DELETE CASCADE,
      PRIMARY KEY (service_id, batch_id)
   );
@@ -78,8 +97,18 @@ CREATE TABLE batch_statuses
      batch_id          VARCHAR(128) NOT NULL,
      batch_service_id  VARCHAR(17) NOT NULL,
      dlt_status        VARCHAR(16) NOT NULL,
-     created_at        TIMESTAMP NOT NULL,
-     updated_at        TIMESTAMP NOT NULL,
+     created_at        INTEGER NOT NULL DEFAULT utc_timestamp(),
+     updated_at        INTEGER NOT NULL DEFAULT utc_timestamp(),
      FOREIGN KEY (batch_service_id, batch_id) REFERENCES batches(service_id, batch_id) ON DELETE CASCADE,
      PRIMARY KEY (service_id, batch_id)
   );
+
+CREATE TRIGGER set_batch_statuses_updated_at_timestamp
+BEFORE UPDATE ON batch_statuses
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+CREATE TRIGGER set_submissions_updated_at_timestamp
+BEFORE UPDATE ON submissions
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();

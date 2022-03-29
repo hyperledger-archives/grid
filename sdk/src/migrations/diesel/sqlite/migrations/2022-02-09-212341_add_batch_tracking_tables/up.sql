@@ -26,7 +26,7 @@ CREATE TABLE batches
      trace             BOOLEAN NOT NULL,
      serialized_batch  BLOB NOT NULL,
      submitted         BOOLEAN NOT NULL,
-     created_at        TIMESTAMP NOT NULL,
+     created_at        INTEGER NOT NULL DEFAULT (cast(strftime('%s') as int)),
      PRIMARY KEY (service_id, batch_id)
   );
 
@@ -62,12 +62,12 @@ CREATE TABLE submissions
      service_id            VARCHAR(17) NOT NULL,
      batch_id              VARCHAR(128) NOT NULL,
      batch_service_id      VARCHAR(17) NOT NULL,
-     last_checked          TIMESTAMP,
+     last_checked          INTEGER,
      times_checked         VARCHAR(32),
      error_type            VARCHAR(64),
      error_message         TEXT,
-     created_at            TIMESTAMP NOT NULL,
-     updated_at            TIMESTAMP NOT NULL,
+     created_at            INTEGER NOT NULL DEFAULT (cast(strftime('%s') as int)),
+     updated_at            INTEGER NOT NULL DEFAULT (cast(strftime('%s') as int)),
      FOREIGN KEY (batch_service_id, batch_id) REFERENCES batches(service_id, batch_id) ON DELETE CASCADE,
      PRIMARY KEY (service_id, batch_id)
   );
@@ -78,8 +78,26 @@ CREATE TABLE batch_statuses
      batch_id          VARCHAR(128) NOT NULL,
      batch_service_id  VARCHAR(17) NOT NULL,
      dlt_status        VARCHAR(16) NOT NULL,
-     created_at        TIMESTAMP NOT NULL,
-     updated_at        TIMESTAMP NOT NULL,
+     created_at        INTEGER NOT NULL DEFAULT (cast(strftime('%s') as int)),
+     updated_at        INTEGER NOT NULL DEFAULT (cast(strftime('%s') as int)),
      FOREIGN KEY (batch_service_id, batch_id) REFERENCES batches(service_id, batch_id) ON DELETE CASCADE,
      PRIMARY KEY (service_id, batch_id)
   );
+
+CREATE TRIGGER IF NOT EXISTS set_batch_statuses_updated_at_timestamp
+BEFORE UPDATE ON batch_statuses
+FOR EACH ROW
+BEGIN
+    UPDATE batch_statuses
+    SET updated_at = (cast(strftime('%s') as int))
+    WHERE rowid = NEW.rowid;
+END;
+
+CREATE TRIGGER IF NOT EXISTS set_submissions_updated_at_timestamp
+BEFORE UPDATE ON submissions
+FOR EACH ROW
+BEGIN
+    UPDATE submissions
+    SET updated_at = (cast(strftime('%s') as int))
+    WHERE rowid = NEW.rowid;
+END;

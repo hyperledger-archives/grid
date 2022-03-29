@@ -16,7 +16,6 @@ use core::convert::TryFrom;
 
 use crate::batch_tracking::store::diesel::schema::*;
 use crate::error::InternalError;
-use chrono::NaiveDateTime;
 
 use super::{
     BatchStatus, InvalidTransaction, SubmissionError, TrackingBatch, TrackingTransaction,
@@ -34,7 +33,7 @@ pub struct BatchModel {
     pub trace: bool,
     pub serialized_batch: Vec<u8>,
     pub submitted: bool,
-    pub created_at: NaiveDateTime,
+    pub created_at: i64,
 }
 
 #[derive(Insertable, Queryable, PartialEq, Debug)]
@@ -63,6 +62,15 @@ pub struct TransactionReceiptModel {
     pub external_error_message: Option<String>,
 }
 
+#[derive(Insertable, Debug)]
+#[table_name = "batch_statuses"]
+pub struct NewBatchStatusModel {
+    pub service_id: String,
+    pub batch_id: String,
+    pub batch_service_id: String,
+    pub dlt_status: String,
+}
+
 #[derive(Insertable, Queryable, PartialEq, Debug, Clone)]
 #[table_name = "batch_statuses"]
 pub struct BatchStatusModel {
@@ -70,8 +78,19 @@ pub struct BatchStatusModel {
     pub batch_id: String,
     pub batch_service_id: String,
     pub dlt_status: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[table_name = "submissions"]
+pub struct NewSubmissionModel {
+    pub service_id: String,
+    pub batch_service_id: String,
+    pub last_checked: Option<i64>,
+    pub times_checked: Option<String>,
+    pub error_type: Option<String>,
+    pub error_message: Option<String>,
 }
 
 #[derive(Insertable, Queryable, PartialEq, Debug)]
@@ -80,12 +99,12 @@ pub struct SubmissionModel {
     pub service_id: String,
     pub batch_id: String,
     pub batch_service_id: String,
-    pub last_checked: Option<NaiveDateTime>,
+    pub last_checked: Option<i64>,
     pub times_checked: Option<String>,
     pub error_type: Option<String>,
     pub error_message: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 impl
@@ -112,7 +131,7 @@ impl
             trace: batch.trace,
             serialized_batch: batch.serialized_batch.to_vec(),
             submitted: batch.submitted,
-            created_at: batch.created_at.timestamp(),
+            created_at: batch.created_at,
             transactions,
             batch_status,
             submission_error,
@@ -351,7 +370,7 @@ pub fn make_batch_models(batches: &[TrackingBatch]) -> Vec<BatchModel> {
             trace: batch.trace(),
             serialized_batch: batch.serialized_batch().to_vec(),
             submitted: batch.submitted(),
-            created_at: NaiveDateTime::from_timestamp(batch.created_at(), 0),
+            created_at: batch.created_at(),
         };
 
         models.push(model)

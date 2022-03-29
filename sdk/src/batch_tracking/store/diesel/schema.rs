@@ -18,8 +18,8 @@ table! {
         batch_id -> Text,
         batch_service_id -> Text,
         dlt_status -> Text,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
+        created_at -> Int8,
+        updated_at -> Int8,
     }
 }
 
@@ -32,7 +32,7 @@ table! {
         trace -> Bool,
         serialized_batch -> Binary,
         submitted -> Bool,
-        created_at -> Timestamp,
+        created_at -> Int8,
     }
 }
 
@@ -41,12 +41,12 @@ table! {
         service_id -> Text,
         batch_id -> Text,
         batch_service_id -> Text,
-        last_checked -> Nullable<Timestamp>,
+        last_checked -> Nullable<Int8>,
         times_checked -> Nullable<Text>,
         error_type -> Nullable<Text>,
         error_message -> Nullable<Text>,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
+        created_at -> Int8,
+        updated_at -> Int8,
     }
 }
 
