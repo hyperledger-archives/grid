@@ -147,7 +147,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use std::fs::File;
     use std::io::Write;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     const TEST_DATA: &str = "lagomorpha";
     const TEST_HASH: &str = "9b44a9cb40096bf6767dec8e97bdc5a36ead7bc6200025cac801bf445307aba0";
@@ -200,7 +200,7 @@ mod tests {
             .with_body("world")
             .create();
 
-        let tmp_dir = TempDir::new("example").expect("could not create tempdir");
+        let tmp_dir = TempDir::new().expect("could not create tempdir");
         let file_path = tmp_dir.path().join("some_file_location.txt");
 
         assert!(!file_path.exists());
@@ -222,7 +222,7 @@ mod tests {
 
         let mock_endpoint = mock("GET", "/bad_file.zip").with_status(503).create();
 
-        let tmp_dir = TempDir::new("example").expect("could not create tempdir");
+        let tmp_dir = TempDir::new().expect("could not create tempdir");
         let file_path = tmp_dir.path().join("some_file_location.txt");
 
         assert!(!file_path.exists());
@@ -243,7 +243,7 @@ mod tests {
     #[test]
     // Test that CachingDownloader does not download when file is cached
     fn caching_download_doesnot_download_cached_file() {
-        let temp_dir = TempDir::new("example").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let dest_dir = temp_dir.path();
 
         let file_name = "gs1.zip";
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     // Test that CachingDownloader downloads if file is not cached
     fn caching_download_downloads_file() -> Result<(), CliError> {
-        let temp_dir = TempDir::new("example").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let dest_dir = temp_dir.path();
 
         let file_name = "gs1.zip";
@@ -338,7 +338,7 @@ mod tests {
     #[cfg(feature = "xsd-downloader-force-download")]
     // Test that CachingDownloader downloads if file is cached, but force_download is enabled
     fn caching_download_downloads_cached_file_with_force_download() -> Result<(), CliError> {
-        let temp_dir = TempDir::new("example").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let dest_dir = temp_dir.path();
 
         let file_name = "gs1.zip";
@@ -393,7 +393,7 @@ mod tests {
     #[cfg(feature = "xsd-downloader-force-download")]
     // Test that CachingDownloader fails if the temporary file already exists
     fn caching_download_fails_if_temp_file_exists() {
-        let temp_dir = TempDir::new("example").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let dest_dir = temp_dir.path();
 
         let file_name = "gs1.zip";
@@ -432,7 +432,7 @@ mod tests {
     #[test]
     // Test that CachingDownloader fails if the temporary file already exists
     fn caching_download_fails_if_hash_incorrect() -> Result<(), CliError> {
-        let temp_dir = TempDir::new("example").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let dest_dir = temp_dir.path();
 
         let file_name = "gs1.zip";

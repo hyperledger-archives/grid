@@ -359,7 +359,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use std::fs::{self, File};
     use std::path::Path;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[derive(Debug, PartialEq)]
     struct MockCacheDownloaderCall {
@@ -462,7 +462,7 @@ mod tests {
     // The downloader, validator, and extractor are mocked as successful, and
     // the calls to them are each compared against expected calls.
     fn fae_default_configuration_downloads_and_extracts() {
-        let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let path = temp_dir.into_path();
         let artifact_dir = path.join("artifact");
         let schema_dir = path.join("schema");
@@ -541,7 +541,7 @@ mod tests {
     //
     // The downloader expects zero calls.
     fn fae_files_copy_if_copy_option_enabled() {
-        let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let path = temp_dir.into_path();
         let artifact_dir = path.join("artifact");
         fs::create_dir(&artifact_dir).expect("could not create directory");
@@ -614,7 +614,7 @@ mod tests {
     //
     // The validator expects zero calls.
     fn fae_files_validation_does_not_happen_if_disabled() {
-        let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let path = temp_dir.into_path();
         let artifact_dir = path.join("artifact");
         let schema_dir = path.join("schema");
@@ -690,7 +690,7 @@ mod tests {
     //
     // The downloader, validator, and extractor expect zero calls.
     fn fae_cache_only_with_missing_artifact_fails() {
-        let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let path = temp_dir.into_path();
         let schema_dir = path.join("schema");
 
@@ -734,7 +734,7 @@ mod tests {
     //
     // The downloader, validator, and extractor expect zero calls.
     fn fae_cache_only_copy_from_missing_file_fails() {
-        let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let path = temp_dir.into_path();
         let schema_dir = path.join("schema");
 
@@ -786,7 +786,7 @@ mod tests {
     // The downloader, validator, and extractor are mocked as successful, and
     // the calls to them are each compared against expected calls.
     fn fae_if_not_cached_copy_from_missing_file_downloads() {
-        let temp_dir = TempDir::new("fae_xsds").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let path = temp_dir.into_path();
         let schema_dir = path.join("schema");
         let artifact_dir = path.join("artifact");
@@ -863,7 +863,7 @@ mod tests {
 
     #[test]
     fn test_directory_writable_succeeds_if_writable() {
-        let temp_dir = TempDir::new("writable").expect("could not create tempdir");
+        let temp_dir = TempDir::new().expect("could not create tempdir");
         let path = temp_dir.into_path();
 
         test_directory_writable("test", &path).expect("could not write to directory");
