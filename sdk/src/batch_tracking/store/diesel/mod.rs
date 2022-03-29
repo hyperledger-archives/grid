@@ -26,6 +26,8 @@ use super::{
 
 use crate::error::ResourceTemporarilyUnavailableError;
 
+use models::make_database_id;
+
 use operations::add_batches::BatchTrackingStoreAddBatchesOperation as _;
 use operations::get_batch::BatchTrackingStoreGetBatchOperation as _;
 use operations::get_batch_status::BatchTrackingStoreGetBatchStatusOperation as _;
@@ -61,7 +63,7 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .get_batch_status(id, service_id)
+        .get_batch_status(&make_database_id(id, service_id))
     }
 
     fn update_batch_status(
@@ -101,7 +103,7 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .get_batch(id, service_id)
+        .get_batch(&make_database_id(id, service_id))
     }
 
     fn list_batches_by_status(
@@ -139,7 +141,7 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .get_batch_status(id, service_id)
+        .get_batch_status(&make_database_id(id, service_id))
     }
 
     fn update_batch_status(
@@ -179,7 +181,7 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::sqlite::SqliteConne
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .get_batch(id, service_id)
+        .get_batch(&make_database_id(id, service_id))
     }
 
     fn list_batches_by_status(
@@ -231,7 +233,8 @@ impl<'a> BatchTrackingStore for DieselConnectionBatchTrackingStore<'a, diesel::p
         id: &str,
         service_id: &str,
     ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
-        BatchTrackingStoreOperations::new(self.connection).get_batch_status(id, service_id)
+        BatchTrackingStoreOperations::new(self.connection)
+            .get_batch_status(&make_database_id(id, service_id))
     }
 
     fn update_batch_status(
@@ -261,7 +264,8 @@ impl<'a> BatchTrackingStore for DieselConnectionBatchTrackingStore<'a, diesel::p
         id: &str,
         service_id: &str,
     ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
-        BatchTrackingStoreOperations::new(self.connection).get_batch(id, service_id)
+        BatchTrackingStoreOperations::new(self.connection)
+            .get_batch(&make_database_id(id, service_id))
     }
 
     fn list_batches_by_status(
@@ -296,7 +300,8 @@ impl<'a> BatchTrackingStore
         id: &str,
         service_id: &str,
     ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
-        BatchTrackingStoreOperations::new(self.connection).get_batch_status(id, service_id)
+        BatchTrackingStoreOperations::new(self.connection)
+            .get_batch_status(&make_database_id(id, service_id))
     }
 
     fn update_batch_status(
@@ -326,7 +331,8 @@ impl<'a> BatchTrackingStore
         id: &str,
         service_id: &str,
     ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
-        BatchTrackingStoreOperations::new(self.connection).get_batch(id, service_id)
+        BatchTrackingStoreOperations::new(self.connection)
+            .get_batch(&make_database_id(id, service_id))
     }
 
     fn list_batches_by_status(

@@ -29,44 +29,23 @@ use diesel::prelude::*;
 use std::convert::TryFrom;
 
 pub(in crate::batch_tracking::store::diesel) trait BatchTrackingStoreGetBatchOperation {
-    fn get_batch(
-        &self,
-        id: &str,
-        service_id: &str,
-    ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError>;
+    fn get_batch(&self, id: &str) -> Result<Option<TrackingBatch>, BatchTrackingStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> BatchTrackingStoreGetBatchOperation
     for BatchTrackingStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn get_batch(
-        &self,
-        id: &str,
-        service_id: &str,
-    ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
+    fn get_batch(&self, id: &str) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             // This performs a query to select all columns from the batches,
             // batch_statuses, and submissions tables joined on the batch_id
-            // column. These rows are then filtered on the batch_id and
-            // service_id.
+            // column. These rows are then filtered on the batch_id.
             let query = batches::table
                 .into_boxed()
-                .left_join(
-                    batch_statuses::table.on(batches::batch_id
-                        .eq(batch_statuses::batch_id)
-                        .and(batches::service_id.eq(batch_statuses::batch_service_id))),
-                )
-                .left_join(
-                    submissions::table.on(batches::batch_id
-                        .eq(submissions::batch_id)
-                        .and(batches::service_id.eq(submissions::batch_service_id))),
-                )
-                .filter(
-                    batches::batch_id
-                        .eq(id)
-                        .and(batches::service_id.eq(service_id)),
-                )
+                .left_join(batch_statuses::table.on(batches::batch_id.eq(batch_statuses::batch_id)))
+                .left_join(submissions::table.on(batches::batch_id.eq(submissions::batch_id)))
+                .filter(batches::batch_id.eq(id))
                 .select((
                     batches::all_columns,
                     batch_statuses::all_columns.nullable(),
@@ -98,11 +77,7 @@ impl<'a> BatchTrackingStoreGetBatchOperation
             let query = transactions::table
                 .into_boxed()
                 .select(transactions::all_columns)
-                .filter(
-                    transactions::batch_id
-                        .eq(id)
-                        .and(transactions::service_id.eq(service_id)),
-                );
+                .filter(transactions::batch_id.eq(id));
 
             let txn_models: Vec<TransactionModel> =
                 query.load::<TransactionModel>(self.conn).map_err(|err| {
@@ -124,11 +99,9 @@ impl<'a> BatchTrackingStoreGetBatchOperation
             // This query fetches the transaction receipts for the transactions
             // in the batch. These are used to build the valid and invalid
             // transaction structs that are used to build the batch status.
-            let query = transaction_receipts::table.into_boxed().filter(
-                transaction_receipts::transaction_id
-                    .eq_any(txn_ids)
-                    .and(transaction_receipts::service_id.eq(service_id)),
-            );
+            let query = transaction_receipts::table
+                .into_boxed()
+                .filter(transaction_receipts::transaction_id.eq_any(txn_ids));
 
             let receipt_results: Vec<TransactionReceiptModel> = query
                 .load::<TransactionReceiptModel>(self.conn)
@@ -181,33 +154,16 @@ impl<'a> BatchTrackingStoreGetBatchOperation
 impl<'a> BatchTrackingStoreGetBatchOperation
     for BatchTrackingStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn get_batch(
-        &self,
-        id: &str,
-        service_id: &str,
-    ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
+    fn get_batch(&self, id: &str) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             // This performs a query to select all columns from the batches,
             // batch_statuses, and submissions tables joined on the batch_id
-            // column. These rows are then filtered on the batch_id and
-            // service_id.
+            // column. These rows are then filtered on the batch_id.
             let query = batches::table
                 .into_boxed()
-                .left_join(
-                    batch_statuses::table.on(batches::batch_id
-                        .eq(batch_statuses::batch_id)
-                        .and(batches::service_id.eq(batch_statuses::batch_service_id))),
-                )
-                .left_join(
-                    submissions::table.on(batches::batch_id
-                        .eq(submissions::batch_id)
-                        .and(batches::service_id.eq(submissions::batch_service_id))),
-                )
-                .filter(
-                    batches::batch_id
-                        .eq(id)
-                        .and(batches::service_id.eq(service_id)),
-                )
+                .left_join(batch_statuses::table.on(batches::batch_id.eq(batch_statuses::batch_id)))
+                .left_join(submissions::table.on(batches::batch_id.eq(submissions::batch_id)))
+                .filter(batches::batch_id.eq(id))
                 .select((
                     batches::all_columns,
                     batch_statuses::all_columns.nullable(),
@@ -239,11 +195,7 @@ impl<'a> BatchTrackingStoreGetBatchOperation
             let query = transactions::table
                 .into_boxed()
                 .select(transactions::all_columns)
-                .filter(
-                    transactions::batch_id
-                        .eq(id)
-                        .and(transactions::service_id.eq(service_id)),
-                );
+                .filter(transactions::batch_id.eq(id));
 
             let txn_models: Vec<TransactionModel> =
                 query.load::<TransactionModel>(self.conn).map_err(|err| {
@@ -265,11 +217,9 @@ impl<'a> BatchTrackingStoreGetBatchOperation
             // This query fetches the transaction receipts for the transactions
             // in the batch. These are used to build the valid and invalid
             // transaction structs that are used to build the batch status.
-            let query = transaction_receipts::table.into_boxed().filter(
-                transaction_receipts::transaction_id
-                    .eq_any(txn_ids)
-                    .and(transaction_receipts::service_id.eq(service_id)),
-            );
+            let query = transaction_receipts::table
+                .into_boxed()
+                .filter(transaction_receipts::transaction_id.eq_any(txn_ids));
 
             let receipt_results: Vec<TransactionReceiptModel> = query
                 .load::<TransactionReceiptModel>(self.conn)
