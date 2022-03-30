@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
 
       - name: Publish main images to dockerhub
-        run: docker buildx ls && ./ci/publish-docker main
+        run: docker buildx ls && ./ci/publish-docker nightly
         env:
           NAMESPACE: ${{ secrets.DOCKER_HUB_NAMESPACE }}/
           VERSION: AUTO_STRICT
