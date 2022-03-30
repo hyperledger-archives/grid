@@ -1,0 +1,55 @@
+name: Publish Docker Images
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+env:
+  slack-channel: 'alerts'
+
+concurrency:
+  group: "${{ github.ref }}-${{ github.workflow }}"
+  cancel-in-progress: true
+
+jobs:
+  publish_docker_images:
+    if: >-
+      github.repository_owner == 'hyperledger'
+    runs-on: macos-arm
+    steps:
+      - name: Display envvars
+        run: env
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Publish main images to dockerhub
+        run: docker buildx ls && ./ci/publish-docker main
+        env:
+          NAMESPACE: ${{ secrets.DOCKER_HUB_NAMESPACE }}/
+          VERSION: AUTO_STRICT
+          CARGO_TERM_COLOR: always
+
+      - name: Publish experimental images to dockerhub
+        run: docker buildx ls && ./ci/publish-docker experimental
+        env:
+          NAMESPACE: ${{ secrets.DOCKER_HUB_NAMESPACE }}/
+          VERSION: AUTO_STRICT
+          CARGO_TERM_COLOR: always
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

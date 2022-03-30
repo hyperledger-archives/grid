@@ -20,6 +20,23 @@ top_dir=$(cd $(dirname $(dirname $0)) && pwd)
 export VERSION=AUTO_STRICT
 export REPO_VERSION=$($top_dir/bin/get_version)
 
+export NAMESPACE=${NAMESPACE}
+
+SERVICES="
+    gridd
+    griddle
+    grid-cli
+    grid-ui
+"
+
+build_docker() {
+    for SERVICE in $SERVICES
+    do
+        echo "Building $SERVICE"
+        docker buildx bake -f ci/docker-bake.hcl $SERVICE --push
+    done
+}
+
 if [ -z $1 ];
 then
     # Runs if no arguments are provided
@@ -27,11 +44,10 @@ then
     echo "Publishing release images"
     echo "ISOLATION_ID is: $ISOLATION_ID"
     #Push to dockerhub with the full tag e.g. (1.2.3)
-    ISOLATION_ID=${REPO_VERSION} docker-compose -f docker-compose-installed.yaml build
-    ISOLATION_ID=${REPO_VERSION} docker-compose -f docker-compose-installed.yaml push
+    build_docker
+    ISOLATION_ID=${REPO_VERSION} build_docker
     # Push to dockerhub with just major/minor e.g. (1.2)
-    ISOLATION_ID=${REPO_VERSION%.*} docker-compose -f docker-compose-installed.yaml build
-    ISOLATION_ID=${REPO_VERSION%.*} docker-compose -f docker-compose-installed.yaml push
+    ISOLATION_ID=${REPO_VERSION%.*} build_docker
     exit 0
 else
     export ISOLATION_ID=$1
@@ -45,5 +61,4 @@ fi
 echo "Publishing images for an untagged build"
 echo "ISOLATION_ID is: $ISOLATION_ID"
 
-docker-compose -f docker-compose-installed.yaml build
-docker-compose -f docker-compose-installed.yaml push
+build_docker
