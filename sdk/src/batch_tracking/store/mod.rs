@@ -111,6 +111,7 @@ impl InvalidTransaction {
     }
 }
 
+#[derive(Default)]
 pub struct InvalidTransactionBuilder {
     transaction_id: String,
     error_message: Option<String>,
@@ -130,7 +131,7 @@ impl InvalidTransactionBuilder {
         self
     }
 
-    pub fn error_data(mut self, error_data: Vec<u8>) -> Self {
+    pub fn with_error_data(mut self, error_data: Vec<u8>) -> Self {
         self.error_data = Some(error_data);
         self
     }
@@ -768,14 +769,13 @@ pub trait BatchTrackingStore {
     ///    update
     ///  * `service_id` - The service ID
     ///  * `status` - The new status for the batch
-    ///  * `errors` - Any errors encountered while attempting to submit the
-    ///    batch
     fn update_batch_status(
         &self,
-        id: String,
-        service_id: Option<&str>,
-        status: BatchStatus,
-        errors: Vec<SubmissionError>,
+        id: &str,
+        service_id: &str,
+        status: Option<BatchStatus>,
+        transaction_receipts: Vec<TransactionReceipt>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError>;
 
     /// Adds batches to the underlying storage
@@ -854,10 +854,11 @@ where
 
     fn update_batch_status(
         &self,
-        _id: String,
-        _service_id: Option<&str>,
-        _status: BatchStatus,
-        _errors: Vec<SubmissionError>,
+        _id: &str,
+        _service_id: &str,
+        _status: Option<BatchStatus>,
+        _transaction_receipts: Vec<TransactionReceipt>,
+        _submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
         unimplemented!();
     }

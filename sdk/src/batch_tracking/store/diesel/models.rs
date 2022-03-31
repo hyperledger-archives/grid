@@ -50,7 +50,7 @@ pub struct TransactionModel {
     pub signer_public_key: String,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, AsChangeset)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, AsChangeset, Clone)]
 #[table_name = "transaction_receipts"]
 #[primary_key(service_id, transaction_id)]
 #[changeset_options(treat_none_as_null = "true")]
@@ -357,6 +357,19 @@ impl TryFrom<TransactionReceipt> for ValidTransaction {
         Ok(Self {
             transaction_id: receipt.transaction_id,
         })
+    }
+}
+
+impl From<(SubmissionError, &str, &str)> for NewSubmissionModel {
+    fn from(
+        (error, batch_header, service_id): (SubmissionError, &str, &str),
+    ) -> NewSubmissionModel {
+        NewSubmissionModel {
+            batch_id: batch_header.to_string(),
+            service_id: service_id.to_string(),
+            error_type: Some(error.error_type().to_string()),
+            error_message: Some(error.error_message().to_string()),
+        }
     }
 }
 
