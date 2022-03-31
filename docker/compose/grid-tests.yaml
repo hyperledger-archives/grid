@@ -25,6 +25,9 @@ services:
         - https_proxy
         - no_proxy
     image: grid:tests
+    volumes:
+        - ../../cache:/var/cache/grid/
     environment:
         - TEST_ARGS=-- --test-threads=1
+        - GRID_TEST_CACHE_DIR=/var/cache/grid
     command: bash -c "just test"
