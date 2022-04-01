@@ -1,5 +1,33 @@
 # Release Notes
 
+## Changes in Grid 0.3.3
+
+### Build
+
+ * Update justfile to load .env files by default
+
+ * Update `dirs` library from `0.3` to `0.4`
+ 
+ * Replace tempdir with tempfile to address RUSTSEC-2018-0017
+
+ * Add development prerequisites to build instructions
+
+ * Add integration tests for `grid download-xsd`, and move data validation
+   tests to the integration test step
+
+### Grid SDK
+
+ * Update SplinterBackendClient so it will pass along error messages
+
+### Grid Daemon
+
+ * Updated `/batch_statuses` endpoint to pass along error messages from
+   Splinter by updating the SDK
+
+### Grid UI
+
+ * Replace node-sass with sass to address CVE-2020-24025
+
 ## Changes in Grid 0.3.2
 
 ### Grid CLI
