@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub(super) mod add_batches;
+pub(super) mod change_batch_to_submitted;
 pub(super) mod get_batch;
 pub(super) mod get_batch_status;
 
