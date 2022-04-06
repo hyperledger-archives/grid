@@ -31,6 +31,7 @@ use operations::add_batches::BatchTrackingStoreAddBatchesOperation as _;
 use operations::change_batch_to_submitted::BatchTrackingStoreChangeBatchToSubmittedOperation as _;
 use operations::get_batch::BatchTrackingStoreGetBatchOperation as _;
 use operations::get_batch_status::BatchTrackingStoreGetBatchStatusOperation as _;
+use operations::get_unsubmitted_batches::BatchTrackingStoreGetUnsubmittedBatchesOperation as _;
 use operations::update_batch_status::BatchTrackingStoreUpdateBatchStatusOperation as _;
 use operations::BatchTrackingStoreOperations;
 
@@ -182,7 +183,12 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_unsubmitted_batches()
     }
 
     fn get_failed_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -320,7 +326,12 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::sqlite::SqliteConne
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_unsubmitted_batches()
     }
 
     fn get_failed_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -458,7 +469,7 @@ impl<'a> BatchTrackingStore for DieselConnectionBatchTrackingStore<'a, diesel::p
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+        BatchTrackingStoreOperations::new(self.connection).get_unsubmitted_batches()
     }
 
     fn get_failed_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -579,7 +590,7 @@ impl<'a> BatchTrackingStore
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+        BatchTrackingStoreOperations::new(self.connection).get_unsubmitted_batches()
     }
 
     fn get_failed_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -616,6 +627,7 @@ mod tests {
     static KEY6: &str = "666666666666666666666666666666666666666666666666666666666666666666";
     static KEY7: &str = "777777777777777777777777777777777777777777777777777777777777777777";
     static NONCE: &str = "f9kdzz";
+    static NONCE2: &str = "dzzf9k";
     static BYTES2: [u8; 4] = [0x05, 0x06, 0x07, 0x08];
 
     #[test]
@@ -887,6 +899,95 @@ mod tests {
             res.to_string(),
             BatchTrackingStoreError::NotFoundError("Could not find batch with ID id".to_string())
                 .to_string()
+        );
+    }
+
+    #[test]
+    fn get_unsubmitted_batches() {
+        let pool = create_connection_pool_and_migrate();
+
+        let store = DieselBatchTrackingStore::new(pool);
+
+        let signer = new_signer();
+
+        let pair_1 = TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(NONCE.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .unwrap();
+
+        let pair_2 = TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(NONCE2.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .unwrap();
+
+        let batch_1 = BatchBuilder::new()
+            .with_transactions(vec![pair_1])
+            .build(&*signer)
+            .unwrap();
+
+        let batch_2 = BatchBuilder::new()
+            .with_transactions(vec![pair_2])
+            .build(&*signer)
+            .unwrap();
+
+        let tracking_batch_1 = TrackingBatchBuilder::default()
+            .with_batch(batch_1)
+            .with_service_id("TEST".to_string())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .with_created_at(111111)
+            .build()
+            .unwrap();
+
+        let tracking_batch_2 = TrackingBatchBuilder::default()
+            .with_batch(batch_2)
+            .with_service_id("TEST".to_string())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(true)
+            .with_created_at(111111)
+            .build()
+            .unwrap();
+
+        let expected = TrackingBatchList {
+            batches: vec![tracking_batch_1.clone()],
+        };
+
+        store
+            .add_batches(vec![tracking_batch_1, tracking_batch_2])
+            .expect("Failed to add batches");
+        assert_eq!(
+            store
+                .get_unsubmitted_batches()
+                .expect("Failed to get batch"),
+            expected
         );
     }
 

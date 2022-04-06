@@ -493,6 +493,7 @@ impl TrackingBatchBuilder {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct TrackingBatchList {
     pub batches: Vec<TrackingBatch>,
 }

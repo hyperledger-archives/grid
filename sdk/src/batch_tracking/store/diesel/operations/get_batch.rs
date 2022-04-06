@@ -150,7 +150,7 @@ impl<'a> BatchTrackingStoreGetBatchOperation
                 {
                     let sub_err: Option<SubmissionError> = if let Some(sub) = sub {
                         if sub.error_type.is_some() && sub.error_message.is_some() {
-                            Some(SubmissionError::try_from(sub)?)
+                            Some(SubmissionError::try_from(&sub)?)
                         } else {
                             None
                         }
@@ -288,7 +288,7 @@ impl<'a> BatchTrackingStoreGetBatchOperation
                 {
                     let sub_err: Option<SubmissionError> = if let Some(sub) = sub {
                         if sub.error_type.is_some() && sub.error_message.is_some() {
-                            Some(SubmissionError::try_from(sub)?)
+                            Some(SubmissionError::try_from(&sub)?)
                         } else {
                             None
                         }
