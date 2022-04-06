@@ -162,8 +162,7 @@ impl<'a> BatchTrackingStoreGetBatchOperation
                     };
 
                     let status = if let Some(s) = stat {
-                        let grid_status =
-                            BatchStatus::try_from((s, Some(invalid_txns), Some(valid_txns)))?;
+                        let grid_status = BatchStatus::try_from((s, invalid_txns, valid_txns))?;
                         Some(grid_status)
                     } else {
                         None
@@ -304,8 +303,7 @@ impl<'a> BatchTrackingStoreGetBatchOperation
                     };
 
                     let status = if let Some(s) = stat {
-                        let grid_status =
-                            BatchStatus::try_from((s, Some(invalid_txns), Some(valid_txns)))?;
+                        let grid_status = BatchStatus::try_from((s, invalid_txns, valid_txns))?;
                         Some(grid_status)
                     } else {
                         None

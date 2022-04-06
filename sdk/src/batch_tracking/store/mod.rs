@@ -39,8 +39,13 @@ pub enum BatchStatus {
 #[derive(Clone, Debug, PartialEq)]
 pub struct InvalidTransaction {
     transaction_id: String,
-    error_message: String,
-    error_data: Vec<u8>,
+    // These are for errors from the DLT itself
+    error_message: Option<String>,
+    error_data: Option<Vec<u8>>,
+    // These are for other errors, such as a 404 when attempting to submit
+    // to the DLT
+    external_error_status: Option<String>,
+    external_error_message: Option<String>,
 }
 
 impl InvalidTransaction {
@@ -48,19 +53,29 @@ impl InvalidTransaction {
         &self.transaction_id
     }
 
-    pub fn error_message(&self) -> &str {
-        &self.error_message
+    pub fn error_message(&self) -> Option<&str> {
+        self.error_message.as_deref()
     }
 
-    pub fn error_data(&self) -> &[u8] {
-        &self.error_data
+    pub fn error_data(&self) -> Option<&[u8]> {
+        self.error_data.as_deref()
+    }
+
+    pub fn external_error_status(&self) -> Option<&str> {
+        self.external_error_status.as_deref()
+    }
+
+    pub fn external_error_message(&self) -> Option<&str> {
+        self.external_error_message.as_deref()
     }
 }
 
 pub struct InvalidTransactionBuilder {
     transaction_id: String,
-    error_message: String,
-    error_data: Vec<u8>,
+    error_message: Option<String>,
+    error_data: Option<Vec<u8>>,
+    external_error_status: Option<String>,
+    external_error_message: Option<String>,
 }
 
 impl InvalidTransactionBuilder {
@@ -70,12 +85,22 @@ impl InvalidTransactionBuilder {
     }
 
     pub fn with_error_message(mut self, error_message: String) -> Self {
-        self.error_message = error_message;
+        self.error_message = Some(error_message);
         self
     }
 
     pub fn error_data(mut self, error_data: Vec<u8>) -> Self {
-        self.error_data = error_data;
+        self.error_data = Some(error_data);
+        self
+    }
+
+    pub fn with_external_error_status(mut self, status: String) -> Self {
+        self.external_error_status = Some(status);
+        self
+    }
+
+    pub fn with_external_error_message(mut self, error_message: String) -> Self {
+        self.external_error_message = Some(error_message);
         self
     }
 
@@ -84,6 +109,8 @@ impl InvalidTransactionBuilder {
             transaction_id,
             error_message,
             error_data,
+            external_error_status,
+            external_error_message,
         } = self;
 
         if transaction_id.is_empty() {
@@ -92,22 +119,36 @@ impl InvalidTransactionBuilder {
             ));
         };
 
-        if error_message.is_empty() {
+        if error_message.is_none() && external_error_message.is_none() {
             return Err(BatchBuilderError::MissingRequiredField(
                 "error_message".to_string(),
             ));
         };
 
-        if error_data.is_empty() {
+        if error_message.is_some() && error_data.is_none() {
             return Err(BatchBuilderError::MissingRequiredField(
                 "error_data".to_string(),
             ));
         };
 
+        if external_error_status.is_some() && external_error_message.is_none() {
+            return Err(BatchBuilderError::MissingRequiredField(
+                "external_error_message".to_string(),
+            ));
+        }
+
+        if external_error_status.is_none() && external_error_message.is_some() {
+            return Err(BatchBuilderError::MissingRequiredField(
+                "external_error_status".to_string(),
+            ));
+        }
+
         Ok(InvalidTransaction {
             transaction_id,
             error_message,
             error_data,
+            external_error_status,
+            external_error_message,
         })
     }
 }
@@ -639,8 +680,8 @@ pub trait BatchTrackingStore {
     fn get_batch_status(
         &self,
         id: &str,
-        service_id: Option<&str>,
-    ) -> Result<BatchStatus, BatchTrackingStoreError>;
+        service_id: &str,
+    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError>;
 
     /// Updates the status of a batch in the underlying storage
     ///
@@ -726,8 +767,8 @@ where
     fn get_batch_status(
         &self,
         _id: &str,
-        _service_id: Option<&str>,
-    ) -> Result<BatchStatus, BatchTrackingStoreError> {
+        _service_id: &str,
+    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
         unimplemented!();
     }
 

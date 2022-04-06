@@ -50,7 +50,7 @@ pub struct TransactionModel {
     pub signer_public_key: String,
 }
 
-#[derive(Insertable, Queryable, PartialEq, Debug)]
+#[derive(Insertable, Queryable, PartialEq, Debug, Clone)]
 #[table_name = "transaction_receipts"]
 pub struct TransactionReceiptModel {
     pub service_id: String,
@@ -63,7 +63,7 @@ pub struct TransactionReceiptModel {
     pub external_error_message: Option<String>,
 }
 
-#[derive(Insertable, Queryable, PartialEq, Debug)]
+#[derive(Insertable, Queryable, PartialEq, Debug, Clone)]
 #[table_name = "batch_statuses"]
 pub struct BatchStatusModel {
     pub service_id: String,
@@ -163,8 +163,8 @@ impl From<TransactionReceiptModel> for TransactionReceipt {
 impl
     TryFrom<(
         BatchStatusModel,
-        Option<Vec<InvalidTransaction>>,
-        Option<Vec<ValidTransaction>>,
+        Vec<InvalidTransaction>,
+        Vec<ValidTransaction>,
     )> for BatchStatus
 {
     type Error = BatchTrackingStoreError;
@@ -172,15 +172,15 @@ impl
     fn try_from(
         (batch_status, invalid_transactions, valid_transactions): (
             BatchStatusModel,
-            Option<Vec<InvalidTransaction>>,
-            Option<Vec<ValidTransaction>>,
+            Vec<InvalidTransaction>,
+            Vec<ValidTransaction>,
         ),
     ) -> Result<Self, Self::Error> {
         match batch_status.dlt_status.as_str() {
             "UNKNOWN" => Ok(BatchStatus::Unknown),
             "PENDING" => Ok(BatchStatus::Pending),
             "INVALID" => {
-                if invalid_transactions.is_none() {
+                if invalid_transactions.is_empty() {
                     return Err(BatchTrackingStoreError::InternalError(
                         InternalError::with_message(
                             "Invalid batches must have invalid transactions".to_string(),
@@ -188,10 +188,10 @@ impl
                     ));
                 }
 
-                Ok(BatchStatus::Invalid(invalid_transactions.unwrap()))
+                Ok(BatchStatus::Invalid(invalid_transactions))
             }
             "VALID" => {
-                if valid_transactions.is_none() {
+                if valid_transactions.is_empty() {
                     return Err(BatchTrackingStoreError::InternalError(
                         InternalError::with_message(
                             "Valid batches must have valid transactions".to_string(),
@@ -199,10 +199,10 @@ impl
                     ));
                 }
 
-                Ok(BatchStatus::Valid(valid_transactions.unwrap()))
+                Ok(BatchStatus::Valid(valid_transactions))
             }
             "COMMITTED" => {
-                if valid_transactions.is_none() {
+                if valid_transactions.is_empty() {
                     return Err(BatchTrackingStoreError::InternalError(
                         InternalError::with_message(
                             "Committed batches must have valid transactions".to_string(),
@@ -210,7 +210,7 @@ impl
                     ));
                 }
 
-                Ok(BatchStatus::Committed(valid_transactions.unwrap()))
+                Ok(BatchStatus::Committed(valid_transactions))
             }
             _ => Err(BatchTrackingStoreError::InternalError(
                 InternalError::with_message(format!(
@@ -226,28 +226,46 @@ impl TryFrom<TransactionReceipt> for InvalidTransaction {
     type Error = BatchTrackingStoreError;
 
     fn try_from(receipt: TransactionReceipt) -> Result<Self, Self::Error> {
-        if receipt.error_message.is_none() {
+        let TransactionReceipt {
+            transaction_id,
+            result_valid,
+            error_message,
+            error_data,
+            serialized_receipt: _,
+            external_status,
+            external_error_message,
+        } = receipt;
+
+        if result_valid {
+            return Err(BatchTrackingStoreError::InternalError(
+                InternalError::with_message(
+                    "Cannot create an invalid transaction with a valid receipt".to_string(),
+                ),
+            ));
+        }
+
+        if error_message.is_none() && external_error_message.is_none() {
             return Err(BatchTrackingStoreError::InternalError(
                 InternalError::with_message(
                     "Invalid transaction receipts must have an error message".to_string(),
                 ),
             ));
         }
-        let error_message = receipt.error_message.unwrap();
 
-        if receipt.error_data.is_none() {
+        if error_message.is_some() && error_data.is_none() {
             return Err(BatchTrackingStoreError::InternalError(
                 InternalError::with_message(
                     "Invalid transaction receipts must have error data".to_string(),
                 ),
             ));
         }
-        let error_data = receipt.error_data.unwrap();
 
         Ok(Self {
-            transaction_id: receipt.transaction_id,
+            transaction_id,
             error_message,
             error_data,
+            external_error_status: external_status,
+            external_error_message,
         })
     }
 }

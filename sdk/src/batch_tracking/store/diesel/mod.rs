@@ -28,6 +28,7 @@ use crate::error::ResourceTemporarilyUnavailableError;
 
 use operations::add_batches::BatchTrackingStoreAddBatchesOperation as _;
 use operations::get_batch::BatchTrackingStoreGetBatchOperation as _;
+use operations::get_batch_status::BatchTrackingStoreGetBatchStatusOperation as _;
 use operations::BatchTrackingStoreOperations;
 
 /// Manages batches in the database
@@ -52,10 +53,15 @@ impl<C: diesel::Connection> DieselBatchTrackingStore<C> {
 impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
     fn get_batch_status(
         &self,
-        _id: &str,
-        _service_id: Option<&str>,
-    ) -> Result<BatchStatus, BatchTrackingStoreError> {
-        unimplemented!();
+        id: &str,
+        service_id: &str,
+    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_batch_status(id, service_id)
     }
 
     fn update_batch_status(
@@ -125,10 +131,15 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
 impl BatchTrackingStore for DieselBatchTrackingStore<diesel::sqlite::SqliteConnection> {
     fn get_batch_status(
         &self,
-        _id: &str,
-        _service_id: Option<&str>,
-    ) -> Result<BatchStatus, BatchTrackingStoreError> {
-        unimplemented!();
+        id: &str,
+        service_id: &str,
+    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .get_batch_status(id, service_id)
     }
 
     fn update_batch_status(
@@ -217,10 +228,10 @@ where
 impl<'a> BatchTrackingStore for DieselConnectionBatchTrackingStore<'a, diesel::pg::PgConnection> {
     fn get_batch_status(
         &self,
-        _id: &str,
-        _service_id: Option<&str>,
-    ) -> Result<BatchStatus, BatchTrackingStoreError> {
-        unimplemented!();
+        id: &str,
+        service_id: &str,
+    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(self.connection).get_batch_status(id, service_id)
     }
 
     fn update_batch_status(
@@ -282,10 +293,10 @@ impl<'a> BatchTrackingStore
 {
     fn get_batch_status(
         &self,
-        _id: &str,
-        _service_id: Option<&str>,
-    ) -> Result<BatchStatus, BatchTrackingStoreError> {
-        unimplemented!();
+        id: &str,
+        service_id: &str,
+    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(self.connection).get_batch_status(id, service_id)
     }
 
     fn update_batch_status(
