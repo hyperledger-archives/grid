@@ -13,10 +13,9 @@
 // limitations under the License.
 
 table! {
-    batch_statuses (service_id, batch_id) {
-        service_id -> Text,
+    batch_statuses (batch_id) {
         batch_id -> Text,
-        batch_service_id -> Text,
+        service_id -> Text,
         dlt_status -> Text,
         created_at -> Timestamp,
         updated_at -> Timestamp,
@@ -24,9 +23,10 @@ table! {
 }
 
 table! {
-    batches (service_id, batch_id) {
-        service_id -> Text,
+    batches (batch_id) {
         batch_id -> Text,
+        service_id -> Text,
+        batch_header -> Text,
         data_change_id -> Nullable<Text>,
         signer_public_key -> Text,
         trace -> Bool,
@@ -37,10 +37,9 @@ table! {
 }
 
 table! {
-    submissions (service_id, batch_id) {
-        service_id -> Text,
+    submissions (batch_id) {
         batch_id -> Text,
-        batch_service_id -> Text,
+        service_id -> Text,
         last_checked -> Nullable<Timestamp>,
         times_checked -> Nullable<Text>,
         error_type -> Nullable<Text>,
@@ -51,9 +50,9 @@ table! {
 }
 
 table! {
-    transaction_receipts (service_id, transaction_id) {
-        service_id -> Text,
+    transaction_receipts (transaction_id) {
         transaction_id -> Text,
+        service_id -> Text,
         result_valid -> Bool,
         error_message -> Nullable<Text>,
         error_data -> Nullable<Binary>,
@@ -64,17 +63,22 @@ table! {
 }
 
 table! {
-    transactions (service_id, transaction_id) {
-        service_id -> Text,
+    transactions (transaction_id) {
         transaction_id -> Text,
+        service_id -> Text,
+        transaction_header -> Text,
         batch_id -> Text,
-        batch_service_id -> Text,
         payload -> Binary,
         family_name -> Text,
         family_version -> Text,
         signer_public_key -> Text,
     }
 }
+
+joinable!(batch_statuses -> batches (batch_id));
+joinable!(submissions -> batches (batch_id));
+joinable!(transaction_receipts -> transactions (transaction_id));
+joinable!(transactions -> batches (batch_id));
 
 allow_tables_to_appear_in_same_query!(
     batch_statuses,
