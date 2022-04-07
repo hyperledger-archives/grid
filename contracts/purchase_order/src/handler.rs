@@ -798,7 +798,7 @@ fn convert_update_to_version(
         })?;
     // Check if a new revision is included in the update
     let (current_revision_id, rev_addition): (u64, Option<PurchaseOrderRevision>) =
-        match existing_version.revisions().iter().cloned().last() {
+        match existing_version.revisions().iter().last().cloned() {
             Some(last_rev) => {
                 if last_rev == new_revision {
                     (last_rev.revision_id(), None)
