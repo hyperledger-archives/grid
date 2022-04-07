@@ -17,6 +17,6 @@ set -e
 
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t ${NAMESPACE}grid-dev:v9 \
+  -t ${NAMESPACE}grid-dev:v10 \
   -f ci/grid-dev \
   --push .
