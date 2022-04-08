@@ -1,0 +1,33 @@
+name: 0-3 Build grid-dev
+on:
+  - push
+  - workflow_dispatch
+jobs:
+  build_grid_dev:
+    if: github.repository == 'hyperledger/grid'
+    name: Build grid-dev
+    runs-on:  macos-arm
+    steps:
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Docker build
+        env:
+          NAMESPACE: ${{ secrets.DOCKER_HUB_NAMESPACE }}/
+        run: ./ci/grid-dev-buildx
+
+      - name: Notify Slack of Failure
+        if: cancelled() || failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
