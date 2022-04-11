@@ -84,21 +84,23 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 if let Some(r) = rcpt {
                     if r.result_valid {
                         valid_txns.push(
-                            ValidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            ValidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     } else {
                         invalid_txns.push(
-                            InvalidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            InvalidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     }
                 }
@@ -168,21 +170,23 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 if let Some(r) = rcpt {
                     if r.result_valid {
                         valid_txns.push(
-                            ValidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            ValidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     } else {
                         invalid_txns.push(
-                            InvalidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            InvalidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     }
                 }
