@@ -26,33 +26,21 @@ use diesel::prelude::*;
 use std::convert::TryFrom;
 
 pub(in crate::batch_tracking::store::diesel) trait BatchTrackingStoreGetBatchStatusOperation {
-    fn get_batch_status(
-        &self,
-        id: &str,
-        service_id: &str,
-    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError>;
+    fn get_batch_status(&self, id: &str) -> Result<Option<BatchStatus>, BatchTrackingStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> BatchTrackingStoreGetBatchStatusOperation
     for BatchTrackingStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn get_batch_status(
-        &self,
-        id: &str,
-        service_id: &str,
-    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
+    fn get_batch_status(&self, id: &str) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             // This query fetches the batch status for the batch with the given
-            // batch ID and service ID
+            // batch ID
             let batch_status_query = batch_statuses::table
                 .into_boxed()
                 .select(batch_statuses::all_columns)
-                .filter(
-                    batch_statuses::batch_id
-                        .eq(id)
-                        .and(batch_statuses::batch_service_id.eq(service_id)),
-                );
+                .filter(batch_statuses::batch_id.eq(id));
 
             let batch_status_model: Option<BatchStatusModel> = batch_status_query
                 .first::<BatchStatusModel>(self.conn)
@@ -68,18 +56,14 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
             }
 
             // This query fetches the transactions and any associated receipts
-            // for the given batch ID and service ID
+            // for the given batch ID
             let txn_query = transactions::table
                 .into_boxed()
                 .left_join(
                     transaction_receipts::table
                         .on(transaction_receipts::transaction_id.eq(transactions::transaction_id)),
                 )
-                .filter(
-                    transactions::batch_id
-                        .eq(id)
-                        .and(transactions::batch_service_id.eq(service_id)),
-                )
+                .filter(transactions::batch_id.eq(id))
                 .select((
                     transactions::transaction_id,
                     transaction_receipts::all_columns.nullable(),
@@ -100,21 +84,23 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 if let Some(r) = rcpt {
                     if r.result_valid {
                         valid_txns.push(
-                            ValidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            ValidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     } else {
                         invalid_txns.push(
-                            InvalidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            InvalidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     }
                 }
@@ -133,22 +119,14 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
 impl<'a> BatchTrackingStoreGetBatchStatusOperation
     for BatchTrackingStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn get_batch_status(
-        &self,
-        id: &str,
-        service_id: &str,
-    ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
+    fn get_batch_status(&self, id: &str) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             // This query fetches the batch status for the batch with the given
-            // batch ID and service ID
+            // batch ID
             let batch_status_query = batch_statuses::table
                 .into_boxed()
                 .select(batch_statuses::all_columns)
-                .filter(
-                    batch_statuses::batch_id
-                        .eq(id)
-                        .and(batch_statuses::batch_service_id.eq(service_id)),
-                );
+                .filter(batch_statuses::batch_id.eq(id));
 
             let batch_status_model: Option<BatchStatusModel> = batch_status_query
                 .first::<BatchStatusModel>(self.conn)
@@ -164,18 +142,14 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
             }
 
             // This query fetches the transactions and any associated receipts
-            // for the given batch ID and service ID
+            // for the given batch ID
             let txn_query = transactions::table
                 .into_boxed()
                 .left_join(
                     transaction_receipts::table
                         .on(transaction_receipts::transaction_id.eq(transactions::transaction_id)),
                 )
-                .filter(
-                    transactions::batch_id
-                        .eq(id)
-                        .and(transactions::batch_service_id.eq(service_id)),
-                )
+                .filter(transactions::batch_id.eq(id))
                 .select((
                     transactions::transaction_id,
                     transaction_receipts::all_columns.nullable(),
@@ -196,21 +170,23 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 if let Some(r) = rcpt {
                     if r.result_valid {
                         valid_txns.push(
-                            ValidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            ValidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     } else {
                         invalid_txns.push(
-                            InvalidTransaction::try_from(TransactionReceipt::from(r.clone()))
-                                .map_err(|err| {
+                            InvalidTransaction::try_from(TransactionReceipt::from(r)).map_err(
+                                |err| {
                                     BatchTrackingStoreError::InternalError(
                                         InternalError::from_source(Box::new(err)),
                                     )
-                                })?,
+                                },
+                            )?,
                         );
                     }
                 }

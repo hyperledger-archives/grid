@@ -13,10 +13,11 @@
 // limitations under the License.
 
 use core::convert::TryFrom;
+use crypto::digest::Digest;
+use crypto::sha2::Sha512;
 
 use crate::batch_tracking::store::diesel::schema::*;
 use crate::error::InternalError;
-use chrono::NaiveDateTime;
 
 use super::{
     BatchStatus, InvalidTransaction, SubmissionError, TrackingBatch, TrackingTransaction,
@@ -24,37 +25,43 @@ use super::{
 };
 use crate::batch_tracking::store::error::BatchTrackingStoreError;
 
-#[derive(Insertable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Insertable, Associations, Queryable, PartialEq, Debug)]
 #[table_name = "batches"]
+#[primary_key(batch_id)]
 pub struct BatchModel {
-    pub service_id: String,
     pub batch_id: String,
+    pub service_id: String,
+    pub batch_header: String,
     pub data_change_id: Option<String>,
     pub signer_public_key: String,
     pub trace: bool,
     pub serialized_batch: Vec<u8>,
     pub submitted: bool,
-    pub created_at: NaiveDateTime,
+    pub created_at: i64,
 }
 
-#[derive(Insertable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Insertable, Associations, Queryable, PartialEq, Debug)]
 #[table_name = "transactions"]
+#[belongs_to(BatchModel, foreign_key = (batch_id))]
+#[primary_key(transaction_id)]
 pub struct TransactionModel {
-    pub service_id: String,
     pub transaction_id: String,
+    pub service_id: String,
+    pub transaction_header: String,
     pub batch_id: String,
-    pub batch_service_id: String,
     pub payload: Vec<u8>,
     pub family_name: String,
     pub family_version: String,
     pub signer_public_key: String,
 }
 
-#[derive(Insertable, Queryable, PartialEq, Debug, Clone)]
+#[derive(Identifiable, Insertable, Associations, Queryable, PartialEq, Debug)]
 #[table_name = "transaction_receipts"]
+#[belongs_to(TransactionModel, foreign_key = (transaction_id))]
+#[primary_key(transaction_id)]
 pub struct TransactionReceiptModel {
-    pub service_id: String,
     pub transaction_id: String,
+    pub service_id: String,
     pub result_valid: bool,
     pub error_message: Option<String>,
     pub error_data: Option<Vec<u8>>,
@@ -63,29 +70,50 @@ pub struct TransactionReceiptModel {
     pub external_error_message: Option<String>,
 }
 
-#[derive(Insertable, Queryable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug)]
 #[table_name = "batch_statuses"]
-pub struct BatchStatusModel {
-    pub service_id: String,
+pub struct NewBatchStatusModel {
     pub batch_id: String,
-    pub batch_service_id: String,
+    pub service_id: String,
     pub dlt_status: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
 }
 
-#[derive(Insertable, Queryable, PartialEq, Debug)]
-#[table_name = "submissions"]
-pub struct SubmissionModel {
-    pub service_id: String,
+#[derive(Identifiable, Insertable, Associations, Queryable, PartialEq, Debug)]
+#[table_name = "batch_statuses"]
+#[belongs_to(BatchModel, foreign_key = (batch_id))]
+#[primary_key(batch_id)]
+pub struct BatchStatusModel {
     pub batch_id: String,
-    pub batch_service_id: String,
-    pub last_checked: Option<NaiveDateTime>,
+    pub service_id: String,
+    pub dlt_status: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[table_name = "submissions"]
+pub struct NewSubmissionModel {
+    pub batch_id: String,
+    pub service_id: String,
+    pub last_checked: Option<i64>,
     pub times_checked: Option<String>,
     pub error_type: Option<String>,
     pub error_message: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Identifiable, Insertable, Associations, Queryable, PartialEq, Debug)]
+#[table_name = "submissions"]
+#[belongs_to(BatchModel, foreign_key = (batch_id))]
+#[primary_key(batch_id)]
+pub struct SubmissionModel {
+    pub batch_id: String,
+    pub service_id: String,
+    pub last_checked: Option<i64>,
+    pub times_checked: Option<String>,
+    pub error_type: Option<String>,
+    pub error_message: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 impl
@@ -106,13 +134,13 @@ impl
     ) -> Self {
         Self {
             service_id: batch.service_id.to_string(),
-            batch_header: batch.batch_id.to_string(),
+            batch_header: batch.batch_header.to_string(),
             data_change_id: batch.data_change_id.clone(),
             signer_public_key: batch.signer_public_key.to_string(),
             trace: batch.trace,
             serialized_batch: batch.serialized_batch.to_vec(),
             submitted: batch.submitted,
-            created_at: batch.created_at.timestamp(),
+            created_at: batch.created_at,
             transactions,
             batch_status,
             submission_error,
@@ -125,7 +153,7 @@ impl From<TransactionModel> for TrackingTransaction {
         Self {
             family_name: transaction.family_name.to_string(),
             family_version: transaction.family_version.to_string(),
-            transaction_id: transaction.transaction_id.to_string(),
+            transaction_header: transaction.transaction_header.to_string(),
             payload: transaction.payload.to_vec(),
             signer_public_key: transaction.signer_public_key.to_string(),
             service_id: transaction.service_id.clone(),
@@ -138,7 +166,7 @@ impl From<&TransactionModel> for TrackingTransaction {
         Self {
             family_name: transaction.family_name.to_string(),
             family_version: transaction.family_version.to_string(),
-            transaction_id: transaction.transaction_id.to_string(),
+            transaction_header: transaction.transaction_header.to_string(),
             payload: transaction.payload.to_vec(),
             signer_public_key: transaction.signer_public_key.to_string(),
             service_id: transaction.service_id.clone(),
@@ -156,6 +184,20 @@ impl From<TransactionReceiptModel> for TransactionReceipt {
             serialized_receipt: format!("{:?}", receipt.serialized_receipt),
             external_status: receipt.external_status,
             external_error_message: receipt.external_error_message,
+        }
+    }
+}
+
+impl From<&TransactionReceiptModel> for TransactionReceipt {
+    fn from(receipt: &TransactionReceiptModel) -> Self {
+        Self {
+            transaction_id: receipt.transaction_id.to_string(),
+            result_valid: receipt.result_valid,
+            error_message: receipt.error_message.clone(),
+            error_data: receipt.error_data.clone(),
+            serialized_receipt: format!("{:?}", receipt.serialized_receipt),
+            external_status: receipt.external_status.clone(),
+            external_error_message: receipt.external_error_message.clone(),
         }
     }
 }
@@ -344,14 +386,15 @@ pub fn make_batch_models(batches: &[TrackingBatch]) -> Vec<BatchModel> {
     let mut models = Vec::new();
     for batch in batches {
         let model = BatchModel {
+            batch_id: make_database_id(batch.batch_header(), batch.service_id()),
             service_id: batch.service_id().to_string(),
-            batch_id: batch.batch_header().to_string(),
+            batch_header: batch.batch_header().to_string(),
             data_change_id: batch.data_change_id().map(String::from),
             signer_public_key: batch.signer_public_key().to_string(),
             trace: batch.trace(),
             serialized_batch: batch.serialized_batch().to_vec(),
             submitted: batch.submitted(),
-            created_at: NaiveDateTime::from_timestamp(batch.created_at(), 0),
+            created_at: batch.created_at(),
         };
 
         models.push(model)
@@ -365,10 +408,13 @@ pub fn make_transaction_models(batches: &[TrackingBatch]) -> Vec<TransactionMode
     for batch in batches {
         for transaction in batch.transactions() {
             let model = TransactionModel {
+                transaction_id: make_database_id(
+                    transaction.transaction_header(),
+                    transaction.service_id(),
+                ),
                 service_id: transaction.service_id().to_string(),
-                transaction_id: transaction.transaction_id().to_string(),
-                batch_id: batch.batch_header().to_string(),
-                batch_service_id: batch.service_id().to_string(),
+                transaction_header: transaction.transaction_header().to_string(),
+                batch_id: make_database_id(batch.batch_header(), batch.service_id()),
                 payload: transaction.payload().to_vec(),
                 family_name: transaction.family_name().to_string(),
                 family_version: transaction.family_version().to_string(),
@@ -380,4 +426,12 @@ pub fn make_transaction_models(batches: &[TrackingBatch]) -> Vec<TransactionMode
     }
 
     models
+}
+
+pub fn make_database_id(id: &str, service_id: &str) -> String {
+    let mut sha = Sha512::new();
+    sha.input_str(&format!("{}{}", service_id, id));
+    let hash_result = sha.result_str();
+
+    hash_result[..70].to_string()
 }

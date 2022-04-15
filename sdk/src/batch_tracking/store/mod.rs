@@ -459,7 +459,7 @@ pub struct TrackingBatchList {
 pub struct TrackingTransaction {
     family_name: String,
     family_version: String,
-    transaction_id: String,
+    transaction_header: String,
     payload: Vec<u8>,
     signer_public_key: String,
     service_id: String,
@@ -474,8 +474,8 @@ impl TrackingTransaction {
         &self.family_version
     }
 
-    pub fn transaction_id(&self) -> &str {
-        &self.transaction_id
+    pub fn transaction_header(&self) -> &str {
+        &self.transaction_header
     }
 
     pub fn payload(&self) -> &[u8] {
@@ -539,7 +539,7 @@ impl TrackingTransactionBuilder {
         let family_name = txn_header.family_name().to_string();
         let family_version = txn_header.family_version().to_string();
         let signer_public_key = format!("{:?}", txn_header.signer_public_key());
-        let transaction_id = transact_transaction.header_signature().to_string();
+        let transaction_header = transact_transaction.header_signature().to_string();
         let payload = transact_transaction.payload().to_vec();
 
         if family_name.is_empty() {
@@ -554,7 +554,7 @@ impl TrackingTransactionBuilder {
             ));
         }
 
-        if transaction_id.is_empty() {
+        if transaction_header.is_empty() {
             return Err(BatchBuilderError::MissingRequiredField(
                 "transaction_id".to_string(),
             ));
@@ -575,7 +575,7 @@ impl TrackingTransactionBuilder {
         Ok(TrackingTransaction {
             family_name,
             family_version,
-            transaction_id,
+            transaction_header,
             payload,
             signer_public_key,
             service_id: serv_id,
