@@ -13,9 +13,9 @@
 // limitations under the License.
 
 table! {
-    batch_statuses (batch_id) {
-        batch_id -> Text,
+    batch_statuses (service_id, batch_id) {
         service_id -> Text,
+        batch_id -> Text,
         dlt_status -> Text,
         created_at -> Int8,
         updated_at -> Int8,
@@ -23,10 +23,9 @@ table! {
 }
 
 table! {
-    batches (batch_id) {
-        batch_id -> Text,
+    batches (service_id, batch_id) {
         service_id -> Text,
-        batch_header -> Text,
+        batch_id -> Text,
         data_change_id -> Nullable<Text>,
         signer_public_key -> Text,
         trace -> Bool,
@@ -37,11 +36,11 @@ table! {
 }
 
 table! {
-    submissions (batch_id) {
-        batch_id -> Text,
+    submissions (service_id, batch_id) {
         service_id -> Text,
-        last_checked -> Nullable<Int8>,
-        times_checked -> Nullable<Text>,
+        batch_id -> Text,
+        last_checked -> Int8,
+        times_checked -> Int8,
         error_type -> Nullable<Text>,
         error_message -> Nullable<Text>,
         created_at -> Int8,
@@ -50,9 +49,9 @@ table! {
 }
 
 table! {
-    transaction_receipts (transaction_id) {
-        transaction_id -> Text,
+    transaction_receipts (service_id, transaction_id) {
         service_id -> Text,
+        transaction_id -> Text,
         result_valid -> Bool,
         error_message -> Nullable<Text>,
         error_data -> Nullable<Binary>,
@@ -63,10 +62,9 @@ table! {
 }
 
 table! {
-    transactions (transaction_id) {
-        transaction_id -> Text,
+    transactions (service_id, transaction_id) {
         service_id -> Text,
-        transaction_header -> Text,
+        transaction_id -> Text,
         batch_id -> Text,
         payload -> Binary,
         family_name -> Text,
@@ -74,11 +72,6 @@ table! {
         signer_public_key -> Text,
     }
 }
-
-joinable!(batch_statuses -> batches (batch_id));
-joinable!(submissions -> batches (batch_id));
-joinable!(transaction_receipts -> transactions (transaction_id));
-joinable!(transactions -> batches (batch_id));
 
 allow_tables_to_appear_in_same_query!(
     batch_statuses,
