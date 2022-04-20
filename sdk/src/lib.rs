@@ -16,7 +16,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 #[cfg(feature = "serde_json")]
-#[macro_use]
 extern crate serde_json;
 #[macro_use]
 #[cfg(feature = "pike")]
@@ -56,6 +55,8 @@ pub mod pike;
 pub mod product;
 pub mod protocol;
 pub mod protos;
+#[cfg(feature = "proxy")]
+pub mod proxy;
 #[cfg(feature = "purchase-order")]
 pub mod purchase_order;
 #[cfg(feature = "rest-api")]

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Cargill Incorporated
+// Copyright 2018-2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ mod locations;
 mod organizations;
 #[cfg(feature = "rest-api-endpoint-product")]
 mod products;
+#[cfg(feature = "rest-api-endpoint-proxy")]
+mod proxy;
 #[cfg(feature = "rest-api-endpoint-purchase-order")]
 mod purchase_orders;
 #[cfg(feature = "rest-api-endpoint-record")]
@@ -43,6 +45,8 @@ pub use locations::*;
 pub use organizations::*;
 #[cfg(feature = "rest-api-endpoint-product")]
 pub use products::*;
+#[cfg(feature = "rest-api-endpoint-proxy")]
+pub use proxy::*;
 #[cfg(feature = "rest-api-endpoint-purchase-order")]
 pub use purchase_orders::*;
 #[cfg(feature = "rest-api-endpoint-record")]

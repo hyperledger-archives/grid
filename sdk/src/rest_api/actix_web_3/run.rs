@@ -12,22 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "proxy-run")]
+use actix_web::web;
 use actix_web::{App, HttpServer};
 
 use crate::error::InternalError;
+#[cfg(feature = "proxy-run")]
+use crate::proxy::ProxyClient;
 
+#[cfg(feature = "proxy-run")]
+use super::routes::proxy_get;
 use super::{routes::submit, KeyState, StoreState};
 
 pub async fn run(
     bind: &str,
     store_state: StoreState,
     key_state: KeyState,
+    #[cfg(feature = "proxy-run")] proxy_client: Box<dyn ProxyClient>,
 ) -> Result<(), InternalError> {
     HttpServer::new(move || {
-        App::new()
+        #[allow(unused_mut)]
+        let mut app = App::new()
             .data(store_state.clone())
             .data(key_state.clone())
-            .service(submit)
+            .service(submit);
+
+        #[cfg(feature = "proxy-run")]
+        {
+            app = app
+                .data(proxy_client.cloned_box())
+                .default_service(web::get().to(proxy_get));
+        }
+
+        app
     })
     .bind(bind)
     .map_err(|err| InternalError::from_source(Box::new(err)))?
