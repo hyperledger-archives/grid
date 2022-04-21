@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::rest_api::resources::submit::v2::error::BuilderError;
+use std::convert::TryFrom;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde_json::Value;
+
+use crate::rest_api::resources::{error::ErrorResponse, submit::v2::error::BuilderError};
 
 use super::{PropertyValue, TransactionPayload};
 
@@ -45,6 +50,7 @@ impl LocationAction {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(try_from = "DeserializableLocationPayload")]
 pub struct LocationPayload {
     #[serde(flatten)]
     action: LocationAction,
@@ -66,6 +72,59 @@ impl LocationPayload {
 
     pub fn into_transaction_payload(self) -> Box<dyn TransactionPayload> {
         self.action.into_inner()
+    }
+}
+
+// Struct used to assist in the deserialization of a `LocationPayload`
+// The `action` is deserialized initially into a generic JSON `Value`,
+// then, the `target` field is parsed to determine which action is represented
+// in the JSON `Value`
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+struct DeserializableLocationPayload {
+    #[serde(flatten)]
+    action: Value,
+    target: String,
+}
+
+impl TryFrom<DeserializableLocationPayload> for LocationPayload {
+    type Error = ErrorResponse;
+
+    fn try_from(d: DeserializableLocationPayload) -> Result<Self, Self::Error> {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+        // Make the characters of the target string matchable
+        let lowercase_target = d.target.to_lowercase();
+        let mut target_parts = lowercase_target.split_whitespace();
+        // Retrieve the method of the `target` url
+        let method = target_parts.next().ok_or_else(|| {
+            ErrorResponse::new(400, "Invalid `target`, must provide request method")
+        })?;
+        // Retrieve the beginning of the `target` path
+        let mut target_path_iter = target_parts
+            .next()
+            .ok_or_else(|| ErrorResponse::new(400, "Invalid `target`, must provide request path"))?
+            .trim_start_matches('/')
+            .split('/');
+        let action: LocationAction = match (method, target_path_iter.next()) {
+            ("post", Some("location")) => LocationAction::CreateLocation(serde_json::from_value::<
+                CreateLocationAction,
+            >(d.action)?),
+            ("put", Some("location")) => LocationAction::UpdateLocation(serde_json::from_value::<
+                UpdateLocationAction,
+            >(d.action)?),
+            ("delete", Some("location")) => LocationAction::DeleteLocation(
+                serde_json::from_value::<DeleteLocationAction>(d.action)?,
+            ),
+            _ => {
+                return Err(ErrorResponse::new(
+                    400,
+                    "Unable to deserialize action, invalid `target`",
+                ))
+            }
+        };
+        Ok(LocationPayload { action, timestamp })
     }
 }
 
