@@ -16,11 +16,10 @@ use std::convert::TryFrom;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cylinder::Signer;
-use transact::protocol::{sabre::ExecuteContractActionBuilder, transaction::Transaction};
+use serde::{self, Deserialize};
+use serde_json::Value;
+use transact::protocol::transaction::Transaction;
 
-use crate::pike::addressing::GRID_PIKE_NAMESPACE;
-use crate::protocol::pike::{payload as payload_protocol, state as state_protocol};
-use crate::protos::IntoBytes;
 use crate::rest_api::resources::{
     error::ErrorResponse, submit::v2::error::BuilderError, submit::v2::payloads::TransactionPayload,
 };
@@ -59,6 +58,7 @@ impl PikeAction {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(try_from = "CreateAgentActionBuilder")]
 pub struct CreateAgentAction {
     org_id: String,
     public_key: String,
@@ -89,74 +89,20 @@ impl CreateAgentAction {
     }
 }
 
-impl TryFrom<&CreateAgentAction> for payload_protocol::CreateAgentAction {
-    type Error = ErrorResponse;
-
-    fn try_from(action: &CreateAgentAction) -> Result<Self, Self::Error> {
-        let metadata = action
-            .metadata()
-            .iter()
-            .map(state_protocol::KeyValueEntry::try_from)
-            .collect::<Result<Vec<_>, ErrorResponse>>()?;
-        payload_protocol::CreateAgentActionBuilder::default()
-            .with_org_id(action.org_id().to_string())
-            .with_public_key(action.public_key().to_string())
-            .with_active(*action.active())
-            .with_roles(action.roles().to_vec())
-            .with_metadata(metadata)
-            .build()
-            .map_err(|err| {
-                ErrorResponse::new(
-                    400,
-                    &format!("Unable to build protocol CreateAgentAction: {err}"),
-                )
-            })
-    }
-}
-
 impl TransactionPayload for CreateAgentAction {
-    fn build_transaction(&self, signer: Box<dyn Signer>) -> Result<Transaction, ErrorResponse> {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-        let action = payload_protocol::CreateAgentAction::try_from(self)?;
-        let payload_bytes = payload_protocol::PikePayloadBuilder::default()
-            .with_action(payload_protocol::Action::CreateAgent(action))
-            .with_timestamp(timestamp)
-            .build()
-            .map_err(|err| {
-                ErrorResponse::new(
-                    400,
-                    &format!("Failed to build protocol Pike payload: {err}"),
-                )
-            })?
-            .into_bytes()
-            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-        // Turn contract-specific action into Sabre `ExecuteContractActionBuilder`
-        let sabre_payload_builder = ExecuteContractActionBuilder::new()
-            .with_name(GRID_PIKE_FAMILY_NAME.to_string())
-            .with_version(GRID_PIKE_FAMILY_VERSION.to_string())
-            .with_inputs(vec![GRID_PIKE_NAMESPACE.to_string()])
-            .with_outputs(vec![GRID_PIKE_NAMESPACE.to_string()])
-            .with_payload(payload_bytes)
-            .into_payload_builder()
-            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
-        // Turn the Sabre `ExecuteContractActionBuilder` into a `Transaction`
-        sabre_payload_builder
-            .into_transaction_builder()
-            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?
-            .build(&*signer)
-            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))
+    fn build_transaction(&self, _signer: Box<dyn Signer>) -> Result<Transaction, ErrorResponse> {
+        unimplemented!();
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Deserialize)]
 pub struct CreateAgentActionBuilder {
     pub org_id: Option<String>,
     pub public_key: Option<String>,
     pub active: Option<bool>,
+    #[serde(default)]
     pub roles: Vec<String>,
+    #[serde(default)]
     pub metadata: Vec<KeyValueEntry>,
 }
 
@@ -209,6 +155,16 @@ impl CreateAgentActionBuilder {
             active,
             roles,
             metadata,
+        })
+    }
+}
+
+impl TryFrom<CreateAgentActionBuilder> for CreateAgentAction {
+    type Error = ErrorResponse;
+
+    fn try_from(builder: CreateAgentActionBuilder) -> Result<Self, Self::Error> {
+        builder.build().map_err(|err| {
+            ErrorResponse::new(400, &format!("Unable to build `CreateAgentAction`: {err}"))
         })
     }
 }
@@ -1012,23 +968,6 @@ impl KeyValueEntry {
     }
 }
 
-impl TryFrom<&KeyValueEntry> for state_protocol::KeyValueEntry {
-    type Error = ErrorResponse;
-
-    fn try_from(entry: &KeyValueEntry) -> Result<Self, Self::Error> {
-        state_protocol::KeyValueEntryBuilder::default()
-            .with_key(entry.key().to_string())
-            .with_value(entry.value().to_string())
-            .build()
-            .map_err(|err| {
-                ErrorResponse::new(
-                    400,
-                    &format!("Unable to build protocol KeyValueEntry: {err}"),
-                )
-            })
-    }
-}
-
 #[derive(Default, Clone)]
 pub struct KeyValueEntryBuilder {
     key: Option<String>,
@@ -1064,6 +1003,7 @@ impl KeyValueEntryBuilder {
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(try_from = "DeserializablePikePayload")]
 pub struct PikePayload {
     #[serde(flatten)]
     action: PikeAction,
@@ -1085,5 +1025,399 @@ impl PikePayload {
 
     pub fn into_transaction_payload(self) -> Box<dyn TransactionPayload> {
         self.action.into_inner()
+    }
+}
+
+// Interim struct to assist deserializing into `PikePayload`
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+struct DeserializablePikePayload {
+    #[serde(flatten)]
+    action: Value,
+    target: String,
+}
+
+// Conversion helper function to correctly identify the type of action submitted in a `PikePayload`
+impl TryFrom<DeserializablePikePayload> for PikePayload {
+    type Error = ErrorResponse;
+
+    fn try_from(d: DeserializablePikePayload) -> Result<Self, Self::Error> {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+        // Make the characters of the string matchable
+        let lower_target = d.target.to_lowercase();
+        let mut target_parts = lower_target.split_whitespace();
+        // Retrieve the method of the `target` url to determine the type of payload to build
+        let method = target_parts.next().ok_or_else(|| {
+            ErrorResponse::new(400, "Invalid `target`, must provide request method")
+        })?;
+        // Retrieve the beginning of the `target` path
+        let mut target_url_iter = target_parts
+            .next()
+            .ok_or_else(|| ErrorResponse::new(400, "Invalid `target`, must provide request URI"))?
+            .trim_start_matches('/')
+            .split('/');
+        let action: PikeAction = match (method, target_url_iter.next()) {
+            ("post", Some("agent")) => {
+                PikeAction::CreateAgent(serde_json::from_value::<CreateAgentAction>(d.action)?)
+            }
+            ("put", Some("agent")) => {
+                PikeAction::UpdateAgent(serde_json::from_value::<UpdateAgentAction>(d.action)?)
+            }
+            ("delete", Some("agent")) => {
+                PikeAction::DeleteAgent(serde_json::from_value::<DeleteAgentAction>(d.action)?)
+            }
+            ("post", Some("organization")) => PikeAction::CreateOrganization(
+                serde_json::from_value::<CreateOrganizationAction>(d.action)?,
+            ),
+            ("put", Some("organization")) => PikeAction::UpdateOrganization(
+                serde_json::from_value::<UpdateOrganizationAction>(d.action)?,
+            ),
+            ("delete", Some("organization")) => PikeAction::DeleteOrganization(
+                serde_json::from_value::<DeleteOrganizationAction>(d.action)?,
+            ),
+            ("post", Some("role")) => {
+                PikeAction::CreateRole(serde_json::from_value::<CreateRoleAction>(d.action)?)
+            }
+            ("put", Some("role")) => {
+                PikeAction::UpdateRole(serde_json::from_value::<UpdateRoleAction>(d.action)?)
+            }
+            ("delete", Some("role")) => {
+                PikeAction::DeleteRole(serde_json::from_value::<DeleteRoleAction>(d.action)?)
+            }
+            _ => {
+                return Err(ErrorResponse::new(
+                    400,
+                    "Unable to deserialize action, invalid `target`",
+                ))
+            }
+        };
+        Ok(PikePayload { action, timestamp })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::rest_api::resources::submit::v2::payloads::Payload;
+    use serde_json;
+
+    const ORG: &str = "myorg";
+    const ROLE: &str = "test_role";
+    const PUBLIC_KEY: &str = "PUBLIC_KEY";
+
+    // Example JSON `PikeAction`s
+
+    const JSON_CREATE_AGENT_ACTION: &str =
+        "{\"org_id\": \"myorg\", \"public_key\": \"PUBLIC_KEY\", \"active\": true}";
+    const BAD_JSON_CREATE_AGENT_ACTION: &str = "{\"org_id\": \"myorg\", \"active\": true}";
+    const JSON_UPDATE_AGENT_ACTION: &str =
+        "{ \"org_id\": \"myorg\", \"public_key\": \"PUBLIC_KEY\", \"active\": true}";
+    const JSON_DELETE_AGENT_ACTION: &str =
+        "{ \"org_id\": \"myorg\", \"public_key\": \"PUBLIC_KEY\" }";
+
+    const JSON_CREATE_ORGANIZATION_ACTION: &str = "{ \"id\": \"myorg\", \"name\": \"myorg\" }";
+    const JSON_UPDATE_ORGANIZATION_ACTION: &str = "{ \"id\": \"myorg\", \"name\": \"myorg\" }";
+    const JSON_DELETE_ORGANIZATION_ACTION: &str = "{ \"id\": \"myorg\" }";
+
+    const JSON_CREATE_ROLE_ACTION: &str =
+        "{ \"org_id\": \"myorg\", \"name\": \"test_role\", \"description\": \"test_role\", \
+        \"permissions\": [\"schema::can_create_schema\"], \"active\": true }";
+    const JSON_UPDATE_ROLE_ACTION: &str =
+        "{ \"org_id\": \"myorg\", \"name\": \"test_role\", \"description\": \"test_role\", \
+        \"permissions\": [\"schema::can_create_schema\"], \"active\": false }";
+    const JSON_DELETE_ROLE_ACTION: &str = "{ \"org_id\": \"myorg\", \"name\": \"test_role\" }";
+
+    // Example JSON `PikePayload`s
+
+    const JSON_CREATE_AGENT_PAYLOAD: &str =
+        "{ \"org_id\": \"myorg\", \"public_key\": \"PUBLIC_KEY\", \"active\": true, \
+        \"target\": \"POST /agent\" }";
+    const JSON_UPDATE_AGENT_PAYLOAD: &str =
+        "{ \"org_id\": \"myorg\", \"public_key\": \"PUBLIC_KEY\", \"active\": true, \
+        \"target\": \"PUT /agent/PUBLIC_KEY\"}";
+    const JSON_DELETE_AGENT_PAYLOAD: &str =
+        "{ \"org_id\": \"myorg\", \"public_key\": \"PUBLIC_KEY\", \
+        \"target\": \"DELETE /agent/PUBLIC_KEY\" }";
+
+    const JSON_CREATE_ORGANIZATION_PAYLOAD: &str =
+        "{ \"id\": \"myorg\", \"name\": \"myorg\", \"target\": \"POST /organization\" }";
+    const JSON_UPDATE_ORGANIZATION_PAYLOAD: &str =
+        "{ \"id\": \"myorg\", \"name\": \"myorg\", \"target\": \"PUT /organization/myorg\" }";
+    const JSON_DELETE_ORGANIZATION_PAYLOAD: &str =
+        "{ \"id\": \"myorg\", \"target\": \"DELETE /organization/myorg\" }";
+
+    const JSON_CREATE_ROLE_PAYLOAD: &str =
+        "{ \"org_id\": \"myorg\", \"name\": \"test_role\", \"description\": \"test_role\", \
+        \"permissions\": [\"schema::can_create_schema\"], \"active\": true, \
+        \"target\": \"POST /role\" }";
+    const JSON_UPDATE_ROLE_PAYLOAD: &str =
+        "{ \"org_id\": \"myorg\", \"name\": \"test_role\", \"description\": \"test_role\", \
+        \"permissions\": [\"schema::can_create_schema\"], \"active\": false, \
+        \"target\": \"PUT /role/test_role\" }";
+    const JSON_DELETE_ROLE_PAYLOAD: &str = "{ \"org_id\": \"myorg\", \"name\": \"test_role\", \
+        \"target\": \"DELETE /role/test_role\" }";
+
+    #[test]
+    /// Validate a `CreateAgentAction` may be deserialized from the action itself, and from a
+    /// `PikePayload`
+    fn test_deserialize_json_create_agent() {
+        let example_action = CreateAgentAction {
+            org_id: ORG.to_string(),
+            public_key: PUBLIC_KEY.to_string(),
+            active: true,
+            roles: vec![],
+            metadata: vec![],
+        };
+        // Attempt to deserialize the JSON `create agent` action
+        let de_action: CreateAgentAction = serde_json::from_str(JSON_CREATE_AGENT_ACTION)
+            .expect("Unable to parse 'create agent' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        // Attempt to deserialize a bad JSON `create agent` action
+        let failed_de_action =
+            serde_json::from_str::<CreateAgentAction>(BAD_JSON_CREATE_AGENT_ACTION);
+        // Assert the malformed JSON returned an error, specifying the issue
+        match failed_de_action {
+            Ok(_) => panic!("Deserialization should have failed for `CreateAgentAction`"),
+            Err(test_err) => {
+                // Build the expected error
+                let builder_err =
+                    BuilderError::MissingField("'public_key' field is required".to_string());
+                let err_resp: ErrorResponse = ErrorResponse::new(
+                    400,
+                    &format!("Unable to build `CreateAgentAction`: {builder_err}"),
+                );
+                assert_eq!(format!("{test_err}"), format!("{err_resp}"));
+            }
+        }
+        //Attempt to deserialize the JSON `create agent` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_CREATE_AGENT_PAYLOAD)
+            .expect("Unable to parse 'create agent' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::CreateAgent(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `CreateAgentAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `UpdateAgentAction` may be deserialized from the action itself, and from a
+    /// `PikePayload`
+    fn test_deserialize_json_update_agent() {
+        let example_action = UpdateAgentAction {
+            org_id: ORG.to_string(),
+            public_key: PUBLIC_KEY.to_string(),
+            active: true,
+            roles: vec![],
+            metadata: vec![],
+        };
+        // Attempt to deserialize the JSON `update agent` action
+        let de_action: UpdateAgentAction = serde_json::from_str(JSON_UPDATE_AGENT_ACTION)
+            .expect("Unable to parse 'update agent' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `update agent` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_UPDATE_AGENT_PAYLOAD)
+            .expect("Unable to parse 'update agent' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::UpdateAgent(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `UpdateAgentAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `DeleteAgentAction` may be deserialized from the action itself, and from a
+    /// `PikePayload`
+    fn test_deserialize_json_delete_agent() {
+        let example_action = DeleteAgentAction {
+            org_id: ORG.to_string(),
+            public_key: PUBLIC_KEY.to_string(),
+        };
+        // Attempt to deserialize the JSON `delete agent` action
+        let de_action: DeleteAgentAction = serde_json::from_str(JSON_DELETE_AGENT_ACTION)
+            .expect("Unable to parse 'delete agent' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `delete agent` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_DELETE_AGENT_PAYLOAD)
+            .expect("Unable to parse 'delete agent' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::DeleteAgent(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `DeleteAgentAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `CreateOrganizationAction` may be deserialized from the action itself, and from
+    /// a `PikePayload`
+    fn test_deserialize_json_create_organization() {
+        let example_action = CreateOrganizationAction {
+            id: ORG.to_string(),
+            name: ORG.to_string(),
+            alternate_ids: vec![],
+            metadata: vec![],
+        };
+        // Attempt to deserialize the JSON `create organization` action
+        let de_action: CreateOrganizationAction =
+            serde_json::from_str(JSON_CREATE_ORGANIZATION_ACTION)
+                .expect("Unable to parse 'create organization' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `create organization` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_CREATE_ORGANIZATION_PAYLOAD)
+            .expect("Unable to parse 'create organization' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::CreateOrganization(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `CreateOrganizationAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `UpdateOrganizationAction` may be deserialized from the action itself, and from
+    /// a `PikePayload`
+    fn test_deserialize_json_update_organization() {
+        let example_action = UpdateOrganizationAction {
+            id: ORG.to_string(),
+            name: ORG.to_string(),
+            alternate_ids: vec![],
+            locations: vec![],
+            metadata: vec![],
+        };
+        // Attempt to deserialize the JSON `update organization` action
+        let de_action: UpdateOrganizationAction =
+            serde_json::from_str(JSON_UPDATE_ORGANIZATION_ACTION)
+                .expect("Unable to parse 'create organization' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `update organization` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_UPDATE_ORGANIZATION_PAYLOAD)
+            .expect("Unable to parse 'create organization' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::UpdateOrganization(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `UpdateOrganizationAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `DeleteOrganizationAction` may be deserialized from the action itself, and from
+    /// a `PikePayload`
+    fn test_deserialize_json_delete_organization() {
+        let example_action = DeleteOrganizationAction {
+            id: ORG.to_string(),
+        };
+        // Attempt to deserialize the JSON `delete organization` action
+        let de_action: DeleteOrganizationAction =
+            serde_json::from_str(JSON_DELETE_ORGANIZATION_ACTION)
+                .expect("Unable to parse 'delete organization' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `delete organization` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_DELETE_ORGANIZATION_PAYLOAD)
+            .expect("Unable to parse 'delete organization' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::DeleteOrganization(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `DeleteOrganizationAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `CreateRoleAction` may be deserialized from the action itself, and from
+    /// a `PikePayload`
+    fn test_deserialize_json_create_role() {
+        let example_action = CreateRoleAction {
+            org_id: ORG.to_string(),
+            name: ROLE.to_string(),
+            description: ROLE.to_string(),
+            permissions: vec!["schema::can_create_schema".to_string()],
+            allowed_organizations: vec![],
+            inherit_from: vec![],
+            active: true,
+        };
+        // Attempt to deserialize the JSON `create role` action
+        let de_action: CreateRoleAction = serde_json::from_str(JSON_CREATE_ROLE_ACTION)
+            .expect("Unable to parse 'create role' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `create role` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_CREATE_ROLE_PAYLOAD)
+            .expect("Unable to parse 'create role' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::CreateRole(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `CreateRoleAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `UpdateRoleAction` may be deserialized from the action itself, and from
+    /// a `PikePayload`
+    fn test_deserialize_json_update_role() {
+        let example_action = UpdateRoleAction {
+            org_id: ORG.to_string(),
+            name: ROLE.to_string(),
+            description: ROLE.to_string(),
+            permissions: vec!["schema::can_create_schema".to_string()],
+            allowed_organizations: vec![],
+            inherit_from: vec![],
+            active: false,
+        };
+        // Attempt to deserialize the JSON `update role` action
+        let de_action: UpdateRoleAction = serde_json::from_str(JSON_UPDATE_ROLE_ACTION)
+            .expect("Unable to parse 'update role' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `update role` payload
+        let de_payload: PikePayload = serde_json::from_str(JSON_UPDATE_ROLE_PAYLOAD)
+            .expect("Unable to parse 'update role' payload");
+        assert_ne!(de_payload.timestamp(), 0);
+        if let PikeAction::UpdateRole(action) = de_payload.action() {
+            assert_eq!(&example_action, action);
+        } else {
+            panic!("`PikePayload` action should be `UpdateRoleAction` type");
+        }
+    }
+
+    #[test]
+    /// Validate a `DeleteRoleAction` may be deserialized from the action itself, and from
+    /// a `PikePayload`
+    fn test_deserialize_json_delete_role() {
+        let example_action = DeleteRoleAction {
+            org_id: ORG.to_string(),
+            name: ROLE.to_string(),
+        };
+        // Attempt to deserialize the JSON `delete role` action
+        let de_action: DeleteRoleAction = serde_json::from_str(JSON_DELETE_ROLE_ACTION)
+            .expect("Unable to parse 'delete role' action");
+        // Assert the deserialized action is as we expect
+        assert_eq!(example_action, de_action);
+        //Attempt to deserialize the JSON `delete role` payload
+        let de_payload: Payload = serde_json::from_str(JSON_DELETE_ROLE_PAYLOAD)
+            .expect("Unable to parse 'delete role' payload");
+        match de_payload {
+            Payload::Pike(payload) => {
+                assert_ne!(payload.timestamp(), 0);
+                if let PikeAction::DeleteRole(action) = payload.action() {
+                    assert_eq!(&example_action, action);
+                } else {
+                    panic!("`PikePayload` action should be `DeleteRoleAction` type");
+                }
+            }
+            _ => panic!("Unable to deserialize Payload"),
+        }
     }
 }
