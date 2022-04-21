@@ -18,8 +18,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use cylinder::Signer;
 use serde::{self, Deserialize};
 use serde_json::Value;
-use transact::protocol::transaction::Transaction;
+use transact::protocol::{sabre::ExecuteContractActionBuilder, transaction::Transaction};
 
+use crate::pike::addressing::GRID_PIKE_NAMESPACE;
+use crate::protocol::pike::{payload as payload_protocol, state as state_protocol};
+use crate::protos::IntoBytes;
 use crate::rest_api::resources::{
     error::ErrorResponse, submit::v2::error::BuilderError, submit::v2::payloads::TransactionPayload,
 };
@@ -89,9 +92,65 @@ impl CreateAgentAction {
     }
 }
 
+impl TryFrom<&CreateAgentAction> for payload_protocol::CreateAgentAction {
+    type Error = ErrorResponse;
+
+    fn try_from(action: &CreateAgentAction) -> Result<Self, Self::Error> {
+        let metadata = action
+            .metadata()
+            .iter()
+            .map(state_protocol::KeyValueEntry::try_from)
+            .collect::<Result<Vec<_>, ErrorResponse>>()?;
+        payload_protocol::CreateAgentActionBuilder::default()
+            .with_org_id(action.org_id().to_string())
+            .with_public_key(action.public_key().to_string())
+            .with_active(*action.active())
+            .with_roles(action.roles().to_vec())
+            .with_metadata(metadata)
+            .build()
+            .map_err(|err| {
+                ErrorResponse::new(
+                    400,
+                    &format!("Unable to build protocol CreateAgentAction: {err}"),
+                )
+            })
+    }
+}
+
 impl TransactionPayload for CreateAgentAction {
-    fn build_transaction(&self, _signer: Box<dyn Signer>) -> Result<Transaction, ErrorResponse> {
-        unimplemented!();
+    fn build_transaction(&self, signer: Box<dyn Signer>) -> Result<Transaction, ErrorResponse> {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+        let action = payload_protocol::CreateAgentAction::try_from(self)?;
+        let payload_bytes = payload_protocol::PikePayloadBuilder::default()
+            .with_action(payload_protocol::Action::CreateAgent(action))
+            .with_timestamp(timestamp)
+            .build()
+            .map_err(|err| {
+                ErrorResponse::new(
+                    400,
+                    &format!("Failed to build protocol Pike payload: {err}"),
+                )
+            })?
+            .into_bytes()
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+        // Turn contract-specific action into Sabre `ExecuteContractActionBuilder`
+        let sabre_payload_builder = ExecuteContractActionBuilder::new()
+            .with_name(GRID_PIKE_FAMILY_NAME.to_string())
+            .with_version(GRID_PIKE_FAMILY_VERSION.to_string())
+            .with_inputs(vec![GRID_PIKE_NAMESPACE.to_string()])
+            .with_outputs(vec![GRID_PIKE_NAMESPACE.to_string()])
+            .with_payload(payload_bytes)
+            .into_payload_builder()
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?;
+        // Turn the Sabre `ExecuteContractActionBuilder` into a `Transaction`
+        sabre_payload_builder
+            .into_transaction_builder()
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))?
+            .build(&*signer)
+            .map_err(|err| ErrorResponse::internal_error(Box::new(err)))
     }
 }
 
@@ -965,6 +1024,23 @@ impl KeyValueEntry {
 
     pub fn value(&self) -> &str {
         &self.value
+    }
+}
+
+impl TryFrom<&KeyValueEntry> for state_protocol::KeyValueEntry {
+    type Error = ErrorResponse;
+
+    fn try_from(entry: &KeyValueEntry) -> Result<Self, Self::Error> {
+        state_protocol::KeyValueEntryBuilder::default()
+            .with_key(entry.key().to_string())
+            .with_value(entry.value().to_string())
+            .build()
+            .map_err(|err| {
+                ErrorResponse::new(
+                    400,
+                    &format!("Unable to build protocol KeyValueEntry: {err}"),
+                )
+            })
     }
 }
 
