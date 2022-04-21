@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v10 as gridd-builder
+FROM hyperledger/grid-dev:v11 as gridd-builder
 
 ENV GRID_FORCE_PANDOC=true
 
