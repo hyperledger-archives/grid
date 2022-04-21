@@ -182,7 +182,11 @@ rest-api-endpoint-submit = ["batch-store", "rest-api-resources-submit"]
 rest-api-resources = ["rest-api"]
 rest-api-resources-agent = ["pike", "rest-api-resources", "serde_json"]
 rest-api-resources-batches = ["backend", "rest-api-resources"]
-rest-api-resources-batch-tracking = ["batch-tracking", "rest-api-resources"]
+rest-api-resources-batch-tracking = [
+    "batch-tracking",
+    "rest-api-resources",
+    "transact/protocol-sabre",
+]
 rest-api-resources-location = ["location", "rest-api-resources"]
 rest-api-resources-organization = ["pike", "rest-api-resources"]
 rest-api-resources-product = ["product", "rest-api-resources"]
