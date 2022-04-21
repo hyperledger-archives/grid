@@ -14,8 +14,10 @@
 
 //! Provides native representations of smart contract actions used to deserialize from JSON
 
+mod location;
 mod schema;
 
+pub use location::LocationPayload;
 pub use schema::{PropertyValue, SchemaPayload};
 
 use cylinder::Signer;
@@ -27,12 +29,14 @@ use crate::rest_api::resources::error::ErrorResponse;
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Payload {
+    Location(LocationPayload),
     Schema(SchemaPayload),
 }
 
 impl Payload {
     pub fn into_inner(self) -> Box<dyn TransactionPayload> {
         match self {
+            Payload::Location(payload) => payload.into_transaction_payload(),
             Payload::Schema(payload) => payload.into_transaction_payload(),
         }
     }
