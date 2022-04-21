@@ -16,10 +16,12 @@
 
 mod location;
 mod pike;
+mod product;
 mod schema;
 
 pub use location::LocationPayload;
 pub use pike::PikePayload;
+pub use product::ProductPayload;
 pub use schema::{PropertyValue, SchemaPayload};
 
 use cylinder::Signer;
@@ -34,6 +36,7 @@ pub enum Payload {
     Location(LocationPayload),
     Pike(PikePayload),
     Schema(SchemaPayload),
+    Product(ProductPayload),
 }
 
 impl Payload {
@@ -42,6 +45,7 @@ impl Payload {
             Payload::Location(payload) => payload.into_transaction_payload(),
             Payload::Pike(payload) => payload.into_transaction_payload(),
             Payload::Schema(payload) => payload.into_transaction_payload(),
+            Payload::Product(payload) => payload.into_transaction_payload(),
         }
     }
 }
@@ -155,6 +159,9 @@ mod tests {
                 assert_eq!(ex_payload.action(), test_payload.action())
             }
             (Payload::Schema(ex_payload), Payload::Schema(test_payload)) => {
+                assert_eq!(ex_payload.action(), test_payload.action())
+            }
+            (Payload::Product(ex_payload), Payload::Product(test_payload)) => {
                 assert_eq!(ex_payload.action(), test_payload.action())
             }
             (_, _) => {
