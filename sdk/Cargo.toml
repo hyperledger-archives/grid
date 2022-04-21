@@ -126,6 +126,7 @@ experimental = [
     "proxy-client",
     "rest-api-actix-web-3",
     "rest-api-actix-web-3-run",
+    "rest-api-resources-batch-tracking",
     "rest-api-endpoint-proxy",
     "rest-api-endpoint-record",
     "rest-api-endpoint-submit",
@@ -181,6 +182,7 @@ rest-api-endpoint-submit = ["batch-store", "rest-api-resources-submit"]
 rest-api-resources = ["rest-api"]
 rest-api-resources-agent = ["pike", "rest-api-resources", "serde_json"]
 rest-api-resources-batches = ["backend", "rest-api-resources"]
+rest-api-resources-batch-tracking = ["batch-tracking", "rest-api-resources"]
 rest-api-resources-location = ["location", "rest-api-resources"]
 rest-api-resources-organization = ["pike", "rest-api-resources"]
 rest-api-resources-product = ["product", "rest-api-resources"]

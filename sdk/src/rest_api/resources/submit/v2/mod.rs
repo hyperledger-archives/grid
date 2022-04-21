@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod v1;
-#[cfg(feature = "rest-api-resources-batch-tracking")]
-#[allow(dead_code)]
-pub mod v2;
+pub mod error;
+pub mod payloads;
