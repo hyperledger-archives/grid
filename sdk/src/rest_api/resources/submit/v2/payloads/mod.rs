@@ -14,10 +14,29 @@
 
 //! Provides native representations of smart contract actions used to deserialize from JSON
 
+mod schema;
+
+pub use schema::{PropertyValue, SchemaPayload};
+
 use cylinder::Signer;
 use transact::protocol::transaction::Transaction;
 
 use crate::rest_api::resources::error::ErrorResponse;
+
+/// Represents all possible smart contract payloads able to be submitted
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum Payload {
+    Schema(SchemaPayload),
+}
+
+impl Payload {
+    pub fn into_inner(self) -> Box<dyn TransactionPayload> {
+        match self {
+            Payload::Schema(payload) => payload.into_transaction_payload(),
+        }
+    }
+}
 
 pub trait TransactionPayload {
     fn build_transaction(&self, signer: Box<dyn Signer>) -> Result<Transaction, ErrorResponse>;
