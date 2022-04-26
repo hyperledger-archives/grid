@@ -50,9 +50,10 @@ pub struct TransactionModel {
     pub signer_public_key: String,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, AsChangeset)]
 #[table_name = "transaction_receipts"]
 #[primary_key(service_id, transaction_id)]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct TransactionReceiptModel {
     pub service_id: String,
     pub transaction_id: String,
@@ -64,7 +65,7 @@ pub struct TransactionReceiptModel {
     pub external_error_message: Option<String>,
 }
 
-#[derive(Insertable, Debug)]
+#[derive(Insertable, Debug, AsChangeset)]
 #[table_name = "batch_statuses"]
 pub struct NewBatchStatusModel {
     pub service_id: String,
@@ -83,7 +84,8 @@ pub struct BatchStatusModel {
     pub updated_at: i64,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Queryable, Debug, AsChangeset)]
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name = "submissions"]
 pub struct NewSubmissionModel {
     pub service_id: String,
@@ -192,6 +194,21 @@ impl From<&TransactionReceiptModel> for TransactionReceipt {
     }
 }
 
+impl From<(&TransactionReceipt, &str)> for TransactionReceiptModel {
+    fn from((receipt, service_id): (&TransactionReceipt, &str)) -> Self {
+        Self {
+            service_id: service_id.to_string(),
+            transaction_id: receipt.transaction_id().to_string(),
+            result_valid: receipt.result_valid(),
+            error_message: receipt.error_message().map(String::from),
+            error_data: receipt.error_data().map(Vec::from),
+            serialized_receipt: receipt.serialized_receipt().as_bytes().to_vec(),
+            external_status: receipt.external_status().map(String::from),
+            external_error_message: receipt.external_error_message().map(String::from),
+        }
+    }
+}
+
 impl
     TryFrom<(
         BatchStatusModel,
@@ -209,10 +226,10 @@ impl
         ),
     ) -> Result<Self, Self::Error> {
         match batch_status.dlt_status.as_str() {
-            "UNKNOWN" => Ok(BatchStatus::Unknown),
-            "PENDING" => Ok(BatchStatus::Pending),
-            "DELAYED" => Ok(BatchStatus::Delayed),
-            "INVALID" => {
+            "Unknown" => Ok(BatchStatus::Unknown),
+            "Pending" => Ok(BatchStatus::Pending),
+            "Delayed" => Ok(BatchStatus::Delayed),
+            "Invalid" => {
                 if invalid_transactions.is_empty() {
                     return Err(BatchTrackingStoreError::InternalError(
                         InternalError::with_message(
@@ -223,7 +240,7 @@ impl
 
                 Ok(BatchStatus::Invalid(invalid_transactions))
             }
-            "VALID" => {
+            "Valid" => {
                 if valid_transactions.is_empty() {
                     return Err(BatchTrackingStoreError::InternalError(
                         InternalError::with_message(
@@ -234,7 +251,7 @@ impl
 
                 Ok(BatchStatus::Valid(valid_transactions))
             }
-            "COMMITTED" => {
+            "Committed" => {
                 if valid_transactions.is_empty() {
                     return Err(BatchTrackingStoreError::InternalError(
                         InternalError::with_message(

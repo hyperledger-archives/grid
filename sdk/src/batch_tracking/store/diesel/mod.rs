@@ -26,7 +26,9 @@ use super::{
 
 use crate::error::ResourceTemporarilyUnavailableError;
 
+use models::{NewBatchStatusModel, NewSubmissionModel, TransactionReceiptModel};
 use operations::add_batches::BatchTrackingStoreAddBatchesOperation as _;
+use operations::change_batch_to_submitted::BatchTrackingStoreChangeBatchToSubmittedOperation as _;
 use operations::get_batch::BatchTrackingStoreGetBatchOperation as _;
 use operations::get_batch_status::BatchTrackingStoreGetBatchStatusOperation as _;
 use operations::BatchTrackingStoreOperations;
@@ -85,10 +87,53 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
 
     fn change_batch_to_submitted(
         &self,
-        _batch_id: &str,
-        _service_id: Option<&str>,
+        batch_id: &str,
+        service_id: &str,
+        transaction_receipts: Vec<TransactionReceipt>,
+        dlt_status: Option<&str>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+        let mut batch_status = None;
+
+        if let Some(ds) = dlt_status {
+            batch_status = Some(NewBatchStatusModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                dlt_status: ds.to_string(),
+            });
+        }
+
+        let mut submission = NewSubmissionModel {
+            batch_id: batch_id.to_string(),
+            service_id: service_id.to_string(),
+            error_type: None,
+            error_message: None,
+        };
+
+        if let Some(s) = submission_error {
+            submission = NewSubmissionModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                error_type: Some(s.error_type().to_string()),
+                error_message: Some(s.error_message().to_string()),
+            };
+        }
+
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .change_batch_to_submitted(
+            batch_id,
+            service_id,
+            transaction_receipts
+                .iter()
+                .map(|r| TransactionReceiptModel::from((r, service_id)))
+                .collect(),
+            batch_status,
+            submission,
+        )
     }
 
     fn get_batch(
@@ -163,10 +208,53 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::sqlite::SqliteConne
 
     fn change_batch_to_submitted(
         &self,
-        _batch_id: &str,
-        _service_id: Option<&str>,
+        batch_id: &str,
+        service_id: &str,
+        transaction_receipts: Vec<TransactionReceipt>,
+        dlt_status: Option<&str>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+        let mut batch_status = None;
+
+        if let Some(ds) = dlt_status {
+            batch_status = Some(NewBatchStatusModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                dlt_status: ds.to_string(),
+            });
+        }
+
+        let mut submission = NewSubmissionModel {
+            batch_id: batch_id.to_string(),
+            service_id: service_id.to_string(),
+            error_type: None,
+            error_message: None,
+        };
+
+        if let Some(s) = submission_error {
+            submission = NewSubmissionModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                error_type: Some(s.error_type().to_string()),
+                error_message: Some(s.error_message().to_string()),
+            };
+        }
+
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .change_batch_to_submitted(
+            batch_id,
+            service_id,
+            transaction_receipts
+                .iter()
+                .map(|r| TransactionReceiptModel::from((r, service_id)))
+                .collect(),
+            batch_status,
+            submission,
+        )
     }
 
     fn get_batch(
@@ -250,10 +338,48 @@ impl<'a> BatchTrackingStore for DieselConnectionBatchTrackingStore<'a, diesel::p
 
     fn change_batch_to_submitted(
         &self,
-        _batch_id: &str,
-        _service_id: Option<&str>,
+        batch_id: &str,
+        service_id: &str,
+        transaction_receipts: Vec<TransactionReceipt>,
+        dlt_status: Option<&str>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+        let mut batch_status = None;
+
+        if let Some(ds) = dlt_status {
+            batch_status = Some(NewBatchStatusModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                dlt_status: ds.to_string(),
+            });
+        }
+
+        let mut submission = NewSubmissionModel {
+            batch_id: batch_id.to_string(),
+            service_id: service_id.to_string(),
+            error_type: None,
+            error_message: None,
+        };
+
+        if let Some(s) = submission_error {
+            submission = NewSubmissionModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                error_type: Some(s.error_type().to_string()),
+                error_message: Some(s.error_message().to_string()),
+            };
+        }
+
+        BatchTrackingStoreOperations::new(self.connection).change_batch_to_submitted(
+            batch_id,
+            service_id,
+            transaction_receipts
+                .iter()
+                .map(|r| TransactionReceiptModel::from((r, service_id)))
+                .collect(),
+            batch_status,
+            submission,
+        )
     }
 
     fn get_batch(
@@ -315,10 +441,48 @@ impl<'a> BatchTrackingStore
 
     fn change_batch_to_submitted(
         &self,
-        _batch_id: &str,
-        _service_id: Option<&str>,
+        batch_id: &str,
+        service_id: &str,
+        transaction_receipts: Vec<TransactionReceipt>,
+        dlt_status: Option<&str>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+        let mut batch_status = None;
+
+        if let Some(ds) = dlt_status {
+            batch_status = Some(NewBatchStatusModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                dlt_status: ds.to_string(),
+            });
+        }
+
+        let mut submission = NewSubmissionModel {
+            batch_id: batch_id.to_string(),
+            service_id: service_id.to_string(),
+            error_type: None,
+            error_message: None,
+        };
+
+        if let Some(s) = submission_error {
+            submission = NewSubmissionModel {
+                batch_id: batch_id.to_string(),
+                service_id: service_id.to_string(),
+                error_type: Some(s.error_type().to_string()),
+                error_message: Some(s.error_message().to_string()),
+            };
+        }
+
+        BatchTrackingStoreOperations::new(self.connection).change_batch_to_submitted(
+            batch_id,
+            service_id,
+            transaction_receipts
+                .iter()
+                .map(|r| TransactionReceiptModel::from((r, service_id)))
+                .collect(),
+            batch_status,
+            submission,
+        )
     }
 
     fn get_batch(
@@ -364,7 +528,9 @@ mod tests {
         transaction::{HashMethod, TransactionBuilder},
     };
 
-    use crate::batch_tracking::store::TrackingBatchBuilder;
+    use crate::batch_tracking::store::{
+        SubmissionErrorBuilder, TrackingBatchBuilder, TransactionReceiptBuilder,
+    };
     use crate::hex;
     use crate::migrations::run_sqlite_migrations;
 
@@ -429,6 +595,103 @@ mod tests {
         assert_eq!(
             store.get_batch(&id, "TEST").expect("Failed to get batch"),
             Some(tracking_batch)
+        );
+    }
+
+    #[test]
+    fn change_batch_to_submitted() {
+        let pool = create_connection_pool_and_migrate();
+
+        let store = DieselBatchTrackingStore::new(pool);
+
+        let signer = new_signer();
+
+        let pair = TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(NONCE.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .unwrap();
+
+        let transaction_header = pair.header_signature().to_string();
+
+        let batch_1 = BatchBuilder::new()
+            .with_transactions(vec![pair])
+            .build(&*signer)
+            .unwrap();
+
+        let tracking_batch = TrackingBatchBuilder::default()
+            .with_batch(batch_1)
+            .with_service_id("TEST".to_string())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .with_created_at(111111)
+            .build()
+            .unwrap();
+
+        let id = tracking_batch.batch_header();
+
+        let txn_receipts = vec![TransactionReceiptBuilder::default()
+            .with_transaction_id(transaction_header)
+            .with_result_valid(true)
+            .with_serialized_receipt(std::str::from_utf8(&BYTES2).unwrap().to_string())
+            .build()
+            .unwrap()];
+
+        let submission_error = SubmissionErrorBuilder::default()
+            .with_error_type("test".to_string())
+            .with_error_message("test message".to_string())
+            .build()
+            .unwrap();
+
+        store
+            .add_batches(vec![tracking_batch.clone()])
+            .expect("Failed to add batch");
+
+        store
+            .change_batch_to_submitted(
+                &id,
+                "TEST",
+                txn_receipts,
+                Some("Pending"),
+                Some(submission_error),
+            )
+            .expect("Failed to change batch to submitted");
+
+        let batch = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+
+        assert_eq!(batch.submitted(), true)
+    }
+
+    #[test]
+    fn change_batch_to_submitted_no_batch() {
+        let pool = create_connection_pool_and_migrate();
+
+        let store = DieselBatchTrackingStore::new(pool);
+
+        let res = store
+            .change_batch_to_submitted("id", "TEST", Vec::new(), Some("Pending"), None)
+            .unwrap_err();
+
+        assert_eq!(
+            res.to_string(),
+            BatchTrackingStoreError::NotFoundError("Could not find batch with ID id".to_string())
+                .to_string()
         );
     }
 

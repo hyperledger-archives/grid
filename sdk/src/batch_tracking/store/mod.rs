@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt;
+
 use crate::error::InternalError;
 use transact::protocol::{
     batch::Batch,
@@ -35,6 +37,44 @@ pub enum BatchStatus {
     Invalid(Vec<InvalidTransaction>),
     Valid(Vec<ValidTransaction>),
     Committed(Vec<ValidTransaction>),
+}
+
+impl fmt::Display for BatchStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            BatchStatus::Unknown => write!(f, "Unknown"),
+            BatchStatus::Pending => write!(f, "Pending"),
+            BatchStatus::Delayed => write!(f, "Delayed"),
+            BatchStatus::Invalid(_) => write!(f, "Invalid"),
+            BatchStatus::Valid(_) => write!(f, "Valid"),
+            BatchStatus::Committed(_) => write!(f, "Committed"),
+        }
+    }
+}
+
+pub enum BatchStatusName {
+    Unknown,
+    Pending,
+    Delayed,
+    Invalid,
+    Valid,
+    Committed,
+}
+
+impl BatchStatusName {
+    fn try_from_string(value: &str) -> Result<BatchStatusName, BatchTrackingStoreError> {
+        match value {
+            "Unknown" => Ok(BatchStatusName::Unknown),
+            "Pending" => Ok(BatchStatusName::Pending),
+            "Delayed" => Ok(BatchStatusName::Delayed),
+            "Invalid" => Ok(BatchStatusName::Invalid),
+            "Valid" => Ok(BatchStatusName::Valid),
+            "Committed" => Ok(BatchStatusName::Committed),
+            _ => Err(BatchTrackingStoreError::InternalError(
+                InternalError::with_message(format!("Status {} is not valid", value)),
+            )),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -204,6 +244,7 @@ impl SubmissionError {
     }
 }
 
+#[derive(Default)]
 pub struct SubmissionErrorBuilder {
     error_type: String,
     error_message: String,
@@ -623,6 +664,7 @@ impl TransactionReceipt {
     }
 }
 
+#[derive(Default, Clone)]
 pub struct TransactionReceiptBuilder {
     transaction_id: String,
     result_valid: bool,
@@ -667,6 +709,40 @@ impl TransactionReceiptBuilder {
     pub fn with_external_error_message(mut self, message: String) -> Self {
         self.external_error_message = Some(message);
         self
+    }
+
+    pub fn build(self) -> Result<TransactionReceipt, BatchBuilderError> {
+        let TransactionReceiptBuilder {
+            transaction_id,
+            result_valid,
+            error_message,
+            error_data,
+            serialized_receipt,
+            external_status,
+            external_error_message,
+        } = self;
+
+        if transaction_id.is_empty() {
+            return Err(BatchBuilderError::MissingRequiredField(
+                "transaction_id".to_string(),
+            ));
+        }
+
+        if serialized_receipt.is_empty() {
+            return Err(BatchBuilderError::MissingRequiredField(
+                "transaction_id".to_string(),
+            ));
+        }
+
+        Ok(TransactionReceipt {
+            transaction_id,
+            result_valid,
+            error_message,
+            error_data,
+            serialized_receipt,
+            external_status,
+            external_error_message,
+        })
     }
 }
 
@@ -718,7 +794,10 @@ pub trait BatchTrackingStore {
     fn change_batch_to_submitted(
         &self,
         batch_id: &str,
-        service_id: Option<&str>,
+        service_id: &str,
+        transaction_receipts: Vec<TransactionReceipt>,
+        dlt_status: Option<&str>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError>;
 
     /// Gets a batch from the underlying storage
@@ -790,7 +869,10 @@ where
     fn change_batch_to_submitted(
         &self,
         _batch_id: &str,
-        _service_id: Option<&str>,
+        _service_id: &str,
+        _transaction_receipts: Vec<TransactionReceipt>,
+        _dlt_status: Option<&str>,
+        _submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
         unimplemented!();
     }
