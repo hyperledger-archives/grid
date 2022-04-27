@@ -30,6 +30,7 @@ use crate::error::ResourceTemporarilyUnavailableError;
 use models::{NewBatchStatusModel, NewSubmissionModel, TransactionReceiptModel};
 use operations::add_batches::BatchTrackingStoreAddBatchesOperation as _;
 use operations::change_batch_to_submitted::BatchTrackingStoreChangeBatchToSubmittedOperation as _;
+use operations::clean_stale_records::BatchTrackingCleanStaleRecordsOperation as _;
 use operations::get_batch::BatchTrackingStoreGetBatchOperation as _;
 use operations::get_batch_status::BatchTrackingStoreGetBatchStatusOperation as _;
 use operations::get_failed_batches::BatchTrackingStoreGetFailedBatchesOperation as _;
@@ -183,11 +184,13 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
         .list_batches_by_status(&status.to_string())
     }
 
-    fn clean_stale_records(
-        &self,
-        _submitted_by: &str,
-    ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+    fn clean_stale_records(&self, submitted_by: i64) -> Result<(), BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .clean_stale_records(submitted_by)
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -336,11 +339,13 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::sqlite::SqliteConne
         .list_batches_by_status(&status.to_string())
     }
 
-    fn clean_stale_records(
-        &self,
-        _submitted_by: &str,
-    ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+    fn clean_stale_records(&self, submitted_by: i64) -> Result<(), BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
+                ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
+            )
+        })?)
+        .clean_stale_records(submitted_by)
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -485,11 +490,8 @@ impl<'a> BatchTrackingStore for DieselConnectionBatchTrackingStore<'a, diesel::p
             .list_batches_by_status(&status.to_string())
     }
 
-    fn clean_stale_records(
-        &self,
-        _submitted_by: &str,
-    ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+    fn clean_stale_records(&self, submitted_by: i64) -> Result<(), BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(self.connection).clean_stale_records(submitted_by)
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -607,11 +609,8 @@ impl<'a> BatchTrackingStore
             .list_batches_by_status(&status.to_string())
     }
 
-    fn clean_stale_records(
-        &self,
-        _submitted_by: &str,
-    ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+    fn clean_stale_records(&self, submitted_by: i64) -> Result<(), BatchTrackingStoreError> {
+        BatchTrackingStoreOperations::new(self.connection).clean_stale_records(submitted_by)
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
@@ -1249,6 +1248,68 @@ mod tests {
                 batches: Vec::new()
             }
         );
+    }
+
+    #[test]
+    fn test_clean_stale_records() {
+        let pool = create_connection_pool_and_migrate();
+
+        let store = DieselBatchTrackingStore::new(pool);
+
+        let signer = new_signer();
+
+        let pair = TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(NONCE.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .unwrap();
+
+        let batch_1 = BatchBuilder::new()
+            .with_transactions(vec![pair])
+            .build(&*signer)
+            .unwrap();
+
+        let tracking_batch = TrackingBatchBuilder::default()
+            .with_batch(batch_1.clone())
+            .with_service_id("TEST".to_string())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .build()
+            .unwrap();
+
+        let id = tracking_batch.batch_header();
+
+        store
+            .add_batches(vec![tracking_batch.clone()])
+            .expect("Failed to add batch");
+
+        let batch_result = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_timestamp = batch_result.created_at();
+
+        store
+            .clean_stale_records(batch_timestamp + 1)
+            .expect("Failed to clean records");
+
+        assert_eq!(
+            store.get_batch(&id, "TEST").expect("Failed to get batch"),
+            None
+        )
     }
 
     /// Creates a connection pool for an in-memory SQLite database with only a single connection
