@@ -687,24 +687,34 @@ mod tests {
             .build(&*signer)
             .unwrap();
 
-        let tracking_batch = TrackingBatchBuilder::default()
+        let add_tracking_batch = TrackingBatchBuilder::default()
+            .with_batch(batch_1.clone())
+            .with_service_id("TEST".to_string())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .build()
+            .unwrap();
+
+        let id = add_tracking_batch.batch_header();
+
+        store
+            .add_batches(vec![add_tracking_batch.clone()])
+            .expect("Failed to add batch");
+
+        let batch_result = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_timestamp = batch_result.created_at();
+        let expected = TrackingBatchBuilder::default()
             .with_batch(batch_1)
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(false)
-            .with_created_at(111111)
+            .with_created_at(batch_timestamp)
             .build()
             .unwrap();
-
-        let id = tracking_batch.batch_header();
-
-        store
-            .add_batches(vec![tracking_batch.clone()])
-            .expect("Failed to add batch");
-        assert_eq!(
-            store.get_batch(&id, "TEST").expect("Failed to get batch"),
-            Some(tracking_batch)
-        );
+        assert_eq!(batch_result, expected);
     }
 
     #[test]
@@ -746,7 +756,6 @@ mod tests {
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(false)
-            .with_created_at(111111)
             .build()
             .unwrap();
 
@@ -766,20 +775,23 @@ mod tests {
             )
             .expect("Failed to update batch");
 
-        let tracking_batch_update_1 = TrackingBatchBuilder::default()
+        let batch_result_1 = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_result_1_timestamp = batch_result_1.created_at();
+
+        let expected_1 = TrackingBatchBuilder::default()
             .with_batch(batch_1.clone())
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(true)
-            .with_created_at(111111)
+            .with_created_at(batch_result_1_timestamp)
             .with_batch_status(BatchStatus::Pending)
             .build()
             .unwrap();
 
-        assert_eq!(
-            store.get_batch(&id, "TEST").expect("Failed to get batch"),
-            Some(tracking_batch_update_1)
-        );
+        assert_eq!(batch_result_1, expected_1);
 
         let submission_error = SubmissionErrorBuilder::default()
             .with_error_type("test".to_string())
@@ -813,21 +825,24 @@ mod tests {
             )
             .expect("Failed to update batch");
 
-        let tracking_batch_update_2 = TrackingBatchBuilder::default()
+        let batch_result_2 = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_result_2_timestamp = batch_result_2.created_at();
+
+        let expected_2 = TrackingBatchBuilder::default()
             .with_batch(batch_1.clone())
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(true)
-            .with_created_at(111111)
+            .with_created_at(batch_result_2_timestamp)
             .with_batch_status(BatchStatus::Invalid(invalid_transactions))
             .with_submission_error(submission_error)
             .build()
             .unwrap();
 
-        assert_eq!(
-            store.get_batch(&id, "TEST").expect("Failed to get batch"),
-            Some(tracking_batch_update_2)
-        );
+        assert_eq!(batch_result_2, expected_2);
     }
 
     #[test]
@@ -869,7 +884,6 @@ mod tests {
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(false)
-            .with_created_at(111111)
             .build()
             .unwrap();
 
@@ -984,30 +998,46 @@ mod tests {
             .unwrap();
 
         let tracking_batch_1 = TrackingBatchBuilder::default()
-            .with_batch(batch_1)
+            .with_batch(batch_1.clone())
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(false)
-            .with_created_at(111111)
             .build()
             .unwrap();
+
+        let id = tracking_batch_1.batch_header();
 
         let tracking_batch_2 = TrackingBatchBuilder::default()
             .with_batch(batch_2)
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(true)
-            .with_created_at(111111)
+            .build()
+            .unwrap();
+
+        store
+            .add_batches(vec![tracking_batch_1.clone(), tracking_batch_2])
+            .expect("Failed to add batches");
+
+        let batch_result = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_result_timestamp = batch_result.created_at();
+
+        let expected_batch = TrackingBatchBuilder::default()
+            .with_batch(batch_1)
+            .with_service_id("TEST".to_string())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .with_created_at(batch_result_timestamp)
             .build()
             .unwrap();
 
         let expected = TrackingBatchList {
-            batches: vec![tracking_batch_1.clone()],
+            batches: vec![expected_batch],
         };
 
-        store
-            .add_batches(vec![tracking_batch_1, tracking_batch_2])
-            .expect("Failed to add batches");
         assert_eq!(
             store
                 .get_unsubmitted_batches()
@@ -1053,31 +1083,32 @@ mod tests {
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(false)
-            .with_created_at(111111)
             .build()
             .unwrap();
+
+        let id = tracking_batch.batch_header();
 
         store
             .add_batches(vec![tracking_batch.clone()])
             .expect("Failed to add batch");
 
+        let batch_result = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_result_timestamp = batch_result.created_at();
+
         store
-            .update_batch_status(
-                &tracking_batch.batch_header(),
-                "TEST",
-                Some(BatchStatus::Pending),
-                Vec::new(),
-                None,
-            )
+            .update_batch_status(&id, "TEST", Some(BatchStatus::Pending), Vec::new(), None)
             .expect("Failed to update batch");
 
-        let tracking_batch_update_1 = TrackingBatchBuilder::default()
+        let expected = TrackingBatchBuilder::default()
             .with_batch(batch_1.clone())
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(true)
-            .with_created_at(111111)
             .with_batch_status(BatchStatus::Pending)
+            .with_created_at(batch_result_timestamp)
             .build()
             .unwrap();
 
@@ -1086,18 +1117,12 @@ mod tests {
                 .list_batches_by_status(BatchStatus::Pending)
                 .expect("Failed to get batch"),
             TrackingBatchList {
-                batches: vec![tracking_batch_update_1]
+                batches: vec![expected]
             }
         );
 
         store
-            .update_batch_status(
-                &tracking_batch.batch_header(),
-                "TEST",
-                Some(BatchStatus::Unknown),
-                Vec::new(),
-                None,
-            )
+            .update_batch_status(&id, "TEST", Some(BatchStatus::Unknown), Vec::new(), None)
             .expect("Failed to update batch");
 
         assert_eq!(
@@ -1149,13 +1174,20 @@ mod tests {
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(false)
-            .with_created_at(111111)
             .build()
             .unwrap();
+
+        let id = tracking_batch.batch_header();
 
         store
             .add_batches(vec![tracking_batch.clone()])
             .expect("Failed to add batch");
+
+        let batch_result = store
+            .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_result_timestamp = batch_result.created_at();
 
         let submission_error = SubmissionErrorBuilder::default()
             .with_error_type("test".to_string())
@@ -1181,7 +1213,7 @@ mod tests {
 
         store
             .update_batch_status(
-                &tracking_batch.batch_header(),
+                &id,
                 "TEST",
                 Some(BatchStatus::Invalid(invalid_transactions.to_vec())),
                 vec![receipt_1],
@@ -1189,32 +1221,26 @@ mod tests {
             )
             .expect("Failed to update batch");
 
-        let tracking_batch_update_1 = TrackingBatchBuilder::default()
+        let expected = TrackingBatchBuilder::default()
             .with_batch(batch_1.clone())
             .with_service_id("TEST".to_string())
             .with_signer_public_key(KEY1.to_string())
             .with_submitted(true)
-            .with_created_at(111111)
             .with_batch_status(BatchStatus::Invalid(invalid_transactions))
             .with_submission_error(submission_error)
+            .with_created_at(batch_result_timestamp)
             .build()
             .unwrap();
 
         assert_eq!(
             store.get_failed_batches().expect("Failed to get batch"),
             TrackingBatchList {
-                batches: vec![tracking_batch_update_1]
+                batches: vec![expected]
             }
         );
 
         store
-            .update_batch_status(
-                &tracking_batch.batch_header(),
-                "TEST",
-                Some(BatchStatus::Pending),
-                Vec::new(),
-                None,
-            )
+            .update_batch_status(&id, "TEST", Some(BatchStatus::Pending), Vec::new(), None)
             .expect("Failed to update batch");
 
         assert_eq!(

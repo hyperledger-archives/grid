@@ -478,7 +478,7 @@ impl TrackingBatchBuilder {
             ));
         };
 
-        if created_at <= 0 {
+        if created_at < 0 {
             return Err(BatchBuilderError::MissingRequiredField(
                 "created_at".to_string(),
             ));

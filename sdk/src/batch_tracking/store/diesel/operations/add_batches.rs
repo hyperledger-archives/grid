@@ -15,7 +15,7 @@
 use super::BatchTrackingStoreOperations;
 use crate::batch_tracking::store::{
     diesel::{
-        models::{make_batch_models, make_transaction_models},
+        models::{make_new_batch_models, make_transaction_models},
         schema::{batches, transactions},
     },
     BatchTrackingStoreError, TrackingBatch,
@@ -32,7 +32,7 @@ impl<'a> BatchTrackingStoreAddBatchesOperation
     for BatchTrackingStoreOperations<'a, diesel::pg::PgConnection>
 {
     fn add_batches(&self, batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError> {
-        let batch_models = make_batch_models(&batches);
+        let batch_models = make_new_batch_models(&batches);
         let transaction_models = make_transaction_models(&batches);
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             insert_into(batches::table)
@@ -57,7 +57,7 @@ impl<'a> BatchTrackingStoreAddBatchesOperation
     for BatchTrackingStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
     fn add_batches(&self, batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError> {
-        let batch_models = make_batch_models(&batches);
+        let batch_models = make_new_batch_models(&batches);
         let transaction_models = make_transaction_models(&batches);
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             insert_into(batches::table)
