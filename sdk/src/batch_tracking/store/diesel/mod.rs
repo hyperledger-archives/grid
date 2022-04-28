@@ -89,14 +89,12 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::pg::PgConnection> {
 
         let batch_status: Option<&str> = stat.as_deref();
 
-        let submission_model =
-            submission_error.map(|e| NewSubmissionModel::from((e, id, service_id)));
         BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .update_batch_status(id, service_id, batch_status, rcpts, submission_model)
+        .update_batch_status(id, service_id, batch_status, rcpts, submission_error)
     }
 
     fn add_batches(&self, batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError> {
@@ -244,14 +242,12 @@ impl BatchTrackingStore for DieselBatchTrackingStore<diesel::sqlite::SqliteConne
 
         let batch_status: Option<&str> = stat.as_deref();
 
-        let submission_model =
-            submission_error.map(|e| NewSubmissionModel::from((e, id, service_id)));
         BatchTrackingStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             BatchTrackingStoreError::ResourceTemporarilyUnavailableError(
                 ResourceTemporarilyUnavailableError::from_source(Box::new(err)),
             )
         })?)
-        .update_batch_status(id, service_id, batch_status, rcpts, submission_model)
+        .update_batch_status(id, service_id, batch_status, rcpts, submission_error)
     }
 
     fn add_batches(&self, batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError> {
@@ -413,14 +409,12 @@ impl<'a> BatchTrackingStore for DieselConnectionBatchTrackingStore<'a, diesel::p
 
         let batch_status: Option<&str> = stat.as_deref();
 
-        let submission_model =
-            submission_error.map(|e| NewSubmissionModel::from((e, id, service_id)));
         BatchTrackingStoreOperations::new(self.connection).update_batch_status(
             id,
             service_id,
             batch_status,
             rcpts,
-            submission_model,
+            submission_error,
         )
     }
 
@@ -532,14 +526,12 @@ impl<'a> BatchTrackingStore
 
         let batch_status: Option<&str> = stat.as_deref();
 
-        let submission_model =
-            submission_error.map(|e| NewSubmissionModel::from((e, id, service_id)));
         BatchTrackingStoreOperations::new(self.connection).update_batch_status(
             id,
             service_id,
             batch_status,
             rcpts,
-            submission_model,
+            submission_error,
         )
     }
 
@@ -635,7 +627,7 @@ mod tests {
     };
 
     use crate::batch_tracking::store::{
-        InvalidTransactionBuilder, SubmissionErrorBuilder, TrackingBatchBuilder,
+        BatchBuilderError, InvalidTransactionBuilder, SubmissionErrorBuilder, TrackingBatchBuilder,
         TransactionReceiptBuilder,
     };
     use crate::hex;
@@ -714,6 +706,120 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(batch_result, expected);
+    }
+
+    #[test]
+    fn add_and_fetch_batch_with_dcid() {
+        let pool = create_connection_pool_and_migrate();
+
+        let store = DieselBatchTrackingStore::new(pool);
+
+        let signer = new_signer();
+
+        let pair = TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(NONCE.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .unwrap();
+
+        let batch_1 = BatchBuilder::new()
+            .with_transactions(vec![pair])
+            .build(&*signer)
+            .unwrap();
+
+        let dcid = "dcid:data_change".to_string();
+
+        let add_tracking_batch = TrackingBatchBuilder::default()
+            .with_batch(batch_1.clone())
+            .with_service_id("TEST".to_string())
+            .with_data_change_id(dcid.clone())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .build()
+            .unwrap();
+
+        store
+            .add_batches(vec![add_tracking_batch.clone()])
+            .expect("Failed to add batch");
+
+        let batch_result = store
+            .get_batch(&dcid, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_timestamp = batch_result.created_at();
+        let expected = TrackingBatchBuilder::default()
+            .with_batch(batch_1)
+            .with_service_id("TEST".to_string())
+            .with_data_change_id(dcid)
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .with_created_at(batch_timestamp)
+            .build()
+            .unwrap();
+        assert_eq!(batch_result, expected);
+    }
+
+    #[test]
+    fn test_invalid_dcid() {
+        let signer = new_signer();
+
+        let pair = TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(NONCE.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .unwrap();
+
+        let batch_1 = BatchBuilder::new()
+            .with_transactions(vec![pair])
+            .build(&*signer)
+            .unwrap();
+
+        let dcid = "data_change".to_string();
+
+        let add_tracking_batch = TrackingBatchBuilder::default()
+            .with_batch(batch_1.clone())
+            .with_service_id("TEST".to_string())
+            .with_data_change_id(dcid.clone())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .build();
+
+        assert!(add_tracking_batch.is_err());
+
+        let expected = BatchBuilderError::MissingRequiredField(
+            "data change IDs must be formatted as 'dcid:<id>'".to_string(),
+        );
+
+        assert_eq!(
+            add_tracking_batch.unwrap_err().to_string(),
+            expected.to_string()
+        );
     }
 
     #[test]
@@ -917,6 +1023,86 @@ mod tests {
 
         let batch = store
             .get_batch(&id, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+
+        assert_eq!(batch.submitted(), true)
+    }
+
+    #[test]
+    fn change_batch_to_submitted_dcid() {
+        let pool = create_connection_pool_and_migrate();
+
+        let store = DieselBatchTrackingStore::new(pool);
+
+        let signer = new_signer();
+
+        let pair = TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(NONCE.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .unwrap();
+
+        let transaction_header = pair.header_signature().to_string();
+
+        let batch_1 = BatchBuilder::new()
+            .with_transactions(vec![pair])
+            .build(&*signer)
+            .unwrap();
+
+        let dcid = "dcid:data_change".to_string();
+
+        let tracking_batch = TrackingBatchBuilder::default()
+            .with_batch(batch_1)
+            .with_service_id("TEST".to_string())
+            .with_data_change_id(dcid.clone())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(false)
+            .build()
+            .unwrap();
+
+        let txn_receipts = vec![TransactionReceiptBuilder::default()
+            .with_transaction_id(transaction_header)
+            .with_result_valid(true)
+            .with_serialized_receipt(std::str::from_utf8(&BYTES2).unwrap().to_string())
+            .build()
+            .unwrap()];
+
+        let submission_error = SubmissionErrorBuilder::default()
+            .with_error_type("test".to_string())
+            .with_error_message("test message".to_string())
+            .build()
+            .unwrap();
+
+        store
+            .add_batches(vec![tracking_batch.clone()])
+            .expect("Failed to add batch");
+
+        store
+            .change_batch_to_submitted(
+                &dcid,
+                "TEST",
+                txn_receipts,
+                Some("Pending"),
+                Some(submission_error),
+            )
+            .expect("Failed to change batch to submitted");
+
+        let batch = store
+            .get_batch(&dcid, "TEST")
             .expect("Failed to get batch")
             .unwrap();
 

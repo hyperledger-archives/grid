@@ -21,6 +21,7 @@ use transact::protocol::{
 };
 use transact::protos::FromBytes;
 
+use crate::batch_tracking::store::diesel::models::is_data_change_id;
 use crate::error::{InternalError, InvalidArgumentError};
 use crate::scope_id::{GlobalScopeId, ServiceScopeId};
 
@@ -432,6 +433,18 @@ impl TrackingBatchBuilder {
         if batch.is_none() {
             return Err(BatchBuilderError::MissingRequiredField("batch".to_string()));
         };
+
+        if let Some(dcid) = &data_change_id {
+            let is_dcid = is_data_change_id(dcid).map_err(|_| {
+                BatchBuilderError::MissingRequiredField("Could not validate DCID".to_string())
+            })?;
+
+            if !is_dcid {
+                return Err(BatchBuilderError::MissingRequiredField(
+                    "data change IDs must be formatted as 'dcid:<id>'".to_string(),
+                ));
+            };
+        }
 
         let transact_batch = batch.unwrap();
 

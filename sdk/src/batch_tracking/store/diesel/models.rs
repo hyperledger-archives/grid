@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use core::convert::TryFrom;
+use regex::Regex;
 
 use crate::batch_tracking::store::diesel::schema::*;
 use crate::error::InternalError;
@@ -22,6 +23,8 @@ use super::{
     TrackingTransaction, TransactionReceipt, ValidTransaction,
 };
 use crate::batch_tracking::store::error::BatchTrackingStoreError;
+
+pub const DCID_FORMAT: &str = "^dcid:[\\w\\-\\+=/~!@#\\$%\\^&\\*{}|\\[\\]<>\\?]+$";
 
 #[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
 #[table_name = "batches"]
@@ -541,4 +544,15 @@ pub fn make_transaction_models(batches: &[TrackingBatch]) -> Vec<TransactionMode
     }
 
     models
+}
+
+pub fn is_data_change_id(id: &str) -> Result<bool, BatchTrackingStoreError> {
+    let dcid_format = Regex::new(DCID_FORMAT).map_err(|err| {
+        BatchTrackingStoreError::InternalError(InternalError::from_source(Box::new(err)))
+    })?;
+    if !dcid_format.is_match(id) {
+        return Ok(false);
+    }
+
+    Ok(true)
 }

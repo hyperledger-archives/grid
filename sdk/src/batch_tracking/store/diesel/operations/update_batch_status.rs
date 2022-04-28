@@ -16,10 +16,12 @@ use super::BatchTrackingStoreOperations;
 
 use crate::batch_tracking::store::{
     diesel::{
-        models::{NewBatchStatusModel, NewSubmissionModel, TransactionReceiptModel},
+        models::{
+            is_data_change_id, NewBatchStatusModel, NewSubmissionModel, TransactionReceiptModel,
+        },
         schema::{batch_statuses, batches, submissions, transaction_receipts},
     },
-    BatchStatusName, BatchTrackingStoreError,
+    BatchStatusName, BatchTrackingStoreError, SubmissionError,
 };
 
 use diesel::{
@@ -35,7 +37,7 @@ pub(in crate::batch_tracking::store::diesel) trait BatchTrackingStoreUpdateBatch
         service_id: &str,
         status: Option<&str>,
         txn_receipts: Vec<TransactionReceiptModel>,
-        submission_error: Option<NewSubmissionModel>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError>;
 }
 
@@ -49,9 +51,22 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
         service_id: &str,
         status: Option<&str>,
         txn_receipts: Vec<TransactionReceiptModel>,
-        submission_error: Option<NewSubmissionModel>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
+            let mut batch_id = id.to_string();
+            let is_dcid = is_data_change_id(id)?;
+            if is_dcid {
+                batch_id = batches::table
+                    .select(batches::batch_id)
+                    .filter(
+                        batches::data_change_id
+                            .eq(&id)
+                            .and(batches::service_id.eq(&service_id)),
+                    )
+                    .first::<String>(self.conn)?;
+            }
+
             if let Some(batch_status) = status {
                 let status_string = BatchStatusName::try_from_string(batch_status)?;
                 match status_string {
@@ -62,7 +77,7 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                         update(batches::table)
                             .filter(
                                 batches::batch_id
-                                    .eq(&id)
+                                    .eq(&batch_id)
                                     .and(batches::service_id.eq(&service_id)),
                             )
                             .set(batches::submitted.eq(true))
@@ -83,7 +98,7 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                 let status_exists: bool = select(exists(
                     batch_statuses::table.filter(
                         batch_statuses::batch_id
-                            .eq(&id)
+                            .eq(&batch_id)
                             .and(batch_statuses::service_id.eq(&service_id)),
                     ),
                 ))
@@ -93,14 +108,14 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                     update(batch_statuses::table)
                         .filter(
                             batch_statuses::batch_id
-                                .eq(&id)
+                                .eq(&batch_id)
                                 .and(batch_statuses::service_id.eq(&service_id)),
                         )
                         .set(batch_statuses::dlt_status.eq(&batch_status))
                         .execute(self.conn)?;
                 } else {
                     let model = NewBatchStatusModel {
-                        batch_id: id.to_string(),
+                        batch_id: batch_id.to_string(),
                         service_id: service_id.to_string(),
                         dlt_status: batch_status.to_string(),
                     };
@@ -113,7 +128,7 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                 update(batches::table)
                     .filter(
                         batches::batch_id
-                            .eq(&id)
+                            .eq(&batch_id)
                             .and(batches::service_id.eq(&service_id)),
                     )
                     .set(batches::submitted.eq(true))
@@ -153,11 +168,13 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
             }
 
             if let Some(s) = submission_error {
+                let bid: &str = &batch_id;
+                let model = NewSubmissionModel::from((s, bid, service_id));
                 let submission_exists = select(exists(
                     submissions::table.filter(
                         submissions::batch_id
-                            .eq(&s.batch_id)
-                            .and(submissions::service_id.eq(&s.service_id)),
+                            .eq(&model.batch_id)
+                            .and(submissions::service_id.eq(&model.service_id)),
                     ),
                 ))
                 .get_result(self.conn)?;
@@ -166,14 +183,14 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                     update(submissions::table)
                         .filter(
                             submissions::batch_id
-                                .eq(&s.batch_id)
-                                .and(submissions::service_id.eq(&s.service_id)),
+                                .eq(&model.batch_id)
+                                .and(submissions::service_id.eq(&model.service_id)),
                         )
-                        .set(&s)
+                        .set(&model)
                         .execute(self.conn)?;
                 } else {
                     insert_into(submissions::table)
-                        .values(&s)
+                        .values(&model)
                         .execute(self.conn)?;
                 }
             }
@@ -193,9 +210,22 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
         service_id: &str,
         status: Option<&str>,
         txn_receipts: Vec<TransactionReceiptModel>,
-        submission_error: Option<NewSubmissionModel>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
+            let mut batch_id = id.to_string();
+            let is_dcid = is_data_change_id(id)?;
+            if is_dcid {
+                batch_id = batches::table
+                    .select(batches::batch_id)
+                    .filter(
+                        batches::data_change_id
+                            .eq(&id)
+                            .and(batches::service_id.eq(&service_id)),
+                    )
+                    .first::<String>(self.conn)?;
+            }
+
             if let Some(batch_status) = status {
                 let status_string = BatchStatusName::try_from_string(batch_status)?;
                 match status_string {
@@ -206,7 +236,7 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                         update(batches::table)
                             .filter(
                                 batches::batch_id
-                                    .eq(&id)
+                                    .eq(&batch_id)
                                     .and(batches::service_id.eq(&service_id)),
                             )
                             .set(batches::submitted.eq(true))
@@ -227,7 +257,7 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                 let status_exists: bool = select(exists(
                     batch_statuses::table.filter(
                         batch_statuses::batch_id
-                            .eq(&id)
+                            .eq(&batch_id)
                             .and(batch_statuses::service_id.eq(&service_id)),
                     ),
                 ))
@@ -237,14 +267,14 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                     update(batch_statuses::table)
                         .filter(
                             batch_statuses::batch_id
-                                .eq(&id)
+                                .eq(&batch_id)
                                 .and(batch_statuses::service_id.eq(&service_id)),
                         )
                         .set(batch_statuses::dlt_status.eq(&batch_status))
                         .execute(self.conn)?;
                 } else {
                     let model = NewBatchStatusModel {
-                        batch_id: id.to_string(),
+                        batch_id: batch_id.to_string(),
                         service_id: service_id.to_string(),
                         dlt_status: batch_status.to_string(),
                     };
@@ -257,7 +287,7 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                 update(batches::table)
                     .filter(
                         batches::batch_id
-                            .eq(&id)
+                            .eq(&batch_id)
                             .and(batches::service_id.eq(&service_id)),
                     )
                     .set(batches::submitted.eq(true))
@@ -297,11 +327,13 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
             }
 
             if let Some(s) = submission_error {
+                let bid: &str = &batch_id;
+                let model = NewSubmissionModel::from((s, bid, service_id));
                 let submission_exists = select(exists(
                     submissions::table.filter(
                         submissions::batch_id
-                            .eq(&s.batch_id)
-                            .and(submissions::service_id.eq(&s.service_id)),
+                            .eq(&model.batch_id)
+                            .and(submissions::service_id.eq(&model.service_id)),
                     ),
                 ))
                 .get_result(self.conn)?;
@@ -310,14 +342,14 @@ impl<'a> BatchTrackingStoreUpdateBatchStatusOperation
                     update(submissions::table)
                         .filter(
                             submissions::batch_id
-                                .eq(&s.batch_id)
-                                .and(submissions::service_id.eq(&s.service_id)),
+                                .eq(&model.batch_id)
+                                .and(submissions::service_id.eq(&model.service_id)),
                         )
-                        .set(&s)
+                        .set(&model)
                         .execute(self.conn)?;
                 } else {
                     insert_into(submissions::table)
-                        .values(&s)
+                        .values(&model)
                         .execute(self.conn)?;
                 }
             }
