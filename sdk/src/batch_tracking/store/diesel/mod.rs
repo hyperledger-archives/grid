@@ -622,8 +622,8 @@ mod tests {
     use diesel::r2d2::{ConnectionManager, Pool};
     use diesel::sqlite::SqliteConnection;
     use transact::protocol::{
-        batch::BatchBuilder,
-        transaction::{HashMethod, TransactionBuilder},
+        batch::{Batch, BatchBuilder},
+        transaction::{HashMethod, Transaction, TransactionBuilder},
     };
 
     use crate::batch_tracking::store::{
@@ -654,37 +654,13 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
-        let add_tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let add_tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let id = add_tracking_batch.batch_header();
 
@@ -697,14 +673,12 @@ mod tests {
             .expect("Failed to get batch")
             .unwrap();
         let batch_timestamp = batch_result.created_at();
-        let expected = TrackingBatchBuilder::default()
-            .with_batch(batch_1)
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+
+        let expected = get_tracking_batch(batch_1.clone(), false)
             .with_created_at(batch_timestamp)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
+
         assert_eq!(batch_result, expected);
     }
 
@@ -716,40 +690,16 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
         let dcid = "dcid:data_change".to_string();
 
-        let add_tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
+        let add_tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .with_data_change_id(dcid.clone())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         store
             .add_batches(vec![add_tracking_batch.clone()])
@@ -760,15 +710,12 @@ mod tests {
             .expect("Failed to get batch")
             .unwrap();
         let batch_timestamp = batch_result.created_at();
-        let expected = TrackingBatchBuilder::default()
-            .with_batch(batch_1)
-            .with_service_id("TEST".to_string())
-            .with_data_change_id(dcid)
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let expected = get_tracking_batch(batch_1.clone(), false)
             .with_created_at(batch_timestamp)
+            .with_data_change_id(dcid)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
+
         assert_eq!(batch_result, expected);
     }
 
@@ -776,29 +723,9 @@ mod tests {
     fn test_invalid_dcid() {
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
         let dcid = "data_change".to_string();
 
@@ -830,39 +757,15 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
         let transaction_id = pair.header_signature().to_string();
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
-        let tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let id = tracking_batch.batch_header();
 
@@ -886,15 +789,11 @@ mod tests {
             .unwrap();
         let batch_result_1_timestamp = batch_result_1.created_at();
 
-        let expected_1 = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(true)
+        let expected_1 = get_tracking_batch(batch_1.clone(), true)
             .with_created_at(batch_result_1_timestamp)
             .with_batch_status(BatchStatus::Pending)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         assert_eq!(batch_result_1, expected_1);
 
@@ -902,23 +801,27 @@ mod tests {
             .with_error_type("test".to_string())
             .with_error_message("test message".to_string())
             .build()
-            .unwrap();
+            .expect("Failed to build error");
 
         let receipt_1 = TransactionReceiptBuilder::default()
             .with_transaction_id(transaction_id.to_string())
             .with_result_valid(false)
             .with_error_message("test".to_string())
             .with_error_data(BYTES2.to_vec())
-            .with_serialized_receipt(std::str::from_utf8(&BYTES2).unwrap().to_string())
+            .with_serialized_receipt(
+                std::str::from_utf8(&BYTES2)
+                    .expect("Failed to build string")
+                    .to_string(),
+            )
             .build()
-            .unwrap();
+            .expect("Failed to build receipt");
 
         let invalid_transactions = vec![InvalidTransactionBuilder::default()
             .with_transaction_id(transaction_id.to_string())
             .with_error_message("test".to_string())
             .with_error_data(BYTES2.to_vec())
             .build()
-            .unwrap()];
+            .expect("Failed to build invalid transaction")];
 
         store
             .update_batch_status(
@@ -936,16 +839,109 @@ mod tests {
             .unwrap();
         let batch_result_2_timestamp = batch_result_2.created_at();
 
-        let expected_2 = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(true)
+        let expected_2 = get_tracking_batch(batch_1.clone(), true)
             .with_created_at(batch_result_2_timestamp)
             .with_batch_status(BatchStatus::Invalid(invalid_transactions))
             .with_submission_error(submission_error)
             .build()
+            .expect("Failed to build batch");
+
+        assert_eq!(batch_result_2, expected_2);
+    }
+
+    #[test]
+    fn update_batch_status_dcid() {
+        let pool = create_connection_pool_and_migrate();
+
+        let store = DieselBatchTrackingStore::new(pool);
+
+        let signer = new_signer();
+
+        let pair = get_transact_transaction(&*signer, NONCE);
+
+        let transaction_id = pair.header_signature().to_string();
+
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
+
+        let dcid = "dcid:data_change".to_string();
+
+        let tracking_batch = get_tracking_batch(batch_1.clone(), false)
+            .with_data_change_id(dcid.clone())
+            .build()
+            .expect("Failed to build batch");
+
+        store
+            .add_batches(vec![tracking_batch.clone()])
+            .expect("Failed to add batch");
+
+        store
+            .update_batch_status(&dcid, "TEST", Some(BatchStatus::Pending), Vec::new(), None)
+            .expect("Failed to update batch");
+
+        let batch_result_1 = store
+            .get_batch(&dcid, "TEST")
+            .expect("Failed to get batch")
             .unwrap();
+        let batch_result_1_timestamp = batch_result_1.created_at();
+
+        let expected_1 = get_tracking_batch(batch_1.clone(), true)
+            .with_created_at(batch_result_1_timestamp)
+            .with_batch_status(BatchStatus::Pending)
+            .with_data_change_id(dcid.clone())
+            .build()
+            .expect("Failed to build batch");
+
+        assert_eq!(batch_result_1, expected_1);
+
+        let submission_error = SubmissionErrorBuilder::default()
+            .with_error_type("test".to_string())
+            .with_error_message("test message".to_string())
+            .build()
+            .expect("Failed to build error");
+
+        let receipt_1 = TransactionReceiptBuilder::default()
+            .with_transaction_id(transaction_id.to_string())
+            .with_result_valid(false)
+            .with_error_message("test".to_string())
+            .with_error_data(BYTES2.to_vec())
+            .with_serialized_receipt(
+                std::str::from_utf8(&BYTES2)
+                    .expect("Failed to build string")
+                    .to_string(),
+            )
+            .build()
+            .expect("Failed to build receipt");
+
+        let invalid_transactions = vec![InvalidTransactionBuilder::default()
+            .with_transaction_id(transaction_id.to_string())
+            .with_error_message("test".to_string())
+            .with_error_data(BYTES2.to_vec())
+            .build()
+            .expect("Failed to build invalid transaction")];
+
+        store
+            .update_batch_status(
+                &dcid,
+                "TEST",
+                Some(BatchStatus::Invalid(invalid_transactions.to_vec())),
+                vec![receipt_1],
+                Some(submission_error.clone()),
+            )
+            .expect("Failed to update batch");
+
+        let batch_result_2 = store
+            .get_batch(&dcid, "TEST")
+            .expect("Failed to get batch")
+            .unwrap();
+        let batch_result_2_timestamp = batch_result_2.created_at();
+
+        let expected_2 = get_tracking_batch(batch_1.clone(), true)
+            .with_created_at(batch_result_2_timestamp)
+            .with_batch_status(BatchStatus::Invalid(invalid_transactions))
+            .with_submission_error(submission_error)
+            .with_data_change_id(dcid.clone())
+            .build()
+            .expect("Failed to build batch");
 
         assert_eq!(batch_result_2, expected_2);
     }
@@ -958,54 +954,34 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
         let transaction_header = pair.header_signature().to_string();
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
-        let tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1)
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let id = tracking_batch.batch_header();
 
         let txn_receipts = vec![TransactionReceiptBuilder::default()
             .with_transaction_id(transaction_header)
             .with_result_valid(true)
-            .with_serialized_receipt(std::str::from_utf8(&BYTES2).unwrap().to_string())
+            .with_serialized_receipt(
+                std::str::from_utf8(&BYTES2)
+                    .expect("Failed to build string")
+                    .to_string(),
+            )
             .build()
-            .unwrap()];
+            .expect("Failed to build receipt")];
 
         let submission_error = SubmissionErrorBuilder::default()
             .with_error_type("test".to_string())
             .with_error_message("test message".to_string())
             .build()
-            .unwrap();
+            .expect("Failed to build error");
 
         store
             .add_batches(vec![tracking_batch.clone()])
@@ -1037,55 +1013,35 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
         let transaction_header = pair.header_signature().to_string();
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
         let dcid = "dcid:data_change".to_string();
 
-        let tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1)
-            .with_service_id("TEST".to_string())
+        let tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .with_data_change_id(dcid.clone())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let txn_receipts = vec![TransactionReceiptBuilder::default()
             .with_transaction_id(transaction_header)
             .with_result_valid(true)
-            .with_serialized_receipt(std::str::from_utf8(&BYTES2).unwrap().to_string())
+            .with_serialized_receipt(
+                std::str::from_utf8(&BYTES2)
+                    .expect("Failed to build string")
+                    .to_string(),
+            )
             .build()
-            .unwrap()];
+            .expect("Failed to build receipt")];
 
         let submission_error = SubmissionErrorBuilder::default()
             .with_error_type("test".to_string())
             .with_error_message("test message".to_string())
             .build()
-            .unwrap();
+            .expect("Failed to build error");
 
         store
             .add_batches(vec![tracking_batch.clone()])
@@ -1134,71 +1090,23 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair_1 = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair_1 = get_transact_transaction(&*signer, NONCE);
 
-        let pair_2 = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE2.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair_2 = get_transact_transaction(&*signer, NONCE2);
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair_1])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair_1]);
 
-        let batch_2 = BatchBuilder::new()
-            .with_transactions(vec![pair_2])
-            .build(&*signer)
-            .unwrap();
+        let batch_2 = get_transact_batch(&*signer, vec![pair_2]);
 
-        let tracking_batch_1 = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let tracking_batch_1 = get_tracking_batch(batch_1.clone(), false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let id = tracking_batch_1.batch_header();
 
-        let tracking_batch_2 = TrackingBatchBuilder::default()
-            .with_batch(batch_2)
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(true)
+        let tracking_batch_2 = get_tracking_batch(batch_2.clone(), true)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         store
             .add_batches(vec![tracking_batch_1.clone(), tracking_batch_2])
@@ -1210,14 +1118,10 @@ mod tests {
             .unwrap();
         let batch_result_timestamp = batch_result.created_at();
 
-        let expected_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1)
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let expected_batch = get_tracking_batch(batch_1.clone(), false)
             .with_created_at(batch_result_timestamp)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let expected = TrackingBatchList {
             batches: vec![expected_batch],
@@ -1239,37 +1143,13 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
-        let tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let id = tracking_batch.batch_header();
 
@@ -1287,15 +1167,11 @@ mod tests {
             .update_batch_status(&id, "TEST", Some(BatchStatus::Pending), Vec::new(), None)
             .expect("Failed to update batch");
 
-        let expected = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(true)
-            .with_batch_status(BatchStatus::Pending)
+        let expected = get_tracking_batch(batch_1.clone(), true)
             .with_created_at(batch_result_timestamp)
+            .with_batch_status(BatchStatus::Pending)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         assert_eq!(
             store
@@ -1328,39 +1204,15 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
         let transaction_id = pair.header_signature().to_string();
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
-        let tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let id = tracking_batch.batch_header();
 
@@ -1378,23 +1230,27 @@ mod tests {
             .with_error_type("test".to_string())
             .with_error_message("test message".to_string())
             .build()
-            .unwrap();
+            .expect("Failed to build error");
 
         let receipt_1 = TransactionReceiptBuilder::default()
             .with_transaction_id(transaction_id.to_string())
             .with_result_valid(false)
             .with_error_message("test".to_string())
             .with_error_data(BYTES2.to_vec())
-            .with_serialized_receipt(std::str::from_utf8(&BYTES2).unwrap().to_string())
+            .with_serialized_receipt(
+                std::str::from_utf8(&BYTES2)
+                    .expect("Failed to build string")
+                    .to_string(),
+            )
             .build()
-            .unwrap();
+            .expect("Failed to build receipt");
 
         let invalid_transactions = vec![InvalidTransactionBuilder::default()
             .with_transaction_id(transaction_id.to_string())
             .with_error_message("test".to_string())
             .with_error_data(BYTES2.to_vec())
             .build()
-            .unwrap()];
+            .expect("Failed to build transaction")];
 
         store
             .update_batch_status(
@@ -1406,16 +1262,12 @@ mod tests {
             )
             .expect("Failed to update batch");
 
-        let expected = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(true)
+        let expected = get_tracking_batch(batch_1.clone(), true)
+            .with_created_at(batch_result_timestamp)
             .with_batch_status(BatchStatus::Invalid(invalid_transactions))
             .with_submission_error(submission_error)
-            .with_created_at(batch_result_timestamp)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         assert_eq!(
             store.get_failed_batches().expect("Failed to get batch"),
@@ -1444,37 +1296,13 @@ mod tests {
 
         let signer = new_signer();
 
-        let pair = TransactionBuilder::new()
-            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
-            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
-            .with_family_name(FAMILY_NAME.to_string())
-            .with_family_version(FAMILY_VERSION.to_string())
-            .with_inputs(vec![
-                hex::parse_hex(KEY4).unwrap(),
-                hex::parse_hex(&KEY5[0..4]).unwrap(),
-            ])
-            .with_nonce(NONCE.to_string().into_bytes())
-            .with_outputs(vec![
-                hex::parse_hex(KEY6).unwrap(),
-                hex::parse_hex(&KEY7[0..4]).unwrap(),
-            ])
-            .with_payload_hash_method(HashMethod::Sha512)
-            .with_payload(BYTES2.to_vec())
-            .build(&*signer)
-            .unwrap();
+        let pair = get_transact_transaction(&*signer, NONCE);
 
-        let batch_1 = BatchBuilder::new()
-            .with_transactions(vec![pair])
-            .build(&*signer)
-            .unwrap();
+        let batch_1 = get_transact_batch(&*signer, vec![pair]);
 
-        let tracking_batch = TrackingBatchBuilder::default()
-            .with_batch(batch_1.clone())
-            .with_service_id("TEST".to_string())
-            .with_signer_public_key(KEY1.to_string())
-            .with_submitted(false)
+        let tracking_batch = get_tracking_batch(batch_1.clone(), false)
             .build()
-            .unwrap();
+            .expect("Failed to build batch");
 
         let id = tracking_batch.batch_header();
 
@@ -1518,5 +1346,41 @@ mod tests {
         let context = Secp256k1Context::new();
         let key = context.new_random_private_key();
         context.new_signer(key)
+    }
+
+    fn get_transact_transaction(signer: &dyn Signer, nonce: &str) -> Transaction {
+        TransactionBuilder::new()
+            .with_batcher_public_key(hex::parse_hex(KEY1).unwrap())
+            .with_dependencies(vec![KEY2.to_string(), KEY3.to_string()])
+            .with_family_name(FAMILY_NAME.to_string())
+            .with_family_version(FAMILY_VERSION.to_string())
+            .with_inputs(vec![
+                hex::parse_hex(KEY4).unwrap(),
+                hex::parse_hex(&KEY5[0..4]).unwrap(),
+            ])
+            .with_nonce(nonce.to_string().into_bytes())
+            .with_outputs(vec![
+                hex::parse_hex(KEY6).unwrap(),
+                hex::parse_hex(&KEY7[0..4]).unwrap(),
+            ])
+            .with_payload_hash_method(HashMethod::Sha512)
+            .with_payload(BYTES2.to_vec())
+            .build(&*signer)
+            .expect("Failed to build transaction")
+    }
+
+    fn get_transact_batch(signer: &dyn Signer, transactions: Vec<Transaction>) -> Batch {
+        BatchBuilder::new()
+            .with_transactions(transactions)
+            .build(&*signer)
+            .expect("Failed to build transact batch")
+    }
+
+    fn get_tracking_batch(batch: Batch, submitted: bool) -> TrackingBatchBuilder {
+        TrackingBatchBuilder::default()
+            .with_batch(batch)
+            .with_service_id("TEST".to_string())
+            .with_signer_public_key(KEY1.to_string())
+            .with_submitted(submitted)
     }
 }
