@@ -306,7 +306,7 @@ impl SubmissionErrorBuilder {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TrackingBatch {
-    service_id: String,
+    service_id: Option<String>,
     batch_header: String,
     data_change_id: Option<String>,
     signer_public_key: String,
@@ -320,8 +320,8 @@ pub struct TrackingBatch {
 }
 
 impl TrackingBatch {
-    pub fn service_id(&self) -> &str {
-        &self.service_id
+    pub fn service_id(&self) -> Option<&str> {
+        self.service_id.as_deref()
     }
 
     pub fn batch_header(&self) -> &str {
@@ -507,7 +507,7 @@ impl TrackingBatchBuilder {
         };
 
         Ok(TrackingBatch {
-            service_id: serv_id,
+            service_id: Some(serv_id),
             batch_header,
             data_change_id,
             signer_public_key,
@@ -841,20 +841,26 @@ impl ServiceTrackingBatch {
 impl std::convert::TryFrom<TrackingBatch> for ServiceTrackingBatch {
     type Error = InvalidArgumentError;
     fn try_from(value: TrackingBatch) -> Result<Self, InvalidArgumentError> {
-        let scope_id = ServiceScopeId::new_from_string(value.service_id)?;
-        Ok(Self {
-            scope_id,
-            batch_header: value.batch_header,
-            data_change_id: value.data_change_id,
-            signer_public_key: value.signer_public_key,
-            trace: value.trace,
-            serialized_batch: value.serialized_batch,
-            submitted: value.submitted,
-            created_at: value.created_at,
-            transactions: value.transactions,
-            batch_status: value.batch_status,
-            submission_error: value.submission_error,
-        })
+        if let Some(id) = value.service_id {
+            let scope_id = ServiceScopeId::new_from_string(id)?;
+            return Ok(Self {
+                scope_id,
+                batch_header: value.batch_header,
+                data_change_id: value.data_change_id,
+                signer_public_key: value.signer_public_key,
+                trace: value.trace,
+                serialized_batch: value.serialized_batch,
+                submitted: value.submitted,
+                created_at: value.created_at,
+                transactions: value.transactions,
+                batch_status: value.batch_status,
+                submission_error: value.submission_error,
+            });
+        }
+        Err(InvalidArgumentError::new(
+            "value".to_string(),
+            "argument must provide a service_id".to_string(),
+        ))
     }
 }
 
@@ -922,16 +928,17 @@ impl GlobalTrackingBatch {
 impl TryFrom<TrackingBatch> for GlobalTrackingBatch {
     type Error = InvalidArgumentError;
     fn try_from(value: TrackingBatch) -> Result<Self, InvalidArgumentError> {
-        if value.service_id != NON_SPLINTER_SERVICE_ID_DEFAULT {
-            return Err(InvalidArgumentError::new(
-                "service_id".to_string(),
-                format!(
-                    "service_id was {}, expected global value {}",
-                    value.batch_header, NON_SPLINTER_SERVICE_ID_DEFAULT
-                ),
-            ));
+        if let Some(id) = value.service_id {
+            if id != NON_SPLINTER_SERVICE_ID_DEFAULT {
+                return Err(InvalidArgumentError::new(
+                    "service_id".to_string(),
+                    format!(
+                        "service_id was {}, expected global value {}",
+                        value.batch_header, NON_SPLINTER_SERVICE_ID_DEFAULT
+                    ),
+                ));
+            }
         }
-
         Ok(Self {
             scope_id: GlobalScopeId::default(),
             batch_header: value.batch_header,
@@ -1112,7 +1119,7 @@ mod tests {
     #[test]
     fn test_try_from_tracking_batch_to_service_tracking_batch() {
         let tracking_batch_w_service = TrackingBatch {
-            service_id: "12345-67890::abcd".to_string(),
+            service_id: Some("12345-67890::abcd".to_string()),
             batch_header: "abc123".to_string(),
             data_change_id: None,
             signer_public_key: "xxx".to_string(),
@@ -1126,7 +1133,7 @@ mod tests {
         };
 
         let tracking_batch_w_global = TrackingBatch {
-            service_id: NON_SPLINTER_SERVICE_ID_DEFAULT.to_string(),
+            service_id: Some(NON_SPLINTER_SERVICE_ID_DEFAULT.to_string()),
             batch_header: "abc123".to_string(),
             data_change_id: None,
             signer_public_key: "xxx".to_string(),
@@ -1162,7 +1169,7 @@ mod tests {
     #[test]
     fn test_try_from_tracking_batch_to_global_tracking_batch() {
         let tracking_batch_w_service = TrackingBatch {
-            service_id: "12345-67890::abcd".to_string(),
+            service_id: Some("12345-67890::abcd".to_string()),
             batch_header: "abc123".to_string(),
             data_change_id: None,
             signer_public_key: "xxx".to_string(),
@@ -1176,7 +1183,7 @@ mod tests {
         };
 
         let tracking_batch_w_global = TrackingBatch {
-            service_id: NON_SPLINTER_SERVICE_ID_DEFAULT.to_string(),
+            service_id: Some(NON_SPLINTER_SERVICE_ID_DEFAULT.to_string()),
             batch_header: "abc123".to_string(),
             data_change_id: None,
             signer_public_key: "xxx".to_string(),

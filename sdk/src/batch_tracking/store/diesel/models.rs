@@ -16,6 +16,7 @@ use core::convert::TryFrom;
 use regex::Regex;
 
 use crate::batch_tracking::store::diesel::schema::*;
+use crate::batch_tracking::store::NON_SPLINTER_SERVICE_ID_DEFAULT;
 use crate::error::InternalError;
 
 use super::{
@@ -142,8 +143,13 @@ impl
             Option<SubmissionError>,
         ),
     ) -> Self {
+        let serv_id = if batch.service_id == NON_SPLINTER_SERVICE_ID_DEFAULT {
+            None
+        } else {
+            Some(batch.service_id.to_string())
+        };
         Self {
-            service_id: batch.service_id.to_string(),
+            service_id: serv_id,
             batch_header: batch.batch_id.to_string(),
             data_change_id: batch.data_change_id.clone(),
             signer_public_key: batch.signer_public_key.to_string(),
@@ -509,8 +515,12 @@ impl
 pub fn make_new_batch_models(batches: &[TrackingBatch]) -> Vec<NewBatchModel> {
     let mut models = Vec::new();
     for batch in batches {
+        let serv_id = batch
+            .service_id()
+            .unwrap_or(NON_SPLINTER_SERVICE_ID_DEFAULT);
+
         let model = NewBatchModel {
-            service_id: batch.service_id().to_string(),
+            service_id: serv_id.to_string(),
             batch_id: batch.batch_header().to_string(),
             data_change_id: batch.data_change_id().map(String::from),
             signer_public_key: batch.signer_public_key().to_string(),
