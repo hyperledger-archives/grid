@@ -18,12 +18,12 @@ use crate::batch_tracking::store::diesel::schema::*;
 use crate::error::InternalError;
 
 use super::{
-    BatchStatus, InvalidTransaction, SubmissionError, TrackingBatch, TrackingTransaction,
-    TransactionReceipt, ValidTransaction,
+    BatchStatus, InvalidTransaction, SubmissionError, TrackingBatch, TrackingBatchList,
+    TrackingTransaction, TransactionReceipt, ValidTransaction,
 };
 use crate::batch_tracking::store::error::BatchTrackingStoreError;
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
 #[table_name = "batches"]
 #[primary_key(service_id, batch_id)]
 pub struct BatchModel {
@@ -37,7 +37,7 @@ pub struct BatchModel {
     pub created_at: i64,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, QueryableByName)]
 #[table_name = "transactions"]
 #[primary_key(service_id, transaction_id)]
 pub struct TransactionModel {
@@ -50,7 +50,9 @@ pub struct TransactionModel {
     pub signer_public_key: String,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, AsChangeset, Clone)]
+#[derive(
+    Identifiable, Insertable, Queryable, PartialEq, Debug, AsChangeset, Clone, QueryableByName,
+)]
 #[table_name = "transaction_receipts"]
 #[primary_key(service_id, transaction_id)]
 #[changeset_options(treat_none_as_null = "true")]
@@ -73,7 +75,7 @@ pub struct NewBatchStatusModel {
     pub dlt_status: String,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
 #[table_name = "batch_statuses"]
 #[primary_key(service_id, batch_id)]
 pub struct BatchStatusModel {
@@ -94,7 +96,7 @@ pub struct NewSubmissionModel {
     pub error_message: Option<String>,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, QueryableByName)]
 #[table_name = "submissions"]
 #[primary_key(service_id, batch_id)]
 pub struct SubmissionModel {
@@ -373,10 +375,10 @@ impl From<(SubmissionError, &str, &str)> for NewSubmissionModel {
     }
 }
 
-impl TryFrom<SubmissionModel> for SubmissionError {
+impl TryFrom<&SubmissionModel> for SubmissionError {
     type Error = BatchTrackingStoreError;
 
-    fn try_from(submission: SubmissionModel) -> Result<Self, Self::Error> {
+    fn try_from(submission: &SubmissionModel) -> Result<Self, Self::Error> {
         if submission.error_message.is_none() {
             return Err(BatchTrackingStoreError::InternalError(
                 InternalError::with_message(
@@ -399,6 +401,92 @@ impl TryFrom<SubmissionModel> for SubmissionError {
             error_message,
             error_type,
         })
+    }
+}
+
+impl
+    TryFrom<(
+        Vec<BatchModel>,
+        Vec<BatchStatusModel>,
+        Vec<TransactionModel>,
+        Vec<TransactionReceiptModel>,
+        Vec<SubmissionModel>,
+    )> for TrackingBatchList
+{
+    type Error = BatchTrackingStoreError;
+
+    fn try_from(
+        (batches, statuses, transactions, receipts, submissions): (
+            Vec<BatchModel>,
+            Vec<BatchStatusModel>,
+            Vec<TransactionModel>,
+            Vec<TransactionReceiptModel>,
+            Vec<SubmissionModel>,
+        ),
+    ) -> Result<Self, Self::Error> {
+        let mut tbs: Vec<TrackingBatch> = Vec::new();
+        for batch in batches {
+            let bs: Option<&BatchStatusModel> = statuses
+                .iter()
+                .find(|s| s.service_id == batch.service_id && s.batch_id == batch.batch_id);
+
+            let sub = submissions
+                .iter()
+                .find(|s| s.service_id == batch.service_id && s.batch_id == batch.batch_id);
+
+            let sub_err = if let Some(s) = sub {
+                if s.error_type.is_some() && s.error_message.is_some() {
+                    Some(SubmissionError::try_from(s)?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            let txns: Vec<&TransactionModel> = transactions
+                .iter()
+                .filter(|t| t.batch_id == batch.batch_id && t.service_id == batch.service_id)
+                .collect();
+
+            let txn_ids: Vec<String> = txns.iter().map(|t| t.transaction_id.to_string()).collect();
+
+            let txn_receipts: Vec<&TransactionReceiptModel> = receipts
+                .iter()
+                .filter(|r| r.service_id == batch.service_id && txn_ids.contains(&r.transaction_id))
+                .collect();
+
+            let mut valid_transactions = Vec::new();
+            let mut invalid_transactions = Vec::new();
+
+            for rcpt in txn_receipts {
+                if rcpt.result_valid {
+                    valid_transactions
+                        .push(ValidTransaction::try_from(TransactionReceipt::from(rcpt))?);
+                } else {
+                    invalid_transactions.push(InvalidTransaction::try_from(
+                        TransactionReceipt::from(rcpt),
+                    )?);
+                }
+            }
+
+            let status = if let Some(s) = bs {
+                let grid_status =
+                    BatchStatus::try_from((s.clone(), invalid_transactions, valid_transactions))?;
+                Some(grid_status)
+            } else {
+                None
+            };
+
+            tbs.push(TrackingBatch::from((
+                batch,
+                txns.iter().map(|t| TrackingTransaction::from(*t)).collect(),
+                status,
+                sub_err,
+            )))
+        }
+
+        Ok(TrackingBatchList { batches: tbs })
     }
 }
 
