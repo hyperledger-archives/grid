@@ -15,9 +15,11 @@
 FROM hyperledger/grid-dev:v11
 
 RUN apt-get update \
- && apt-get install -yq \
+ && apt-get install -yq --no-install-recommends \
     postgresql-client \
-    sqlite3
+    sqlite3 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/ /build/cli

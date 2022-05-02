@@ -18,7 +18,7 @@ ENV GRID_FORCE_PANDOC=true
 
 # Install dependencies
 RUN apt-get update \
- && apt-get install -y -q \
+ && apt-get install -y -q --no-install-recommends \
     libxml2-dev \
     pandoc \
    && apt-get clean \
@@ -46,9 +46,10 @@ COPY sdk /build/sdk
 # Build the grid-cli package
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml
-RUN cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
-RUN (cd cli && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml \
+ && cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
+WORKDIR /build/cli
+RUN cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml
 
 # Log the commit hash
 COPY .git/ /tmp/.git/
@@ -66,13 +67,16 @@ RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 COPY --from=grid-cli-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=grid-cli-builder /commit-hash /commit-hash
 
+# hadolint ignore=DL3015
 RUN apt-get update \
  && apt-get install -y -q \
    ca-certificates \
     man \
  && mandb \
  && dpkg --unpack /tmp/grid-cli*.deb \
- && apt-get -f -y install
+ && apt-get -f -y install \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN echo ". /usr/share/bash-completion/bash_completion" >> ~/.bashrc
 

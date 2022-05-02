@@ -15,21 +15,23 @@
 # Dockerfile for running unit tests and lint on the Grid UI
 FROM node:14.18.1-alpine3.11
 
-COPY ui/grid-ui/package*.json ui/grid-ui/
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add \
+COPY ui/grid-ui/package*.json /ui/grid-ui/
+
+RUN apk add --no-cache \
 	curl \
 	git
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
     | sh -s -- --to /usr/local/bin
 
-WORKDIR ui/grid-ui/
+WORKDIR /ui/grid-ui/
 
 # Gives npm permission to run the prepare script in splinter-canopyjs as root
 RUN npm config set unsafe-perm true && npm install
 
 WORKDIR /
 
-COPY ui/grid-ui/ ui/grid-ui/
+COPY ui/grid-ui/ /ui/grid-ui/
 COPY justfile .

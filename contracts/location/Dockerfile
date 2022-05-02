@@ -34,8 +34,8 @@ COPY sdk/ /build/sdk/
 
 # Build the contract
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" contracts/location/Cargo.toml
-RUN cargo build --manifest-path contracts/location/Cargo.toml --target wasm32-unknown-unknown --release
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" contracts/location/Cargo.toml \
+ && cargo build --manifest-path contracts/location/Cargo.toml --target wasm32-unknown-unknown --release
 
 # Build a scar file
 # Copy the packaging directory
