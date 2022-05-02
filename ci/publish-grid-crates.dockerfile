@@ -17,7 +17,7 @@
 #   Your crates api token must be passed in as CARGO_CRED at runtime
 #   using Docker's -e option.
 
-# docker build -f ci/publish-grid-crates -t publish-grid-crates ci/
+# docker build -f ci/publish-grid-crates.dockerfile -t publish-grid-crates ci/
 # docker run --rm -v $(pwd):/project/grid -e CARGO_CRED=%CREDVALUE% publish-grid-crates
 
 FROM ubuntu:focal

@@ -20,4 +20,4 @@ services:
     image: hyperledger/grid-dev:v11
     build:
       context: ..
-      dockerfile: ci/grid-dev
+      dockerfile: ci/grid-dev.dockerfile

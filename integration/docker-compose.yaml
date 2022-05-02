@@ -154,7 +154,7 @@ services:
     image: gridd-integration:${ISOLATION_ID}
     build:
       context: ..
-      dockerfile: docker/tests
+      dockerfile: docker/tests.dockerfile
     environment:
       INTEGRATION_TEST_URL: http://gridd:8080
     expose:

@@ -18,7 +18,7 @@ top_dir=$(cd $(dirname $(dirname $0)) && pwd)
 export VERSION=AUTO_STRICT
 export REPO_VERSION=$($top_dir/bin/get_version)
 
-docker build -f ci/publish-grid-crates -t publish-grid-crates ci/
+docker build -f ci/publish-grid-crates.dockerfile -t publish-grid-crates ci/
 docker run \
   --rm \
   -v $(pwd):/project/grid \

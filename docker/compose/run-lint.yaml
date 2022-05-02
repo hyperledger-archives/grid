@@ -19,7 +19,7 @@ services:
   lint-grid:
     build:
       context: ../
-      dockerfile: ./lint
+      dockerfile: ./lint.dockerfile
     image: lint-grid:${ISOLATION_ID}
     volumes:
       - ../../:/project/grid
