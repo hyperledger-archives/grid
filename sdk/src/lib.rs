@@ -63,6 +63,7 @@ pub mod purchase_order;
 pub mod rest_api;
 #[cfg(feature = "schema")]
 pub mod schema;
+pub mod scope_id;
 pub mod store;
 #[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;
