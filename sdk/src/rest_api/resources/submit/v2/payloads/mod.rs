@@ -14,7 +14,8 @@
 
 //! Provides native representations of smart contract actions used to deserialize from JSON
 
-mod batch;
+#[cfg(feature = "rest-api-batch-submission-handler")]
+pub mod batch;
 mod location;
 mod pike;
 mod product;
