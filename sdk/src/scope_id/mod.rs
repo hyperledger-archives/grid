@@ -22,14 +22,14 @@
 
 use crate::error::InvalidArgumentError;
 
+mod service;
+pub use service::{CircuitId, FullyQualifiedServiceId, ServiceId};
+
 pub trait ValidId {
     // Designate that the ID is valid
 }
 
 /// The scope ID trait.
-///
-/// This trait is not technically a marker trait, but more like a collection of trait bounds that
-/// we want to enforce on scope IDs.
 pub trait ScopeId: ValidId + Clone + PartialEq + Sync + Send {
     // Require a collection of trait bounds for a valid scope id
 }
@@ -46,12 +46,19 @@ impl GlobalScopeId {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ServiceScopeId {}
+pub struct ServiceScopeId {
+    service_id: FullyQualifiedServiceId,
+}
 impl ScopeId for ServiceScopeId {}
 impl ValidId for ServiceScopeId {}
 
 impl ServiceScopeId {
-    pub fn new_from_string(_full_service_id: String) -> Result<Self, InvalidArgumentError> {
-        unimplemented!()
+    pub fn new_from_string(full_service_id: String) -> Result<Self, InvalidArgumentError> {
+        let service_id = FullyQualifiedServiceId::new_from_string(full_service_id)?;
+        Ok(Self { service_id })
+    }
+
+    pub fn service_id(&self) -> &FullyQualifiedServiceId {
+        &self.service_id
     }
 }
