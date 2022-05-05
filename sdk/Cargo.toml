@@ -128,6 +128,7 @@ experimental = [
     "rest-api-actix-web-3",
     "rest-api-actix-web-3-run",
     "rest-api-batch-submission-handler",
+    "rest-api-batch-submission-handler-reqwest",
     "rest-api-resources-batch-tracking",
     "rest-api-endpoint-proxy",
     "rest-api-endpoint-record",
@@ -172,6 +173,12 @@ rest-api-actix-web-3 = [
 ]
 rest-api-actix-web-3-run = ["rest-api-endpoint-submit"]
 rest-api-batch-submission-handler = ["rest-api-resources-batch-tracking"]
+rest-api-batch-submission-handler-reqwest = [
+    "rest-api-batch-submission-handler",
+    "futures",
+    "url",
+    "reqwest",
+]
 rest-api-endpoint-agent = ["pike", "rest-api-resources-agent"]
 rest-api-endpoint-batches = ["backend", "rest-api-resources-batches"]
 rest-api-endpoint-location = ["location", "rest-api-resources-location"]

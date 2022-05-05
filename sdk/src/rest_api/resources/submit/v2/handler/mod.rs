@@ -14,6 +14,12 @@
 
 //! Provides an interface for submitting a `Batch` via a REST API
 
+#[cfg(feature = "rest-api-batch-submission-handler-reqwest")]
+mod reqwest;
+
+#[cfg(feature = "rest-api-batch-submission-handler-reqwest")]
+pub use self::reqwest::ReqwestBatchSubmissionHandler;
+
 use std::future::Future;
 use std::pin::Pin;
 
