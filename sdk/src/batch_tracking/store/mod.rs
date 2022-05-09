@@ -77,6 +77,19 @@ impl BatchStatusName {
     }
 }
 
+impl fmt::Display for BatchStatusName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            BatchStatusName::Unknown => write!(f, "Unknown"),
+            BatchStatusName::Pending => write!(f, "Pending"),
+            BatchStatusName::Delayed => write!(f, "Delayed"),
+            BatchStatusName::Invalid => write!(f, "Invalid"),
+            BatchStatusName::Valid => write!(f, "Valid"),
+            BatchStatusName::Committed => write!(f, "Committed"),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct InvalidTransaction {
     transaction_id: String,
