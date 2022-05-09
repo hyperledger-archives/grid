@@ -307,7 +307,7 @@ mod tests {
         (mock_endpoint, response)
     }
 
-    #[tokio::test]
+    #[actix_rt::test]
     async fn splinter_backend_client_returns_useful_message_on_404() {
         let (endpoint, response) = setup_basic_request();
 
@@ -330,7 +330,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[actix_rt::test]
     async fn splinter_backend_client_returns_correctly_on_200_success() {
         let (endpoint, response) = setup_basic_request();
 
@@ -349,7 +349,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[actix_rt::test]
     async fn splinter_backend_client_returns_useful_message_on_200_deserialize_error() {
         let (endpoint, response) = setup_basic_request();
 
@@ -366,7 +366,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[actix_rt::test]
     async fn splinter_backend_client_returns_useful_message_on_503_deserialize_error() {
         let (endpoint, response) = setup_basic_request();
 
