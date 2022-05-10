@@ -30,7 +30,10 @@ pub mod purchase_order;
 pub mod roles;
 #[cfg(feature = "rest-api-resources-schema")]
 pub mod schemas;
-#[cfg(feature = "rest-api-resources-submit")]
+#[cfg(any(
+    feature = "rest-api-resources-submit",
+    feature = "rest-api-resources-batch-tracking"
+))]
 pub mod submit;
 #[cfg(feature = "rest-api-resources-track-and-trace")]
 pub mod track_and_trace;
