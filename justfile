@@ -60,6 +60,7 @@ build-experimental:
     echo "\n\033[92mBuild Success\033[0m\n"
 
 ci:
+    just ci-lint-dockerfiles
     just ci-lint-openapi
     just ci-lint-ui
     just ci-test-ui
@@ -79,6 +80,8 @@ ci-lint:
     docker-compose -f docker/compose/run-lint.yaml build lint-grid
     docker-compose -f docker/compose/run-lint.yaml up \
       --abort-on-container-exit lint-grid
+
+ci-lint-dockerfiles: lint-dockerfiles
 
 ci-lint-openapi: lint-openapi
 
@@ -146,6 +149,21 @@ lint:
         done
     done
     echo "\n\033[92mLint Success\033[0m\n"
+
+lint-dockerfiles:
+    #!/usr/bin/env sh
+    set -e
+    docker pull -q hadolint/hadolint
+    for dockerfile in $(find . -iname *dockerfile* -not -path '*/\.git*';)
+    do
+        echo "\033[1mLinting $dockerfile\033[0m"
+        docker run \
+          --rm \
+          -i \
+          -v $(pwd)/ci/hadolint.yaml:/.config/hadolint.yaml \
+          hadolint/hadolint < $dockerfile
+    done
+    echo "\n\033[92mLint Dockerfile Success\033[0m\n"
 
 lint-experimental:
     #!/usr/bin/env sh

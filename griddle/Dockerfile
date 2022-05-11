@@ -36,16 +36,20 @@ COPY sdk /build/sdk
 # Build the griddle package
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" griddle/Cargo.toml
-RUN cargo build --manifest-path=griddle/Cargo.toml --release $CARGO_ARGS
-RUN (cd griddle && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" griddle/Cargo.toml \
+ && cargo build --manifest-path=griddle/Cargo.toml --release $CARGO_ARGS
+WORKDIR /build/griddle
+RUN cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml
+
+WORKDIR /build
 
 # Build the grid-cli package
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml
-RUN cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
-RUN (cd cli && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml \
+ && cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
+WORKDIR /build/cli
+RUN cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml
 
 # Log the commit hash
 COPY .git/ /tmp/.git/
@@ -64,12 +68,15 @@ COPY --from=builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=builder /build/target/debian/griddle*.deb /tmp
 COPY --from=builder /commit-hash /commit-hash
 
+# hadolint ignore=DL3015
 RUN apt-get update \
  && apt-get install -y -q \
     postgresql-client \
 && apt-get install -y -q \
     libsqlite3-dev \
  && dpkg --unpack /tmp/grid*.deb \
- && apt-get -f -y install
+ && apt-get -f -y install \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 CMD ["griddle"]

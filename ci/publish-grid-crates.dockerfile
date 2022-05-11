@@ -17,7 +17,7 @@
 #   Your crates api token must be passed in as CARGO_CRED at runtime
 #   using Docker's -e option.
 
-# docker build -f ci/publish-grid-crates -t publish-grid-crates ci/
+# docker build -f ci/publish-grid-crates.dockerfile -t publish-grid-crates ci/
 # docker run --rm -v $(pwd):/project/grid -e CARGO_CRED=%CREDVALUE% publish-grid-crates
 
 FROM ubuntu:focal
@@ -25,7 +25,7 @@ FROM ubuntu:focal
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
- && apt-get install -y \
+ && apt-get install -y --no-install-recommends \
     curl \
     gcc \
     libssl-dev \
@@ -49,6 +49,8 @@ ENV PATH=$PATH:/root/.cargo/bin
 WORKDIR /project/grid/sdk
 
 ARG REPO_VERSION
+
+# hadolint ignore=DL3025
 CMD cargo login $CARGO_CRED \
  && echo "Publshing version $REPO_VERSION" \
  && sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml \

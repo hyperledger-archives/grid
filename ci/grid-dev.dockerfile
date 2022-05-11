@@ -20,8 +20,9 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install base dependencies
 RUN apt-get update \
- && apt-get install -y -q \
+ && apt-get install -y -q --no-install-recommends \
     build-essential \
+    ca-certificates \
     curl \
     g++ \
     gcc \
@@ -44,16 +45,13 @@ ENV PATH=$PATH:/root/.cargo/bin
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && chmod +x /usr/bin/rustup-init \
- && rustup-init -y
-
-RUN rustup update \
- && rustup target add wasm32-unknown-unknown
-
+ && rustup-init -y \
+ && rustup update \
+ && rustup target add wasm32-unknown-unknown \
 # Install cargo deb
-RUN cargo install cargo-deb
-
+ && cargo install cargo-deb \
 # Install protoc
-RUN TARGET_ARCH=$(dpkg --print-architecture) \
+ && TARGET_ARCH=$(dpkg --print-architecture) \
  && if [[ $TARGET_ARCH == "arm64" ]]; then \
       PROTOC_ARCH="aarch_64"; \
     elif [[ $TARGET_ARCH == "amd64" ]]; then \
@@ -68,18 +66,17 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash 
 
 # Create empty cargo projects for top-level projects
 WORKDIR /build
-RUN USER=root cargo new --bin cli
-RUN USER=root cargo new --bin daemon
-RUN USER=root cargo new --bin griddle
-RUN USER=root cargo new --lib sdk
-
+RUN USER=root cargo new --bin cli \
+ && USER=root cargo new --bin daemon \
+ && USER=root cargo new --bin griddle \
+ && USER=root cargo new --lib sdk \
 # Create empty Cargo projects for contracts
-RUN USER=root cargo new --bin contracts/location
-RUN USER=root cargo new --bin contracts/pike
-RUN USER=root cargo new --bin contracts/product
-RUN USER=root cargo new --bin contracts/purchase_order
-RUN USER=root cargo new --bin contracts/schema
-RUN USER=root cargo new --bin contracts/track_and_trace
+ && USER=root cargo new --bin contracts/location \
+ && USER=root cargo new --bin contracts/pike \
+ && USER=root cargo new --bin contracts/product \
+ && USER=root cargo new --bin contracts/purchase_order \
+ && USER=root cargo new --bin contracts/schema \
+ && USER=root cargo new --bin contracts/track_and_trace
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -96,38 +93,31 @@ COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
 COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo.toml
 
 # Do release builds for each Cargo.toml
-RUN find ./*/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=experimental"
-
-RUN find ./*/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=stable"
-
-RUN find ./*/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --features=default"
-
-RUN find ./*/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --tests --release --manifest-path {} --no-default-features"
-
+# Workaround for https://github.com/koalaman/shellcheck/issues/1894
+#hadolint ignore=SC2016
+RUN find ./*/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --features=experimental' sh {} \
+ && find ./*/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --features=stable' sh {} \
+ && find ./*/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --features=default' sh {} \
+ && find ./*/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --no-default-features' sh {} \
 # Do wasm builds for the contracts
-RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=experimental"
-
-RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=stable"
-
-RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --features=default"
-
-RUN find ./contracts/ -name 'Cargo.toml' | \
-    xargs -I '{}' sh -c "echo 'Building {}'; cargo build --target wasm32-unknown-unknown --tests --release --manifest-path {} --no-default-features"
-
+ && find ./contracts/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --features=experimental' sh {} \
+ && find ./contracts/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --features=stable' sh {} \
+ && find ./contracts/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --features=default' sh {} \
+ && find ./contracts/ -name 'Cargo.toml' -print0 | \
+    xargs -0 -I {} sh -c 'echo Building $1; cargo build --tests --release --manifest-path $1 --no-default-features' sh {} \
 # Clean up built files
-RUN rm -f \
+ && rm -f \
     target/release/grid* \
     target/release/deps/grid* \
     target/wasm32-unknown-unknown/release/grid* \
-    target/wasm32-unknown-unknown/release/deps/grid*
-
+    target/wasm32-unknown-unknown/release/deps/grid* \
 # Clean up leftover files
-RUN find . -name 'Cargo.toml' -exec \
-    sh -c 'x="{}"; rm "$x" ' \;
+ && find . -name 'Cargo.toml' -exec \
+    sh -c 'x="$1"; rm "$x" ' sh {} \;

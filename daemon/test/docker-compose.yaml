@@ -28,7 +28,7 @@ services:
   daemon:
     build:
       context: ../..
-      dockerfile: docker/tests
+      dockerfile: docker/tests.dockerfile
       args:
         - http_proxy
         - https_proxy

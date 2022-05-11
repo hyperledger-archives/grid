@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM nginx
+FROM nginx:mainline
 COPY load-balancer/nginx.conf /etc/nginx/nginx.conf

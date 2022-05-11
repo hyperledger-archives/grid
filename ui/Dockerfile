@@ -15,7 +15,7 @@
 # Canopy build stage
 FROM node:14.18.1-alpine3.11 as canopy-app-build-stage
 
-RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
+RUN apk add --no-cache python g++ git make
 WORKDIR /ui
 COPY ui/grid-ui/package*.json ./
 RUN npm config set unsafe-perm true && npm install
@@ -36,39 +36,39 @@ RUN git rev-parse HEAD > /commit-hash
 # Sapling build stage
 FROM node:14.18.1-alpine3.11 as sapling-build-stage
 
-RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
+RUN apk add --no-cache python g++ git make \
+ && npm config set unsafe-perm true
 
-RUN npm config set unsafe-perm true
-
-COPY ui/saplings saplings
-COPY ui/sapling-dev-server sapling-dev-server
-COPY ui/protos protos
+COPY ui/saplings /saplings
+COPY ui/sapling-dev-server /sapling-dev-server
+COPY ui/protos /protos
 
 ARG PUBLIC_URL_PARTIAL
 ENV PUBLIC_URL $PUBLIC_URL_PARTIAL
 
 ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/product
-RUN cd /saplings/product && \
-  npm install && \
-  npm run deploy
+WORKDIR  /saplings/product
+RUN npm install \
+ && npm run deploy
 
+WORKDIR /
 RUN git clone -b 0-1 https://github.com/Cargill/splinter-ui
 
-RUN cp -r splinter-ui/saplings/register-login /saplings && \
-  cd saplings/register-login && \
-  npm install && \
-  npm run deploy
+WORKDIR /saplings/register-login
+RUN cp -r /splinter-ui/saplings/register-login /saplings \
+ && npm install \
+ && npm run deploy
 
-RUN cp -r splinter-ui/saplings/profile /saplings && \
-  cd saplings/profile && \
-  npm install && \
-  npm run deploy
+WORKDIR /saplings/profile
+RUN cp -r /splinter-ui/saplings/profile /saplings \
+ && npm install \
+ && npm run deploy
 
 ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/circuits
-RUN cp -r splinter-ui/saplings/circuits /saplings && \
-  cd saplings/circuits && \
-  npm install && \
-  npm run deploy
+WORKDIR /saplings/circuits
+RUN cp -r /splinter-ui/saplings/circuits /saplings \
+ && npm install \
+ && npm run deploy
 
 WORKDIR /sapling-dev-server
 ARG REPO_VERSION
@@ -82,20 +82,21 @@ COPY --from=canopy-app-build-stage /commit-hash /commit-hash
 RUN tar -xzvf /tmp/grid_ui_*.tar.gz -C /usr/local/apache2/htdocs/
 
 COPY --from=sapling-build-stage /grid_saplings_v*.tar.gz /tmp
-RUN mkdir /usr/local/apache2/htdocs/sapling-dev-server
-RUN tar -xzvf /tmp/grid_saplings_*.tar.gz \
+RUN mkdir /usr/local/apache2/htdocs/sapling-dev-server \
+ && tar -xzvf /tmp/grid_saplings_*.tar.gz \
   -C /usr/local/apache2/htdocs/sapling-dev-server/
 
 COPY ui/configs/apache/httpd.conf /usr/local/apache2/conf/httpd.conf
 
-RUN echo "\
+# hadolint ignore=SC2059
+RUN printf "\
   \n\
   LoadModule headers_module modules/mod_headers.so\n\
   ProxyPass /splinterd \${SPLINTER_URL}\n\
   ProxyPassReverse /splinterd \${SPLINTER_URL}\n\
   ProxyPass /gridd \${GRID_URL}\n\
   ProxyPassReverse /gridd \${GRID_URL}\n\
-  <Directory "/usr/local/apache2/htdocs/sapling-dev-server">\n\
+  <Directory \"/usr/local/apache2/htdocs/sapling-dev-server\">\n\
   Header set Access-Control-Allow-Origin "*"\n\
   </Directory>\n\
   \n\

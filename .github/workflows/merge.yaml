@@ -153,6 +153,29 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
+  lint_dockerfiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Display envvars
+        run: env
+
+      - name: Install Just
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
+
+      - name: Run hadolint on Grid Dockerfiles
+        run: just ci-lint-dockerfiles
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   build_docker:
     runs-on: ubuntu-latest
     if: >-
@@ -192,7 +215,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   publish_artifacts:
-    needs: [lint_grid_ui, test_grid_ui, lint_grid, unit_test_grid, integration_tests, build_docker]
+    needs: [lint_grid_ui, test_grid_ui, lint_grid, unit_test_grid, integration_tests, lint_dockerfiles, build_docker]
     if: >-
       github.repository_owner == 'hyperledger'
     runs-on: ubuntu-latest

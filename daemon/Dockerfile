@@ -17,7 +17,7 @@ FROM hyperledger/grid-dev:v11 as gridd-builder
 ENV GRID_FORCE_PANDOC=true
 
 # This is temporary until hyperledger/grid-dev updates
-RUN apt-get update && apt-get install -y -q pandoc
+RUN apt-get update && apt-get install -y -q --no-install-recommends pandoc
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -44,16 +44,20 @@ COPY sdk/src/data_validation/xml/xsd/product/ /build/daemon/packaging/xsd/produc
 # Build the gridd package
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" daemon/Cargo.toml
-RUN cargo build --manifest-path=daemon/Cargo.toml --release $CARGO_ARGS
-RUN (cd daemon && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" daemon/Cargo.toml \
+&& cargo build --manifest-path=daemon/Cargo.toml --release $CARGO_ARGS
+WORKDIR /build/daemon
+RUN cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml
+
+WORKDIR /build
 
 # Build the grid-cli package
 ARG CARGO_ARGS
 ARG REPO_VERSION
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml
-RUN cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
-RUN (cd cli && cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml)
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" cli/Cargo.toml \
+ && cargo build --manifest-path=cli/Cargo.toml --release $CARGO_ARGS
+WORKDIR /build/cli
+RUN cargo deb --no-build --deb-version $REPO_VERSION --manifest-path ./Cargo.toml
 
 # Log the commit hash
 COPY .git/ /tmp/.git/
@@ -72,6 +76,7 @@ COPY --from=gridd-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
 COPY --from=gridd-builder /commit-hash /commit-hash
 
+# hadolint ignore=DL3015
 RUN apt-get update \
  && apt-get install -y -q \
     ca-certificates \
@@ -81,7 +86,9 @@ RUN apt-get update \
     postgresql-client \
  && mandb \
  && dpkg --unpack /tmp/grid*.deb \
- && apt-get -f -y install
+ && apt-get -f -y install \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN echo ". /usr/share/bash-completion/bash_completion" >> ~/.bashrc
 

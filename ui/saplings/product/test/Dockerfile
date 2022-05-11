@@ -15,11 +15,13 @@
 # Dockerfile for running unit tests and lint on the Grid UI
 FROM node:14.18.1-alpine3.11
 
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
 WORKDIR /ui/saplings/product
 
 COPY ./ui/saplings/product/package*.json /ui/saplings/product
 
-RUN apk add \
+RUN apk add --no-cache \
     curl \
     g++ \
     git \
@@ -35,9 +37,10 @@ RUN npm config set unsafe-perm true && npm install
 COPY ./ui/saplings/product /ui/saplings/product
 COPY ./ui/protos /ui/protos
 
-RUN cd /ui/saplings/product && \
-  npm install && \
-  npm run generate-proto-files ../../protos
+WORKDIR /ui/saplings/product
+
+RUN npm install \
+ && npm run generate-proto-files ../../protos
 
 WORKDIR /
 COPY justfile .
