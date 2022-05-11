@@ -14,6 +14,7 @@
 
 pub(super) mod add_batches;
 pub(super) mod change_batch_to_submitted;
+pub(super) mod clean_stale_records;
 pub(super) mod get_batch;
 pub(super) mod get_batch_status;
 pub(super) mod get_failed_batches;

@@ -26,6 +26,19 @@ use crate::batch_tracking::store::error::BatchTrackingStoreError;
 #[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
 #[table_name = "batches"]
 #[primary_key(service_id, batch_id)]
+pub struct NewBatchModel {
+    pub service_id: String,
+    pub batch_id: String,
+    pub data_change_id: Option<String>,
+    pub signer_public_key: String,
+    pub trace: bool,
+    pub serialized_batch: Vec<u8>,
+    pub submitted: bool,
+}
+
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
+#[table_name = "batches"]
+#[primary_key(service_id, batch_id)]
 pub struct BatchModel {
     pub service_id: String,
     pub batch_id: String,
@@ -490,10 +503,10 @@ impl
     }
 }
 
-pub fn make_batch_models(batches: &[TrackingBatch]) -> Vec<BatchModel> {
+pub fn make_new_batch_models(batches: &[TrackingBatch]) -> Vec<NewBatchModel> {
     let mut models = Vec::new();
     for batch in batches {
-        let model = BatchModel {
+        let model = NewBatchModel {
             service_id: batch.service_id().to_string(),
             batch_id: batch.batch_header().to_string(),
             data_change_id: batch.data_change_id().map(String::from),
@@ -501,7 +514,6 @@ pub fn make_batch_models(batches: &[TrackingBatch]) -> Vec<BatchModel> {
             trace: batch.trace(),
             serialized_batch: batch.serialized_batch().to_vec(),
             submitted: batch.submitted(),
-            created_at: batch.created_at(),
         };
 
         models.push(model)

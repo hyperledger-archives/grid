@@ -481,7 +481,7 @@ impl TrackingBatchBuilder {
             ));
         };
 
-        if created_at <= 0 {
+        if created_at < 0 {
             return Err(BatchBuilderError::MissingRequiredField(
                 "created_at".to_string(),
             ));
@@ -1015,10 +1015,7 @@ pub trait BatchTrackingStore {
     /// # Arguments
     ///
     ///  * `submitted_by` - The timestamp for which to delete records submitted before
-    fn clean_stale_records(
-        &self,
-        submitted_by: &str,
-    ) -> Result<TrackingBatchList, BatchTrackingStoreError>;
+    fn clean_stale_records(&self, submitted_by: i64) -> Result<(), BatchTrackingStoreError>;
 
     /// Gets batches that have not yet been submitted from the underlying storage
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError>;
@@ -1081,10 +1078,7 @@ where
         unimplemented!();
     }
 
-    fn clean_stale_records(
-        &self,
-        _submitted_by: &str,
-    ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
+    fn clean_stale_records(&self, _submitted_by: i64) -> Result<(), BatchTrackingStoreError> {
         unimplemented!();
     }
 
