@@ -119,6 +119,7 @@ experimental = [
     "stable",
     # The following features are experimental:
     "batch-processor",
+    "batch-submission",
     "batch-tracking",
     "batch-store",
     "proxy",
@@ -155,6 +156,7 @@ track-and-trace = ["base64"]
 batch-tracking = ["transact"]
 batch-processor = ["batch-store", "backend", "log", "reqwest", "uuid"]
 batch-store = ["chrono"]
+batch-submission = []
 
 postgres = ["chrono", "diesel/postgres", "diesel_migrations", "log"]
 rest-api = []

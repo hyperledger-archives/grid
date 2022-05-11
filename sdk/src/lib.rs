@@ -34,6 +34,8 @@ extern crate log;
 pub mod backend;
 #[cfg(feature = "batch-processor")]
 pub mod batch_processor;
+#[cfg(feature = "batch-submission")]
+pub mod batch_submission;
 #[cfg(feature = "batch-tracking")]
 pub mod batch_tracking;
 #[cfg(feature = "batch-store")]
