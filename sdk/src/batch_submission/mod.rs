@@ -13,3 +13,48 @@
 // limitations under the License.
 
 pub mod submission;
+
+use std::convert::From;
+
+use crate::batch_tracking::store::{GlobalTrackingBatch, ServiceTrackingBatch};
+use crate::scope_id::{GlobalScopeId, ScopeId, ServiceScopeId};
+
+pub struct Submission<S: ScopeId> {
+    batch_header: String,
+    scope_id: S,
+    serialized_batch: Vec<u8>,
+}
+
+impl<S: ScopeId> Submission<S> {
+    pub fn batch_header(&self) -> &String {
+        &self.batch_header
+    }
+
+    pub fn scope_id(&self) -> &S {
+        &self.scope_id
+    }
+
+    pub fn serialized_batch(&self) -> &Vec<u8> {
+        &self.serialized_batch
+    }
+}
+
+impl From<GlobalTrackingBatch> for Submission<GlobalScopeId> {
+    fn from(batch: GlobalTrackingBatch) -> Self {
+        Self {
+            batch_header: batch.batch_header().to_string(),
+            scope_id: batch.scope_id().clone(),
+            serialized_batch: batch.serialized_batch().to_vec(),
+        }
+    }
+}
+
+impl From<ServiceTrackingBatch> for Submission<ServiceScopeId> {
+    fn from(batch: ServiceTrackingBatch) -> Self {
+        Self {
+            batch_header: batch.batch_header().to_string(),
+            scope_id: batch.scope_id().clone(),
+            serialized_batch: batch.serialized_batch().to_vec(),
+        }
+    }
+}
