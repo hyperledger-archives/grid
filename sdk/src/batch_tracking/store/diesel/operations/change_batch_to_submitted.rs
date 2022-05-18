@@ -18,7 +18,8 @@ use crate::error::InternalError;
 use crate::batch_tracking::store::{
     diesel::{
         models::{
-            NewBatchStatusModel, NewSubmissionModel, TransactionModel, TransactionReceiptModel,
+            is_data_change_id, NewBatchStatusModel, NewSubmissionModel, TransactionModel,
+            TransactionReceiptModel,
         },
         schema::{batch_statuses, batches, submissions, transaction_receipts, transactions},
     },
@@ -34,7 +35,7 @@ pub(in crate::batch_tracking::store::diesel) trait BatchTrackingStoreChangeBatch
 {
     fn change_batch_to_submitted(
         &self,
-        batch_id: &str,
+        id: &str,
         service_id: &str,
         txn_receipts: Vec<TransactionReceiptModel>,
         status: Option<NewBatchStatusModel>,
@@ -48,13 +49,26 @@ impl<'a> BatchTrackingStoreChangeBatchToSubmittedOperation
 {
     fn change_batch_to_submitted(
         &self,
-        batch_id: &str,
+        id: &str,
         service_id: &str,
         txn_receipts: Vec<TransactionReceiptModel>,
         status: Option<NewBatchStatusModel>,
         submission: NewSubmissionModel,
     ) -> Result<(), BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
+            let mut batch_id = id.to_string();
+            let is_dcid = is_data_change_id(id)?;
+            if is_dcid {
+                batch_id = batches::table
+                    .select(batches::batch_id)
+                    .filter(
+                        batches::data_change_id
+                            .eq(&id)
+                            .and(batches::service_id.eq(&service_id)),
+                    )
+                    .first::<String>(self.conn)?;
+            }
+
             let batch_exists: bool = select(exists(
                 batches::table.filter(
                     batches::batch_id
@@ -201,13 +215,25 @@ impl<'a> BatchTrackingStoreChangeBatchToSubmittedOperation
 {
     fn change_batch_to_submitted(
         &self,
-        batch_id: &str,
+        id: &str,
         service_id: &str,
         txn_receipts: Vec<TransactionReceiptModel>,
         status: Option<NewBatchStatusModel>,
         submission: NewSubmissionModel,
     ) -> Result<(), BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
+            let mut batch_id = id.to_string();
+            let is_dcid = is_data_change_id(id)?;
+            if is_dcid {
+                batch_id = batches::table
+                    .select(batches::batch_id)
+                    .filter(
+                        batches::data_change_id
+                            .eq(&id)
+                            .and(batches::service_id.eq(&service_id)),
+                    )
+                    .first::<String>(self.conn)?;
+            }
             let batch_exists: bool = select(exists(
                 batches::table.filter(
                     batches::batch_id

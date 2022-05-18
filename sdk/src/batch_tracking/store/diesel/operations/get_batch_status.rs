@@ -16,8 +16,8 @@ use super::BatchTrackingStoreOperations;
 use crate::error::InternalError;
 
 use crate::batch_tracking::store::diesel::{
-    models::{BatchStatusModel, TransactionReceiptModel},
-    schema::{batch_statuses, transaction_receipts, transactions},
+    models::{is_data_change_id, BatchStatusModel, TransactionReceiptModel},
+    schema::{batch_statuses, batches, transaction_receipts, transactions},
     BatchStatus, InvalidTransaction, TransactionReceipt, ValidTransaction,
 };
 
@@ -43,6 +43,19 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
         service_id: &str,
     ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
+            let mut batch_id = id.to_string();
+            let is_dcid = is_data_change_id(id)?;
+            if is_dcid {
+                batch_id = batches::table
+                    .select(batches::batch_id)
+                    .filter(
+                        batches::data_change_id
+                            .eq(&id)
+                            .and(batches::service_id.eq(&service_id)),
+                    )
+                    .first::<String>(self.conn)?;
+            }
+
             // This query fetches the batch status for the batch with the given
             // batch ID
             let batch_status_query = batch_statuses::table
@@ -50,7 +63,7 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 .select(batch_statuses::all_columns)
                 .filter(
                     batch_statuses::batch_id
-                        .eq(&id)
+                        .eq(&batch_id)
                         .and(batch_statuses::service_id.eq(&service_id)),
                 );
 
@@ -78,7 +91,7 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 )
                 .filter(
                     transactions::batch_id
-                        .eq(&id)
+                        .eq(&batch_id)
                         .and(transactions::service_id.eq(&service_id)),
                 )
                 .select((
@@ -142,6 +155,19 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
         service_id: &str,
     ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
+            let mut batch_id = id.to_string();
+            let is_dcid = is_data_change_id(id)?;
+            if is_dcid {
+                batch_id = batches::table
+                    .select(batches::batch_id)
+                    .filter(
+                        batches::data_change_id
+                            .eq(&id)
+                            .and(batches::service_id.eq(&service_id)),
+                    )
+                    .first::<String>(self.conn)?;
+            }
+
             // This query fetches the batch status for the batch with the given
             // batch ID
             let batch_status_query = batch_statuses::table
@@ -149,7 +175,7 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 .select(batch_statuses::all_columns)
                 .filter(
                     batch_statuses::batch_id
-                        .eq(&id)
+                        .eq(&batch_id)
                         .and(batch_statuses::service_id.eq(&service_id)),
                 );
 
@@ -177,7 +203,7 @@ impl<'a> BatchTrackingStoreGetBatchStatusOperation
                 )
                 .filter(
                     transactions::batch_id
-                        .eq(&id)
+                        .eq(&batch_id)
                         .and(transactions::service_id.eq(&service_id)),
                 )
                 .select((
