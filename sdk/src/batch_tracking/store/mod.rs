@@ -970,6 +970,9 @@ pub trait BatchTrackingStore {
     ///    update
     ///  * `service_id` - The service ID
     ///  * `status` - The new status for the batch
+    ///  * `transaction_receipts` - A list of transaction receipts for the
+    ///    transactions in the batch
+    ///  * `submission_error` - A submission error for the batch if it exists
     fn update_batch_status(
         &self,
         id: &str,
@@ -992,6 +995,10 @@ pub trait BatchTrackingStore {
     ///
     ///  * `batch_id` - The ID or data change ID of the batch to update
     ///  * `service_id` - The service ID
+    ///  * `transaction_receipts` - A list of transaction receipts for the
+    ///    transactions in the batch
+    ///  * `dlt_status` - The new status for the batch
+    ///  * `submission_error` - A submission error for the batch if it exists
     fn change_batch_to_submitted(
         &self,
         batch_id: &str,
