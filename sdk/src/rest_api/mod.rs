@@ -12,7 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "rest-api-actix-web-3")]
-pub mod actix_web_3;
 #[cfg(feature = "rest-api-resources")]
 pub mod resources;
