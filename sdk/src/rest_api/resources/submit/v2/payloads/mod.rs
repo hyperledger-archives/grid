@@ -14,6 +14,7 @@
 
 //! Provides native representations of smart contract actions used to deserialize from JSON
 
+mod batch;
 mod location;
 mod pike;
 mod product;
