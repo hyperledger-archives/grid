@@ -12,7 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "rest-api-actix-web-4")]
-pub mod actix_web_4;
-#[cfg(feature = "rest-api-resources")]
-pub mod resources;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryPaging {
+    pub offset: Option<u64>,
+    pub limit: Option<u16>,
+}
+
+impl QueryPaging {
+    pub fn offset(&self) -> u64 {
+        self.offset.unwrap_or(0)
+    }
+
+    pub fn limit(&self) -> u16 {
+        self.limit
+            .map(|l| if l > 1024 { 1024 } else { l })
+            .unwrap_or(10)
+    }
+}

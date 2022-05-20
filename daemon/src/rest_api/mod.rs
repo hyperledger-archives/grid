@@ -20,13 +20,12 @@ use std::thread;
 
 pub use crate::rest_api::error::RestApiServerError;
 
-#[cfg(feature = "integration")]
 use actix_web::web;
-use actix_web::{dev, App, HttpServer, Result};
+use actix_web::{dev, web::Data, App, HttpServer, Result};
 use futures::executor::block_on;
 #[cfg(feature = "integration")]
-use grid_sdk::rest_api::actix_web_3::KeyState;
-use grid_sdk::rest_api::actix_web_3::{routes, BackendState, Endpoint, StoreState};
+use grid_sdk::rest_api::actix_web_4::KeyState;
+use grid_sdk::rest_api::actix_web_4::{routes, BackendState, Endpoint, StoreState};
 
 pub struct RestApiShutdownHandle {
     server: dev::Server,
@@ -34,7 +33,7 @@ pub struct RestApiShutdownHandle {
 
 impl RestApiShutdownHandle {
     pub fn shutdown(&self) {
-        block_on(self.server.stop(true));
+        block_on(self.server.handle().stop(true));
     }
 }
 
@@ -63,68 +62,106 @@ pub fn run(
                 #[allow(clippy::let_and_return)]
                 #[allow(unused_mut)]
                 let mut app = App::new()
-                    .data(store_state.clone())
-                    .data(backend_state.clone())
+                    .app_data(Data::new(store_state.clone()))
+                    .app_data(Data::new(backend_state.clone()))
                     .app_data(endpoint.clone())
-                    .service(routes::submit_batches)
-                    .service(routes::get_batch_statuses);
+                    .service(
+                        web::resource("/batches")
+                            .name("get_batch_statuses")
+                            .route(web::post().to(routes::submit_batches)),
+                    )
+                    .service(
+                        web::resource("/batch_statuses")
+                            .name("get_batch_statuses")
+                            .route(web::get().to(routes::get_batch_statuses)),
+                    );
 
                 #[cfg(feature = "pike")]
                 {
                     app = app
-                        .service(routes::list_agents)
-                        .service(routes::get_agent)
-                        .service(routes::get_organization)
-                        .service(routes::list_organizations)
-                        .service(routes::list_roles_for_organization)
-                        .service(routes::get_role);
+                        .route("/agent", web::get().to(routes::list_agents))
+                        .route("/agent/{public_key}", web::get().to(routes::get_agent))
+                        .route("/organization", web::get().to(routes::list_organizations))
+                        .route(
+                            "/organization/{id}",
+                            web::get().to(routes::get_organization),
+                        )
+                        .route(
+                            "/role/{org_id}",
+                            web::get().to(routes::list_roles_for_organization),
+                        )
+                        .route("/role/{org_id}/{name}", web::get().to(routes::get_role));
                 }
 
                 #[cfg(feature = "location")]
                 {
                     app = app
-                        .service(routes::list_locations)
-                        .service(routes::get_location);
+                        .route("/location", web::get().to(routes::list_locations))
+                        .route("/location/{id}", web::get().to(routes::get_location));
                 }
 
                 #[cfg(feature = "product")]
                 {
                     app = app
-                        .service(routes::list_products)
-                        .service(routes::get_product);
+                        .route("/product", web::get().to(routes::list_products))
+                        .route("/product/{id}", web::get().to(routes::get_product));
                 }
 
                 #[cfg(feature = "schema")]
                 {
                     app = app
-                        .service(routes::list_schemas)
-                        .service(routes::get_schema);
+                        .route("/schema", web::get().to(routes::list_schemas))
+                        .route("/schema/{name}", web::get().to(routes::get_schema));
                 }
 
                 #[cfg(feature = "track-and-trace")]
                 {
                     app = app
-                        .service(routes::list_records)
-                        .service(routes::get_record)
-                        .service(routes::get_record_property_name);
+                        .route("/record", web::get().to(routes::list_records))
+                        .route("/record/{record_id}", web::get().to(routes::get_record))
+                        .route(
+                            "record/{record_id}/property/{property_name}",
+                            web::get().to(routes::get_record_property_name),
+                        );
                 }
 
                 #[cfg(feature = "integration")]
                 {
-                    app = app
-                        .data(key_state.clone())
-                        .service(web::scope("/integration").service(routes::submit));
+                    app = app.app_data(Data::new(key_state.clone())).service(
+                        web::scope("/integration").route("/submit", web::post().to(routes::submit)),
+                    );
                 }
                 #[cfg(feature = "purchase-order")]
                 {
                     app = app
-                        .service(routes::list_purchase_orders)
-                        .service(routes::get_purchase_order)
-                        .service(routes::list_purchase_order_versions)
-                        .service(routes::get_purchase_order_version)
-                        .service(routes::list_purchase_order_version_revisions)
-                        .service(routes::get_latest_revision_id)
-                        .service(routes::get_purchase_order_version_revision)
+                        .route(
+                            "/purchase_order",
+                            web::get().to(routes::list_purchase_orders),
+                        )
+                        .route(
+                            "/purchase_order/{uid}",
+                            web::get().to(routes::get_purchase_order),
+                        )
+                        .route(
+                            "/purchase_order/{uid}/version",
+                            web::get().to(routes::list_purchase_order_versions),
+                        )
+                        .route(
+                            "/purchase_order/{uid}/version/{version_id}",
+                            web::get().to(routes::get_purchase_order_version),
+                        )
+                        .route(
+                            "/purchase_order/{uid}/version/{version_id}/revision",
+                            web::get().to(routes::list_purchase_order_version_revisions),
+                        )
+                        .route(
+                            "/purchase_order/{uid}/version/{version_id}/revision/latest",
+                            web::get().to(routes::get_latest_revision_id),
+                        )
+                        .route(
+                            "/purchase_order/{uid}/version/{version_id}/revision/{revision_number}",
+                            web::get().to(routes::get_purchase_order_version_revision),
+                        );
                 }
 
                 app
@@ -155,15 +192,15 @@ pub fn run(
 mod test {
     use super::*;
 
+    use actix_http::Request;
     use actix_web::{
-        http,
-        test::{start, TestServer},
-        App,
+        body::BoxBody,
+        dev::{Service, ServiceResponse},
+        http, test, App, Error as ActixError,
     };
     use diesel::r2d2::{ConnectionManager, Pool};
     use diesel::SqliteConnection;
     use futures::prelude::*;
-    use serde_json;
 
     use grid_sdk::backend::BackendClientError;
     use grid_sdk::backend::{
@@ -405,74 +442,95 @@ mod test {
         }
     }
 
-    fn create_test_server(
+    async fn create_test_server(
         backend: Backend,
         response_type: ResponseType,
         pool: Pool<ConnectionManager<SqliteConnection>>,
-    ) -> TestServer {
-        start(move || {
-            let mock_sender = MockMessageSender::new(response_type);
-            let mock_backend_client = Arc::new(MockBackendClient {
-                sender: mock_sender,
-            });
-            let backend_state = BackendState::new(mock_backend_client);
+    ) -> impl Service<Request, Response = ServiceResponse<BoxBody>, Error = ActixError> {
+        let mock_sender = MockMessageSender::new(response_type);
+        let mock_backend_client = Arc::new(MockBackendClient {
+            sender: mock_sender,
+        });
+        let backend_state = BackendState::new(mock_backend_client);
 
-            let store_state = StoreState::with_sqlite_pool(pool.clone());
-            let endpoint_backend = match backend {
-                Backend::Splinter => "splinter:",
-                Backend::Sawtooth => "sawtooth:",
-            };
+        let store_state = StoreState::with_sqlite_pool(pool.clone());
+        let endpoint_backend = match backend {
+            Backend::Splinter => "splinter:",
+            Backend::Sawtooth => "sawtooth:",
+        };
 
-            #[allow(unused_mut)]
-            let mut app = App::new()
-                .data(store_state)
-                .data(backend_state)
-                .app_data(Endpoint::from(
-                    format!("{}tcp://localhost:9090", endpoint_backend).as_str(),
-                ))
-                .service(routes::submit_batches)
-                .service(routes::get_batch_statuses)
-                .service(routes::list_agents)
-                .service(routes::get_agent)
-                .service(routes::get_organization)
-                .service(routes::list_organizations)
-                .service(routes::list_locations)
-                .service(routes::get_location)
-                .service(routes::list_products)
-                .service(routes::get_product)
-                .service(routes::list_schemas)
-                .service(routes::get_schema);
+        #[allow(unused_mut)]
+        let mut app = App::new()
+            .app_data(Data::new(store_state.clone()))
+            .app_data(Data::new(backend_state.clone()))
+            .app_data(Endpoint::from(
+                format!("{}tcp://localhost:9090", endpoint_backend).as_str(),
+            ))
+            .service(
+                web::resource("/batches")
+                    .name("get_batch_statuses")
+                    .route(web::post().to(routes::submit_batches)),
+            )
+            .service(
+                web::resource("/batch_statuses")
+                    .name("get_batch_statuses")
+                    .route(web::get().to(routes::get_batch_statuses)),
+            )
+            .route("/agent", web::get().to(routes::list_agents))
+            .route("/agent/{public_key}", web::get().to(routes::get_agent))
+            .route("/organization", web::get().to(routes::list_organizations))
+            .route(
+                "/organization/{id}",
+                web::get().to(routes::get_organization),
+            )
+            .route("/location", web::get().to(routes::list_locations))
+            .route("/location/{id}", web::get().to(routes::get_location))
+            .route("/product", web::get().to(routes::list_products))
+            .route("/product/{id}", web::get().to(routes::get_product))
+            .route("/schema", web::get().to(routes::list_schemas))
+            .route("/schema/{name}", web::get().to(routes::get_schema));
 
-            #[cfg(feature = "track-and-trace")]
-            {
-                app = app
-                    .service(routes::list_records)
-                    .service(routes::get_record)
-                    .service(routes::get_record_property_name);
-            }
+        #[cfg(feature = "track-and-trace")]
+        {
+            app = app
+                .route("/record", web::get().to(routes::list_records))
+                .route("/record/{record_id}", web::get().to(routes::get_record))
+                .route(
+                    "record/{record_id}/property/{property_name}",
+                    web::get().to(routes::get_record_property_name),
+                );
+        }
 
-            #[cfg(feature = "purchase-order")]
-            {
-                app = app
-                    .service(routes::list_purchase_orders)
-                    .service(routes::get_purchase_order)
-                    .service(routes::list_purchase_order_versions)
-                    .service(routes::get_purchase_order_version)
-                    .service(routes::list_purchase_order_version_revisions)
-                    .service(routes::get_purchase_order_version_revision)
-            }
+        #[cfg(feature = "purchase-order")]
+        {
+            app = app
+                .route(
+                    "/purchase_order",
+                    web::get().to(routes::list_purchase_orders),
+                )
+                .route(
+                    "/purchase_order/{uid}",
+                    web::get().to(routes::get_purchase_order),
+                )
+                .route(
+                    "/purchase_order/{uid}/version",
+                    web::get().to(routes::list_purchase_order_versions),
+                )
+                .route(
+                    "/purchase_order/{uid}/version/{version_id}",
+                    web::get().to(routes::get_purchase_order_version),
+                )
+                .route(
+                    "/purchase_order/{uid}/version/{version_id}/revision",
+                    web::get().to(routes::list_purchase_order_version_revisions),
+                )
+                .route(
+                    "/purchase_order/{uid}/version/{version_id}/revision/{revision_number}",
+                    web::get().to(routes::get_purchase_order_version_revision),
+                );
+        }
 
-            app
-        })
-    }
-
-    fn setup_test_server(
-        backend: Backend,
-        response_type: ResponseType,
-    ) -> (TestServer, Pool<ConnectionManager<SqliteConnection>>) {
-        let pool = create_connection_pool_and_migrate();
-        let app = create_test_server(backend, response_type, pool.clone());
-        (app, pool)
+        test::init_service(app).await
     }
 
     ///
@@ -486,24 +544,24 @@ mod test {
     ///        - a link property that ends in '/batch_statuses?id=BATCH_ID_1'
     ///        - a data property matching the batch statuses received
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_get_batch_status_one_id() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/batch_statuses?id={}", BATCH_ID_1))
+            .to_request();
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
-        let deserialized: BatchStatusResponse =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let deserialized: BatchStatusResponse = test::read_body_json(response).await;
 
         assert_eq!(deserialized.data.len(), 1);
         assert_eq!(deserialized.data[0].id, BATCH_ID_1);
@@ -528,27 +586,27 @@ mod test {
     ///             `/batch_statuses?id={BATCH_ID_1},{BATCH_ID_2},{BATCH_ID_3}`
     ///        - a data property matching the batch statuses received
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_get_batch_status_multiple_ids() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/batch_statuses?id={},{},{}",
+                BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
+            ))
+            .to_request();
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/batch_statuses?id={},{},{}",
-                    BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
-        let deserialized: BatchStatusResponse =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let deserialized: BatchStatusResponse = test::read_body_json(response).await;
 
         assert_eq!(deserialized.data.len(), 3);
         assert_eq!(deserialized.data[0].id, BATCH_ID_1);
@@ -577,21 +635,20 @@ mod test {
     ///    It should send back a response with status BadRequest:
     ///        - with an error message explaining the error
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_get_batch_status_invalid_id() {
-        let (srv, _pool) = setup_test_server(
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
             Backend::Sawtooth,
             ResponseType::ClientBatchStatusResponseInvalidId,
-        );
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/batch_statuses?id={}", BATCH_ID_1))
+            .to_request();
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
@@ -604,21 +661,20 @@ mod test {
     ///    It will receive a Protobuf response with status InternalError
     ///    It should send back a response with status InternalError
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_get_batch_status_internal_error() {
-        let (srv, _pool) = setup_test_server(
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
             Backend::Sawtooth,
             ResponseType::ClientBatchStatusResponseInternalError,
-        );
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/batch_statuses?id={}", BATCH_ID_1))
+            .to_request();
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -632,22 +688,23 @@ mod test {
     ///        - wait param set to "not_a_number"
     ///    It should send back a response with status BadRequest
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_get_batch_status_wait_error() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/batch_statuses?id={}&wait=not_a_number",
+                BATCH_ID_1
+            ))
+            .to_request();
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/batch_statuses?id={}&wait=not_a_number",
-                    BATCH_ID_1
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
@@ -661,21 +718,25 @@ mod test {
     ///    It should send back a JSON response with:
     ///        - a link property that ends in '/batch_statuses?id=BATCH_ID_1'
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_post_batches_ok() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchSubmitResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchSubmitResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::post()
+            .uri("/batches")
+            .set_payload(get_batch_list())
+            .to_request();
 
-        let mut response = srv
-            .request(http::Method::POST, srv.url("/batches"))
-            .send_body(get_batch_list())
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
-        let deserialized: BatchStatusLink =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let deserialized: BatchStatusLink = test::read_body_json(response).await;
 
         assert!(deserialized
             .link
@@ -690,18 +751,21 @@ mod test {
     ///    It will receive a Protobuf response with status INVALID_BATCH
     ///    It should send back a response with BadRequest status
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_post_batches_invalid_batch() {
-        let (srv, _pool) = setup_test_server(
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
             Backend::Sawtooth,
             ResponseType::ClientBatchSubmitResponseInvalidBatch,
-        );
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::post()
+            .uri("/batches")
+            .set_payload(get_batch_list())
+            .to_request();
 
-        let response = srv
-            .request(http::Method::POST, srv.url("/batches"))
-            .send_body(get_batch_list())
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
@@ -714,18 +778,21 @@ mod test {
     ///    It will receive a Protobuf response with status INTERNAL_ERROR
     ///    It should send back a response with InternalError status
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_post_batches_internal_error() {
-        let (srv, _pool) = setup_test_server(
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
             Backend::Sawtooth,
             ResponseType::ClientBatchSubmitResponseInternalError,
-        );
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::post()
+            .uri("/batches")
+            .set_payload(get_batch_list())
+            .to_request();
 
-        let response = srv
-            .request(http::Method::POST, srv.url("/batches"))
-            .send_body(get_batch_list())
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -738,59 +805,60 @@ mod test {
     ///     It will receive a response with status Ok
     ///     It should send back a response with:
     ///         - body containing a list of Agents
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_agents() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/agent").to_request();
 
         // Adds a single Agent to the test database
         populate_agent_table(get_agent(None), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/agent"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), actix_web::http::StatusCode::OK);
-        let body: AgentListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: AgentListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let agent = body.data.first().unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
     }
 
-    ///
-    /// Verifies a GET /agent?service_id=test_service responds with an Ok response
-    ///     with an empty Agents table and a single Agent with the matching service_id.
-    ///
-    ///     The TestServer will receive a request with service_id equal to 'test'
-    ///     It will receive a response with status Ok
-    ///     It should send back a response with:
-    ///         - body containing a list of Agents
-    #[actix_rt::test]
+    // ///
+    // /// Verifies a GET /agent?service_id=test_service responds with an Ok response
+    // ///     with an empty Agents table and a single Agent with the matching service_id.
+    // ///
+    // ///     The TestServer will receive a request with service_id equal to 'test'
+    // ///     It will receive a response with status Ok
+    // ///     It should send back a response with:
+    // ///         - body containing a list of Agents
+    #[actix_web::test]
     async fn test_list_agents_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/agent?service_id={}", TEST_SERVICE_ID))
+            .to_request();
 
         // Adds a single Agent to the test database
         populate_agent_table(get_agent(Some(TEST_SERVICE_ID.to_string())), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/agent?service_id={}", TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), actix_web::http::StatusCode::OK);
-        let body: AgentListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: AgentListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let agent = body.data.first().unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
@@ -798,48 +866,51 @@ mod test {
         assert_eq!(agent.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
-    ///
-    /// Verifies a GET /organization responds with an Ok response
-    ///     with an empty organization table
-    ///
-    #[actix_rt::test]
+    // ///
+    // /// Verifies a GET /organization responds with an Ok response
+    // ///     with an empty organization table
+    // ///
+    #[actix_web::test]
     async fn test_list_organizations_empty() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/organization").to_request();
 
         // Clears the organization table in the test database
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/organization"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: OrganizationListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: OrganizationListSlice = test::read_body_json(response).await;
         assert!(body.data.is_empty());
     }
 
-    ///
-    /// Verifies a GET /organization responds with an Ok response
-    ///     with a list containing one organization
-    ///
-    #[actix_rt::test]
+    // ///
+    // /// Verifies a GET /organization responds with an Ok response
+    // ///     with a list containing one organization
+    // ///
+    #[actix_web::test]
     async fn test_list_organizations() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/organization").to_request();
 
         // Adds an organization to the test database
         populate_organization_table(get_organization(None), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/organization"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
         assert!(response.status().is_success());
-        let body: OrganizationListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: OrganizationListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
@@ -847,30 +918,31 @@ mod test {
         assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
     }
 
-    ///
-    /// Verifies a GET /organization?service_id=test_service responds with an Ok response
-    ///     with a list containing one organization with a matching service_id
-    ///
-    #[actix_rt::test]
+    // ///
+    // /// Verifies a GET /organization?service_id=test_service responds with an Ok response
+    // ///     with a list containing one organization with a matching service_id
+    // ///
+    #[actix_web::test]
     async fn test_list_organizations_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/organization?service_id={}", TEST_SERVICE_ID))
+            .to_request();
 
         // Adds an organization to the test database
         populate_organization_table(get_organization(Some(TEST_SERVICE_ID.to_string())), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/organization?service_id={}", TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: OrganizationListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: OrganizationListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
@@ -879,30 +951,32 @@ mod test {
         assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
-    ///
-    /// Verifies a GET /organization responds with an Ok response
-    /// with a list containing one organization, when there's two records for the same
-    /// organization_id. The rest-api should return a list with a single organization with the
-    /// record that contains the most recent information for that organization
-    /// (end_commit_num == MAX_COMMIT_NUM)
-    ///
-    #[actix_rt::test]
+    // ///
+    // /// Verifies a GET /organization responds with an Ok response
+    // /// with a list containing one organization, when there's two records for the same
+    // /// organization_id. The rest-api should return a list with a single organization with the
+    // /// record that contains the most recent information for that organization
+    // /// (end_commit_num == MAX_COMMIT_NUM)
+    // ///
+    #[actix_web::test]
     async fn test_list_organizations_updated() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/organization").to_request();
 
         // Adds two instances of organization with the same org_id to the test database
         populate_organization_table(get_updated_organization(), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/organization"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: OrganizationListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: OrganizationListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let org = body.data.first().unwrap();
         assert_eq!(org.name, ORG_NAME_2.to_string());
@@ -911,45 +985,52 @@ mod test {
         assert_eq!(org.locations, vec![UPDATED_ADDRESS_2.to_string()]);
     }
 
-    ///
-    /// Verifies a GET /organization/{id} responds with NotFound response
-    /// when there is no organization with the specified id.
-    ///
-    #[actix_rt::test]
+    // ///
+    // /// Verifies a GET /organization/{id} responds with NotFound response
+    // /// when there is no organization with the specified id.
+    // ///
+    #[actix_web::test]
     async fn test_fetch_organization_not_found() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/organization/not_a_valid_id")
+            .to_request();
 
-        let response = srv
-            .request(http::Method::GET, srv.url("/organization/not_a_valid_id"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
-    ///
-    /// Verifies a GET /organization/{id}?service_id=test_service responds with NotFound response
-    /// when there is no organization with the specified id and service_id.
-    ///
-    #[actix_rt::test]
+    // ///
+    // /// Verifies a GET /organization/{id}?service_id=test_service responds with NotFound response
+    // /// when there is no organization with the specified id and service_id.
+    // ///
+    #[actix_web::test]
     async fn test_fetch_organization_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/organization/not_a_valid_id?service_id={}",
+                TEST_SERVICE_ID
+            ))
+            .to_request();
 
         //Adds an organization to the test database
         populate_organization_table(get_organization(None), pool);
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/organization/not_a_valid_id?service_id={}",
-                    TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -957,26 +1038,27 @@ mod test {
     /// Verifies a GET /organization/{id} responds with Ok response
     /// when there is an organization with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_organization_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/organization/{}", KEY2))
+            .to_request();
 
         // Adds an organization to the test database
         populate_organization_table(get_organization(None), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/organization/{}", KEY2)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let org: OrganizationSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let org: OrganizationSlice = test::read_body_json(response).await;
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
         assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
@@ -989,26 +1071,27 @@ mod test {
     /// record that contains the most recent information for that organization
     /// (end_commit_num == MAX_COMMIT_NUM)
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_organization_updated_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/organization/{}", KEY3))
+            .to_request();
 
         // Adds an organization to the test database
         populate_organization_table(get_updated_organization(), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/organization/{}", KEY3)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let org: OrganizationSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let org: OrganizationSlice = test::read_body_json(response).await;
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
@@ -1019,29 +1102,30 @@ mod test {
     /// Verifies a GET /organization/{id}?service_id=test_service responds with Ok response
     /// when there is an organization with the specified id and matching service_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_organization_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/organization/{}?service_id={}",
+                KEY2, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         // Adds an organization to the test database
         populate_organization_table(get_organization(Some(TEST_SERVICE_ID.to_string())), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/organization/{}?service_id={}",
-                    KEY2, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let org: OrganizationSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let org: OrganizationSlice = test::read_body_json(response).await;
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
         assert_eq!(org.locations, vec![ADDRESS_1.to_string()]);
@@ -1052,22 +1136,26 @@ mod test {
     /// Verifies a GET /agent/{public_key} responds with an Ok response
     ///     with an Agent with the specified public key.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_agent_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/agent/{}", KEY1))
+            .to_request();
 
         //Adds an agent to the test database
         populate_agent_table(get_agent(None), pool);
 
-        let mut response = srv
-            .request(http::Method::GET, srv.url(&format!("/agent/{}", KEY1)))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert!(response.status().is_success());
-        let agent: AgentSlice = serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let agent: AgentSlice = test::read_body_json(response).await;
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
     }
@@ -1076,25 +1164,26 @@ mod test {
     /// Verifies a GET /agent/{public_key}?service_id=test_service responds with an Ok response
     ///     with an Agent with the specified public key and service_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_agent_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/agent/{}?service_id={}", KEY1, TEST_SERVICE_ID))
+            .to_request();
 
         //Adds an agent to the test database
         populate_agent_table(get_agent(Some(TEST_SERVICE_ID.to_string())), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/agent/{}?service_id={}", KEY1, TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert!(response.status().is_success());
-        let agent: AgentSlice = serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let agent: AgentSlice = test::read_body_json(response).await;
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
         assert_eq!(agent.service_id, Some(TEST_SERVICE_ID.to_string()));
@@ -1104,16 +1193,20 @@ mod test {
     /// Verifies a GET /agent/{public_key} responds with a Not Found response
     ///     when the public key is not assigned to any Agent.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_agent_not_found() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/agent/unknown_public_key")
+            .to_request();
 
-        let response = srv
-            .request(http::Method::GET, srv.url("/agent/unknown_public_key"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1121,25 +1214,26 @@ mod test {
     /// Verifies a GET /agent/{public_key}?service_id=test_service responds with a Not Found response
     ///     when the public key is not assigned to any Agent with the service_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_agent_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/agent/unknown_public_key?service_id={}",
+                TEST_SERVICE_ID
+            ))
+            .to_request();
 
         //Adds an agent to the test database
         populate_agent_table(get_agent(None), pool);
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/agent/unknown_public_key?service_id={}",
-                    TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1148,21 +1242,23 @@ mod test {
     ///
     ///     The TestServer will receive a request with no parameters,
     ///         then will respond with an Ok status and a list of Grid Schemas.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_schemas() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/schema").to_request();
 
         populate_grid_schema_table(get_grid_schema(None), pool);
 
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/schema"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: SchemaListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: SchemaListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_schema = body.data.first().unwrap();
@@ -1176,24 +1272,25 @@ mod test {
     ///
     ///     The TestServer will receive a request with the service ID,
     ///         then will respond with an Ok status and a list of Grid Schemas.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_schemas_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/schema?service_id={}", TEST_SERVICE_ID))
+            .to_request();
 
         populate_grid_schema_table(get_grid_schema(Some(TEST_SERVICE_ID.to_string())), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/schema?service_id={}", TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: SchemaListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: SchemaListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_schema = body.data.first().unwrap();
@@ -1207,23 +1304,24 @@ mod test {
     /// Verifies a GET /schema/{name} responds with an OK response
     ///     and the Grid Schema with the specified name
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_schema_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/schema/{}", "TestGridSchema".to_string()))
+            .to_request();
 
         populate_grid_schema_table(get_grid_schema(None), pool);
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/schema/{}", "TestGridSchema".to_string())),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_schema: SchemaSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_schema: SchemaSlice = test::read_body_json(response).await;
         assert_eq!(test_schema.name, "TestGridSchema".to_string());
         assert_eq!(test_schema.owner, "phillips001".to_string());
         assert_eq!(test_schema.properties.len(), 2);
@@ -1233,27 +1331,28 @@ mod test {
     /// Verifies a GET /schema/{name}?service_id=test_service responds with an OK response
     ///     and the Grid Schema with the specified name and service_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_schema_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/schema/{}?service_id={}",
+                "TestGridSchema", TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_grid_schema_table(get_grid_schema(Some(TEST_SERVICE_ID.to_string())), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/schema/{}?service_id={}",
-                    "TestGridSchema", TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_schema: SchemaSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_schema: SchemaSlice = test::read_body_json(response).await;
         assert_eq!(test_schema.name, "TestGridSchema".to_string());
         assert_eq!(test_schema.owner, "phillips001".to_string());
         assert_eq!(test_schema.properties.len(), 2);
@@ -1264,16 +1363,21 @@ mod test {
     /// Verifies a GET /schema/{name} responds with a Not Found error
     ///     when there is no Grid Schema with the specified name
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_schema_not_found() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/schema/not_in_database")
+            .to_request();
 
-        let response = srv
-            .request(http::Method::GET, srv.url("/schema/not_in_database"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1281,23 +1385,26 @@ mod test {
     /// Verifies a GET /schema/{name}?service_id=test_service responds with a Not Found error
     ///     when there is no Grid Schema with the specified name and service id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_schema_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/schema/not_in_database?service_id={}",
+                TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_grid_schema_table(get_grid_schema(None), pool);
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/schema/not_in_database?service_id={}",
-                    TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1306,21 +1413,23 @@ mod test {
     ///
     ///     The TestServer will receive a request with no parameters,
     ///         then will respond with an Ok status and a list of Products.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_products() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/product").to_request();
 
         populate_product_table(get_product(None), pool);
 
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/product"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: ProductListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: ProductListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_product = body.data.first().unwrap();
@@ -1336,21 +1445,24 @@ mod test {
     ///
     ///     The TestServer will receive a request with no parameters,
     ///         then will respond with an Ok status and a list of Locations.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_locations() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/location").to_request();
 
         populate_location_table(get_location(None), pool);
 
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/location"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: LocationListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+
+        let body: LocationListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_location = body.data.first().unwrap();
@@ -1367,23 +1479,26 @@ mod test {
     ///
     ///     The TestServer will receive a request with a service_id,
     ///         then will respond with an Ok status and a list of Products.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_products_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/product?service_id={}", TEST_SERVICE_ID))
+            .to_request();
 
         populate_product_table(get_product(Some(TEST_SERVICE_ID.to_string())), pool);
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/product?service_id={}", TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: ProductListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+
+        let body: ProductListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_product = body.data.first().unwrap();
@@ -1400,24 +1515,25 @@ mod test {
     ///
     ///     The TestServer will receive a request with a service_id,
     ///         then will respond with an Ok status and a list of Products.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_locations_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/location?service_id={}", TEST_SERVICE_ID))
+            .to_request();
 
         populate_location_table(get_location(Some(TEST_SERVICE_ID.to_string())), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/location?service_id={}", TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: LocationListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: LocationListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_location = body.data.first().unwrap();
@@ -1435,24 +1551,25 @@ mod test {
     /// Verifies a GET /product/{id} responds with an OK response
     ///     and the Product with the specified id
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_product_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/product/{}", "041205707820".to_string()))
+            .to_request();
 
         populate_product_table(get_product(None), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/product/{}", "041205707820".to_string())),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_product: ProductSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_product: ProductSlice = test::read_body_json(response).await;
         assert_eq!(test_product.product_id, "041205707820".to_string());
         assert_eq!(test_product.product_address, "test_address".to_string());
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
@@ -1464,24 +1581,25 @@ mod test {
     /// Verifies a GET /location/{id} responds with an OK response
     ///     and the Location with the specified id
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_location_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/location/{}", "0653114000000".to_string()))
+            .to_request();
 
         populate_location_table(get_location(None), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/location/{}", "0653114000000".to_string())),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_location: LocationSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_location: LocationSlice = test::read_body_json(response).await;
         assert_eq!(test_location.location_id, "0653114000000".to_string());
         assert_eq!(
             test_location.location_namespace,
@@ -1495,27 +1613,28 @@ mod test {
     /// Verifies a GET /product/{id}?service_id=test_service responds with an OK response
     ///     and the Product with the specified id and service id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_product_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/product/{}?service_id={}",
+                "041205707820", TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_product_table(get_product(Some(TEST_SERVICE_ID.to_string())), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/product/{}?service_id={}",
-                    "041205707820", TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_product: ProductSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_product: ProductSlice = test::read_body_json(response).await;
         assert_eq!(test_product.product_id, "041205707820".to_string());
         assert_eq!(test_product.product_address, "test_address".to_string());
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
@@ -1528,27 +1647,28 @@ mod test {
     /// Verifies a GET /location/{id}?service_id=test_service responds with an OK response
     ///     and the Location with the specified id and service id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_location_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/location/{}?service_id={}",
+                "0653114000000", TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_location_table(get_location(Some(TEST_SERVICE_ID.to_string())), pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/location/{}?service_id={}",
-                    "0653114000000", TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_location: LocationSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_location: LocationSlice = test::read_body_json(response).await;
         assert_eq!(test_location.location_id, "0653114000000".to_string());
         assert_eq!(
             test_location.location_namespace,
@@ -1563,16 +1683,21 @@ mod test {
     /// Verifies a GET /product/{id} responds with a Not Found error
     ///     when there is no Product with the specified id
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_product_not_found() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/product/not_in_database")
+            .to_request();
 
-        let response = srv
-            .request(http::Method::GET, srv.url("/product/not_in_database"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1580,16 +1705,21 @@ mod test {
     /// Verifies a GET /location/{id} responds with a Not Found error
     ///     when there is no Product with the specified id
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_location_not_found() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/location/not_in_database")
+            .to_request();
 
-        let response = srv
-            .request(http::Method::GET, srv.url("/location/not_in_database"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1597,24 +1727,26 @@ mod test {
     /// Verifies a GET /product/{id}?service_id=test_service responds with a Not Found error
     ///     when there is no Product with the specified id and service id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_product_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/product/{}?service_id={}",
+                "041205707820", TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_product_table(get_product(None), pool);
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/product/{}?service_id={}",
-                    "041205707820", TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1622,24 +1754,26 @@ mod test {
     /// Verifies a GET /location/{id}?service_id=test_service responds with a Not Found error
     ///     when there is no Product with the specified id and service id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_fetch_location_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/location/{}?service_id={}",
+                "0653114000000", TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_location_table(get_location(None), pool);
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/location/{}?service_id={}",
-                    "0653114000000", TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1648,10 +1782,16 @@ mod test {
     ///     with a list containing one record
     ///
     #[cfg(feature = "track-and-trace")]
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_list_records() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/record").to_request();
 
         populate_agent_table(get_agents_with_roles(None), pool.clone());
         populate_associated_agent_table(get_associated_agents(None), pool.clone());
@@ -1664,14 +1804,10 @@ mod test {
             get_reporter_for_property_record(None),
             pool.clone(),
         );
-        let mut response = srv
-            .request(http::Method::GET, srv.url(&format!("/record")))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: RecordListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: RecordListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let test_record = body.data.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
@@ -1775,11 +1911,19 @@ mod test {
     /// Verifies a GET /record?service_id=test_service responds with an Ok response
     ///     with a list containing one record with the correct service id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_list_records_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/record?service_id={}", TEST_SERVICE_ID))
+            .to_request();
 
         populate_agent_table(
             get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
@@ -1804,17 +1948,11 @@ mod test {
             get_reporter_for_property_record(Some(TEST_SERVICE_ID.to_string())),
             pool.clone(),
         );
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/record?service_id={}", TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: RecordListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: RecordListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let test_record = body.data.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
@@ -1958,24 +2096,26 @@ mod test {
     /// record that contains the most recent information for that record
     /// (end_commit_num == MAX_COMMIT_NUM)
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_list_records_updated() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/record").to_request();
 
         // Adds two instances of record with the same org_id to the test database
         populate_record_table(get_updated_record(), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/record"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: RecordListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: RecordListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
         let test_record = body.data.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
@@ -1988,11 +2128,17 @@ mod test {
     /// with a list containing two records, when there's two records with differing
     /// record_ids, one of which has been updated.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_list_records_multiple() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/record").to_request();
 
         // Adds two instances of record with the same org_id to the test database
         populate_record_table(get_multiple_records(), pool.clone());
@@ -2004,14 +2150,10 @@ mod test {
         );
 
         // Making another request to the database
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/record"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let body: RecordListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let body: RecordListSlice = test::read_body_json(response).await;
 
         assert_eq!(body.data.len(), 2);
         let record_1 = &body.data[0];
@@ -2025,11 +2167,19 @@ mod test {
     /// Verifies a GET /record/{record_id} responds with an OK response
     ///     and the Record with the specified record ID.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_record_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/record/{}", "TestRecord".to_string()))
+            .to_request();
 
         populate_agent_table(get_agents_with_roles(None), pool.clone());
         populate_associated_agent_table(get_associated_agents(None), pool.clone());
@@ -2042,17 +2192,10 @@ mod test {
             get_reporter_for_property_record(None),
             pool.clone(),
         );
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/record/{}", "TestRecord".to_string())),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_record: RecordSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_record: RecordSlice = test::read_body_json(response).await;
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
@@ -2155,11 +2298,22 @@ mod test {
     /// Verifies a GET /record/{record_id}?service_id=test_service responds with an OK response
     ///     and the Record with the specified record ID.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_record_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/record/{}?service_id={}",
+                "TestRecord", TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_agent_table(
             get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
@@ -2185,20 +2339,10 @@ mod test {
             pool.clone(),
         );
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/record/{}?service_id={}",
-                    "TestRecord", TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_record: RecordSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_record: RecordSlice = test::read_body_json(response).await;
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
@@ -2327,11 +2471,19 @@ mod test {
     ///     and the Record with the specified record ID after the Record's
     ///     owners, custodians, and proposals have been updated.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_record_updated_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/record/{}", "TestRecord".to_string()))
+            .to_request();
 
         populate_grid_schema_table(get_grid_schema_for_record(None), pool.clone());
         populate_record_table(get_updated_record(), pool.clone());
@@ -2343,17 +2495,10 @@ mod test {
         );
         populate_associated_agent_table(get_associated_agents_updated(), pool.clone());
         populate_proposal_table(get_updated_proposal(), pool.clone());
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/record/{}", "TestRecord".to_string())),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_record: RecordSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_record: RecordSlice = test::read_body_json(response).await;
 
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
@@ -2456,17 +2601,22 @@ mod test {
     /// Verifies a GET /record/{record_id} responds with a Not Found error
     ///     when there is no Record with the specified record_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_record_not_found() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/record/not_in_database")
+            .to_request();
 
-        let response = srv
-            .request(http::Method::GET, srv.url("/record/not_in_database"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -2474,23 +2624,25 @@ mod test {
     /// Verifies a GET /record/{record_id}?service_id=test_service responds with a Not Found error
     ///     when there is no Record with the specified record_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_record_with_service_id_not_found() {
-        let (srv, _ool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/record/not_in_database?service_id={}",
+                TEST_SERVICE_ID
+            ))
+            .to_request();
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/record/not_in_database?service_id={}",
-                    TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -2498,11 +2650,19 @@ mod test {
     /// Verifies a GET /record/{record_id}/property/{property_name} responds with an OK response
     ///     and the infomation on the Property requested
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_record_property_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/record/record_01/property/TestProperty")
+            .to_request();
 
         populate_grid_schema_table(get_grid_schema_for_struct_record(None), pool.clone());
         populate_record_table(get_record("record_01", None), pool.clone());
@@ -2513,19 +2673,11 @@ mod test {
             pool.clone(),
         );
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url("/record/record_01/property/TestProperty"),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert!(response.status().is_success());
 
-        let property_info: PropertySlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let property_info: PropertySlice = test::read_body_json(response).await;
 
         assert_eq!(property_info.data_type, "Struct".to_string());
         assert_eq!(property_info.name, "TestProperty".to_string());
@@ -2584,11 +2736,22 @@ mod test {
     /// Verifies a GET /record/{record_id}/property/{property_name}?service_id=test_service responds
     ///     with an OK response and the infomation on the Property requested.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_record_property_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/record/record_01/property/TestProperty?service_id={}",
+                TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_grid_schema_table(
             get_grid_schema_for_struct_record(Some(TEST_SERVICE_ID.to_string())),
@@ -2605,22 +2768,11 @@ mod test {
             pool.clone(),
         );
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/record/record_01/property/TestProperty?service_id={}",
-                    TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert!(response.status().is_success());
 
-        let property_info: PropertySlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let property_info: PropertySlice = test::read_body_json(response).await;
 
         assert_eq!(property_info.data_type, "Struct".to_string());
         assert_eq!(property_info.name, "TestProperty".to_string());
@@ -2796,20 +2948,21 @@ mod test {
     /// Verifies a GET /record/{record_id}/property/{property_name} responds with a Not Found
     /// error when there is no property with the specified property_name.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_property_name_not_found() {
-        let (srv, _pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/record/record_01/property/not_in_database")
+            .to_request();
 
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url("/record/record_01/property/not_in_database"),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
@@ -2818,11 +2971,19 @@ mod test {
     /// Verifies a GET /record/{record_id}/property/{property_name} responds with a Not Found
     /// error when there is no record with the specified record_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
     async fn test_fetch_property_record_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/record/not_in_database/property/TestProperty")
+            .to_request();
 
         populate_tnt_property_table(
             get_property(None),
@@ -2830,14 +2991,7 @@ mod test {
             get_reporter(None),
             pool,
         );
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url("/record/not_in_database/property/TestProperty"),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
 
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
@@ -2847,23 +3001,25 @@ mod test {
     ///
     ///     The TestServer will receive a request with no parameters,
     ///         then will respond with an Ok status and a list of Grid Purchase Orders.
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_list_purchase_orders() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/purchase_order").to_request();
 
         let expected_purchase_order = get_purchase_order(None);
         populate_po_table(vec![expected_purchase_order.clone()], pool);
 
-        let mut response = srv
-            .request(http::Method::GET, srv.url("/purchase_order"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut body: PurchaseOrderListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut body: PurchaseOrderListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_po = body.data.pop().unwrap();
@@ -2873,26 +3029,27 @@ mod test {
     /// Verifies a GET /purchase_order?service_id=test_service responds with an OK response with a
     ///     list containing one purchase order with a matching service_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_list_purchase_orders_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/purchase_order?service_id={}", TEST_SERVICE_ID))
+            .to_request();
 
         let expected_purchase_order = get_purchase_order(Some(TEST_SERVICE_ID.to_string()));
         populate_po_table(vec![expected_purchase_order.clone()], pool);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/purchase_order?service_id={}", TEST_SERVICE_ID)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut body: PurchaseOrderListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut body: PurchaseOrderListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_po = body.data.pop().unwrap();
@@ -2902,55 +3059,57 @@ mod test {
     /// Verifies a GET /purchase_order/{uid} responds with Ok response
     /// when there is a purchase order with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/purchase_order/{}", KEY1))
+            .to_request();
 
         // Adds a purchase order to the test database
         let expected_po = get_purchase_order(None);
         populate_po_table(vec![expected_po.clone()], pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/purchase_order/{}", KEY1)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let po: PurchaseOrderSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let po: PurchaseOrderSlice = test::read_body_json(response).await;
         compare_po_slices(po, PurchaseOrderSlice::from(expected_po));
     }
 
     /// Verifies a GET /purchase_order/{uid} responds with Ok response
     /// when there is a purchase order with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_updated_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/purchase_order/{}", KEY1))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(get_updated_purchase_order(None), pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/purchase_order/{}", KEY1)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let po: PurchaseOrderSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let po: PurchaseOrderSlice = test::read_body_json(response).await;
         assert_eq!(po.purchase_order_uid, KEY1);
         assert_eq!(po.workflow_state, "confirmed");
         assert!(po.versions.is_some());
@@ -2960,63 +3119,80 @@ mod test {
     /// Verifies a GET /purchase_order/{uid} responds with Ok response
     /// when there is a purchase order with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}?service_id={}",
+                KEY1, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         let expected_po = get_purchase_order(Some(TEST_SERVICE_ID.to_string()));
         populate_po_table(vec![expected_po.clone()], pool);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}?service_id={}",
-                    KEY1, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let po: PurchaseOrderSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let po: PurchaseOrderSlice = test::read_body_json(response).await;
         compare_po_slices(po, PurchaseOrderSlice::from(expected_po));
     }
 
     /// Verifies a GET /purchase_order/{uid} responds with NotFound response
     /// when there is not a purchase order with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri("/purchase_order/not_found")
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(vec![get_purchase_order(None)], pool);
 
         // Making another request to the database
-        let response = srv
-            .request(http::Method::GET, srv.url("/purchase_order/not_found"))
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
     /// Verifies a GET /purchase_order/{uid} responds with NotFound response
     /// when there is not a purchase order with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/not_found?service_id={}",
+                TEST_SERVICE_ID
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(
@@ -3025,17 +3201,8 @@ mod test {
         );
 
         // Making another request to the database
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/not_found?service_id={}",
-                    TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -3044,26 +3211,27 @@ mod test {
     ///
     /// The TestServer will receive a request with no parameters,
     /// then will respond with an Ok status and a list of Grid Purchase Order versions.
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_list_purchase_order_versions() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/purchase_order/{}/version", KEY1))
+            .to_request();
 
         populate_po_table(vec![get_purchase_order(None)], pool);
         let expected_version = get_po_version(None);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/purchase_order/{}/version", KEY1)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut body: PurchaseOrderVersionListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut body: PurchaseOrderVersionListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let mut test_version = body.data.pop().unwrap();
@@ -3076,11 +3244,22 @@ mod test {
     /// Verifies a GET /purchase_order/{uid}/version?service_id=test_service responds with an OK
     /// response with a list containing one purchase order version with a matching service_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_list_purchase_order_versions_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version?service_id={}",
+                KEY1, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_po_table(
             vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
@@ -3088,20 +3267,10 @@ mod test {
         );
         let expected_version = get_po_version(Some(TEST_SERVICE_ID.to_string()));
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version?service_id={}",
-                    KEY1, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut body: PurchaseOrderVersionListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut body: PurchaseOrderVersionListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let mut test_version = body.data.pop().unwrap();
@@ -3114,28 +3283,29 @@ mod test {
     /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with Ok response
     /// when there is a purchase order version with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_version_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/purchase_order/{}/version/{}", KEY1, KEY2))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(vec![get_purchase_order(None)], pool);
         let expected_version = get_po_version(None);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/purchase_order/{}/version/{}", KEY1, KEY2)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut test_version: PurchaseOrderVersionSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut test_version: PurchaseOrderVersionSlice = test::read_body_json(response).await;
         compare_po_version_slices(
             &mut test_version,
             &mut PurchaseOrderVersionSlice::from(expected_version),
@@ -3145,11 +3315,22 @@ mod test {
     /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with Ok response
     /// when there is a purchase order with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_version_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/{}?service_id={}",
+                KEY1, KEY2, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(
@@ -3159,20 +3340,10 @@ mod test {
         let expected_version = get_po_version(Some(TEST_SERVICE_ID.to_string()));
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/{}?service_id={}",
-                    KEY1, KEY2, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut test_version: PurchaseOrderVersionSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut test_version: PurchaseOrderVersionSlice = test::read_body_json(response).await;
         compare_po_version_slices(
             &mut test_version,
             &mut PurchaseOrderVersionSlice::from(expected_version),
@@ -3182,35 +3353,48 @@ mod test {
     /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with NotFound response
     /// when there is not a purchase order version with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_version_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!("/purchase_order/{}/version/not_found", KEY1))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(vec![get_purchase_order(None)], pool);
 
         // Making another request to the database
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!("/purchase_order/{}/version/not_found", KEY1)),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
     /// Verifies a GET /purchase_order/{uid}/version/{version_id} responds with NotFound response
     /// when there is not a purchase order version with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_version_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/not_found?service_id={}",
+                KEY1, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(
@@ -3219,17 +3403,8 @@ mod test {
         );
 
         // Making another request to the database
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/not_found?service_id={}",
-                    KEY1, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -3238,29 +3413,30 @@ mod test {
     ///
     /// The TestServer will receive a request with no parameters,
     /// then will respond with an Ok status and a list of Grid Purchase Order revisions.
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_list_purchase_order_revisions() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/{}/revision",
+                KEY1, KEY2
+            ))
+            .to_request();
 
         populate_po_table(vec![get_purchase_order(None)], pool);
         let expected_revision = get_po_revision(None);
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/{}/revision",
-                    KEY1, KEY2
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut body: PurchaseOrderRevisionListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut body: PurchaseOrderRevisionListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_revision = body.data.pop().unwrap();
@@ -3274,11 +3450,22 @@ mod test {
     /// responds with an OK response with a list containing one purchase order revision
     /// with a matching service_id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_list_purchase_order_revisions_with_service_id() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/{}/revision?service_id={}",
+                KEY1, KEY2, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         populate_po_table(
             vec![get_purchase_order(Some(TEST_SERVICE_ID.to_string()))],
@@ -3286,20 +3473,10 @@ mod test {
         );
         let expected_revision = get_po_revision(Some(TEST_SERVICE_ID.to_string()));
 
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/{}/revision?service_id={}",
-                    KEY1, KEY2, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let mut body: PurchaseOrderRevisionListSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let mut body: PurchaseOrderRevisionListSlice = test::read_body_json(response).await;
         assert_eq!(body.data.len(), 1);
 
         let test_revision = body.data.pop().unwrap();
@@ -3312,46 +3489,56 @@ mod test {
     /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision/{revision_id}
     /// responds with Ok response when there is a purchase order revision with the
     /// specified id.
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_revision_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/{}/revision/1",
+                KEY1, KEY2
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(vec![get_purchase_order(None)], pool);
         let expected_revision = get_po_revision(None);
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/{}/revision/1",
-                    KEY1, KEY2
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_revision: PurchaseOrderRevisionSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_revision: PurchaseOrderRevisionSlice = test::read_body_json(response).await;
         compare_po_revision_slices(
             test_revision,
             PurchaseOrderRevisionSlice::from(expected_revision),
         );
     }
 
-    ///
     /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision/{revision_id}
     /// responds with Ok response when there is a purchase order with the specified id.
-    ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_revision_with_service_id_ok() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/{}/revision/1?service_id={}",
+                KEY1, KEY2, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(
@@ -3361,20 +3548,10 @@ mod test {
         let expected_revision = get_po_revision(Some(TEST_SERVICE_ID.to_string()));
 
         // Making another request to the database
-        let mut response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/{}/revision/1?service_id={}",
-                    KEY1, KEY2, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert!(response.status().is_success());
-        let test_revision: PurchaseOrderRevisionSlice =
-            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        let test_revision: PurchaseOrderRevisionSlice = test::read_body_json(response).await;
         compare_po_revision_slices(
             test_revision,
             PurchaseOrderRevisionSlice::from(expected_revision),
@@ -3385,39 +3562,51 @@ mod test {
     /// responds with NotFound response when there is not a purchase order version
     /// with the specified id.
     ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_revision_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/{}/revision/not_found",
+                KEY1, KEY2
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(vec![get_purchase_order(None)], pool);
 
         // Making another request to the database
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/{}/revision/not_found",
-                    KEY1, KEY2
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
     /// Verifies a GET /purchase_order/{uid}/version/{version_id}/revision/{revision_id}?service_id={ID}
     /// responds with NotFound when there is not a purchase order version
     /// with the specified id.
-    ///
-    #[actix_rt::test]
+    #[actix_web::test]
     #[cfg(feature = "purchase-order")]
     async fn test_fetch_purchase_order_revision_with_service_id_not_found() {
-        let (srv, pool) =
-            setup_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        let pool = create_connection_pool_and_migrate();
+        let srv = create_test_server(
+            Backend::Splinter,
+            ResponseType::ClientBatchStatusResponseOK,
+            pool.clone(),
+        )
+        .await;
+        let req = test::TestRequest::get()
+            .uri(&format!(
+                "/purchase_order/{}/version/{}/revision/not_found?service_id={}",
+                KEY1, KEY2, TEST_SERVICE_ID
+            ))
+            .to_request();
 
         // Adds a purchase order to the test database
         populate_po_table(
@@ -3426,17 +3615,8 @@ mod test {
         );
 
         // Making another request to the database
-        let response = srv
-            .request(
-                http::Method::GET,
-                srv.url(&format!(
-                    "/purchase_order/{}/version/{}/revision/not_found?service_id={}",
-                    KEY1, KEY2, TEST_SERVICE_ID
-                )),
-            )
-            .send()
-            .await
-            .unwrap();
+        let response = test::call_service(&srv, req).await;
+
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 

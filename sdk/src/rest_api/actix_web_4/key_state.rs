@@ -12,7 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "rest-api-actix-web-4")]
-pub mod actix_web_4;
-#[cfg(feature = "rest-api-resources")]
-pub mod resources;
+#[derive(Clone)]
+pub struct KeyState {
+    pub key_file_name: String,
+}
+
+impl KeyState {
+    pub fn new(key_file_name: &str) -> Self {
+        Self {
+            key_file_name: key_file_name.to_string(),
+        }
+    }
+}

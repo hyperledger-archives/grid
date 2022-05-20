@@ -31,10 +31,10 @@ use grid_sdk::commits::store::Commit;
 use grid_sdk::commits::{CommitStore, DieselCommitStore};
 use grid_sdk::error::InvalidStateError;
 #[cfg(feature = "rest-api")]
-use grid_sdk::rest_api::actix_web_3::Endpoint;
+use grid_sdk::rest_api::actix_web_4::Endpoint;
 #[cfg(feature = "integration")]
-use grid_sdk::rest_api::actix_web_3::KeyState;
-use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
+use grid_sdk::rest_api::actix_web_4::KeyState;
+use grid_sdk::rest_api::actix_web_4::{BackendState, StoreState};
 use grid_sdk::store::{create_store_factory, ConnectionUri};
 use splinter::events::Reactor;
 

@@ -31,7 +31,8 @@ path = "src/main.rs"
 [dependencies]
 actix = "0.9"
 actix-rt = "1.0"
-actix-web = { version = "3", default-features = false }
+actix-web = { version = "4", optional = true, default-features = false }
+actix-http = { version = "3", optional = true }
 base64 = "0.13"
 byteorder = "1"
 cfg-if = "1"
@@ -105,7 +106,7 @@ pike = [
 ]
 product = ["grid-sdk/product", "grid-sdk/rest-api-endpoint-product", "pike", "schema"]
 purchase-order = ["grid-sdk/rest-api-endpoint-purchase-order", "grid-sdk/purchase-order", "pike"]
-rest-api = ["database", "grid-sdk/rest-api-endpoint-batches", "grid-sdk/rest-api-actix-web-3"]
+rest-api = ["actix-web", "actix-http", "database", "grid-sdk/rest-api-endpoint-batches", "grid-sdk/rest-api-actix-web-4"]
 sawtooth-support = [
     "database",
     "event",

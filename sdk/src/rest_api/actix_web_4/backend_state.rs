@@ -12,7 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "rest-api-actix-web-4")]
-pub mod actix_web_4;
-#[cfg(feature = "rest-api-resources")]
-pub mod resources;
+use std::sync::Arc;
+
+use crate::backend::BackendClient;
+
+#[derive(Clone)]
+pub struct BackendState {
+    pub client: Arc<dyn BackendClient + 'static>,
+}
+
+impl BackendState {
+    pub fn new(client: Arc<dyn BackendClient + 'static>) -> Self {
+        Self { client }
+    }
+}
