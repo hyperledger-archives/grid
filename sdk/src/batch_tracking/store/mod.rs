@@ -1058,63 +1058,75 @@ where
 {
     fn get_batch_status(
         &self,
-        _id: &str,
-        _service_id: &str,
+        id: &str,
+        service_id: &str,
     ) -> Result<Option<BatchStatus>, BatchTrackingStoreError> {
-        unimplemented!();
+        (**self).get_batch_status(id, service_id)
     }
 
     fn update_batch_status(
         &self,
-        _id: &str,
-        _service_id: &str,
-        _status: Option<BatchStatus>,
-        _transaction_receipts: Vec<TransactionReceipt>,
-        _submission_error: Option<SubmissionError>,
+        id: &str,
+        service_id: &str,
+        status: Option<BatchStatus>,
+        transaction_receipts: Vec<TransactionReceipt>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+        (**self).update_batch_status(
+            id,
+            service_id,
+            status,
+            transaction_receipts,
+            submission_error,
+        )
     }
 
-    fn add_batches(&self, _batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+    fn add_batches(&self, batches: Vec<TrackingBatch>) -> Result<(), BatchTrackingStoreError> {
+        (**self).add_batches(batches)
     }
 
     fn change_batch_to_submitted(
         &self,
-        _batch_id: &str,
-        _service_id: &str,
-        _transaction_receipts: Vec<TransactionReceipt>,
-        _dlt_status: Option<&str>,
-        _submission_error: Option<SubmissionError>,
+        batch_id: &str,
+        service_id: &str,
+        transaction_receipts: Vec<TransactionReceipt>,
+        dlt_status: Option<&str>,
+        submission_error: Option<SubmissionError>,
     ) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+        (**self).change_batch_to_submitted(
+            batch_id,
+            service_id,
+            transaction_receipts,
+            dlt_status,
+            submission_error,
+        )
     }
 
     fn get_batch(
         &self,
-        _id: &str,
-        _service_id: &str,
+        id: &str,
+        service_id: &str,
     ) -> Result<Option<TrackingBatch>, BatchTrackingStoreError> {
-        unimplemented!();
+        (**self).get_batch(id, service_id)
     }
 
     fn list_batches_by_status(
         &self,
-        _status: BatchStatus,
+        status: BatchStatus,
     ) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+        (**self).list_batches_by_status(status)
     }
 
-    fn clean_stale_records(&self, _submitted_by: i64) -> Result<(), BatchTrackingStoreError> {
-        unimplemented!();
+    fn clean_stale_records(&self, submitted_by: i64) -> Result<(), BatchTrackingStoreError> {
+        (**self).clean_stale_records(submitted_by)
     }
 
     fn get_unsubmitted_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+        (**self).get_unsubmitted_batches()
     }
 
     fn get_failed_batches(&self) -> Result<TrackingBatchList, BatchTrackingStoreError> {
-        unimplemented!();
+        (**self).get_failed_batches()
     }
 }
 
