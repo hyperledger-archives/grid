@@ -15,8 +15,9 @@
 #[derive(Serialize, Deserialize, PartialEq)]
 pub struct TrackingBatchResource {
     pub signed_batch: BatchBytes,
-    pub service_id: Option<String>,
-    pub data_change_id: Option<String>,
+    #[serde(flatten)]
+    pub batch_identity: BatchIdentifier,
+    pub signer_public_key: String,
 }
 
 /// A serialized `Batch`
