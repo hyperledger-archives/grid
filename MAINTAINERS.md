@@ -4,6 +4,7 @@
 | Name | GitHub | RocketChat |
 | --- | --- | --- |
 | Andi Gunderson | agunde406 | agunde |
+| Chris Eckhardt | cleckhardt | - |
 | Dan Middleton | dcmiddle | Dan |
 | Darian Plumb | dplumb94 | dplumb |
 | Dave Cecchi | davececchi | cecchi |
