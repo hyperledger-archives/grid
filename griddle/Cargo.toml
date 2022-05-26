@@ -13,9 +13,18 @@ actix-web = { version = "3", default-features = false }
 clap = "2.33.3"
 diesel = { version = "1.0", features = ["r2d2"], optional = true }
 flexi_logger = "0.22"
-grid-sdk = { path = "../sdk", features = ["rest-api-actix-web-4", "rest-api-actix-web-4-run", "batch-processor"] }
 log = "0.4"
 users = "0.11"
+
+[dependencies.grid-sdk]
+path = "../sdk"
+optional = true
+features = [
+  "rest-api-actix-web-4",
+  "rest-api-actix-web-4-run",
+  "batch-processor",
+  "lifecycle"
+]
 
 [features]
 default = []

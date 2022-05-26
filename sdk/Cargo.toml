@@ -136,7 +136,8 @@ experimental = [
     "rest-api-resources-batch-tracking",
     "rest-api-resources-submit",
     "rest-api-resources-track-and-trace",
-    "track-and-trace"
+    "track-and-trace",
+    "lifecycle"
 ]
 
 backend = ["base64", "futures", "url"]
@@ -209,3 +210,4 @@ rest-api-resources-submit = ["batch-store", "cylinder", "rest-api-resources", "s
 rest-api-resources-track-and-trace = ["rest-api-resources", "track-and-trace"]
 sqlite = ["chrono", "diesel/sqlite", "diesel_migrations", "log"]
 workflow = []
+lifecycle = []
