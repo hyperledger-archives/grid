@@ -277,7 +277,7 @@ mod tests {
     const TEST_SERVICE_ID: &str = "gsAA";
     const TEST_AUTHORIZATION: &str = "foo";
     const TEST_BATCH_ID: &str = "one";
-    const TEST_SUCCESS_RESPONSE: &str = r#"[
+    const TEST_SUCCESS_STATUS_RESPONSE: &str = r#"[
     {
         "id": "one",
         "status": {
@@ -287,7 +287,7 @@ mod tests {
     }
 ]"#;
 
-    fn setup_basic_request() -> (Mock, BatchStatusResponse) {
+    fn setup_basic_batch_statuses_request() -> (Mock, BatchStatusResponse) {
         let mock_endpoint = mockito::mock(
             "GET",
             Matcher::Exact(format!(
@@ -308,8 +308,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn splinter_backend_client_returns_useful_message_on_404() {
-        let (endpoint, response) = setup_basic_request();
+    async fn batch_statuses_returns_useful_message_on_404() {
+        let (endpoint, response) = setup_basic_batch_statuses_request();
 
         let endpoint = endpoint
             .with_status(404)
@@ -331,12 +331,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn splinter_backend_client_returns_correctly_on_200_success() {
-        let (endpoint, response) = setup_basic_request();
+    async fn batch_statuses_returns_correctly_on_200_success() {
+        let (endpoint, response) = setup_basic_batch_statuses_request();
 
         let endpoint = endpoint
             .with_status(200)
-            .with_body(TEST_SUCCESS_RESPONSE)
+            .with_body(TEST_SUCCESS_STATUS_RESPONSE)
             .create();
 
         let result = response.await;
@@ -350,8 +350,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn splinter_backend_client_returns_useful_message_on_200_deserialize_error() {
-        let (endpoint, response) = setup_basic_request();
+    async fn batch_statuses_returns_useful_message_on_200_deserialize_error() {
+        let (endpoint, response) = setup_basic_batch_statuses_request();
 
         let endpoint = endpoint.with_status(200).with_body("bad json").create();
 
@@ -367,8 +367,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn splinter_backend_client_returns_useful_message_on_503_deserialize_error() {
-        let (endpoint, response) = setup_basic_request();
+    async fn batch_statuses_returns_useful_message_on_503_deserialize_error() {
+        let (endpoint, response) = setup_basic_batch_statuses_request();
 
         let endpoint = endpoint.with_status(503).with_body("bad json").create();
 
