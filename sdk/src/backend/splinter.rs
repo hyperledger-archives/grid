@@ -17,8 +17,9 @@ use std::str::FromStr;
 
 use futures::prelude::*;
 use protobuf::Message;
-use reqwest::{Client, StatusCode};
+use reqwest::{Client, Error, Response, StatusCode};
 use sawtooth_sdk::messages::batch::Batch;
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json;
 
@@ -60,6 +61,57 @@ impl SplinterBackendClient {
 
 type BatchStatusResponse =
     Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BackendClientError>> + Send>>;
+
+pub fn handle_splinter_response<T: DeserializeOwned, R>(
+    future: impl Future<Output = Result<Response, Error>> + Send + 'static,
+    map: impl FnOnce(T) -> R + Send + 'static,
+) -> Pin<Box<dyn Future<Output = Result<R, BackendClientError>> + Send>> {
+    future
+        .then(|res| match res {
+            Ok(res) => future::join(future::ok(res.status()), res.bytes()).boxed(),
+            Err(err) => future::join(
+                future::err(BackendClientError::InternalError(format!(
+                    "Unable to make request to Splinter: {}",
+                    err
+                ))),
+                future::err(err),
+            )
+            .boxed(),
+        })
+        .map(|(status, bytes)| {
+            let bytes = bytes.map_err(|err| {
+                BackendClientError::InternalError(format!(
+                    "Error reading bytes from Splinter: {err}",
+                ))
+            })?;
+
+            match status? {
+                StatusCode::OK => serde_json::from_slice(&bytes).map(map).map_err(|err| {
+                    BackendClientError::InternalError(format!(
+                        "Encountered error \"{err}\" while deserializing \
+                                        Splinter response: {resp}",
+                        resp = String::from_utf8_lossy(&bytes)
+                    ))
+                }),
+                status => {
+                    let error: SplinterErrorResponse =
+                        serde_json::from_slice(&bytes).map_err(|err| {
+                            BackendClientError::InternalError(format!(
+                                "Encountered error \"{err}\" while deserializing \
+                                    Splinter error response: {resp}",
+                                resp = String::from_utf8_lossy(&bytes)
+                            ))
+                        })?;
+
+                    Err(BackendClientError::BadRequestError(format!(
+                        "Splinter responded with {status}: {message}",
+                        message = error.message
+                    )))
+                }
+            }
+        })
+        .boxed()
+}
 
 impl BackendClient for SplinterBackendClient {
     fn submit_batches(
@@ -135,59 +187,16 @@ impl BackendClient for SplinterBackendClient {
         url.push_str("ids=");
         url.push_str(&msg.batch_ids.join(","));
 
-        Client::new()
-            .get(&url)
-            .header("GridProtocolVersion", "1")
-            .header("Authorization", &self.authorization.to_string())
-            .send()
-            .then(|res| match res {
-                Ok(res) => future::join(future::ok(res.status()), res.bytes()).boxed(),
-                Err(err) => future::join(
-                    future::err(BackendClientError::InternalError(format!(
-                        "Unable to retrieve batch statuses: {}",
-                        err
-                    ))),
-                    future::err(err),
-                )
-                .boxed(),
-            })
-            .map(|(status, bytes)| {
-                let bytes = bytes.map_err(|err| {
-                    BackendClientError::InternalError(format!(
-                        "Error reading batch status bytes: {err}",
-                    ))
-                })?;
-
-                match status? {
-                    StatusCode::OK => serde_json::from_slice(&bytes)
-                        .map(|stats: Vec<SplinterBatchStatus>| {
-                            stats.into_iter().map(|status| status.into()).collect()
-                        })
-                        .map_err(|err| {
-                            BackendClientError::InternalError(format!(
-                                "Encountered error \"{err}\" while deserializing \
-                                    Splinter batch status response: {resp}",
-                                resp = String::from_utf8_lossy(&bytes)
-                            ))
-                        }),
-                    status => {
-                        let error: SplinterErrorResponse =
-                            serde_json::from_slice(&bytes).map_err(|err| {
-                                BackendClientError::InternalError(format!(
-                                    "Encountered error \"{err}\" while deserializing \
-                                    Splinter batch status error response: {resp}",
-                                    resp = String::from_utf8_lossy(&bytes)
-                                ))
-                            })?;
-
-                        Err(BackendClientError::BadRequestError(format!(
-                            "Splinter responded with {status}: {message}",
-                            message = error.message
-                        )))
-                    }
-                }
-            })
-            .boxed()
+        handle_splinter_response(
+            Client::new()
+                .get(&url)
+                .header("GridProtocolVersion", "1")
+                .header("Authorization", &self.authorization.to_string())
+                .send(),
+            |stats: Vec<SplinterBatchStatus>| {
+                stats.into_iter().map(|status| status.into()).collect()
+            },
+        )
     }
 
     fn clone_box(&self) -> Box<dyn BackendClient> {
@@ -286,6 +295,12 @@ mod tests {
         }
     }
 ]"#;
+    fn splinter_error_response() -> String {
+        format!(
+            "{{\"message\":\"scabbard service {TEST_SERVICE_ID} \
+                on circuit {TEST_CIRCUIT_ID} not found\"}}"
+        )
+    }
 
     fn setup_basic_batch_statuses_request() -> (Mock, BatchStatusResponse) {
         let mock_endpoint = mockito::mock(
@@ -313,10 +328,7 @@ mod tests {
 
         let endpoint = endpoint
             .with_status(404)
-            .with_body(format!(
-                "{{\"message\":\"scabbard service {TEST_SERVICE_ID} \
-                on circuit {TEST_CIRCUIT_ID} not found\"}}"
-            ))
+            .with_body(splinter_error_response())
             .create();
 
         let result = response.await;
@@ -362,7 +374,7 @@ mod tests {
             format!("{:?}", result),
             "Err(InternalError(\"Encountered \
             error \\\"expected value at line 1 column 1\\\" while deserializing \
-            Splinter batch status response: bad json\"))"
+            Splinter response: bad json\"))"
         );
     }
 
@@ -378,7 +390,7 @@ mod tests {
         assert_eq!(
             format!("{:?}", result),
             "Err(InternalError(\"Encountered error \\\"expected value at line 1 column 1\\\" \
-            while deserializing Splinter batch status error response: bad json\"))"
+            while deserializing Splinter error response: bad json\"))"
         );
     }
 }
