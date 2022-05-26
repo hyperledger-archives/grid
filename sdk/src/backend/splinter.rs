@@ -42,6 +42,11 @@ pub struct SplinterErrorResponse {
     pub message: String,
 }
 
+#[derive(Deserialize)]
+pub struct SplinterBatchLink {
+    pub link: String,
+}
+
 #[derive(Clone)]
 pub struct SplinterBackendClient {
     node_url: String,
@@ -61,6 +66,9 @@ impl SplinterBackendClient {
 
 type BatchStatusResponse =
     Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, BackendClientError>> + Send>>;
+
+type BatchSubmitResponse =
+    Pin<Box<dyn Future<Output = Result<BatchStatusLink, BackendClientError>> + Send>>;
 
 pub fn handle_splinter_response<T: DeserializeOwned, R>(
     future: impl Future<Output = Result<Response, Error>> + Send + 'static,
@@ -86,13 +94,15 @@ pub fn handle_splinter_response<T: DeserializeOwned, R>(
             })?;
 
             match status? {
-                StatusCode::OK => serde_json::from_slice(&bytes).map(map).map_err(|err| {
-                    BackendClientError::InternalError(format!(
-                        "Encountered error \"{err}\" while deserializing \
+                StatusCode::ACCEPTED | StatusCode::OK => {
+                    serde_json::from_slice(&bytes).map(map).map_err(|err| {
+                        BackendClientError::InternalError(format!(
+                            "Encountered error \"{err}\" while deserializing \
                                         Splinter response: {resp}",
-                        resp = String::from_utf8_lossy(&bytes)
-                    ))
-                }),
+                            resp = String::from_utf8_lossy(&bytes)
+                        ))
+                    })
+                }
                 status => {
                     let error: SplinterErrorResponse =
                         serde_json::from_slice(&bytes).map_err(|err| {
@@ -114,10 +124,7 @@ pub fn handle_splinter_response<T: DeserializeOwned, R>(
 }
 
 impl BackendClient for SplinterBackendClient {
-    fn submit_batches(
-        &self,
-        msg: SubmitBatches,
-    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, BackendClientError>> + Send>> {
+    fn submit_batches(&self, msg: SubmitBatches) -> BatchSubmitResponse {
         let service_arg = try_fut!(msg.service_id.ok_or_else(|| {
             BackendClientError::BadRequestError("A service id must be provided".into())
         }));
@@ -144,23 +151,16 @@ impl BackendClient for SplinterBackendClient {
         response_url.set_query(Some(&format!("id={}", batch_query)));
         let link = response_url.to_string();
 
-        reqwest::Client::new()
-            .post(&url)
-            .header("GridProtocolVersion", "1")
-            .header("Content-Type", "octet-stream")
-            .header("Authorization", &self.authorization.to_string())
-            .body(batch_list_bytes)
-            .send()
-            .then(|res| {
-                future::ready(match res {
-                    Ok(_) => Ok(BatchStatusLink { link }),
-                    Err(err) => Err(BackendClientError::InternalError(format!(
-                        "Unable to submit batch: {}",
-                        err
-                    ))),
-                })
-            })
-            .boxed()
+        handle_splinter_response(
+            Client::new()
+                .post(&url)
+                .header("GridProtocolVersion", "1")
+                .header("Content-Type", "octet-stream")
+                .header("Authorization", &self.authorization.to_string())
+                .body(batch_list_bytes)
+                .send(),
+            |_: SplinterBatchLink| BatchStatusLink { link },
+        )
     }
 
     fn batch_status(&self, msg: BatchStatuses) -> BatchStatusResponse {
@@ -281,6 +281,8 @@ mod tests {
     use super::*;
     use mockito::{self, Matcher, Mock};
     use pretty_assertions::assert_eq;
+    use sawtooth_sdk::messages::batch::BatchList;
+    use url::Url;
 
     const TEST_CIRCUIT_ID: &str = "z7499-QGFd3";
     const TEST_SERVICE_ID: &str = "gsAA";
@@ -295,6 +297,10 @@ mod tests {
         }
     }
 ]"#;
+    const TEST_SUCCESS_SUBMIT_RESPONSE: &str = r#"{
+        "link": "https://test/link?ids=1,2,3"
+    }"#;
+
     fn splinter_error_response() -> String {
         format!(
             "{{\"message\":\"scabbard service {TEST_SERVICE_ID} \
@@ -391,6 +397,66 @@ mod tests {
             format!("{:?}", result),
             "Err(InternalError(\"Encountered error \\\"expected value at line 1 column 1\\\" \
             while deserializing Splinter error response: bad json\"))"
+        );
+    }
+
+    fn setup_basic_batches_request() -> (Mock, BatchSubmitResponse) {
+        let mock_endpoint = mockito::mock(
+            "POST",
+            Matcher::Exact(format!(
+                "/scabbard/{TEST_CIRCUIT_ID}/\
+                {TEST_SERVICE_ID}/batches"
+            )),
+        );
+
+        let response_url = Url::parse("https://localhost:8080/").expect("could not parse url");
+
+        let response =
+            SplinterBackendClient::new(mockito::server_url(), TEST_AUTHORIZATION.to_string())
+                .submit_batches(SubmitBatches {
+                    batch_list: BatchList::default(),
+                    response_url,
+                    service_id: Some(format!("{TEST_CIRCUIT_ID}::{TEST_SERVICE_ID}")),
+                });
+
+        (mock_endpoint, response)
+    }
+
+    #[actix_rt::test]
+    async fn submit_batches_returns_correctly_on_200_success() {
+        let (endpoint, response) = setup_basic_batches_request();
+
+        let endpoint = endpoint
+            .with_status(202)
+            .with_body(TEST_SUCCESS_SUBMIT_RESPONSE)
+            .create();
+
+        let result = response.await;
+
+        assert_eq!(
+            format!("{:?}", result),
+            "Ok(BatchStatusLink { link: \"https://localhost:8080/?id=\" })"
+        );
+        endpoint.assert();
+    }
+
+    #[actix_rt::test]
+    async fn submit_batches_returns_useful_message_on_404() {
+        let (endpoint, response) = setup_basic_batches_request();
+
+        let endpoint = endpoint
+            .with_status(404)
+            .with_body(splinter_error_response())
+            .create();
+
+        let result = response.await;
+
+        endpoint.assert();
+        assert_eq!(
+            format!("{:?}", result),
+            "Err(BadRequestError(\"Splinter \
+            responded with 404 Not Found: scabbard service \
+            gsAA on circuit z7499-QGFd3 not found\"))"
         );
     }
 }
