@@ -4,12 +4,10 @@
 | Name | GitHub | RocketChat |
 | --- | --- | --- |
 | Andi Gunderson | agunde406 | agunde |
-| Anne Chenette | chenette | achenette |
 | Dan Middleton | dcmiddle | Dan |
 | Darian Plumb | dplumb94 | dplumb |
 | Dave Cecchi | davececchi | cecchi |
 | Davey Newhall | dnewh | newhall |
-| Eloá Franca Verona | eloaverona | eloafran |
 | James Mitchell | jsmitchell | jsmitchell |
 | Lee Bradley | leebradley | lbradley |
 | Peter Schwarz | peterschwarz | pschwarz |
@@ -22,4 +20,6 @@
 ### Retired Maintainers
 | Name | GitHub | RocketChat |
 | --- | --- | --- |
+| Anne Chenette | chenette | achenette |
 | Boyd Johnson | boydjohnson | boydjohnson |
+| Eloá Franca Verona | eloaverona | eloafran |
