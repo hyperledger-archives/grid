@@ -21,12 +21,3 @@ jobs:
 
       - name: Lint OpenAPI files
         run: just ci-lint-openapi
-
-      - name: Notify Slack of Failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          fields: repo,message,author,job
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
