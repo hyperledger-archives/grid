@@ -13,4 +13,6 @@
 // limitations under the License.
 
 pub mod error;
+#[cfg(feature = "rest-api-batch-submission-handler")]
+pub mod handler;
 pub mod payloads;
