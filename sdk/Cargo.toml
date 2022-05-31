@@ -28,7 +28,7 @@ license = "Apache-2.0"
 
 
 [dependencies]
-actix-web = { version = "3", optional = true, default-features = false }
+actix-web-4 = {package = "actix-web", version = "4", optional = true, default-features = false, features = ["macros"] }
 base64 = { version = "0.13", optional = true }
 cfg-if = { version = "1", optional = true }
 chrono = { version = "0.4", optional = true }
@@ -125,14 +125,15 @@ experimental = [
     "proxy",
     "proxy-run",
     "proxy-client",
-    "rest-api-actix-web-3",
-    "rest-api-actix-web-3-run",
+    "rest-api-actix-web-4",
+    "rest-api-actix-web-4-run",
     "rest-api-batch-submission-handler",
     "rest-api-batch-submission-handler-reqwest",
     "rest-api-resources-batch-tracking",
     "rest-api-endpoint-proxy",
     "rest-api-endpoint-record",
     "rest-api-endpoint-submit",
+    "rest-api-resources-batch-tracking",
     "rest-api-resources-submit",
     "rest-api-resources-track-and-trace",
     "track-and-trace"
@@ -162,8 +163,8 @@ batch-submission = []
 
 postgres = ["chrono", "diesel/postgres", "diesel_migrations", "log"]
 rest-api = []
-rest-api-actix-web-3 = [
-    "actix-web",
+rest-api-actix-web-4 = [
+    "actix-web-4",
     "backend",
     "futures",
     "futures-util",
@@ -171,7 +172,7 @@ rest-api-actix-web-3 = [
     "rest-api-resources",
     "url"
 ]
-rest-api-actix-web-3-run = ["rest-api-endpoint-submit"]
+rest-api-actix-web-4-run = ["rest-api-endpoint-submit"]
 rest-api-batch-submission-handler = ["rest-api-resources-batch-tracking"]
 rest-api-batch-submission-handler-reqwest = [
     "rest-api-batch-submission-handler",

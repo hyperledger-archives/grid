@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2018-2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpResponse};
+use actix_web_4::{dev, http::StatusCode, web, Error, FromRequest, HttpRequest, HttpResponse};
 use futures::future;
+use futures_util::future::{FutureExt, LocalBoxFuture};
 
 use crate::rest_api::{
-    actix_web_3::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    actix_web_4::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
     resources::agents::v1,
 };
 
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
-#[get("/agent/{public_key}")]
 pub async fn get_agent(
     store_state: web::Data<StoreState>,
     public_key: web::Path<String>,
@@ -49,7 +49,6 @@ pub async fn get_agent(
     }
 }
 
-#[get("/agent")]
 pub async fn list_agents(
     req: HttpRequest,
     store_state: web::Data<StoreState>,
@@ -88,9 +87,8 @@ pub enum ProtocolVersion {
 }
 
 impl FromRequest for ProtocolVersion {
-    type Error = HttpResponse;
-    type Future = future::Ready<Result<Self, Self::Error>>;
-    type Config = ();
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         let protocol_version = match req
@@ -116,8 +114,8 @@ impl FromRequest for ProtocolVersion {
         };
 
         match protocol_version.as_str() {
-            "1" => future::ok(ProtocolVersion::V1),
-            _ => future::ok(ProtocolVersion::V1),
+            "1" => future::ok(ProtocolVersion::V1).boxed_local(),
+            _ => future::ok(ProtocolVersion::V1).boxed_local(),
         }
     }
 }

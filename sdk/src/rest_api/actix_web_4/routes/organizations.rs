@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2018-2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpResponse};
+use actix_web_4::{dev, http::StatusCode, web, Error, FromRequest, HttpRequest, HttpResponse};
 use futures::future;
+use futures_util::future::{FutureExt, LocalBoxFuture};
 
 use crate::rest_api::{
-    actix_web_3::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
-    resources::roles::v1,
+    actix_web_4::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    resources::organizations::v1,
 };
 
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
-#[get("/role/{org_id}/{name}")]
-pub fn get_role(
+pub enum ProtocolVersion {
+    V1,
+}
+
+pub async fn get_organization(
     store_state: web::Data<StoreState>,
-    path_variables: web::Path<(String, String)>,
+    id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     version: ProtocolVersion,
     _: AcceptServiceIdParam,
@@ -33,11 +37,9 @@ pub fn get_role(
     let store = store_state.store_factory.get_grid_pike_store();
     match version {
         ProtocolVersion::V1 => {
-            let (org_id, name) = path_variables.into_inner();
-            match v1::get_role(
+            match v1::get_organization(
                 store,
-                org_id,
-                name,
+                id.into_inner(),
                 query.into_inner().service_id.as_deref(),
             ) {
                 Ok(res) => HttpResponse::Ok().json(res),
@@ -51,27 +53,23 @@ pub fn get_role(
     }
 }
 
-#[get("/role/{org_id}")]
-pub async fn list_roles_for_organization(
+pub async fn list_organizations(
     req: HttpRequest,
     store_state: web::Data<StoreState>,
-    org_id: web::Path<String>,
     query_service_id: web::Query<QueryServiceId>,
     query_paging: web::Query<QueryPaging>,
-    version: ProtocolVersion,
     _: AcceptServiceIdParam,
+    version: ProtocolVersion,
 ) -> HttpResponse {
     let store = store_state.store_factory.get_grid_pike_store();
     match version {
         ProtocolVersion::V1 => {
             let paging = query_paging.into_inner();
             let service_id = query_service_id.into_inner().service_id;
-            let org_id = org_id.into_inner();
             match request::get_base_url(&req).and_then(|url| {
-                v1::list_roles_for_organization(
+                v1::list_organizations(
                     url,
                     store,
-                    org_id,
                     service_id.as_deref(),
                     paging.offset(),
                     paging.limit(),
@@ -88,14 +86,9 @@ pub async fn list_roles_for_organization(
     }
 }
 
-pub enum ProtocolVersion {
-    V1,
-}
-
 impl FromRequest for ProtocolVersion {
-    type Error = HttpResponse;
-    type Future = future::Ready<Result<Self, Self::Error>>;
-    type Config = ();
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         let protocol_version = match req
@@ -121,8 +114,8 @@ impl FromRequest for ProtocolVersion {
         };
 
         match protocol_version.as_str() {
-            "1" => future::ok(ProtocolVersion::V1),
-            _ => future::ok(ProtocolVersion::V1),
+            "1" => future::ok(ProtocolVersion::V1).boxed_local(),
+            _ => future::ok(ProtocolVersion::V1).boxed_local(),
         }
     }
 }

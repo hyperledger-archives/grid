@@ -24,10 +24,10 @@ use std::sync::{
 
 use grid_sdk::backend::SawtoothBackendClient;
 #[cfg(feature = "rest-api")]
-use grid_sdk::rest_api::actix_web_3::Endpoint;
+use grid_sdk::rest_api::actix_web_4::Endpoint;
 #[cfg(feature = "integration")]
-use grid_sdk::rest_api::actix_web_3::KeyState;
-use grid_sdk::rest_api::actix_web_3::{BackendState, StoreState};
+use grid_sdk::rest_api::actix_web_4::KeyState;
+use grid_sdk::rest_api::actix_web_4::{BackendState, StoreState};
 use grid_sdk::store::{create_store_factory, ConnectionUri};
 
 use crate::config::GridConfig;
