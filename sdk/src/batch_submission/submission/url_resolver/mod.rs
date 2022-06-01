@@ -15,7 +15,7 @@
 use crate::scope_id::ScopeId;
 
 /// An interface for generating the url to which a batch should be sent.
-pub trait UrlResolver: Sync + Send {
+pub trait UrlResolver: std::fmt::Debug + Sync + Send {
     type Id: ScopeId;
     /// Generates an address (i.e. URL) to which the batch will be sent.
     fn url(&self, scope_id: &Self::Id) -> String;
