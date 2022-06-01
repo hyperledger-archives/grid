@@ -13,3 +13,7 @@
 // limitations under the License.
 
 mod async_batch_submitter;
+
+pub use async_batch_submitter::{
+    BatchRunnableSubmitter, BatchRunningSubmitter, BatchSubmitterBuilder,
+};

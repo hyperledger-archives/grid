@@ -21,6 +21,8 @@ pub trait RunnableSubmitter<S: ScopeId> {
     type RunningSubmitter: RunningSubmitter<S>;
 
     /// Start running the submission service.
+    ///
+    /// This method consumes the `RunnableSubmitter` and returns a `RunningSubmitter`
     fn run(self) -> Result<Self::RunningSubmitter, InternalError>;
 }
 
