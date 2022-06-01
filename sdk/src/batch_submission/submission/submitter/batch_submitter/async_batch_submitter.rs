@@ -689,3 +689,260 @@ impl<S: ScopeId> ShutdownHandle for BatchRunningSubmitter<S> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use std::sync::Mutex;
+
+    use super::*;
+    use crate::scope_id::GlobalScopeId;
+    use mockito;
+
+    // Convenient mock submission for testing
+    struct MockSubmission;
+
+    impl MockSubmission {
+        fn new() -> Submission<GlobalScopeId> {
+            Submission {
+                batch_header: "test".to_string(),
+                scope_id: GlobalScopeId::new(),
+                serialized_batch: vec![0, 0, 0, 0],
+            }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct MockSubmissionCommandFactory<S: ScopeId> {
+        url_resolver: Arc<dyn UrlResolver<Id = S>>,
+    }
+
+    impl<S: ScopeId> MockSubmissionCommandFactory<S> {
+        fn new(url_resolver: Arc<dyn UrlResolver<Id = S>>) -> Self {
+            Self { url_resolver }
+        }
+    }
+
+    impl<S: ScopeId> ExecuteCommandFactory<S> for MockSubmissionCommandFactory<S> {
+        fn new_command(&self, submission: Submission<S>) -> Box<dyn ExecuteCommand<S>> {
+            Box::new(MockSubmissionCommand {
+                url_resolver: Arc::clone(&self.url_resolver),
+                submission,
+                attempts: 0,
+            })
+        }
+    }
+
+    #[derive(Debug)]
+    // A mock command that mimics sending a request to a REST API
+    struct MockSubmissionCommand<S: ScopeId> {
+        url_resolver: Arc<dyn UrlResolver<Id = S>>,
+        submission: Submission<S>,
+        attempts: u16,
+    }
+
+    #[async_trait]
+    impl<S: ScopeId> ExecuteCommand<S> for MockSubmissionCommand<S> {
+        // Returns 503 for the first two attempts, then returns 200
+        // Useful for testing retry behavior
+        async fn execute(&mut self) -> Result<SubmissionResponse<S>, reqwest::Error> {
+            let _ = &self.url_resolver;
+            self.attempts += 1;
+            if self.attempts < 3 {
+                Ok(SubmissionResponse::new(
+                    "test".to_string(),
+                    self.submission.scope_id.clone(),
+                    503,
+                    "Busy".to_string(),
+                    self.attempts,
+                ))
+            } else {
+                Ok(SubmissionResponse::new(
+                    "test".to_string(),
+                    self.submission.scope_id.clone(),
+                    200,
+                    "Success".to_string(),
+                    self.attempts,
+                ))
+            }
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct MockUrlResolver {
+        url: String,
+    }
+
+    impl MockUrlResolver {
+        fn new(url: String) -> Self {
+            Self { url }
+        }
+    }
+
+    impl UrlResolver for MockUrlResolver {
+        type Id = GlobalScopeId;
+
+        fn url(&self, scope_id: &GlobalScopeId) -> String {
+            let _ = scope_id;
+            format!("{}/test", &self.url)
+        }
+    }
+
+    // A simple way to record submission notifications during testing
+    struct MockRegister {
+        register: Arc<Mutex<Vec<(String, Option<u16>, Option<String>)>>>,
+    }
+
+    impl MockRegister {
+        fn new() -> Self {
+            Self {
+                register: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+    }
+
+    // A mock observer that simply records submission notifications in the `MockRegister`
+    struct MockObserver {
+        register_ref: Arc<Mutex<Vec<(String, Option<u16>, Option<String>)>>>,
+    }
+
+    impl SubmitterObserver for MockObserver {
+        type Id = GlobalScopeId;
+        fn notify(
+            &self,
+            batch_header: String,
+            scope_id: Self::Id,
+            status: Option<u16>,
+            message: Option<String>,
+        ) {
+            let _ = scope_id;
+            let mut reg = self.register_ref.lock().unwrap();
+            reg.push((batch_header, status, message));
+        }
+    }
+
+    #[test]
+    // Test that the submission command successfully executes a post request
+    fn test_batch_submitter_submission_command_execute() {
+        let url = mockito::server_url();
+        let _m1 = mockito::mock("POST", "/test").with_body("success").create();
+        let mock_submission = MockSubmission::new();
+        let mock_url_resolver = Arc::new(MockUrlResolver::new(url));
+        let test_submission_command_factory = SubmissionCommandFactory::new(mock_url_resolver);
+        let mut test_command = test_submission_command_factory.new_command(mock_submission);
+        let expected_response = SubmissionResponse::new(
+            "test".to_string(),
+            GlobalScopeId::new(),
+            200,
+            "success".to_string(),
+            1,
+        );
+
+        let response = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async move { test_command.execute().await.unwrap() });
+
+        assert_eq!(response, expected_response);
+    }
+
+    #[test]
+    // Test that the submission controller retries submissions that return 503
+    fn test_batch_submitter_submission_controller_run() {
+        let mock_submission = MockSubmission::new();
+        let mock_url_resolver = Arc::new(MockUrlResolver::new("throwaway_url".to_string()));
+        let mock_submission_command_factory = MockSubmissionCommandFactory::new(mock_url_resolver);
+        let mock_submission_command = mock_submission_command_factory.new_command(mock_submission);
+        let expected_response = SubmissionResponse::new(
+            "test".to_string(),
+            GlobalScopeId::new(),
+            200,
+            "Success".to_string(),
+            3,
+        );
+        let response = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async move {
+                SubmissionController::run(mock_submission_command)
+                    .await
+                    .unwrap()
+            });
+
+        assert_eq!(response, expected_response);
+    }
+
+    #[test]
+    // Test that the task handler successfully executes a submission task
+    fn test_batch_submitter_task_handler_spawn() {
+        let mock_submission = MockSubmission::new();
+        let mock_url_resolver = Arc::new(MockUrlResolver::new("throwaway_url".to_string()));
+        let mock_submission_command_factory = MockSubmissionCommandFactory::new(mock_url_resolver);
+        let expected_response = SubmissionResponse::new(
+            "test".to_string(),
+            GlobalScopeId::new(),
+            200,
+            "Success".to_string(),
+            3,
+        );
+        let (tx, rx): (
+            std::sync::mpsc::Sender<BatchMessage<GlobalScopeId>>,
+            std::sync::mpsc::Receiver<BatchMessage<GlobalScopeId>>,
+        ) = std::sync::mpsc::channel();
+        let mock_new_task = NewTask::new(tx, mock_submission);
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .thread_name("test_task_runtime")
+            .enable_all()
+            .build()
+            .unwrap();
+        let handle = std::thread::Builder::new()
+            .name("test_task_runtime_thread".to_string())
+            .spawn(move || {
+                runtime.block_on(async move {
+                    tokio::spawn(TaskHandler::spawn(
+                        mock_new_task,
+                        Arc::new(mock_submission_command_factory),
+                    ));
+                    // Let the above task finish before dropping the runtime
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                });
+            })
+            .unwrap();
+        let response = rx.recv().unwrap();
+        let _ = handle.join();
+
+        assert_eq!(
+            response,
+            BatchMessage::SubmissionResponse(expected_response)
+        );
+    }
+
+    #[test]
+    // Test that the batch submitter service can successfully complete a submission
+    fn test_batch_submitter_submission_service() {
+        let mock_queue = vec![MockSubmission::new()];
+        let mock_url_resolver = Arc::new(MockUrlResolver::new("throwaway_url".to_string()));
+        let mock_submission_command_factory = MockSubmissionCommandFactory::new(mock_url_resolver);
+        let mock_register = MockRegister::new();
+        let mock_observer = MockObserver {
+            register_ref: Arc::clone(&mock_register.register),
+        };
+        let runnable_submitter = BatchSubmitterBuilder::new()
+            .with_queue(Box::new(mock_queue.into_iter()))
+            .with_observer(Box::new(mock_observer))
+            .with_submission_command_factory(Arc::new(mock_submission_command_factory))
+            .build()
+            .unwrap();
+        let mut submitter_service = runnable_submitter.run().unwrap();
+
+        // Give the service time to run before checking the register
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        let expected_register = vec![
+            ("test".to_string(), Some(0), None),
+            ("test".to_string(), Some(200), Some("Success".to_string())),
+        ];
+
+        assert_eq!(*mock_register.register.lock().unwrap(), expected_register);
+        submitter_service.signal_shutdown();
+        submitter_service.wait_for_shutdown().unwrap();
+    }
+}
