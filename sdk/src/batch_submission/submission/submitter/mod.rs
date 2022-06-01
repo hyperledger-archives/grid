@@ -14,7 +14,9 @@
 
 use crate::{error::InternalError, scope_id::ScopeId, threading::lifecycle::ShutdownHandle};
 
-/// The interface for a non-blocking submitter that is built but not yet running.
+pub mod batch_submitter;
+
+/// The interface for a submitter that is built but not yet running.
 pub trait RunnableSubmitter<S: ScopeId> {
     type RunningSubmitter: RunningSubmitter<S>;
 
