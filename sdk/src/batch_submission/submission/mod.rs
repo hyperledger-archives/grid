@@ -12,5 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod submitter;
 pub mod submitter_observer;
 pub mod url_resolver;
