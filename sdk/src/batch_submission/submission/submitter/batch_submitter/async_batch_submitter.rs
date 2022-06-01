@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use async_trait::async_trait;
-use reqwest::Client;
-
 use std::{
     fmt,
     sync::{Arc, Mutex},
 };
+
+use async_trait::async_trait;
+use reqwest::Client;
 
 use crate::{
     batch_submission::{

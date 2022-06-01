@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod basic_url_resolver;
+
 use crate::scope_id::ScopeId;
 
 /// An interface for generating the url to which a batch should be sent.

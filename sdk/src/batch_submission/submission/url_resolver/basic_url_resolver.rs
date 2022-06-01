@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::UrlResolver;
 use crate::scope_id::{GlobalScopeId, ServiceScopeId};
+
+use super::UrlResolver;
 
 /// A url resolver for the `GlobalScopeId`
 #[derive(Debug, Clone, PartialEq)]
