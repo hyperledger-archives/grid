@@ -12,5 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod submitter_observer;
-pub mod url_resolver;
+use crate::scope_id::ScopeId;
+
+/// An interface for interpreting and recording updates from the submitter
+pub trait SubmitterObserver: Sync + Send {
+    type Id: ScopeId;
+    /// Notify the observer of an update. The interpretation and recording
+    /// of the update is determined by the observer's implementation.
+    fn notify(
+        &self,
+        batch_header: String,
+        scope_id: Self::Id,
+        status: Option<u16>,
+        message: Option<String>,
+    );
+}
