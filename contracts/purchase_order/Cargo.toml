@@ -14,7 +14,7 @@
 
 [package]
 name = "grid-purchase-order-tp"
-version = "0.3.4"
+version = "0.3.5"
 authors = ["Cargill Incorporated"]
 description = "Grid Purchase Order Smart Contract"
 homepage = "https://grid.hyperledger.org"

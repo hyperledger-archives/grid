@@ -14,7 +14,7 @@
 
 [package]
 name = "grid-sdk"
-version = "0.3.4"
+version = "0.3.5"
 authors = ["Cargill Incorporated"]
 description = """\
     Hyperledger Grid is a platform for building supply chain solutions \
