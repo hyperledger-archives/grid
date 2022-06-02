@@ -1,5 +1,19 @@
 # Release Notes
 
+## Changes in Grid 0.3.4
+
+### Build
+
+ * Check for protoc during Grid build
+
+### Grid SDK
+
+* Update Grid `/batches` endpoint to forward errors it receives from Splinter
+
+### Packaging
+
+ * Publish multi-architecture Docker images
+
 ## Changes in Grid 0.3.3
 
 ### Build
