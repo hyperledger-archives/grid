@@ -70,9 +70,7 @@ pub fn run(
                     .app_data(Data::new(backend_state.clone()))
                     .app_data(endpoint.clone())
                     .service(
-                        web::resource("/batches")
-                            .name("get_batch_statuses")
-                            .route(web::post().to(routes::submit_batches)),
+                        web::resource("/batches").route(web::post().to(routes::submit_batches)),
                     )
                     .service(
                         web::resource("/batch_statuses")
