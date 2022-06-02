@@ -20,20 +20,25 @@ use std::thread;
 
 pub use crate::rest_api::error::RestApiServerError;
 
-use actix_web::web;
-use actix_web::{dev, web::Data, App, HttpServer, Result};
+use actix_web::{
+    dev::ServerHandle,
+    middleware,
+    rt::System,
+    web::{self, Data},
+    App, HttpServer, Result,
+};
 use futures::executor::block_on;
 #[cfg(feature = "integration")]
 use grid_sdk::rest_api::actix_web_4::KeyState;
 use grid_sdk::rest_api::actix_web_4::{routes, BackendState, Endpoint, StoreState};
 
 pub struct RestApiShutdownHandle {
-    server: dev::Server,
+    server_handle: ServerHandle,
 }
 
 impl RestApiShutdownHandle {
     pub fn shutdown(&self) {
-        block_on(self.server.handle().stop(true));
+        block_on(self.server_handle.stop(true));
     }
 }
 
@@ -52,16 +57,15 @@ pub fn run(
 > {
     let bind_url = bind_url.to_owned();
     let (tx, rx) = mpsc::channel();
-
     let join_handle = thread::Builder::new()
         .name("GridRestApi".into())
         .spawn(move || {
-            let sys = actix::System::new("Grid-Rest-API");
-
-            let addr = HttpServer::new(move || {
+            let sys = System::new();
+            let server = HttpServer::new(move || {
                 #[allow(clippy::let_and_return)]
                 #[allow(unused_mut)]
                 let mut app = App::new()
+                    .wrap(middleware::Logger::default())
                     .app_data(Data::new(store_state.clone()))
                     .app_data(Data::new(backend_state.clone()))
                     .app_data(endpoint.clone())
@@ -166,26 +170,33 @@ pub fn run(
 
                 app
             })
-            .bind(bind_url)?
-            .disable_signals()
+            .bind(&bind_url)
+            .map_err(|err| {
+                error!("Unable to bind !");
+                RestApiServerError::StartUpError(format!("Unable to bind to URL: {err}"))
+            })?
             .system_exit()
             .run();
+            let handle = server.handle();
 
-            tx.send(addr).map_err(|err| {
+            tx.send(handle).map_err(|err| {
                 RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
             })?;
-            sys.run()?;
 
-            info!("Rest API terminating");
+            match sys.block_on(server) {
+                Ok(()) => info!("Rest API terminating"),
+                Err(err) => error!("REST API unexpectedly exiting: {}", err),
+            };
 
+            info!("Rest API has terminated");
             Ok(())
         })?;
 
-    let server = rx.recv().map_err(|err| {
+    let server_handle = rx.recv().map_err(|err| {
         RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
     })?;
 
-    Ok((RestApiShutdownHandle { server }, join_handle))
+    Ok((RestApiShutdownHandle { server_handle }, join_handle))
 }
 
 #[cfg(all(test, feature = "stable"))]
