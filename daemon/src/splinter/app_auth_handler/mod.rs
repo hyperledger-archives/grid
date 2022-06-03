@@ -139,13 +139,12 @@ fn process_admin_event(
     debug!("Received the event at {}", event.timestamp);
     match event.admin_event {
         AdminServiceEvent::CircuitReady(msg_proposal) => {
-            let service = match msg_proposal.circuit.roster.iter().find_map(|service| {
-                if service.allowed_nodes.contains(&node_id.to_string()) {
-                    Some(service)
-                } else {
-                    None
-                }
-            }) {
+            let service = match msg_proposal
+                .circuit
+                .roster
+                .iter()
+                .find(|service| service.allowed_nodes.contains(&node_id.to_string()))
+            {
                 Some(service) => service,
                 None => {
                     debug!(

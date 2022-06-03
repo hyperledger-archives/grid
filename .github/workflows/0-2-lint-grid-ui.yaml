@@ -1,4 +1,4 @@
-name: 0-2 Lint Grid
+name: 0-2 Lint Grid UI
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
 
-  lint_grid:
+  lint_grid_ui:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -25,14 +25,5 @@ jobs:
       - name: Install Just
         run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
 
-      - name: Run Lint/Clippy on Grid
-        run: just ci-lint
-
-      - name: Notify Slack of Failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          fields: repo,message,author,job
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Lint Grid UI
+        run: just ci-lint-ui
