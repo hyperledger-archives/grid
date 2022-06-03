@@ -133,6 +133,7 @@ docker-build:
     export VERSION=AUTO_STRICT
     export REPO_VERSION=$(./bin/get_version)
     docker-compose -f docker-compose.yaml build
+    docker-compose -f ui/grid-ui/docker/docker-compose.yaml build grid-ui
 
 lint:
     #!/usr/bin/env sh
