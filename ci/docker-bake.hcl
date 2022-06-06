@@ -43,7 +43,7 @@ variable "REGISTRY" {
 }
 
 variable "REPO_VERSION" {
-    default = "0.3.5-dev"
+    default = "0.3.6-dev"
 }
 
 target "all" {
