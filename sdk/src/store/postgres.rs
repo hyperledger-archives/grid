@@ -19,6 +19,11 @@ use diesel::{
     Connection,
 };
 
+#[cfg(feature = "batch-tracking")]
+use crate::batch_tracking::store::{
+    diesel::{DieselBatchTrackingStore, DieselConnectionBatchTrackingStore},
+    BatchTrackingStore,
+};
 #[cfg(feature = "batch-store")]
 use crate::batches::store::{BatchStore, DieselBatchStore, DieselConnectionBatchStore};
 use crate::commits::store::{CommitStore, DieselCommitStore, DieselConnectionCommitStore};
@@ -93,6 +98,11 @@ impl StoreFactory for PgStoreFactory {
     fn get_grid_purchase_order_store<'a>(&'a self) -> Box<dyn PurchaseOrderStore + 'a> {
         Box::new(DieselPurchaseOrderStore::new(self.pool.clone()))
     }
+
+    #[cfg(feature = "batch-tracking")]
+    fn get_batch_tracking_store<'a>(&'a self) -> Box<dyn BatchTrackingStore + 'a> {
+        Box::new(DieselBatchTrackingStore::new(self.pool.clone()))
+    }
 }
 
 impl TransactionalStoreFactory for PgStoreFactory {
@@ -164,6 +174,11 @@ impl StoreFactory for InContextPgStoreFactory {
     #[cfg(feature = "purchase-order")]
     fn get_grid_purchase_order_store<'a>(&'a self) -> Box<dyn PurchaseOrderStore + 'a> {
         Box::new(DieselConnectionPurchaseOrderStore::new(&*self.conn))
+    }
+
+    #[cfg(feature = "batch-tracking")]
+    fn get_batch_tracking_store<'a>(&'a self) -> Box<dyn BatchTrackingStore + 'a> {
+        Box::new(DieselConnectionBatchTrackingStore::new(&*self.conn))
     }
 }
 
