@@ -1,10 +1,10 @@
 # Release Notes
 
-## Changes in Grid 0.3.4
+## Changes in Grid 0.3.5
 
 ### Build
 
- * Check for protoc during Grid build
+* Check for protoc during Grid build
 
 ### Grid SDK
 
@@ -12,7 +12,12 @@
 
 ### Packaging
 
- * Publish multi-architecture Docker images
+* Add missing depedencies to grid-ui Dockerfile
+* Publish multi-architecture Docker images
+
+## Changes in Grid 0.3.4
+
+* Unreleased version
 
 ## Changes in Grid 0.3.3
 
