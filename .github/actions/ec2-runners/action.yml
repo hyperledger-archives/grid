@@ -1,0 +1,78 @@
+name: GHA Buildx
+description: Provision a self-hosted buildx cluster for GHA
+inputs:
+  action:
+    description: >-
+        - 'start' - deploy a new cluster
+        - 'stop' - destroy a running cluster
+    required: true
+
+  amd_ami_id:
+    description: >-
+      AMI ID for the AMD instance
+    required: false
+
+  amd_instance_type:
+    description: >-
+      Instance Type for the AMD instance
+    required: false
+
+  arm_ami_id:
+    description: >-
+      AMI ID for the ARM instance
+    required: false
+
+  arm_instance_type:
+    description: >-
+      Instance Type for the ARM instance
+    required: false
+
+  gh_personal_access_token:
+    description: >-
+      GitHub Personal Access Token
+    required: true
+
+  label:
+    description: >-
+      Label applied to the created EC2 instances.
+      This is required when running the 'stop' action.
+    required: false
+
+  mode:
+    description: >-
+      'buildx' - start a two node buildx cluster for multi-arch builds.
+      'single' - start a single self-hosted AMD runner.
+      Defaults to 'buildx'.
+    required: false
+    default: 'buildx'
+
+  security_group_id:
+    description: >-
+      Must allow outbound traffic to connect to GitHub
+    required: false
+
+  subnet:
+    description: >-
+      Subnet to apply to the instances
+    required: false
+
+outputs:
+  label:
+    description: >-
+      Random value generated when creating a new cluster.
+      Used to make sure jobs only run on the clusters they create.
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.action }}
+    - ${{ inputs.amd_ami_id }}
+    - ${{ inputs.amd_instance_type }}
+    - ${{ inputs.arm_ami_id }}
+    - ${{ inputs.arm_instance_type }}
+    - ${{ inputs.gh_personal_access_token }}
+    - ${{ inputs.label }}
+    - ${{ inputs.mode }}
+    - ${{ inputs.security_group_id }}
+    - ${{ inputs.subnet }}
