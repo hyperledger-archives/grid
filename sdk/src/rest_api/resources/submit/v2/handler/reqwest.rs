@@ -112,6 +112,7 @@ mod tests {
     const TEST_SERVICE_ID: &str = "gsAA";
     const TEST_BATCH_ID: &str = "one";
     const TEST_DATA_CHANGE_ID: &str = "data_change_id::two";
+    const TEST_SIGNER_PUB_KEY: &str = "test_user";
 
     #[actix_rt::test]
     /// Validate the `ReqwestBatchSubmissionHandler` `submit_batches` method is able to return
@@ -144,16 +145,8 @@ mod tests {
     /// Validate the `ReqwestBatchSubmissionHandler` `submit_batches` method is able to return
     /// successfully with the expected response
     async fn reqwest_batch_submission_handler_success() {
-        let expected_success_response = {
-            let batch_id = BatchIdentifier {
-                dlt_batch_id: TEST_BATCH_ID.to_string(),
-                data_change_id: Some(TEST_DATA_CHANGE_ID.to_string()),
-                service_id: Some(TEST_SERVICE_ID.to_string()),
-            };
-
-            BatchIdList {
-                batch_identifiers: vec![batch_id],
-            }
+        let expected_success_response = BatchIdList {
+            batch_identifiers: vec![get_test_batch_identity()],
         };
         let response_body = serde_json::to_vec(&expected_success_response)
             .expect("Unable to serialize batch ID list");
@@ -177,8 +170,8 @@ mod tests {
     fn make_submit_batch_request() -> SerializedSubmitBatchRequest {
         let batch = TrackingBatchResource {
             signed_batch: vec![],
-            data_change_id: Some(TEST_DATA_CHANGE_ID.to_string()),
-            service_id: Some(TEST_SERVICE_ID.to_string()),
+            batch_identity: get_test_batch_identity(),
+            signer_public_key: TEST_SIGNER_PUB_KEY.to_string(),
         };
         let batch_request = SubmitBatchRequest {
             batches: vec![batch],
@@ -196,5 +189,13 @@ mod tests {
             .join("/batches")
             .expect("Unable to create `/batches` URL");
         ReqwestBatchSubmissionHandler::new(url).submit_batches(make_submit_batch_request())
+    }
+
+    fn get_test_batch_identity() -> BatchIdentifier {
+        BatchIdentifier {
+            dlt_batch_id: TEST_BATCH_ID.to_string(),
+            data_change_id: Some(TEST_DATA_CHANGE_ID.to_string()),
+            service_id: Some(TEST_SERVICE_ID.to_string()),
+        }
     }
 }
