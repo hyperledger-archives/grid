@@ -29,10 +29,9 @@ name = "gridd"
 path = "src/main.rs"
 
 [dependencies]
-actix = "0.9"
-actix-rt = "1.0"
+actix-rt = { version = "2", default-features = false }
 actix-web = { version = "4", optional = true, default-features = false }
-actix-http = { version = "3", optional = true }
+actix-http = { version = "3", optional = true, default-features = false }
 base64 = "0.13"
 byteorder = "1"
 cfg-if = "1"
