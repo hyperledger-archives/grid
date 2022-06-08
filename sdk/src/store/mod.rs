@@ -22,6 +22,8 @@ use std::str::FromStr;
 #[cfg(feature = "diesel")]
 use diesel::r2d2::{ConnectionManager, Pool};
 
+#[cfg(feature = "batch-tracking")]
+use crate::batch_tracking::store::BatchTrackingStore;
 #[cfg(feature = "batch-store")]
 use crate::batches::store::BatchStore;
 use crate::commits::store::CommitStore;
@@ -62,6 +64,8 @@ pub trait StoreFactory {
     fn get_batch_store<'a>(&'a self) -> Box<dyn BatchStore + 'a>;
     #[cfg(feature = "purchase-order")]
     fn get_grid_purchase_order_store<'a>(&'a self) -> Box<dyn PurchaseOrderStore + 'a>;
+    #[cfg(feature = "batch-tracking")]
+    fn get_batch_tracking_store<'a>(&'a self) -> Box<dyn BatchTrackingStore + 'a>;
 }
 
 pub trait TransactionalStoreFactory: StoreFactory + Send + Sync {
