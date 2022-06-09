@@ -15,6 +15,7 @@
 mod builder;
 mod error;
 mod runnable;
+mod running;
 
 pub use builder::GriddleBuilder;
 #[cfg(feature = "rest-api")]
@@ -22,6 +23,9 @@ pub use error::GriddleError;
 pub use runnable::RunnableGriddle;
 #[cfg(feature = "rest-api")]
 pub use runnable::RunnableGriddleRestApiVariant;
+pub use running::Griddle;
+#[cfg(feature = "rest-api")]
+pub use running::RunningGriddleRestApiVariant;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DLTBackend {
