@@ -36,9 +36,22 @@ pub struct RunnableGriddleRestApi {
 impl RunnableGriddleRestApi {
     /// Start Griddle's REST API and return the running version.
     pub fn run(self) -> Result<GriddleRestApi, GriddleRestApiServerError> {
-        let RunnableGriddleRestApi { .. } = self;
+        let RunnableGriddleRestApi {
+            resource_providers,
+            bind,
+            #[cfg(feature = "proxy")]
+            proxy_client,
+            signer,
+            scope,
+        } = self;
 
-        // Build the running Griddle rest API
-        unimplemented!();
+        GriddleRestApi::new(
+            bind,
+            resource_providers,
+            #[cfg(feature = "proxy")]
+            proxy_client,
+            signer,
+            scope,
+        )
     }
 }
