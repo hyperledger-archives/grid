@@ -15,9 +15,11 @@
 //! Implementation of the components necessary to run Griddle's REST API,
 //! backed by [Actix Web 4](https://crates.io/crates/actix-web).
 
+mod api;
 mod builder;
 mod runnable;
 
+pub use api::GriddleRestApi;
 pub use builder::GriddleRestApiBuilder;
 pub use runnable::RunnableGriddleRestApi;
 

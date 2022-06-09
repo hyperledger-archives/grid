@@ -18,7 +18,10 @@ use cylinder::Signer;
 #[cfg(feature = "proxy")]
 use grid_sdk::proxy::ProxyClient;
 
-use crate::rest_api::{actix_web_4::GriddleResourceProvider, Scope};
+use crate::rest_api::{
+    actix_web_4::{GriddleResourceProvider, GriddleRestApi},
+    GriddleRestApiServerError, Scope,
+};
 
 /// A configured REST API for Griddle which may best started with `run` function.
 pub struct RunnableGriddleRestApi {
@@ -28,4 +31,14 @@ pub struct RunnableGriddleRestApi {
     pub(super) proxy_client: Box<dyn ProxyClient>,
     pub(super) signer: Box<dyn Signer>,
     pub(super) scope: Scope,
+}
+
+impl RunnableGriddleRestApi {
+    /// Start Griddle's REST API and return the running version.
+    pub fn run(self) -> Result<GriddleRestApi, GriddleRestApiServerError> {
+        let RunnableGriddleRestApi { .. } = self;
+
+        // Build the running Griddle rest API
+        unimplemented!();
+    }
 }
