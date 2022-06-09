@@ -38,9 +38,22 @@ impl RunnableGriddleRestApi {
     /// Start the REST API and finish any necessary setup such as binding to ports, adding resource
     /// endpoints, etc.
     pub fn run(self) -> Result<GriddleRestApi, GriddleRestApiServerError> {
-        let RunnableGriddleRestApi { .. } = self;
+        let RunnableGriddleRestApi {
+            resource_providers,
+            bind,
+            #[cfg(feature = "proxy")]
+            proxy_client,
+            signer,
+            dlt_backend_endpoint,
+        } = self;
 
-        // Build the running Griddle rest API
-        unimplemented!();
+        GriddleRestApi::new(
+            bind,
+            resource_providers,
+            #[cfg(feature = "proxy")]
+            proxy_client,
+            signer,
+            dlt_backend_endpoint,
+        )
     }
 }
