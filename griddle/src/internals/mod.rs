@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod builder;
 mod error;
+mod runnable;
 
+pub use builder::GriddleBuilder;
+#[cfg(feature = "rest-api")]
 pub use error::GriddleError;
+pub use runnable::RunnableGriddle;
+#[cfg(feature = "rest-api")]
+pub use runnable::RunnableGriddleRestApiVariant;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DLTBackend {
