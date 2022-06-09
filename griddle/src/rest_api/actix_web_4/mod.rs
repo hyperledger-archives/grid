@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod builder;
+mod runnable;
+
+pub use builder::GriddleRestApiBuilder;
+pub use runnable::RunnableGriddleRestApi;
+
 use actix_web::Resource;
 
 /// A `ResourceProvider` provides a list of resources.
