@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "rest-api-actix-web-4")]
-pub mod actix_web_4;
-mod error;
+//! Implementation of the components necessary to run Griddle's REST API,
+//! backed by [Actix Web 4](https://crates.io/crates/actix-web).
 
-pub use error::GriddleRestApiServerError;
+use actix_web::Resource;
 
-#[derive(Clone, Debug, PartialEq)]
-/// Indicates the service scope intended for incoming requests and is used by the REST API to
-/// validate requests.
-pub enum Scope {
-    Global,
-    Service,
+/// A `GriddleResourceProvider` provides a list of resources to a Griddle instance.
+///
+/// This trait serves as a `Resource` factory, which allows dynamically building a REST API at
+/// runtime.
+pub trait GriddleResourceProvider: Send {
+    /// Returns a list of Actix `Resource`s.
+    fn resources(&self) -> Vec<Resource>;
 }
