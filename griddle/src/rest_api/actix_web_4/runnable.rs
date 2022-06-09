@@ -12,22 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Implementation of the components necessary to run Griddle's REST API,
-//! backed by [Actix Web 4](https://crates.io/crates/actix-web).
+//! Contains the implementation of `RunnableGriddleRestApi`
 
-mod builder;
-mod runnable;
+use cylinder::Signer;
+#[cfg(feature = "proxy")]
+use grid_sdk::proxy::ProxyClient;
 
-pub use builder::GriddleRestApiBuilder;
-pub use runnable::RunnableGriddleRestApi;
+use crate::rest_api::{actix_web_4::GriddleResourceProvider, Scope};
 
-use actix_web::Resource;
-
-/// A `GriddleResourceProvider` provides a list of resources to a Griddle instance.
-///
-/// This trait serves as a `Resource` factory, which allows dynamically building a REST API at
-/// runtime.
-pub trait GriddleResourceProvider: Send {
-    /// Returns a list of Actix `Resource`s.
-    fn resources(&self) -> Vec<Resource>;
+/// A configured REST API for Griddle which may best started with `run` function.
+pub struct RunnableGriddleRestApi {
+    pub(super) resource_providers: Vec<Box<dyn GriddleResourceProvider>>,
+    pub(super) bind: String,
+    #[cfg(feature = "proxy")]
+    pub(super) proxy_client: Box<dyn ProxyClient>,
+    pub(super) signer: Box<dyn Signer>,
+    pub(super) scope: Scope,
 }
