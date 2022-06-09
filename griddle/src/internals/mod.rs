@@ -19,6 +19,7 @@ mod running;
 
 pub use builder::GriddleBuilder;
 #[cfg(feature = "rest-api")]
+pub use builder::GriddleRestApiVariant;
 pub use error::GriddleError;
 pub use runnable::RunnableGriddle;
 #[cfg(feature = "rest-api")]
