@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "rest-api-actix-web-4")]
-pub mod actix_web_4;
-pub mod error;
+use actix_web::Resource;
+
+/// A `ResourceProvider` provides a list of resources.
+///
+/// This trait serves as a `Resource` factory, which allows dynamically building a REST API at
+/// runtime.
+pub trait GriddleResourceProvider: Send {
+    /// Returns a list of Actix `Resource`s.
+    fn resources(&self) -> Vec<Resource>;
+}

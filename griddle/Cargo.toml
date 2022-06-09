@@ -44,6 +44,7 @@ experimental = [
     "database-sqlite",
     "proxy",
     "rest-api",
+    "rest-api-actix-web-4"
 ]
 
 database-postgres = ["diesel", "grid-sdk/postgres"]
@@ -57,4 +58,8 @@ rest-api = [
   "cylinder",
   "grid-sdk/lifecycle",
   "futures-0-3",
+]
+rest-api-actix-web-4 = [
+  "rest-api",
+  "grid-sdk/rest-api-actix-web-4",
 ]
