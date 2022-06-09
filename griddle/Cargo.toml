@@ -9,16 +9,17 @@ description = "Grid integration component"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = { version = "3", default-features = false }
+actix-web = { version = "4", default-features = false }
 clap = "2.33.3"
+cylinder = { version = "0.2.2", features = ["key-load", "jwt"], optional = true}
 diesel = { version = "1.0", features = ["r2d2"], optional = true }
 flexi_logger = "0.22"
+futures-0-3 = { package = "futures", version = "0.3", optional = true }
 log = "0.4"
 users = "0.11"
 
 [dependencies.grid-sdk]
 path = "../sdk"
-optional = true
 features = [
   "rest-api-actix-web-4",
   "rest-api-actix-web-4-run",
@@ -42,6 +43,7 @@ experimental = [
     "database-postgres",
     "database-sqlite",
     "proxy",
+    "rest-api",
 ]
 
 database-postgres = ["diesel", "grid-sdk/postgres"]
@@ -50,4 +52,9 @@ proxy = [
   "grid-sdk/proxy-run",
   "grid-sdk/proxy-client-reqwest",
   "grid-sdk/rest-api-endpoint-proxy",
+]
+rest-api = [
+  "cylinder",
+  "grid-sdk/lifecycle",
+  "futures-0-3",
 ]
