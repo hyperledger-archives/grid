@@ -19,7 +19,10 @@ use cylinder::Signer;
 use grid_sdk::proxy::ProxyClient;
 use grid_sdk::rest_api::actix_web_4::Endpoint;
 
-use crate::rest_api::actix_web_4::GriddleResourceProvider;
+use crate::rest_api::{
+    actix_web_4::{GriddleResourceProvider, GriddleRestApi},
+    error::GriddleRestApiServerError,
+};
 
 /// A configured REST API which may best started with `run` function.
 pub struct RunnableGriddleRestApi {
@@ -29,4 +32,15 @@ pub struct RunnableGriddleRestApi {
     pub(super) proxy_client: Box<dyn ProxyClient>,
     pub(super) signer: Box<dyn Signer>,
     pub(super) dlt_backend_endpoint: Endpoint,
+}
+
+impl RunnableGriddleRestApi {
+    /// Start the REST API and finish any necessary setup such as binding to ports, adding resource
+    /// endpoints, etc.
+    pub fn run(self) -> Result<GriddleRestApi, GriddleRestApiServerError> {
+        let RunnableGriddleRestApi { .. } = self;
+
+        // Build the running Griddle rest API
+        unimplemented!();
+    }
 }

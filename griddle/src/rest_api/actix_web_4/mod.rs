@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod api;
 mod builder;
 mod runnable;
 
+pub use api::GriddleRestApi;
 pub use builder::GriddleRestApiBuilder;
 pub use runnable::RunnableGriddleRestApi;
 
