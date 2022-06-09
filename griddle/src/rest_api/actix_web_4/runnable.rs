@@ -17,8 +17,8 @@
 use cylinder::Signer;
 #[cfg(feature = "proxy")]
 use grid_sdk::proxy::ProxyClient;
-use grid_sdk::rest_api::actix_web_4::Endpoint;
 
+use crate::internals::DLTBackend;
 use crate::rest_api::{
     actix_web_4::{GriddleResourceProvider, GriddleRestApi},
     error::GriddleRestApiServerError,
@@ -31,7 +31,7 @@ pub struct RunnableGriddleRestApi {
     #[cfg(feature = "proxy")]
     pub(super) proxy_client: Box<dyn ProxyClient>,
     pub(super) signer: Box<dyn Signer>,
-    pub(super) dlt_backend_endpoint: Endpoint,
+    pub(super) dlt_backend: DLTBackend,
 }
 
 impl RunnableGriddleRestApi {
@@ -44,7 +44,7 @@ impl RunnableGriddleRestApi {
             #[cfg(feature = "proxy")]
             proxy_client,
             signer,
-            dlt_backend_endpoint,
+            dlt_backend,
         } = self;
 
         GriddleRestApi::new(
@@ -53,7 +53,7 @@ impl RunnableGriddleRestApi {
             #[cfg(feature = "proxy")]
             proxy_client,
             signer,
-            dlt_backend_endpoint,
+            dlt_backend,
         )
     }
 }

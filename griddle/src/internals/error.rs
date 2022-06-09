@@ -15,37 +15,23 @@
 use std::error;
 use std::fmt;
 
-#[cfg(feature = "griddle-builder")]
-use crate::internals::GriddleError;
-
 #[derive(Debug)]
-pub struct Error {
-    message: String,
+pub enum GriddleError {
+    InvalidArgumentError(String),
+    MissingRequiredField(String),
+    InternalError(String),
 }
 
-impl Error {
-    pub fn from_message(message: &str) -> Self {
-        Self {
-            message: message.to_string(),
-        }
-    }
-}
+impl error::Error for GriddleError {}
 
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
-
-impl fmt::Display for Error {
+impl fmt::Display for GriddleError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-#[cfg(feature = "griddle-builder")]
-impl From<GriddleError> for Error {
-    fn from(griddle_err: GriddleError) -> Self {
-        Self::from_message(&griddle_err.to_string())
+        match self {
+            GriddleError::InvalidArgumentError(msg) => f.write_str(msg),
+            GriddleError::MissingRequiredField(msg) => {
+                write!(f, "missing required field: {}", msg)
+            }
+            GriddleError::InternalError(msg) => f.write_str(msg),
+        }
     }
 }

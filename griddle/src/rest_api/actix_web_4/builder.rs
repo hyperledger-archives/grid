@@ -16,10 +16,11 @@
 
 use cylinder::Signer;
 
+use grid_sdk::error::InvalidArgumentError;
 #[cfg(feature = "proxy")]
 use grid_sdk::proxy::ProxyClient;
-use grid_sdk::{error::InvalidArgumentError, rest_api::actix_web_4::Endpoint};
 
+use crate::internals::DLTBackend;
 use crate::rest_api::{
     actix_web_4::{GriddleResourceProvider, RunnableGriddleRestApi},
     error::GriddleRestApiServerError,
@@ -35,7 +36,7 @@ pub struct GriddleRestApiBuilder {
     #[cfg(feature = "proxy")]
     proxy_client: Option<Box<dyn ProxyClient>>,
     signer: Option<Box<dyn Signer>>,
-    dlt_backend_endpoint: Option<Endpoint>,
+    dlt_backend: Option<DLTBackend>,
 }
 
 impl GriddleRestApiBuilder {
@@ -68,8 +69,8 @@ impl GriddleRestApiBuilder {
         self
     }
 
-    pub fn with_dlt_backend_endpoint(mut self, endpoint: Endpoint) -> Self {
-        self.dlt_backend_endpoint = Some(endpoint);
+    pub fn with_dlt_backend(mut self, backend: DLTBackend) -> Self {
+        self.dlt_backend = Some(backend);
         self
     }
 
@@ -96,9 +97,9 @@ impl GriddleRestApiBuilder {
             ))
         })?;
 
-        let dlt_backend_endpoint = self.dlt_backend_endpoint.ok_or_else(|| {
+        let dlt_backend = self.dlt_backend.ok_or_else(|| {
             GriddleRestApiServerError::InvalidArgument(InvalidArgumentError::new(
-                "dlt_backend_endpoint".to_string(),
+                "dlt_backend".to_string(),
                 "Missing required field".to_string(),
             ))
         })?;
@@ -109,7 +110,7 @@ impl GriddleRestApiBuilder {
             #[cfg(feature = "proxy")]
             proxy_client,
             signer,
-            dlt_backend_endpoint,
+            dlt_backend,
         })
     }
 }

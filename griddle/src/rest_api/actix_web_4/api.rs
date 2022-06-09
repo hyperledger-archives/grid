@@ -25,12 +25,11 @@ use actix_web::{dev::ServerHandle, middleware, rt::System, web, App, HttpServer}
 use cylinder::Signer;
 use futures_0_3::executor::block_on;
 
-use grid_sdk::{
-    error::InternalError, rest_api::actix_web_4::Endpoint, threading::lifecycle::ShutdownHandle,
-};
+use grid_sdk::{error::InternalError, threading::lifecycle::ShutdownHandle};
 #[cfg(feature = "proxy")]
 use grid_sdk::{proxy::ProxyClient, rest_api::actix_web_4::routes::proxy_get};
 
+use crate::internals::DLTBackend;
 use crate::rest_api::{actix_web_4::GriddleResourceProvider, error::GriddleRestApiServerError};
 
 /// Contains information about the ports to which the REST API is bound.
@@ -62,7 +61,7 @@ impl GriddleRestApi {
         resource_providers: Vec<Box<dyn GriddleResourceProvider>>,
         #[cfg(feature = "proxy")] proxy_client: Box<dyn ProxyClient>,
         signer: Box<dyn Signer>,
-        dlt_backend: Endpoint,
+        dlt_backend: DLTBackend,
     ) -> Result<Self, GriddleRestApiServerError> {
         let providers: Arc<Mutex<Vec<_>>> = Arc::new(Mutex::new(resource_providers));
         let (sender, receiver) = mpsc::channel();

@@ -17,6 +17,9 @@ extern crate log;
 
 mod error;
 #[allow(dead_code)]
+#[cfg(feature = "griddle-builder")]
+pub mod internals;
+#[allow(dead_code)]
 #[cfg(feature = "rest-api")]
 mod rest_api;
 

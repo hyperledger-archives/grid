@@ -56,6 +56,7 @@ experimental = [
     # The following features are experimental:
     "database-postgres",
     "database-sqlite",
+    "griddle-builder",
     "proxy",
     "rest-api",
     "rest-api-actix-web-4"
@@ -63,6 +64,10 @@ experimental = [
 
 database-postgres = ["diesel", "grid-sdk/postgres"]
 database-sqlite = ["diesel", "grid-sdk/sqlite"]
+griddle-builder = [
+  "rest-api",
+  "grid-sdk/lifecycle"
+]
 proxy = [
   "grid-sdk/proxy-run",
   "grid-sdk/proxy-client-reqwest",
