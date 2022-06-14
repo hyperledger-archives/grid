@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2018-2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,17 @@ mod endpoint;
 mod key_state;
 mod paging;
 pub mod routes;
-#[cfg(feature = "rest-api-actix-web-3-run")]
-mod run;
+#[cfg(feature = "rest-api-actix-web-4-run")]
+pub mod run;
 mod service;
+
 mod store_state;
 
 pub use backend_state::BackendState;
 pub use endpoint::{Backend, Endpoint};
 pub use key_state::KeyState;
 pub use paging::QueryPaging;
-#[cfg(feature = "rest-api-actix-web-3-run")]
+#[cfg(feature = "rest-api-actix-web-4-run")]
 pub use run::run;
 pub use service::{AcceptServiceIdParam, QueryServiceId};
 pub use store_state::StoreState;
@@ -43,7 +44,7 @@ pub use store_state::StoreState;
 ))]
 pub(crate) mod request {
     use crate::rest_api::resources::error::ErrorResponse;
-    use actix_web::{web::Query, HttpRequest};
+    use actix_web_4::{web::Query, HttpRequest};
     use std::collections::HashMap;
     use url::Url;
 
@@ -75,11 +76,11 @@ pub(crate) mod request {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use actix_web::test;
+        use actix_web_4;
 
         #[test]
         fn test_get_base_url_returns_base_url() {
-            let req = test::TestRequest::with_uri(
+            let req = actix_web_4::test::TestRequest::with_uri(
                 "http://localhost/test/endpoint?service_id=foo&limit=10&offset=0&filter=yes",
             )
             .to_http_request();

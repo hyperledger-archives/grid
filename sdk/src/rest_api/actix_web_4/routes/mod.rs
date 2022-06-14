@@ -13,27 +13,27 @@
 // limitations under the License.
 
 #[cfg(feature = "rest-api-endpoint-agent")]
-mod agents;
+pub(in crate) mod agents;
 #[cfg(feature = "rest-api-endpoint-batches")]
-mod batches;
+pub(in crate) mod batches;
 #[cfg(feature = "rest-api-endpoint-location")]
-mod locations;
+pub(in crate) mod locations;
 #[cfg(feature = "rest-api-endpoint-organization")]
-mod organizations;
+pub(in crate) mod organizations;
 #[cfg(feature = "rest-api-endpoint-product")]
-mod products;
+pub(in crate) mod products;
 #[cfg(feature = "rest-api-endpoint-proxy")]
 mod proxy;
 #[cfg(feature = "rest-api-endpoint-purchase-order")]
-mod purchase_orders;
+pub(in crate) mod purchase_orders;
 #[cfg(feature = "rest-api-endpoint-record")]
-mod records;
+pub(in crate) mod records;
 #[cfg(feature = "rest-api-endpoint-role")]
-mod roles;
+pub(in crate) mod roles;
 #[cfg(feature = "rest-api-endpoint-schema")]
-mod schemas;
+pub(in crate) mod schemas;
 #[cfg(feature = "rest-api-endpoint-submit")]
-mod submit;
+pub(in crate) mod submit;
 
 #[cfg(feature = "rest-api-endpoint-agent")]
 pub use agents::*;

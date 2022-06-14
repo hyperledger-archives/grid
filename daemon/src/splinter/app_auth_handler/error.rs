@@ -15,8 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use cylinder::{KeyParseError, SigningError};
 use sabre_sdk::protocol::payload::{ActionBuildError, SabrePayloadBuildError};
-use sawtooth_sdk::signing::Error as SigningError;
 use scabbard::client::ScabbardClientError;
 use splinter::events;
 use std::error::Error;
@@ -136,6 +136,12 @@ impl From<BatchBuildError> for AppAuthHandlerError {
 
 impl From<TransactionBuildError> for AppAuthHandlerError {
     fn from(err: TransactionBuildError) -> Self {
+        AppAuthHandlerError::from_source(Box::new(err))
+    }
+}
+
+impl From<KeyParseError> for AppAuthHandlerError {
+    fn from(err: KeyParseError) -> Self {
         AppAuthHandlerError::from_source(Box::new(err))
     }
 }

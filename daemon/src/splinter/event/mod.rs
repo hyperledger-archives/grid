@@ -119,23 +119,25 @@ impl EventConnection for ScabbardEventConnection {
         } else {
             self.connection_url.clone()
         };
-        let mut state_delta_ws = WebSocketClient::new(&url, move |_, event: StateChangeEvent| {
-            match sender.try_send(ConnectionCommand::Message(event)) {
-                Ok(_) => (),
-                Err(TrySendError::Full(ConnectionCommand::Message(event))) => {
-                    error!(
-                        "dropping commit event {} from {} due to back pressure",
-                        event.id, source
-                    );
+        let ws_auth = self.authorization.clone();
+        let mut state_delta_ws =
+            WebSocketClient::new(&url, &ws_auth, move |_, event: StateChangeEvent| {
+                match sender.try_send(ConnectionCommand::Message(event)) {
+                    Ok(_) => (),
+                    Err(TrySendError::Full(ConnectionCommand::Message(event))) => {
+                        error!(
+                            "dropping commit event {} from {} due to back pressure",
+                            event.id, source
+                        );
+                    }
+                    Err(TrySendError::Full(ConnectionCommand::Shutdown)) => {
+                        // This shouldn't happen, since we never send this type
+                        unreachable!()
+                    }
+                    Err(TrySendError::Disconnected(_)) => return WsResponse::Close,
                 }
-                Err(TrySendError::Full(ConnectionCommand::Shutdown)) => {
-                    // This shouldn't happen, since we never send this type
-                    unreachable!()
-                }
-                Err(TrySendError::Disconnected(_)) => return WsResponse::Close,
-            }
-            WsResponse::Empty
-        });
+                WsResponse::Empty
+            });
 
         state_delta_ws.header("Authorization", self.authorization.to_string());
 

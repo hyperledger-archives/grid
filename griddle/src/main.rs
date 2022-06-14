@@ -34,7 +34,7 @@ use grid_sdk::{
     batch_processor::submitter::{
         BatchSubmitter, SawtoothBatchSubmitter, SawtoothConnection, SplinterBatchSubmitter,
     },
-    rest_api::actix_web_3::{self, Endpoint, KeyState, StoreState},
+    rest_api::actix_web_4::{self, Endpoint, KeyState, StoreState},
 };
 use log::Record;
 use users::get_current_username;
@@ -215,7 +215,7 @@ async fn run() -> Result<(), Error> {
 
     let _batch_submitter = batch_submitter(Endpoint::from(connect.as_ref()));
 
-    actix_web_3::run(
+    actix_web_4::run(
         &bind,
         store_state,
         key_state,

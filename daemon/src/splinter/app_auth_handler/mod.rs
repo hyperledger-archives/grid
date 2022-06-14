@@ -43,7 +43,7 @@ const RECONNECT_LIMIT: u64 = 10;
 const CONNECTION_TIMEOUT: u64 = 60;
 
 /// Supported splinter protocol version
-const SPLINTER_PROTOCOL_VERSION: &str = "1";
+const SPLINTER_PROTOCOL_VERSION: &str = "2";
 
 #[derive(Deserialize, Debug, Clone)]
 struct AdminEvent {
@@ -72,7 +72,7 @@ pub fn run(
 
     let ws_handler = Arc::new(Mutex::new(handler));
     let ws_auth = authorization.clone();
-    let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
+    let mut ws = WebSocketClient::new(&registration_route, &ws_auth.clone(), move |_ctx, event| {
         let handler = {
             match ws_handler.lock() {
                 Ok(handler) => handler.cloned_box(),
@@ -156,22 +156,14 @@ fn process_admin_event(
             };
 
             let scabbard_args: HashMap<_, _> = service.arguments.iter().cloned().collect();
-
-            let proposed_admin_pubkeys = scabbard_args
+            let proposed_admin_pubkey = scabbard_args
                 .get("admin_keys")
                 .ok_or_else(|| {
                     AppAuthHandlerError::with_message(
                         "Scabbard Service is not properly configured with \"admin_keys\" argument.",
                     )
-                })
-                .and_then(|keys_str| {
-                    serde_json::from_str::<Vec<String>>(keys_str).map_err(|err| {
-                        AppAuthHandlerError::with_message(&format!(
-                            "unable to parse application metadata: {}",
-                            err
-                        ))
-                    })
-                })?;
+                })?
+                .to_string();
 
             event_processors
                 .add_once(
@@ -185,7 +177,7 @@ fn process_admin_event(
 
             setup_grid(
                 scabbard_admin_key,
-                proposed_admin_pubkeys,
+                &proposed_admin_pubkey,
                 splinterd_url,
                 &service.service_id,
                 &msg_proposal.circuit_id,

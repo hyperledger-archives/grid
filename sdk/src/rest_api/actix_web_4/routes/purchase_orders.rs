@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2018-2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,12 @@
 
 //! Rest endpoint implementations for Grid Purchase Order, powered by Actix Web 3.
 
-use actix_web::{dev, get, http::StatusCode, web, FromRequest, HttpRequest, HttpResponse};
+use actix_web_4::{dev, http::StatusCode, web, Error, FromRequest, HttpRequest, HttpResponse};
 use futures::future;
+use futures_util::future::{FutureExt, LocalBoxFuture};
 
 use crate::rest_api::{
-    actix_web_3::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
+    actix_web_4::{request, AcceptServiceIdParam, QueryPaging, QueryServiceId, StoreState},
     resources::purchase_order::v1,
 };
 
@@ -50,7 +51,6 @@ pub struct QueryRevisionNumber {
 /// `query_service_id` - Optional service ID provided in the query string
 /// `query_paging` - Optional paging options, including `offset` and `limit`
 /// `version` - Determines the type of response, corresponding to the versions of the rest API
-#[get("/purchase_order")]
 pub async fn list_purchase_orders(
     req: HttpRequest,
     store_state: web::Data<StoreState>,
@@ -97,7 +97,6 @@ pub async fn list_purchase_orders(
 /// `revision_number` - Optional revision number, specifies the revision to return
 /// `query_service_id` - Optional service ID provided in the query string
 /// `version` - Determines the type of response, corresponding to the versions of the rest API
-#[get("/purchase_order/{uid}")]
 pub async fn get_purchase_order(
     store_state: web::Data<StoreState>,
     uid: web::Path<String>,
@@ -140,7 +139,6 @@ pub async fn get_purchase_order(
 /// `query_service_id` - Optional service ID provided in the query string
 /// `query_paging` - Optional paging options, including `offset` and `limit`
 /// `version` - Determines the type of response, corresponding to the versions of the rest API
-#[get("/purchase_order/{uid}/version")]
 pub async fn list_purchase_order_versions(
     req: HttpRequest,
     store_state: web::Data<StoreState>,
@@ -185,7 +183,6 @@ pub async fn list_purchase_order_versions(
 /// `path` - Used to retrieve the purchase order UID and version ID from the request's path
 /// `query_service_id` - Optional service ID provided in the query string
 /// `version` - Determines the type of response, corresponding to the versions of the rest API
-#[get("/purchase_order/{uid}/version/{version_id}")]
 pub async fn get_purchase_order_version(
     store_state: web::Data<StoreState>,
     path: web::Path<(String, String)>,
@@ -224,7 +221,6 @@ pub async fn get_purchase_order_version(
 /// `query_service_id` - Optional service ID provided in the query string
 /// `query_paging` - Optional paging options, including `offset` and `limit`
 /// `version` - Determines the type of response, corresponding to the versions of the rest API
-#[get("/purchase_order/{uid}/version/{version_id}/revision")]
 pub async fn list_purchase_order_version_revisions(
     req: HttpRequest,
     store_state: web::Data<StoreState>,
@@ -270,7 +266,6 @@ pub async fn list_purchase_order_version_revisions(
 ///  request's path
 /// `query_service_id` - Optional service ID provided in the query string
 /// `version` - Determines the type of response, corresponding to the versions of the rest API
-#[get("/purchase_order/{uid}/version/{version_id}/revision/latest")]
 pub async fn get_latest_revision_id(
     store_state: web::Data<StoreState>,
     path: web::Path<(String, String)>,
@@ -308,7 +303,6 @@ pub async fn get_latest_revision_id(
 ///  request's path
 /// `query_service_id` - Optional service ID provided in the query string
 /// `version` - Determines the type of response, corresponding to the versions of the rest API
-#[get("/purchase_order/{uid}/version/{version_id}/revision/{revision_number}")]
 pub async fn get_purchase_order_version_revision(
     store_state: web::Data<StoreState>,
     path: web::Path<(String, String, i64)>,
@@ -343,9 +337,8 @@ pub enum ProtocolVersion {
 }
 
 impl FromRequest for ProtocolVersion {
-    type Error = HttpResponse;
-    type Future = future::Ready<Result<Self, Self::Error>>;
-    type Config = ();
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         let protocol_version = match req
@@ -371,8 +364,8 @@ impl FromRequest for ProtocolVersion {
         };
 
         match protocol_version.as_str() {
-            "1" => future::ok(ProtocolVersion::V1),
-            _ => future::ok(ProtocolVersion::V1),
+            "1" => future::ok(ProtocolVersion::V1).boxed_local(),
+            _ => future::ok(ProtocolVersion::V1).boxed_local(),
         }
     }
 }

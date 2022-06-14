@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Cargill Incorporated
+// Copyright 2018-2022 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{dev, http::StatusCode, post, web, FromRequest, HttpRequest, HttpResponse};
+use actix_web_4::{
+    dev, error, http::StatusCode, web, Error, FromRequest, HttpRequest, HttpResponse,
+};
 use futures_util::future::{FutureExt, LocalBoxFuture};
 
-use crate::rest_api::actix_web_3::{KeyState, StoreState};
-use crate::rest_api::resources::{
-    error::ErrorResponse,
-    submit::v1::{submit_batches, SubmitBatchRequest},
-};
+use crate::error::InternalError;
+use crate::rest_api::actix_web_4::{KeyState, StoreState};
+use crate::rest_api::resources::submit::v1::{submit_batches, SubmitBatchRequest};
 
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
-#[post("/submit")]
-async fn submit(
+pub async fn submit(
     store_state: web::Data<StoreState>,
     key_state: web::Data<KeyState>,
     version: ProtocolVersion,
@@ -44,14 +43,13 @@ async fn submit(
     }
 }
 
-enum ProtocolVersion {
+pub enum ProtocolVersion {
     V1(SubmitBatchRequest),
 }
 
 impl FromRequest for ProtocolVersion {
-    type Error = HttpResponse;
-    type Future = LocalBoxFuture<'static, Result<Self, HttpResponse>>;
-    type Config = ();
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         let protocol_version = match req
@@ -77,22 +75,22 @@ impl FromRequest for ProtocolVersion {
         };
 
         match protocol_version.as_str() {
-            "1" => dev::JsonBody::new(req, payload, None)
+            "1" => dev::JsonBody::new(req, payload, None, false)
                 .map(|result| match result {
                     Ok(data) => Ok(ProtocolVersion::V1(data)),
-                    Err(err) => Err(HttpResponse::build(
-                        StatusCode::from_u16(400).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-                    )
-                    .json(ErrorResponse::new(400, &format!("{}", err)))),
+                    Err(err) => Err(Error::from(error::InternalError::new(
+                        InternalError::from_source(Box::new(err)),
+                        StatusCode::BAD_REQUEST,
+                    ))),
                 })
                 .boxed_local(),
-            _ => dev::JsonBody::new(req, payload, None)
+            _ => dev::JsonBody::new(req, payload, None, false)
                 .map(|res| match res {
                     Ok(data) => Ok(ProtocolVersion::V1(data)),
-                    Err(err) => Err(HttpResponse::build(
-                        StatusCode::from_u16(400).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-                    )
-                    .json(ErrorResponse::new(400, &format!("{}", err)))),
+                    Err(err) => Err(Error::from(error::InternalError::new(
+                        InternalError::from_source(Box::new(err)),
+                        StatusCode::BAD_REQUEST,
+                    ))),
                 })
                 .boxed_local(),
         }

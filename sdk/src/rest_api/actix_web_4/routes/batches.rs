@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{dev, get, http::StatusCode, post, web, FromRequest, HttpRequest, HttpResponse};
+use actix_web_4::{dev, http::StatusCode, web, Error, FromRequest, HttpRequest, HttpResponse};
 use futures::future;
-use futures_util::StreamExt;
+use futures_util::{
+    future::{FutureExt, LocalBoxFuture},
+    StreamExt,
+};
 
 use crate::rest_api::{
-    actix_web_3::{AcceptServiceIdParam, BackendState, QueryServiceId},
+    actix_web_4::{AcceptServiceIdParam, BackendState, QueryServiceId},
     resources::{batches::v1, error::ErrorResponse},
 };
 
 use super::DEFAULT_GRID_PROTOCOL_VERSION;
 
-#[post("/batches")]
 pub async fn submit_batches(
     req: HttpRequest,
     mut body: web::Payload,
@@ -76,7 +78,6 @@ pub struct QueryParams {
     pub service_id: Option<String>,
 }
 
-#[get("/batch_statuses")]
 pub async fn get_batch_statuses(
     req: HttpRequest,
     state: web::Data<BackendState>,
@@ -119,9 +120,8 @@ pub enum ProtocolVersion {
 }
 
 impl FromRequest for ProtocolVersion {
-    type Error = HttpResponse;
-    type Future = future::Ready<Result<Self, Self::Error>>;
-    type Config = ();
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         let protocol_version = match req
@@ -147,8 +147,8 @@ impl FromRequest for ProtocolVersion {
         };
 
         match protocol_version.as_str() {
-            "1" => future::ok(ProtocolVersion::V1),
-            _ => future::ok(ProtocolVersion::V1),
+            "1" => future::ok(ProtocolVersion::V1).boxed_local(),
+            _ => future::ok(ProtocolVersion::V1).boxed_local(),
         }
     }
 }

@@ -29,9 +29,9 @@ name = "gridd"
 path = "src/main.rs"
 
 [dependencies]
-actix = "0.9"
-actix-rt = "1.0"
-actix-web = { version = "3", default-features = false }
+actix-rt = { version = "2", default-features = false }
+actix-web = { version = "4", optional = true, default-features = false }
+actix-http = { version = "3", optional = true, default-features = false }
 base64 = "0.13"
 byteorder = "1"
 cfg-if = "1"
@@ -46,20 +46,20 @@ futures = "0.3"
 grid-sdk = { path = "../sdk"}
 log = "0.4"
 protobuf = "2.19"
-reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"] }
-sabre-sdk = { version = "0.5", optional = true }
 sawtooth-sdk = { version = "0.4", features = ["transact-compat"], optional = true }
-scabbard = { version = "0.4.3", optional = true, features = ["client", "events"] }
+reqwest = { version = "0.11", optional = true, features = ["json", "blocking"] }
+sabre-sdk = { version = "0.8", optional = true }
+scabbard = { version = "0.6", optional = true, features = ["client", "events", "reqwest"] }
 serde = { version = "1.0", optional = true, features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
-transact = { version = "0.2", optional = true }
+transact = { version = "0.4", optional = true }
 url = "2.1"
 uuid = { version = "0.8", features = ["v4"] }
 
 [dependencies.splinter]
-version = "0.4.3"
+version = "0.6"
 optional = true
-features = [ "events" ]
+features = [ "events", "admin-service" ]
 
 [features]
 default = [
@@ -105,7 +105,7 @@ pike = [
 ]
 product = ["grid-sdk/product", "grid-sdk/rest-api-endpoint-product", "pike", "schema"]
 purchase-order = ["grid-sdk/rest-api-endpoint-purchase-order", "grid-sdk/purchase-order", "pike"]
-rest-api = ["database", "grid-sdk/rest-api-endpoint-batches", "grid-sdk/rest-api-actix-web-3"]
+rest-api = ["actix-web", "actix-http", "database", "grid-sdk/rest-api-endpoint-batches", "grid-sdk/rest-api-actix-web-4"]
 sawtooth-support = [
     "database",
     "event",
