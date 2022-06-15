@@ -22,6 +22,8 @@ pub mod internals;
 #[allow(dead_code)]
 #[cfg(feature = "rest-api")]
 mod rest_api;
+#[cfg(feature = "key-load")]
+mod signing;
 
 use std::env;
 #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]

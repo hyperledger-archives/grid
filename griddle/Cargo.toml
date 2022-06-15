@@ -26,6 +26,7 @@ description = "Grid integration component"
 actix-web = { version = "4", default-features = false }
 clap = "2.33.3"
 cylinder = { version = "0.2.2", features = ["key-load", "jwt"], optional = true}
+dirs = { version = "4", optional = true }
 diesel = { version = "1.0", features = ["r2d2"], optional = true }
 flexi_logger = "0.22"
 futures-0-3 = { package = "futures", version = "0.3", optional = true }
@@ -56,6 +57,7 @@ experimental = [
     # The following features are experimental:
     "database-postgres",
     "database-sqlite",
+    "key-load",
     "griddle-builder",
     "proxy",
     "rest-api",
@@ -67,6 +69,10 @@ database-sqlite = ["diesel", "grid-sdk/sqlite"]
 griddle-builder = [
   "rest-api",
   "grid-sdk/lifecycle"
+]
+key-load = [
+  "cylinder",
+  "dirs"
 ]
 proxy = [
   "grid-sdk/proxy-run",
