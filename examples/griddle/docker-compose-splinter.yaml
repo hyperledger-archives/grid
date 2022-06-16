@@ -1,4 +1,4 @@
-# Copyright 2021 Cargill Incorporated
+# Copyright 2018-2022 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ volumes:
   registry:
   gridd-alpha:
   gridd-beta:
-  gridd-gamma:
   templates-shared:
   cache-shared:
 
@@ -140,36 +139,42 @@ services:
       "
 
   generate-registry:
-    image: splintercommunity/splinter-cli:0.4
+    image: splintercommunity/splinter-cli:0.6
     volumes:
       - registry:/registry
+      - gridd-alpha:/gridd_alpha/keys
+      - gridd-beta:/gridd_beta/keys
+    depends_on:
+      - gridd-alpha
+      - gridd-beta
     command: |
       bash -c "
         if [ ! -f /registry/registry.yaml ]
         then
           # generate keys
-          splinter admin keygen alpha -d /registry
-          splinter admin keygen beta -d /registry
-          splinter admin keygen gamma -d /registry
+          splinter keygen alpha --key-dir /registry
+          splinter keygen beta --key-dir /registry
           # check if splinterd-alpha is available
-          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 200 ]] ; do
-             >&2 echo \"splinterd alpha is unavailable - sleeping\"
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 401 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
              sleep 1
           done
           # check if splinterd-beta is available
-          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 200 ]] ; do
-             >&2 echo \"splinterd beta is unavailable - sleeping\"
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 401 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
              sleep 1
           done
           # build the registry
           splinter registry build \
             http://splinterd-alpha:8085 \
             --file /registry/registry.yaml \
+            --key /gridd_alpha/keys/gridd.priv \
             --key-file /registry/alpha.pub \
             --metadata organization='Alpha'
           splinter registry build \
             http://splinterd-beta:8085 \
             --file /registry/registry.yaml \
+            --key /gridd_beta/keys/gridd.priv \
             --key-file /registry/beta.pub \
             --metadata organization='Beta'
         fi
@@ -229,24 +234,29 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
         grid -vv keygen --skip --system && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-alpha/grid &&
-        gridd -vv -b 0.0.0.0:8080 -k root -C splinter:http://splinterd-alpha:8085 \
+        gridd -vvv -b 0.0.0.0:8080 -k root -C splinter:http://splinterd-alpha:8085 \
             --database-url postgres://grid:grid_example@db-alpha/grid
       "
 
   scabbard-cli-alpha:
-    image: splintercommunity/scabbard-cli:0.4
+    image: splintercommunity/scabbard-cli:0.6
     container_name: scabbard-cli-alpha
     hostname: scabbard-cli-alpha
     volumes:
       - gridd-alpha:/root/.splinter/keys
+      - contracts-shared:/usr/share/scar
+      - registry:/registry
+    environment:
+      CYLINDER_PATH: /registry
+      CYLINDER_KEY_NAME: "alpha"
+      SPLINTER_REST_API_URL: http://splinterd-alpha:8085
     command: tail -f /dev/null
 
   splinterd-alpha:
-    image: splintercommunity/splinterd:0.4
+    image: splintercommunity/splinterd:0.6
     container_name: splinterd-alpha
     hostname: splinterd-alpha
     expose:
@@ -259,30 +269,39 @@ services:
       - contracts-shared:/usr/share/scar
       - registry:/registry
       - templates-shared:/usr/share/splinter/circuit-templates
+      - gridd-alpha:/etc/grid/keys
+    depends_on:
+      - gridd-alpha
+    environment:
+      CYLINDER_PATH: /registry
+      CYLINDER_KEY_NAME: "alpha"
+      SPLINTER_REST_API_URL: http://splinterd-alpha:8085
     entrypoint: |
       bash -c "
+        while [ ! -f /etc/grid/keys/gridd.pub ] ; do
+          >&2 echo \"Grid key file is unavailable - sleeping\"
+          sleep 1
+        done && \
+        if [ ! -s /etc/splinter/allow_keys ]
+        then
+          echo $$(cat /registry/alpha.pub) >> /etc/splinter/allow_keys
+          echo $$(cat /etc/grid/keys/gridd.pub) >> /etc/splinter/allow_keys
+        fi && \
         until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
         done
-        if [ ! -f /etc/splinter/certs/private/server.key ]
-        then
-          splinter-cli cert generate --force
-        fi && \
+        splinter cert generate --skip && \
+        splinter keygen --system --skip && \
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
+        splinter upgrade -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
         --registries http://registry-server:80/registry.yaml \
-        --rest-api-endpoint 0.0.0.0:8085 \
+        --rest-api-endpoint http://0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-alpha:8044 \
         --node-id alpha-node-000 \
-        --service-endpoint tcp://0.0.0.0:8043 \
-        --storage yaml \
-        --tls-client-cert /etc/splinter/certs/client.crt \
-        --tls-client-key /etc/splinter/certs/private/client.key \
-        --tls-server-cert /etc/splinter/certs/server.crt \
-        --tls-server-key /etc/splinter/certs/private/server.key \
-        --enable-biome \
+        --enable-biome-credentials \
         --database postgres://admin:admin@splinter-db-alpha:5432/splinter \
         --tls-insecure
       "
@@ -308,21 +327,20 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=--features experimental
     expose:
       - 8000
+    ports:
+      - "8000:8000"
+    hostname: griddle-alpha-0
     environment:
       GRIDDLE_KEY_DIR: griddle-alpha-0
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-alpha/grid
+      GRIDDLE_FORWARD_URL: http://gridd-alpha:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database alpha is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-alpha-0
-        griddle -v --connect splinter:http://splinterd-alpha:8085
+        grid -vv keygen --skip griddle-alpha-0
+        griddle -vv --connect splinter:http://splinterd-alpha:8085
       "
 
   griddle-alpha-1:
@@ -333,20 +351,19 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=--features experimental
+    ports:
+      - "8001:8000"
     expose:
       - 8000
+    hostname: griddle-alpha-0
     environment:
       GRIDDLE_KEY_DIR: griddle-alpha-1
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-alpha/grid
+      GRIDDLE_FORWARD_URL: http://gridd-alpha:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database alpha is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-alpha-1
+        grid -vv keygen --skip griddle-alpha-1
         griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
@@ -358,20 +375,19 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=--features experimental
+    ports:
+      - "8002:8000"
     expose:
       - 8000
+    hostname: griddle-alpha-2
     environment:
       GRIDDLE_KEY_DIR: griddle-alpha-2
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-alpha/grid
+      GRIDDLE_FORWARD_URL: http://gridd-alpha:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database alpha is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-alpha-2
+        grid -vv keygen --skip griddle-alpha-2
         griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
@@ -383,20 +399,19 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=--features experimental
+    ports:
+      - "8003:8000"
     expose:
       - 8000
+    hostname: griddle-alpha-3
     environment:
       GRIDDLE_KEY_DIR: griddle-alpha-3
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-alpha/grid
+      GRIDDLE_FORWARD_URL: http://gridd-alpha:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database alpha is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-alpha-3
+        grid -vv keygen --skip griddle-alpha-3
         griddle -v --connect splinter:http://splinterd-alpha:8085
       "
 
@@ -443,24 +458,29 @@ services:
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
         done
-        grid -vv admin keygen --skip && \
-        grid -vv keygen --skip --system && \
+        grid -vv keygen --system --skip && \
         grid -vv database migrate \
             -C postgres://grid:grid_example@db-beta/grid &&
-        gridd -vv -k root -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
+        gridd -vvv -k root -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
             --database-url postgres://grid:grid_example@db-beta/grid
       "
 
   scabbard-cli-beta:
-    image: splintercommunity/scabbard-cli:0.4
+    image: splintercommunity/scabbard-cli:0.6
     container_name: scabbard-cli-beta
     hostname: scabbard-cli-beta
     volumes:
       - gridd-beta:/root/.splinter/keys
+      - contracts-shared:/usr/share/scar
+      - registry:/registry
+    environment:
+      CYLINDER_PATH: /registry
+      CYLINDER_KEY_NAME: "beta"
+      SPLINTER_REST_API_URL: http://splinterd-beta:8085
     command: tail -f /dev/null
 
   splinterd-beta:
-    image: splintercommunity/splinterd:0.4
+    image: splintercommunity/splinterd:0.6
     container_name: splinterd-beta
     hostname: splinterd-beta
     expose:
@@ -472,30 +492,39 @@ services:
       - contracts-shared:/usr/share/scar
       - registry:/registry
       - templates-shared:/usr/share/splinter/circuit-templates
+      - gridd-beta:/etc/grid/keys
+    depends_on:
+      - gridd-beta
+    environment:
+      CYLINDER_PATH: /registry
+      CYLINDER_KEY_NAME: "beta"
+      SPLINTER_REST_API_URL: http://splinterd-beta:8085
     entrypoint: |
       bash -c "
+        while [ ! -f /etc/grid/keys/gridd.pub ] ; do
+          >&2 echo \"Grid key file is unavailable - sleeping\"
+          sleep 1
+        done && \
+        if [ ! -s /etc/splinter/allow_keys ]
+        then
+          echo $$(cat /registry/beta.pub) >> /etc/splinter/allow_keys
+          echo $$(cat /etc/grid/keys/gridd.pub) >> /etc/splinter/allow_keys
+        fi && \
         until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
         done
-        if [ ! -f /etc/splinter/certs/private/server.key ]
-        then
-          splinter-cli cert generate --force
-        fi && \
+        splinter cert generate --skip && \
+        splinter keygen --system --skip && \
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
+        splinter upgrade -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
         --registries http://registry-server:80/registry.yaml \
-        --rest-api-endpoint 0.0.0.0:8085 \
+        --rest-api-endpoint http://0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-beta:8044 \
         --node-id beta-node-000 \
-        --service-endpoint tcp://0.0.0.0:8043 \
-        --storage yaml \
-        --tls-client-cert /etc/splinter/certs/client.crt \
-        --tls-client-key /etc/splinter/certs/private/client.key \
-        --tls-server-cert /etc/splinter/certs/server.crt \
-        --tls-server-key /etc/splinter/certs/private/server.key \
-        --enable-biome \
+        --enable-biome-credentials \
         --database postgres://admin:admin@splinter-db-beta:5432/splinter \
         --tls-insecure
       "
@@ -521,20 +550,18 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+    ports:
+      - "8004:8000"
     expose:
       - 8000
+    hostname: griddle-beta-0
     environment:
       GRIDDLE_KEY_DIR: griddle-beta-0
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-beta/grid
+      GRIDDLE_FORWARD_URL: http://gridd-beta:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database beta is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-beta-0
+        grid -vv keygen --skip griddle-beta-0
         griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
@@ -546,20 +573,19 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=--features experimental
+    ports:
+      - "8005:8000"
     expose:
       - 8000
+    hostname: griddle-beta-1
     environment:
       GRIDDLE_KEY_DIR: griddle-beta-1
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-beta/grid
+      GRIDDLE_FORWARD_URL: http://gridd-beta:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database beta is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-beta-1
+        grid -vv keygen --skip griddle-beta-1
         griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
@@ -571,20 +597,19 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=--features experimental
+    ports:
+      - "8006:8000"
     expose:
       - 8000
+    hostname: griddle-beta-2
     environment:
       GRIDDLE_KEY_DIR: griddle-beta-2
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-beta/grid
+      GRIDDLE_FORWARD_URL: http://gridd-beta:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database beta is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-beta-2
+        grid -vv keygen --skip griddle-beta-2
         griddle -v --connect splinter:http://splinterd-beta:8085
       "
 
@@ -596,19 +621,18 @@ services:
       dockerfile: griddle/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=--features experimental
+    ports:
+      - "8007:8000"
     expose:
       - 8000
+    hostname: griddle-beta-3
     environment:
       GRIDDLE_KEY_DIR: griddle-beta-3
       GRIDDLE_BIND: 0.0.0.0:8000
-      GRIDDLE_DATABASE_URL: postgres://grid:grid_example@db-alpha/grid
+      GRIDDLE_FORWARD_URL: http://gridd-beta:8080
     entrypoint: |
       bash -c "
-        # we need to wait for the db to have started.
-        until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
-            >&2 echo \"Database beta is unavailable - sleeping\"
-            sleep 1
-        done
-        grid -vv keygen --skip --system griddle-beta-3
+        grid -vv keygen --skip griddle-beta-3
         griddle -v --connect splinter:http://splinterd-beta:8085
       "
