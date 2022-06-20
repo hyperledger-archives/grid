@@ -45,12 +45,14 @@ experimental = [
     "stable",
     # The following features are experimental:
     "config",
+    "config-builder",
     "database-postgres",
     "database-sqlite",
     "proxy",
 ]
 
 config = []
+config-builder = ["config"]
 database-postgres = ["diesel", "grid-sdk/postgres"]
 database-sqlite = ["diesel", "grid-sdk/sqlite"]
 proxy = [

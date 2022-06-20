@@ -18,10 +18,12 @@
 //! defaults. This module allows for configuration values from each of these sources to be combined
 //! into a final `GriddleConfig` object.
 
+#[cfg(feature = "config-builder")]
+mod builder;
 pub mod error;
 mod partial;
 
-pub use partial::GriddleConfigSource;
+pub use partial::{GriddleConfigSource, PartialGriddleConfig};
 
 #[derive(Clone, Debug, PartialEq)]
 /// Placeholder for indicating the scope of the requests, will be used to determine if requests
