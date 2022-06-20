@@ -122,6 +122,7 @@ experimental = [
     "batch-submission",
     "batch-tracking",
     "batch-store",
+    "lifecycle",
     "proxy",
     "proxy-run",
     "proxy-client",
@@ -145,6 +146,7 @@ backend-splinter = ["backend", "reqwest"]
 client = ["log"]
 client-reqwest = ["client", "reqwest"]
 data-validation = [ "libc", "quick-xml", "reqwest"]
+lifecycle = []
 location = ["pike", "schema"]
 pike = ["cfg-if", "workflow"]
 product-gdsn = [ "libc", "quick-xml", "reqwest" ]
