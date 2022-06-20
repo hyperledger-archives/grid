@@ -18,6 +18,8 @@
 //! defaults. This module allows for configuration values from each of these sources to be combined
 //! into a final `GriddleConfig` object.
 
+mod partial;
+
 #[derive(Clone, Debug, PartialEq)]
 /// Placeholder for indicating the scope of the requests, will be used to determine if requests
 /// to Griddle should include a scope ID and what format ID to expect
