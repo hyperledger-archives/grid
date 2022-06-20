@@ -46,6 +46,7 @@ experimental = [
     # The following features are experimental:
     "config",
     "config-builder",
+    "config-default",
     "database-postgres",
     "database-sqlite",
     "proxy",
@@ -53,6 +54,7 @@ experimental = [
 
 config = []
 config-builder = ["config"]
+config-default = ["config-builder"]
 database-postgres = ["diesel", "grid-sdk/postgres"]
 database-sqlite = ["diesel", "grid-sdk/sqlite"]
 proxy = [

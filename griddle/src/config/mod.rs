@@ -20,9 +20,13 @@
 
 #[cfg(feature = "config-builder")]
 mod builder;
+#[cfg(feature = "config-default")]
+mod default;
 pub mod error;
 mod partial;
 
+#[cfg(feature = "config-builder")]
+pub use builder::PartialGriddleConfigBuilder;
 pub use partial::{GriddleConfigSource, PartialGriddleConfig};
 
 #[derive(Clone, Debug, PartialEq)]
