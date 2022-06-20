@@ -77,21 +77,24 @@ impl From<&Method> for ProxyMethod {
 impl From<ProxyResponse> for HttpResponse {
     fn from(p_resp: ProxyResponse) -> Self {
         let status = StatusCode::from_u16(p_resp.status_code()).unwrap_or(StatusCode::BAD_GATEWAY);
-        match serde_json::from_slice(p_resp.body().content()) {
-            Ok(json) => {
-                let value: Value = json;
-                HttpResponse::build(status).json(value)
+        if !p_resp.body().content().is_empty() {
+            match serde_json::from_slice(p_resp.body().content()) {
+                Ok(json) => {
+                    let data: Value = json;
+                    HttpResponse::build(status).json(data)
+                }
+                Err(err) => HttpResponse::build(StatusCode::BAD_GATEWAY).json({
+                    ErrorResponse::new(
+                        502,
+                        &format!(
+                            "Received {status} from proxy, \
+                            but failed to retrieve response content: {err}"
+                        ),
+                    )
+                }),
             }
-            Err(err) => {
-                let error_response = ErrorResponse::new(
-                    502,
-                    &format!(
-                        "Received {status} from proxy, \
-                    but failed to retrieve response content: {err}"
-                    ),
-                );
-                HttpResponse::build(StatusCode::BAD_GATEWAY).json(error_response)
-            }
+        } else {
+            HttpResponse::build(status).finish()
         }
     }
 }
