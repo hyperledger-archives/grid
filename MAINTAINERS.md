@@ -3,6 +3,7 @@
 ### Active Maintainers
 | Name | GitHub | RocketChat |
 | --- | --- | --- |
+| Amelia Bradley | ameliabradley | - |
 | Andi Gunderson | agunde406 | agunde |
 | Chris Eckhardt | cleckhardt | - |
 | Dan Middleton | dcmiddle | Dan |
@@ -10,7 +11,6 @@
 | Dave Cecchi | davececchi | cecchi |
 | Davey Newhall | dnewh | newhall |
 | James Mitchell | jsmitchell | jsmitchell |
-| Lee Bradley | leebradley | lbradley |
 | Peter Schwarz | peterschwarz | pschwarz |
 | Richard Berg | rberg2 | rberg2 |
 | Ryan Banks | RyanLassigBanks | RyanBanks |
