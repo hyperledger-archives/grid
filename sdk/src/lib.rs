@@ -67,6 +67,8 @@ pub mod rest_api;
 pub mod schema;
 pub mod scope_id;
 pub mod store;
+#[cfg(feature = "lifecycle")]
+pub mod threading;
 #[cfg(feature = "track-and-trace")]
 pub mod track_and_trace;
 #[cfg(feature = "workflow")]
