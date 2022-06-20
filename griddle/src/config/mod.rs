@@ -18,6 +18,7 @@
 //! defaults. This module allows for configuration values from each of these sources to be combined
 //! into a final `GriddleConfig` object.
 
+pub mod error;
 mod partial;
 
 pub use partial::GriddleConfigSource;
