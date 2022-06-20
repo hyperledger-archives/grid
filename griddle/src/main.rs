@@ -15,6 +15,9 @@
 #[macro_use]
 extern crate log;
 
+#[allow(dead_code)]
+#[cfg(feature = "config")]
+mod config;
 mod error;
 
 use std::env;
