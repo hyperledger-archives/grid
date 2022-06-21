@@ -22,6 +22,8 @@
 mod builder;
 #[cfg(feature = "config-default")]
 mod default;
+#[cfg(feature = "config-env")]
+mod env;
 pub mod error;
 mod partial;
 
