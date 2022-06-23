@@ -20,6 +20,8 @@
 
 #[cfg(feature = "config-builder")]
 mod builder;
+#[cfg(feature = "config-clap")]
+mod clap;
 #[cfg(feature = "config-default")]
 mod default;
 #[cfg(feature = "config-env")]

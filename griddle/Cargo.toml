@@ -46,6 +46,7 @@ experimental = [
     # The following features are experimental:
     "config",
     "config-builder",
+    "config-clap",
     "config-default",
     "config-env",
     "database-postgres",
@@ -55,6 +56,7 @@ experimental = [
 
 config = []
 config-builder = ["config"]
+config-clap = ["config-builder"]
 config-default = ["config-builder"]
 config-env = ["config-builder"]
 database-postgres = ["diesel", "grid-sdk/postgres"]
