@@ -90,7 +90,7 @@ impl<S: EnvStore> PartialGriddleConfigBuilder for EnvPartialGriddleConfigBuilder
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::collections::HashMap;
 

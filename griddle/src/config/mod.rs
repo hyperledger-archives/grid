@@ -29,8 +29,14 @@ mod env;
 pub mod error;
 mod partial;
 
+#[cfg(feature = "config-clap")]
+pub use self::clap::ClapPartialGriddleConfigBuilder;
 #[cfg(feature = "config-builder")]
 pub use builder::PartialGriddleConfigBuilder;
+#[cfg(feature = "config-default")]
+pub use default::DefaultPartialGriddleConfigBuilder;
+#[cfg(feature = "config-env")]
+pub use env::EnvPartialGriddleConfigBuilder;
 pub use partial::{GriddleConfigSource, PartialGriddleConfig};
 
 #[derive(Clone, Debug, PartialEq)]
