@@ -101,7 +101,6 @@ impl fmt::Display for ServiceId {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use std::convert::{TryFrom, TryInto};
 
     use crate::error::InvalidArgumentError;

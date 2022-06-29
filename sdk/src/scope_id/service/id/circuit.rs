@@ -114,7 +114,6 @@ impl fmt::Display for CircuitId {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use std::convert::{TryFrom, TryInto};
 
     use crate::error::InvalidArgumentError;
