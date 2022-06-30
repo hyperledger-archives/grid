@@ -17,3 +17,11 @@
 //! These values may be sourced from command line arguments, environment variables or pre-defined
 //! defaults. This module allows for configuration values from each of these sources to be combined
 //! into a final `GriddleConfig` object.
+
+#[derive(Clone, Debug, PartialEq)]
+/// Placeholder for indicating the scope of the requests, will be used to determine if requests
+/// to Griddle should include a scope ID and what format ID to expect
+pub enum Scope {
+    Global,
+    Service,
+}
