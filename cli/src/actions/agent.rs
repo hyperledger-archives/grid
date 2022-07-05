@@ -184,7 +184,8 @@ fn print_csv(column_names: Vec<&str>, row_values: Vec<Vec<String>>) {
     // print header row
     let mut header_row = "".to_owned();
     for column in &column_names {
-        header_row += &format!("\"{}\",", column);
+        let csv_cell = format!("\"{}\",", column);
+        header_row.push_str(&csv_cell);
     }
     header_row.pop();
     println!("{}", header_row);
@@ -193,7 +194,8 @@ fn print_csv(column_names: Vec<&str>, row_values: Vec<Vec<String>>) {
     for row in row_values {
         let mut print_row = "".to_owned();
         for cell in row.iter().take(column_names.len()) {
-            print_row += &format!("\"{}\",", cell);
+            let csv_cell = format!("\"{}\",", cell);
+            print_row.push_str(&csv_cell);
         }
         print_row.pop();
         println!("{}", print_row);
@@ -212,7 +214,8 @@ fn print_human_readable(column_names: Vec<&str>, row_values: Vec<Vec<String>>) {
     // print header row
     let mut header_row = "".to_owned();
     for i in 0..column_names.len() {
-        header_row += &format!("{:width$} ", column_names[i], width = widths[i]);
+        header_row.push_str(column_names[i]);
+        header_row.push_str(&" ".repeat(widths[i]));
     }
     println!("{}", header_row);
 
@@ -220,7 +223,8 @@ fn print_human_readable(column_names: Vec<&str>, row_values: Vec<Vec<String>>) {
     for row in row_values {
         let mut print_row = "".to_owned();
         for i in 0..column_names.len() {
-            print_row += &format!("{:width$} ", row[i], width = widths[i]);
+            print_row.push_str(&row[i]);
+            print_row.push_str(&" ".repeat(widths[i]));
         }
         println!("{}", print_row);
     }
