@@ -332,11 +332,13 @@ pub fn post_batches(
 
     let mut wait_time = wait;
 
-    let mut url = format!("{}/batches", url);
-
-    if let Some(service_id) = service_id {
-        url.push_str(&format!("?service_id={}", service_id));
-    }
+    let url = {
+        if let Some(service_id) = service_id {
+            format!("{url}/batches?service_id={service_id}")
+        } else {
+            format!("{url}/batches")
+        }
+    };
 
     let client = BlockingClient::new();
 

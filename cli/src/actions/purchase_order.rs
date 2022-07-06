@@ -766,7 +766,8 @@ fn print_table<T: TableDisplay>(
     // print header row
     let mut header_row = "".to_owned();
     for i in 0..T::header().len() {
-        header_row += &format!("{:width$} ", T::header()[i], width = T::widths()[i]);
+        header_row.push_str(T::header()[i]);
+        header_row.push_str(&" ".repeat(T::widths()[i]));
     }
     println!("{}", header_row);
 
@@ -776,7 +777,8 @@ fn print_table<T: TableDisplay>(
             Ok(res) => {
                 let mut print_row = "".to_owned();
                 for i in 0..T::header().len() {
-                    print_row += &format!("{:width$} ", res.details()[i], width = T::widths()[i]);
+                    print_row.push_str(&res.details()[i]);
+                    print_row.push_str(&" ".repeat(T::widths()[i]));
                 }
                 println!("{}", print_row);
             }
