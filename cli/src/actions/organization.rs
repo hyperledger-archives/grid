@@ -141,7 +141,8 @@ fn print_csv(column_names: Vec<String>, row_values: Vec<Vec<String>>) {
     // print header row
     let mut header_row = "".to_owned();
     for column in &column_names {
-        header_row += &format!("\"{}\",", column);
+        let cell = format!("\"{}\",", column);
+        header_row.push_str(&cell);
     }
     header_row.pop();
     println!("{}", header_row);
@@ -150,7 +151,8 @@ fn print_csv(column_names: Vec<String>, row_values: Vec<Vec<String>>) {
     for row in row_values {
         let mut print_row = "".to_owned();
         for cell in row.iter().take(column_names.len()) {
-            print_row += &format!("\"{}\",", cell);
+            let cell = format!("\"{}\",", cell);
+            print_row.push_str(&cell);
         }
         print_row.pop();
         println!("{}", print_row);
@@ -169,7 +171,8 @@ fn print_human_readable(column_names: Vec<String>, row_values: Vec<Vec<String>>)
     // print header row
     let mut header_row = "".to_owned();
     for i in 0..column_names.len() {
-        header_row += &format!("{:width$} ", column_names[i], width = widths[i]);
+        header_row.push_str(&column_names[i]);
+        header_row.push_str(&" ".repeat(widths[i]));
     }
     println!("{}", header_row);
 
@@ -177,7 +180,8 @@ fn print_human_readable(column_names: Vec<String>, row_values: Vec<Vec<String>>)
     for row in row_values {
         let mut print_row = "".to_owned();
         for i in 0..column_names.len() {
-            print_row += &format!("{:width$} ", row[i], width = widths[i]);
+            print_row.push_str(&row[i]);
+            print_row.push_str(&" ".repeat(widths[i]));
         }
         println!("{}", print_row);
     }
@@ -198,7 +202,8 @@ pub fn do_show_organization(
 fn print_organization(org: PikeOrganization) {
     let mut display_string = format!("Organization ID: {}\nName: {}\n", &org.org_id, &org.name);
     if let Some(service_id) = &org.service_id {
-        display_string += &format!("Service ID: {}\n", service_id);
+        let service_id_str = format!("Service ID: {}\n", service_id);
+        display_string.push_str(&service_id_str);
     }
     display_string += "Locations:";
     let locations = if org.locations.is_empty() {
