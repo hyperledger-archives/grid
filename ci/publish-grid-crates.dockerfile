@@ -20,7 +20,7 @@
 # docker build -f ci/publish-grid-crates.dockerfile -t publish-grid-crates ci/
 # docker run --rm -v $(pwd):/project/grid -e CARGO_CRED=%CREDVALUE% publish-grid-crates
 
-FROM ubuntu:focal
+FROM ubuntu:jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 

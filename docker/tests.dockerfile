@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v11
+FROM hyperledger/grid-dev:v12
 
 RUN apt-get update \
  && apt-get install -yq --no-install-recommends \

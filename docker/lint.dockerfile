@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-FROM hyperledger/grid-dev:v11 as GRID-LINTER
+FROM hyperledger/grid-dev:v12 as GRID-LINTER
 
 ENV PATH=$PATH:/root/.cargo/bin
 
