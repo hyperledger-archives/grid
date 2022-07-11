@@ -24,6 +24,8 @@ FROM ubuntu:jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -41,9 +43,15 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && rustup-init -y
 
 # Install protoc
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
-    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.7.1-linux-x86_64.zip
+RUN TARGET_ARCH=$(dpkg --print-architecture) \
+ && if [[ $TARGET_ARCH == "arm64" ]]; then \
+      PROTOC_ARCH="aarch_64"; \
+    elif [[ $TARGET_ARCH == "amd64" ]]; then \
+      PROTOC_ARCH="x86_64"; \
+    fi \
+ && curl -OLsS https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-linux-$PROTOC_ARCH.zip \
+      && unzip -o protoc-3.20.0-linux-$PROTOC_ARCH.zip -d /usr/local \
+      && rm protoc-3.20.0-linux-$PROTOC_ARCH.zip
 
 ENV PATH=$PATH:/root/.cargo/bin
 
