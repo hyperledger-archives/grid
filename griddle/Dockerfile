@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v11 as builder
+FROM hyperledger/grid-dev:v12 as builder
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -57,7 +57,7 @@ WORKDIR /tmp
 RUN git rev-parse HEAD > /commit-hash
 
 # -------------=== griddle docker build ===-------------
-FROM ubuntu:focal
+FROM ubuntu:jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 

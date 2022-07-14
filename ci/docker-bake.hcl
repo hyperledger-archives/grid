@@ -28,7 +28,7 @@ variable "CARGO_ARGS" {
 }
 
 variable "DISTRO" {
-    default = "focal"
+    default = "jammy"
 }
 
 variable "ISOLATION_ID" {
