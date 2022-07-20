@@ -62,6 +62,7 @@ build-experimental:
 ci:
     just ci-lint-dockerfiles
     just ci-lint-openapi
+    just ci-lint-typos
     just ci-lint-ui
     just ci-test-ui
     just ci-lint
@@ -84,6 +85,8 @@ ci-lint:
 ci-lint-dockerfiles: lint-dockerfiles
 
 ci-lint-openapi: lint-openapi
+
+ci-lint-typos: lint-typos
 
 ci-lint-ui: ci-build-ui-test-deps
     #!/usr/bin/env sh
@@ -203,6 +206,14 @@ lint-product-sapling:
     cd ui/saplings/product
     yarn lint
     echo "\n\033[92mLint Product Sapling Success\033[0m\n"
+
+lint-typos:
+    #!/usr/bin/env sh
+    set -e
+    docker build -t lint-typos -f docker/typos.dockerfile .
+    echo "\033[1mLinting Typos\033[0m"
+    docker run -i --rm -v $(pwd):/project lint-typos typos --config .github/typos_config.toml
+    echo "\n\033[92mLint Typos Success\033[0m\n"
 
 lint-ui:
     just lint-grid-ui
