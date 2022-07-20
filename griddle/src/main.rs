@@ -132,7 +132,7 @@ async fn run() -> Result<(), Error> {
             Arg::with_name("database_url")
                 .long("database-url")
                 .takes_value(true)
-                .help("URL for datatbase to be used by griddle"),
+                .help("URL for database to be used by griddle"),
         )
         .arg(
             Arg::with_name("connect")

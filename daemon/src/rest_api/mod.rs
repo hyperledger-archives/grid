@@ -548,7 +548,7 @@ mod test {
     ///    The TestServer will receive a request with :
     ///        - a batch_ids property of BATCH_ID
     ///    It will receive a Protobuf response with status OK:
-    ///        - containing batch statuses of {batch_id: BATCH_ID_1,  status: COMMITED}
+    ///        - containing batch statuses of {batch_id: BATCH_ID_1,  status: COMMITTED}
     ///    It should send back a JSON response with:
     ///        - a link property that ends in '/batch_statuses?id=BATCH_ID_1'
     ///        - a data property matching the batch statuses received
@@ -587,9 +587,9 @@ mod test {
     ///    The TestServer will receive a request with :
     ///        - a batch_ids property of BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
     ///    It will receive a Protobuf response with status OK:
-    ///        - containing batch statuses of {batch_id: BATCH_ID_1,  status: COMMITED}
-    ///                                       {batch_id: BATCH_ID_2,  status: COMMITED}
-    ///                                       {batch_id: BATCH_ID_3,  status: COMMITED}
+    ///        - containing batch statuses of {batch_id: BATCH_ID_1,  status: COMMITTED}
+    ///                                       {batch_id: BATCH_ID_2,  status: COMMITTED}
+    ///                                       {batch_id: BATCH_ID_3,  status: COMMITTED}
     ///    It should send back a JSON response with:
     ///        - a link property that ends in
     ///             `/batch_statuses?id={BATCH_ID_1},{BATCH_ID_2},{BATCH_ID_3}`
@@ -2657,7 +2657,7 @@ mod test {
 
     ///
     /// Verifies a GET /record/{record_id}/property/{property_name} responds with an OK response
-    ///     and the infomation on the Property requested
+    ///     and the information on the Property requested
     ///
     #[actix_web::test]
     #[cfg(feature = "track-and-trace")]
@@ -2743,7 +2743,7 @@ mod test {
 
     ///
     /// Verifies a GET /record/{record_id}/property/{property_name}?service_id=test_service responds
-    ///     with an OK response and the infomation on the Property requested.
+    ///     with an OK response and the information on the Property requested.
     ///
     #[actix_web::test]
     #[cfg(feature = "track-and-trace")]

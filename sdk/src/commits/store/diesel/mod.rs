@@ -28,7 +28,7 @@ use operations::add_commit::CommitStoreAddCommitOperation as _;
 use operations::create_db_commit_from_commit_event::CommitStoreCreateDbCommitFromCommitEventOperation as _;
 use operations::get_commit_by_commit_num::CommitStoreGetCommitByCommitNumOperation as _;
 use operations::get_current_commit_id::CommitStoreGetCurrentCommitIdOperation as _;
-use operations::get_current_service_commits::CommitStoreGetCurrentSericeCommitsOperation as _;
+use operations::get_current_service_commits::CommitStoreGetCurrentServiceCommitsOperation as _;
 use operations::get_next_commit_num::CommitStoreGetNextCommitNumOperation as _;
 use operations::resolve_fork::CommitStoreResolveForkOperation as _;
 use operations::CommitStoreOperations;

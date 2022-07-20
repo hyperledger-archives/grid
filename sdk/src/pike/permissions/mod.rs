@@ -969,7 +969,7 @@ mod tests {
     ///    permission assigned to the "buyer" role in Pike.
     /// 6. Check that `check_permission_within_workflow`, when given the permission "can-create-po"
     ///    and a desired state of "issued" and the Alpha organization as the `record_owner`, is
-    ///    able to succesfully evaluate the Beta org's agent does not have the correct permission
+    ///    able to successfully evaluate the Beta org's agent does not have the correct permission
     ///    for the Alpha organization to create a purchase order and transition state to "issued".
     fn test_permission_with_workflow_disallowed_org() {
         let context = MockTransactionContext::default();

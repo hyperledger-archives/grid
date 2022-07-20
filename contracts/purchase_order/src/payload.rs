@@ -860,7 +860,7 @@ mod tests {
     /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
     ///
     /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `uid` field is
-    /// not succesfully validated.
+    /// not successfully validated.
     fn test_validate_create_po_payload_invalid_uid() {
         let mut create_po_payload =
             protos::purchase_order_payload::CreatePurchaseOrderPayload::new();
@@ -886,7 +886,7 @@ mod tests {
     /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
     ///
     /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `created_at`
-    /// field is not succesfully validated.
+    /// field is not successfully validated.
     fn test_validate_create_po_payload_invalid_created_at() {
         let mut create_po_payload =
             protos::purchase_order_payload::CreatePurchaseOrderPayload::new();
@@ -912,7 +912,7 @@ mod tests {
     /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
     ///
     /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `buyer_org_id`
-    /// field is not succesfully validated.
+    /// field is not successfully validated.
     fn test_validate_create_po_payload_invalid_buyer_org() {
         let mut create_po_payload =
             protos::purchase_order_payload::CreatePurchaseOrderPayload::new();
@@ -938,7 +938,7 @@ mod tests {
     /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
     ///
     /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `seller_org_id`
-    /// field is not succesfully validated.
+    /// field is not successfully validated.
     fn test_validate_create_po_payload_invalid_seller_org() {
         let mut create_po_payload =
             protos::purchase_order_payload::CreatePurchaseOrderPayload::new();
@@ -964,7 +964,7 @@ mod tests {
     /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
     ///
     /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `workflow_state`
-    /// field is not succesfully validated.
+    /// field is not successfully validated.
     fn test_validate_create_po_payload_invalid_workflow_state() {
         let mut create_po_payload =
             protos::purchase_order_payload::CreatePurchaseOrderPayload::new();
@@ -990,7 +990,7 @@ mod tests {
     /// 2. Assert this `CreatePurchaseOrderPayload` does not successfully validate
     ///
     /// This test validates that a `CreatePurchaseOrderPayload` with an undefined `workflow_id`
-    /// field is not succesfully validated.
+    /// field is not successfully validated.
     fn test_validate_create_po_payload_invalid_workflow_id() {
         let mut create_po_payload =
             protos::purchase_order_payload::CreatePurchaseOrderPayload::new();

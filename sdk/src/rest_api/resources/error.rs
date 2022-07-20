@@ -24,7 +24,7 @@ pub struct ErrorResponse {
     /// The message that would be returned in an HTTP response
     message: String,
 
-    /// Wrapped error that is not exposed in the HTTP resposne
+    /// Wrapped error that is not exposed in the HTTP response
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     source: Option<Box<dyn error::Error>>,
@@ -55,11 +55,11 @@ impl ErrorResponse {
         }
     }
 
-    /// Create a new ErrorResponse that does not expose the underlaying error
+    /// Create a new ErrorResponse that does not expose the underlying error
     ///
     /// # Arguments
     ///
-    /// * `source` - Underlaying internal error
+    /// * `source` - Underlying internal error
     ///
     /// # Examples
     /// ```

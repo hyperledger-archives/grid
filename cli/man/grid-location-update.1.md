@@ -8,7 +8,7 @@
 NAME
 ====
 
-**grid-location-udpate** — Update an existing location
+**grid-location-update** — Update an existing location
 
 SYNOPSIS
 ========

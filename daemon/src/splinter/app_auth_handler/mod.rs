@@ -33,7 +33,7 @@ use crate::splinter::{
     event::processors::EventProcessors,
 };
 
-/// default value if the client should attempt to reconnet if ws connection is lost
+/// default value if the client should attempt to reconnect if ws connection is lost
 const RECONNECT: bool = true;
 
 /// default limit for number of consecutives failed reconnection attempts
@@ -108,7 +108,7 @@ pub fn run(
     ws.set_timeout(CONNECTION_TIMEOUT);
 
     ws.on_error(move |err, ctx| {
-        error!("An error occured while listening for admin events {}", err);
+        error!("An error occurred while listening for admin events {}", err);
         match err {
             WebSocketError::ParserError { .. } => {
                 debug!("Protocol error, closing connection");

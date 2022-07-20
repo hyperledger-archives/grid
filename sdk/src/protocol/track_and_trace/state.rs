@@ -524,7 +524,7 @@ impl IntoNative<ReportedValue> for track_and_trace_state::PropertyPage_ReportedV
 
 /// Native representation of a `PropertyPage`
 ///
-/// Treated by the Track and Trace transaction processer as a ring buffer to hold all historical
+/// Treated by the Track and Trace transaction processor as a ring buffer to hold all historical
 /// reported values for the corresponding `Property`. Once the reserved namespaces for property
 /// pages are filled, the next update will overwrite the oldest page within the namespace.
 #[derive(Debug, Clone, PartialEq)]
@@ -1674,7 +1674,7 @@ mod tests {
     }
 
     #[test]
-    /// Validate a `PropertList` is built correctly
+    /// Validate a `PropertyList` is built correctly
     fn test_property_list_builder() {
         let property_definition = PropertyDefinitionBuilder::new()
             .with_name("i dunno".into())
@@ -1748,7 +1748,7 @@ mod tests {
     }
 
     #[test]
-    /// Validate a `PropertyList` may be converted into bytes and back to its native represenation
+    /// Validate a `PropertyList` may be converted into bytes and back to its native representation
     /// successfully
     fn test_property_list_bytes() {
         let property_definition = PropertyDefinitionBuilder::new()

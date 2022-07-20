@@ -447,7 +447,7 @@ mod test {
                 File::create(test_yaml_file_path).expect("Error creating test schema yaml file.");
 
             file.write_all(LIGHTBULB_YAML_EXAMPLE)
-                .expect("Error writting example schema.");
+                .expect("Error writing example schema.");
 
             let payload = parse_yaml(
                 test_yaml_file_path,
@@ -469,9 +469,9 @@ mod test {
             let mut file =
                 File::create(test_yaml_file_path).expect("Error creating test schema yaml file.");
             file.write(LIGHTBULB_YAML_EXAMPLE)
-                .expect("Error writting example schema.");
+                .expect("Error writing example schema.");
             file.write(PHONE_YAML_EXAMPLE)
-                .expect("Error writting example schema.");
+                .expect("Error writing example schema.");
 
             let payload = parse_yaml(
                 test_yaml_file_path,
@@ -495,7 +495,7 @@ mod test {
                 File::create(test_yaml_file_path).expect("Error creating test schema yaml file.");
 
             file.write_all(LIGHTBULB_YAML_EXAMPLE)
-                .expect("Error writting example schema.");
+                .expect("Error writing example schema.");
 
             let payload = parse_yaml(
                 test_yaml_file_path,
@@ -517,9 +517,9 @@ mod test {
             let mut file =
                 File::create(test_yaml_file_path).expect("Error creating test schema yaml file.");
             file.write(LIGHTBULB_YAML_EXAMPLE)
-                .expect("Error writting example schema.");
+                .expect("Error writing example schema.");
             file.write(PHONE_YAML_EXAMPLE)
-                .expect("Error writting example schema.");
+                .expect("Error writing example schema.");
 
             let payload = parse_yaml(
                 test_yaml_file_path,

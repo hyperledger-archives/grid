@@ -1653,7 +1653,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that if the FinalizeRecordAction fails if the record is alreadt final.
+    /// Test that if the FinalizeRecordAction fails if the record is already final.
     fn test_finalize_record_handler_record_already_final() {
         let mut transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
@@ -2198,7 +2198,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that if the AnswerProposalAction, with Reponse set to Cancel, is valid an OK is returned
+    /// Test that if the AnswerProposalAction, with Response set to Cancel, is valid an OK is returned
     /// and the proposal is updated to have status Canceled
     fn test_answer_proposal_cancel_ok() {
         let mut transaction_context = MockTransactionContext::default();
@@ -2240,7 +2240,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that if the AnswerProposalAction, with Reponse set to Reject, is valid an OK is returned
+    /// Test that if the AnswerProposalAction, with Response set to Reject, is valid an OK is returned
     /// and the proposal is updated to have status Rejected
     fn test_answer_proposal_reject_ok() {
         let mut transaction_context = MockTransactionContext::default();
@@ -2283,7 +2283,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that when the AnswerProposalAction, with Reponse set to Accept and Role set to Owner,
+    /// Test that when the AnswerProposalAction, with Response set to Accept and Role set to Owner,
     /// is valid an OK is returned and the proposal is updated to have status Accepted, the owner
     /// in the record has been updated and the reporters for the properties have been updated.
     fn test_answer_proposal_accept_owner_ok() {
@@ -2353,7 +2353,7 @@ mod tests {
             .build()
             .expect("Failed to build record");
 
-        // Compare record found in state, whith what would be expected if the transaction was
+        // Compare record found in state, with what would be expected if the transaction was
         // executed correctly
         assert_eq!(record, expected_record);
 
@@ -2384,13 +2384,13 @@ mod tests {
                 .build()
                 .expect("Failed to build property");
 
-        // Compare property found in state, whith what would be expected if the transaction was
+        // Compare property found in state, with what would be expected if the transaction was
         // executed correctly
         assert_eq!(required_property, expected_property);
     }
 
     #[test]
-    /// Test that when the AnswerProposalAction, with Reponse set to Accept and Role set to Custodian,
+    /// Test that when the AnswerProposalAction, with Response set to Accept and Role set to Custodian,
     /// is valid an OK is returned and the proposal is updated to have status Accepted, the custodians
     /// in the record have been updated.
     fn test_answer_proposal_accept_custodian_ok() {
@@ -2461,13 +2461,13 @@ mod tests {
             .build()
             .expect("Failed to build record");
 
-        // Compare record found in state, whith what would be expected if the transaction was
+        // Compare record found in state, with what would be expected if the transaction was
         // executed correctly
         assert_eq!(record, expected_record);
     }
 
     #[test]
-    /// Test that when the AnswerProposalAction, with Reponse set to Accept and Role set to Reporter,
+    /// Test that when the AnswerProposalAction, with Response set to Accept and Role set to Reporter,
     /// is valid an OK is returned and the proposal is updated to have status Accepted,
     /// and the reporters for the properties have been updated.
     fn test_answer_proposal_accept_reporter_ok() {
@@ -2552,7 +2552,7 @@ mod tests {
                 .build()
                 .expect("Failed to build property");
 
-        // Compare properties found in state, whith what would be expected if the transaction was
+        // Compare properties found in state, with what would be expected if the transaction was
         // executed correctly
         assert_eq!(required_property, expected_required_property);
         assert_eq!(optional_property, expected_optional_property);
