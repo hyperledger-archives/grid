@@ -19,6 +19,9 @@ extern crate log;
 #[cfg(feature = "config")]
 mod config;
 mod error;
+#[allow(dead_code)]
+#[cfg(feature = "rest-api")]
+mod rest_api;
 
 use std::env;
 #[cfg(any(feature = "database-postgres", feature = "database-sqlite"))]
