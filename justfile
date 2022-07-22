@@ -92,8 +92,13 @@ ci-lint-ui: ci-build-ui-test-deps
     docker run --rm --env CI=true product-sapling:$ISOLATION_ID just lint-product-sapling
 
 ci-test:
-    #!/usr/bin/env sh
+    #!/usr/bin/env bash
     set -e
+    if [[ $GITHUB_ACTIONS ]] && [[ $RUNNER_OS == "Linux" ]]; then
+        echo "Github Actions is running this workflow."
+        docker rmi $(docker images -qa)
+        sudo rm -rf /usr/local/lib/android/
+    fi
     docker-compose -f docker/compose/grid-tests.yaml build --force-rm
     docker-compose -f docker/compose/grid-tests.yaml up --abort-on-container-exit --exit-code-from grid_tests
 
