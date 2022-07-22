@@ -54,12 +54,22 @@ following commands.
 
 Homebrew (OS X):
 ```bash
-brew install openssl zeromq pkg-config protobuf postgresql
+brew install openssl zeromq pkg-config protobuf libpq
 ```
 
 APT (Ubuntu):
 ```bash
-apt install libssl-dev libzmq3-dev pkg-config libprotobuf-dev postgresql
+apt install \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    protobuf-compiler \
+    libsqlite3-dev \
+    libpq-dev \
+    libsasl2-dev \
+    libxml2-dev \
+    libzmq3-dev \
+    openssl
 ```
 
 Once you have the prerequisites installed, run `cargo build` from the root
