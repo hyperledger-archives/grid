@@ -44,7 +44,7 @@ impl fmt::Display for DaemonError {
             (Some(m), Some(s)) => write!(f, "{}: {}", m, s),
             (Some(m), _) => write!(f, "{}", m),
             (_, Some(s)) => write!(f, "{:?}", s),
-            (None, None) => write!(f, "An internal error occured"),
+            (None, None) => write!(f, "An internal error occurred"),
         }
     }
 }

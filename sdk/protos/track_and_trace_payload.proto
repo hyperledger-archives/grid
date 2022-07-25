@@ -101,7 +101,7 @@ message AnswerProposalAction {
   // The role being proposed (owner, custodian, or reporter)
   Proposal.Role role = 3;
 
-  // The respose to the Proposal (accept, reject, or cancel)
+  // The response to the Proposal (accept, reject, or cancel)
   Response response = 4;
 }
 

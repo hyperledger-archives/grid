@@ -2373,7 +2373,7 @@ mod tests {
     ///    within the Collaborative version subworkflow)
     /// 3. Build a `CreateVersionPayload` with an `is_draft` field of `false` and a
     ///    `workflow_state` of `proposed`
-    /// 4. Assert the `create_version` function returns succesfully
+    /// 4. Assert the `create_version` function returns successfully
     ///
     /// This test validates a purchase order version is able to be created with a
     /// `workflow_state` of `proposed` within the `Collaborative` version subworkflow
@@ -2414,7 +2414,7 @@ mod tests {
     }
 
     #[test]
-    /// Validates the `create_version` function returns succesfully with a valid payload. This test
+    /// Validates the `create_version` function returns successfully with a valid payload. This test
     /// specifically tests the scenario where a purchase order version is created not as a draft
     /// and moved into the "proposed" workflow state within the System of Record version
     /// subworkflow. The test follows these steps:
@@ -2467,7 +2467,7 @@ mod tests {
     }
 
     #[test]
-    /// Validates the `create_version` function returns succesfully with a valid payload. This test
+    /// Validates the `create_version` function returns successfully with a valid payload. This test
     /// specifically tests the scenario where a purchase order version is created as a draft and
     /// moved into the "editable" workflow state within the System of Record version subworkflow.
     /// The test follows these steps:

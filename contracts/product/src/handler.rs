@@ -149,7 +149,7 @@ impl ProductTransactionHandler {
                     )));
                 }
             };
-            // If the gtin identifer does not contain the organizations gs1 prefix
+            // If the gtin identifier does not contain the organizations gs1 prefix
             if !product_id.contains(gs1_company_prefix.id()) {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "The agents organization does not own the GS1 company prefix in the GTIN product_id: {:?}",
@@ -954,7 +954,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that ProductDeleteAction is invalid when deleting a non existant product
+    /// Test that ProductDeleteAction is invalid when deleting a non existent product
     fn test_delete_product_not_exists() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);

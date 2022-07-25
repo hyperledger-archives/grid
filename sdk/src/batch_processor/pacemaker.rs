@@ -123,7 +123,7 @@ where
 
 /// Pacemaker is responsible for periodically sending a message to
 /// another component over a channel. The message is meant to be used as
-/// a notfication that some action should take place.
+/// a notification that some action should take place.
 pub struct Pacemaker {
     join_handle: thread::JoinHandle<()>,
     shutdown_signaler: ShutdownSignaler,

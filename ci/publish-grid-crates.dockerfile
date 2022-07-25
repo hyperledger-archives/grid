@@ -61,7 +61,7 @@ ARG REPO_VERSION
 
 # hadolint ignore=DL3025
 CMD cargo login $CARGO_CRED \
- && echo "Publshing version $REPO_VERSION" \
+ && echo "Publishing version $REPO_VERSION" \
  && sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml \
  && rm -f ../Cargo.lock ./Cargo.lock \
  && cargo clean \

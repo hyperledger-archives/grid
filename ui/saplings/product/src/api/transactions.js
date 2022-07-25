@@ -62,7 +62,7 @@ function buildProductAddress(productId, productNamespace) {
   )}00`;
 }
 
-function buildOrganizationAddess(orgName) {
+function buildOrganizationAddress(orgName) {
   const hash = crypto
     .createHash('sha512')
     .update(orgName)
@@ -131,7 +131,7 @@ export async function editProduct(data, keys, callbackFn) {
     .withFamilyVersion(ProductVersion)
     .withInputs([
       buildProductAddress(data.productId, 'gs1'),
-      buildOrganizationAddess(data.orgName),
+      buildOrganizationAddress(data.orgName),
       buildAgentAddress(keys.publicKey),
       buildSchemaAddress('product')
     ])
@@ -194,7 +194,7 @@ export async function addProduct(data, keys, callbackFn) {
     .withFamilyVersion(ProductVersion)
     .withInputs([
       buildProductAddress(data.productId, 'gs1'),
-      buildOrganizationAddess(data.orgName),
+      buildOrganizationAddress(data.orgName),
       buildAgentAddress(keys.publicKey),
       buildSchemaAddress('product')
     ])

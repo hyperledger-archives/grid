@@ -2097,7 +2097,7 @@ mod tests {
 
     #[test]
     /// Validate that a `PikePayload` is built correctly with a `UpdateOrganizationAction`
-    fn check_pike_update_organiztion_payload() {
+    fn check_pike_update_organization_payload() {
         let builder = UpdateOrganizationActionBuilder::new();
         let action = builder
             .with_org_id("organization".to_string())

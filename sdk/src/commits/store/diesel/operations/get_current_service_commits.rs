@@ -38,11 +38,11 @@ struct CurrentCommit {
 
 /// Performs the operation to return the current commits recorded for services. It ignores any
 /// commits that have no service id (i.e. Sawtooth commits).
-pub(in crate::commits) trait CommitStoreGetCurrentSericeCommitsOperation {
+pub(in crate::commits) trait CommitStoreGetCurrentServiceCommitsOperation {
     fn get_current_service_commits(&self) -> Result<Vec<Commit>, CommitStoreError>;
 }
 
-impl<'a, C> CommitStoreGetCurrentSericeCommitsOperation for CommitStoreOperations<'a, C>
+impl<'a, C> CommitStoreGetCurrentServiceCommitsOperation for CommitStoreOperations<'a, C>
 where
     C: diesel::Connection,
     i64: diesel::deserialize::FromSql<diesel::sql_types::BigInt, C::Backend>,

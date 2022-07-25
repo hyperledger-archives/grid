@@ -104,7 +104,7 @@ mod tests {
             "Schema name must be set"
         );
 
-        // create payload with SchemaCreateAction without any properites,
+        // create payload with SchemaCreateAction without any properties,
         action.set_schema_name("test_schema".into());
         payload_proto.set_schema_create(action.clone());
         let payload = payload_proto.clone().into_native().unwrap();
@@ -174,7 +174,7 @@ mod tests {
             "Schema name must be set"
         );
 
-        // create payload with SchemaCreateAction without any properites,
+        // create payload with SchemaCreateAction without any properties,
         action.set_schema_name("test_schema".into());
         payload_proto.set_schema_update(action.clone());
         let payload = payload_proto.clone().into_native().unwrap();

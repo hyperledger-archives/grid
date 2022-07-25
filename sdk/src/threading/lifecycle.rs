@@ -25,7 +25,7 @@ use crate::error::InternalError;
 /// The second is `wait_for_shutdown` which will wait for shutdown to be complete; this typically
 /// involves joining threads.
 ///
-/// If multiple components are being shutdown, call `signal_shutdown` on all componets that can
+/// If multiple components are being shutdown, call `signal_shutdown` on all components that can
 /// safely shutdown in parallel, then call `wait_for_shutdown` on all of the components. The length
 /// of time spent shutting down will be approximately the time of the slowest component.
 pub trait ShutdownHandle {

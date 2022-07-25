@@ -482,7 +482,7 @@ impl IntoNative<CreateProposalAction> for track_and_trace_payload::CreateProposa
 
 /// Native representation of a `Response`
 ///
-/// Returned by an agent in response to a proposal for some `Record`. This reponse is then recorded
+/// Returned by an agent in response to a proposal for some `Record`. This response is then recorded
 /// in the `Proposal`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Response {
