@@ -143,6 +143,13 @@ docker-build:
     docker-compose -f docker-compose.yaml build
     docker-compose -f ui/grid-ui/docker/docker-compose.yaml build grid-ui
 
+fix-typos:
+    #!/usr/bin/env sh
+    set -e
+    docker build -t lint-typos -f docker/typos.dockerfile .
+    echo "\033[1mFixing Typos\033[0m"
+    docker run -i --rm -v $(pwd):/project lint-typos typos -w --config .github/typos_config.toml
+
 lint:
     #!/usr/bin/env sh
     set -e
