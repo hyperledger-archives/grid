@@ -12,13 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod basic_url_resolver;
-
 use crate::scope_id::ScopeId;
 
-/// An interface for generating the url to which a batch should be sent.
-pub trait UrlResolver: std::fmt::Debug + Sync + Send {
+/// An interface for interpreting and recording updates from the submitter
+pub trait SubmitterObserver: Sync + Send {
     type Id: ScopeId;
-    /// Generates an address (i.e. URL) to which the batch will be sent.
-    fn url(&self, scope_id: &Self::Id) -> String;
+    /// Notify the observer of an update. The interpretation and recording
+    /// of the update is determined by the observer's implementation.
+    fn notify(
+        &self,
+        batch_header: String,
+        scope_id: Self::Id,
+        status: Option<u16>,
+        message: Option<String>,
+    );
 }

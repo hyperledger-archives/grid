@@ -16,9 +16,12 @@ pub mod submission;
 
 use std::convert::From;
 
-use crate::batch_tracking::store::{GlobalTrackingBatch, ServiceTrackingBatch};
-use crate::scope_id::{GlobalScopeId, ScopeId, ServiceScopeId};
+use crate::{
+    batch_tracking::store::{GlobalTrackingBatch, ServiceTrackingBatch},
+    scope_id::{GlobalScopeId, ScopeId, ServiceScopeId},
+};
 
+#[derive(Debug)]
 pub struct Submission<S: ScopeId> {
     batch_header: String,
     scope_id: S,
