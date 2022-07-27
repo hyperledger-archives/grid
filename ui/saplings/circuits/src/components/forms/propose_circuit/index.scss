@@ -1,0 +1,275 @@
+/**
+ * Copyright 2018-2021 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.step-header {
+  height: 10%;
+
+  .step-title {
+    color: var(--color-primary);
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .help-text {
+    color: var(--color-grey);
+    font-size: 0.8rem;
+  }
+}
+
+
+.label {
+  font-size: 0.8rem;
+  color: var(--color-grey);
+  margin-top: 1rem;
+}
+
+.input-wrapper {
+  .form-input {
+    border: none;
+    outline: none;
+    color: var(--color-grey);
+    border-bottom: 1px solid var(--color-grey);
+    padding-bottom: 0.5rem;
+    font-size: 0.8rem;
+    margin: 0.5rem 0.5rem 0 0;
+    width: 90%;
+  }
+
+  .form-error {
+    font-size: 0.8rem;
+    color: var(--color-attention);
+  }
+}
+
+.propose-form-wrapper {
+  margin-top: 1rem;
+  height: 90%;
+}
+
+.node-registry-wrapper {
+  display: flex;
+  flex-direction: column;
+
+  .title {
+    font-size: 1rem;
+    color: var(--color-grey);
+    padding-bottom: 0.5rem;
+  }
+
+  .node-controls {
+    display: flex;
+    flex-direction: row-reverse;
+    // accounts for the box-shadow.
+    padding-right: 2px;
+
+    .form-button {
+      background: var(--color-primary);
+      border: 1px solid var(--color-primary-dark);
+      color: var(--color-text-on-dark);
+    }
+  }
+
+  .selected-nodes-wrapper {
+
+    .selected-nodes-header {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      margin: 1rem 0 0.5rem;
+      align-items: baseline;
+    }
+
+    .selected-nodes {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+      overflow-y: auto;
+    }
+  }
+
+  .available-nodes {
+    width: 100%;
+
+    .available-nodes-header {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: baseline;
+      margin: 1rem 0 0.5rem;
+      height: 20%;
+
+      .select-filter {
+        font-size: 0.8rem;
+
+        .filter-separator {
+          font-size: 1rem;
+        }
+      }
+
+      .no-style-btn {
+        background: none;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        text-align: left;
+        padding: 0 1rem;
+        font-size: 0.8rem;
+        height: fit-content;
+
+        &.selected {
+          color: var(--color-primary)
+        }
+      }
+
+      .title-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+      }
+    }
+
+    .search-nodes-input {
+      border: none;
+      outline: none;
+      color: var(--color-grey);
+      border-bottom: 1px solid var(--color-light-grey);
+      padding: 1rem 0 0.5rem 2rem;
+      background-image: url('../../../images/search_icon.svg');
+      background-position: 0.3rem 1rem;
+      background-repeat: no-repeat;
+      background-size: 1rem;
+      font-size: 0.8rem;
+      width: 11rem;
+      margin-left: 1rem;
+    }
+
+    ul {
+      width: 100%;
+      padding: 0;
+      height: 80%;
+      border-top: 1px solid var(--color-light-grey);
+      overflow-y: auto;
+
+      .no-nodes {
+        text-align: center;
+        padding: 1rem;
+        list-style: none;
+        font-size: 1.5rem;
+      }
+
+      .node-item {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: baseline;
+        border-bottom: 1px solid var(--color-light-grey);
+
+        .node-id {
+          font-size: 0.8rem;
+        }
+
+        .node-name {
+          color: var(--color-primary);
+          font-size: 1.2rem;
+          margin: 0.5rem;
+        }
+      }
+    }
+  }
+}
+
+.services-wrapper {
+  height: 85%;
+  overflow-y: auto;
+
+  .service-controls {
+    display: flex;
+    flex-direction: row-reverse;
+    // accounts for the box-shadow.
+    padding-right: 2px;
+  }
+}
+
+.add-service-btn-wrapper {
+  height: 5%;
+  text-align: center;
+  padding-top: 0.5rem;
+
+  .add-service-button {
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-primary);
+    border-radius: 2rem;
+    background-color: transparent;
+    text-align: center;
+    border: 1px solid var(--color-primary-dark);
+    outline: none;
+  }
+}
+
+.circuit-details-wrapper {
+  margin: 0;
+  padding: 0;
+}
+
+.textarea-wrapper {
+  .form-textarea {
+    max-height: 70%;
+    resize: vertical;
+    border: 1px solid var(--color-grey);
+    padding: 0.5rem;
+  }
+}
+
+.metatada-wrapper {
+  margin-top: 2rem;
+
+  .metadata-textarea {
+    height: 100%;
+    resize: none;
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .step-header {
+    height: 15%;
+  }
+
+  .propose-form-wrapper {
+    height: 85%;
+  }
+
+  .node-registry-wrapper {
+    .available-nodes {
+      .available-nodes-header {
+        flex-direction: column;
+        height: 25%;
+
+        .search-nodes-input {
+          margin-left: 0;
+         }
+      }
+
+      ul {
+        height: 75%;
+
+        .new-node-button {
+          right: 1rem;
+        }
+      }
+    }
+  }
+}
