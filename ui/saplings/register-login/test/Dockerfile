@@ -19,7 +19,7 @@ WORKDIR /saplings/register-login
 
 COPY package*.json ./
 
-RUN apk add git
+RUN apk add --no-cache git
 
 # Gives npm permission to run the prepare script in splinter-canopyjs as root
 RUN npm config set unsafe-perm true && npm install
