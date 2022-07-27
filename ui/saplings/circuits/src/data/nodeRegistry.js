@@ -25,19 +25,19 @@ function Node(data) {
   this.metadata = data.metadata;
 }
 
-function NodeRegistryResponse(reponseData) {
-  this.data = reponseData.data.map(node => {
+function NodeRegistryResponse(responseData) {
+  this.data = responseData.data.map(node => {
     return new Node(node);
   });
   this.paging = {
-    current: reponseData.paging.current,
-    offset: reponseData.paging.offset,
-    limit: reponseData.paging.limit,
-    total: reponseData.paging.total,
-    first: reponseData.paging.first,
-    prev: reponseData.paging.prev,
-    next: reponseData.paging.next,
-    last: reponseData.paging.last
+    current: responseData.paging.current,
+    offset: responseData.paging.offset,
+    limit: responseData.paging.limit,
+    total: responseData.paging.total,
+    first: responseData.paging.first,
+    prev: responseData.paging.prev,
+    next: responseData.paging.next,
+    last: responseData.paging.last
   };
 }
 

@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-function Paging(reponseData) {
-  this.current = reponseData.paging.current;
-  this.offset = reponseData.paging.offset;
-  this.limit = reponseData.paging.limit;
-  this.total = reponseData.paging.total;
-  this.first = reponseData.paging.first;
-  this.prev = reponseData.paging.prev;
-  this.next = reponseData.paging.next;
-  this.last = reponseData.paging.last;
+function Paging(responseData) {
+  this.current = responseData.paging.current;
+  this.offset = responseData.paging.offset;
+  this.limit = responseData.paging.limit;
+  this.total = responseData.paging.total;
+  this.first = responseData.paging.first;
+  this.prev = responseData.paging.prev;
+  this.next = responseData.paging.next;
+  this.last = responseData.paging.last;
 }
 
 export default Paging;
