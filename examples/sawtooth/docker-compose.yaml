@@ -223,7 +223,7 @@ services:
     stop_signal: SIGKILL
 
   sabre-tp:
-    image: hyperledger/sawtooth-sabre-tp:0.5
+    image: hyperledger/sawtooth-sabre-tp:0.8
     container_name: sawtooth-sabre-tp
     depends_on:
       - sawtooth-validator
