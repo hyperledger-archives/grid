@@ -51,23 +51,17 @@ WORKDIR  /saplings/product
 RUN npm install \
  && npm run deploy
 
-WORKDIR /
-RUN git clone -b 0-1 https://github.com/Cargill/splinter-ui
-
 WORKDIR /saplings/register-login
-RUN cp -r /splinter-ui/saplings/register-login /saplings \
- && npm install \
+RUN npm install \
  && npm run deploy
 
 WORKDIR /saplings/profile
-RUN cp -r /splinter-ui/saplings/profile /saplings \
- && npm install \
+RUN npm install \
  && npm run deploy
 
 ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/circuits
 WORKDIR /saplings/circuits
-RUN cp -r /splinter-ui/saplings/circuits /saplings \
- && npm install \
+RUN npm install \
  && npm run deploy
 
 WORKDIR /sapling-dev-server
