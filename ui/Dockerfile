@@ -48,6 +48,11 @@ RUN apk add --no-cache python g++ git make \
 COPY ui/saplings /saplings
 COPY ui/sapling-dev-server /sapling-dev-server
 COPY ui/protos /protos
+COPY ui/saplingjs /saplingjs
+
+WORKDIR /saplingjs
+RUN npm install \
+ && npm run build
 
 ARG PUBLIC_URL_PARTIAL
 ENV PUBLIC_URL $PUBLIC_URL_PARTIAL
