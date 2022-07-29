@@ -16,13 +16,19 @@
 FROM node:14.18.1-alpine3.11 as canopy-app-build-stage
 
 RUN apk add --no-cache python g++ git make
+COPY ui/canopyjs /canopyjs
+ENV REACT_APP_SPLINTER_URL "/splinterd"
+ENV REACT_APP_SAPLING_URL "/sapling-dev-server"
+ENV REACT_APP_GRID_URL "/gridd"
+WORKDIR /canopyjs
+RUN npm config set unsafe-perm true \
+ && npm install \
+ && npm run build
 WORKDIR /ui
 COPY ui/grid-ui/package*.json ./
 RUN npm config set unsafe-perm true && npm install
 COPY ui/grid-ui .
-ENV REACT_APP_SPLINTER_URL "/splinterd"
-ENV REACT_APP_SAPLING_URL "/sapling-dev-server"
-ENV REACT_APP_GRID_URL "/gridd"
+
 RUN npm run build
 WORKDIR /ui/build
 ARG REPO_VERSION
