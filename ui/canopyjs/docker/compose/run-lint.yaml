@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM node:lts-alpine
+version: "3.7"
 
-WORKDIR /saplingjs
-
-COPY . .
-
-RUN npm install
+services:
+  lint-canopyjs:
+    build:
+      context: ../..
+    image: canopyjs:${ISOLATION_ID}
+    command: yarn lint

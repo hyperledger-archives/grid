@@ -1,0 +1,102 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+@import url('https://fonts.googleapis.com/css?family=Noto+Sans:400,400i,700|Roboto+Mono:400,700&display=swap');
+
+:root {
+  --fontFamily-primary: 'Roboto', 'Helvetica', sans-serif;
+  --fontFamily-code: 'Roboto Mono', monospace;
+}
+
+$fontFamily-primary: var(--fontFamily-primary);
+$fontFamily-code: var(--fontFamily-code);
+
+.fontFamily-primary {
+  font-family: $fontFamily-primary;
+}
+
+.fontFamily-code {
+  font-family: $fontFamily-code;
+}
+
+.fontWeight-bold {
+  font-weight: bold;
+}
+
+.fontWeight-regular {
+  font-weight: 400;
+}
+
+h1 {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-bold;
+  font-size: 4rem;
+}
+
+h2 {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-regular;
+  font-size: 3.5rem;
+}
+
+h3 {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-regular;
+  font-size: 3rem;
+}
+
+h4 {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-bold;
+  font-size: 2.5rem;
+}
+
+h5 {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-regular;
+  font-size: 2rem;
+}
+
+h6 {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-regular;
+  font-size: 1.5rem;
+}
+
+p,
+span {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-regular;
+  font-size: 1rem;
+}
+
+b {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-bold;
+  font-size: 1rem;
+}
+
+button {
+  @extend .fontFamily-primary;
+  @extend .fontWeight-regular;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+
+a {
+  @extend span;
+  color: $link-color;
+  font-size: 1rem;
+}

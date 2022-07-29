@@ -13,25 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import sjcl from 'sjcl';
 
-/**
- * Encrypts a private key.
- * @param password - Encryption key.
- * @param privateKey - Unencrypted private key.
- */
-export function encryptKey(privateKey: string, password: string): string {
-  return JSON.stringify(sjcl.encrypt(password, privateKey));
+import React from 'react';
+import PropTypes from 'prop-types';
+
+export function Progress({ max, value }) {
+  return <progress className="progress" max={max} value={value} />;
 }
 
-/**
- * Decrypts a private key.
- * @param password - Encryption key.
- * @param encryptedPrivateKey - Encrypted private key.
- */
-export function decryptKey(
-  encryptedPrivateKey: string,
-  password: string
-): string {
-  return sjcl.decrypt(password, encryptedPrivateKey);
-}
+Progress.propTypes = {
+  max: PropTypes.number.isRequired,
+  value: PropTypes.number.isRequired
+};

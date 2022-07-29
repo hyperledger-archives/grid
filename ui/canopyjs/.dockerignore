@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: "3.7"
-
-services:
-  lint-saplingjs:
-    build:
-      context: ../..
-    image: saplingjs:${ISOLATION_ID}
-    command: yarn lint
+**/node_modules
+**/.pnp
+**/.pnp.js
+**/yarn.lock
+**/package-lock.json
+**/coverage
+**/build
+**/dist

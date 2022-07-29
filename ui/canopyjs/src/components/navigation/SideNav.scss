@@ -1,0 +1,249 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 75px;
+  height: 100vh;
+  background: #595C60;
+  box-shadow: 0 0 6px rgba(0,0,0,.25);
+
+  hr {
+    margin: 0;
+    border: 0;
+    width: 100%;
+    height: 1px;
+
+    &.bottom {
+      margin-top: auto;
+    }
+  }
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  width: 75px;
+  height: 56px;
+  background-color: var(--color-brand-background);
+  background-image: var(--brand-img-url);
+  background-size: 37px 37px;
+  background-position: 50%;
+  background-repeat: no-repeat;
+}
+
+.nav-items {
+  margin-top: 3rem;
+  display: flex;
+  flex-direction: column;
+
+  .nav-tab {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 75px;
+    height: 75px;
+    text-decoration: none;
+    transition: $transitionDuration-s;
+
+    .border{
+      height: 51px;
+      width: 51px;
+      border-radius: 17px;
+      display: flex;
+      align-self: center;
+      align-items: center;
+      justify-content: center;
+
+      .icon {
+        background-color: #FFFFFF;
+        display: flex;
+        justify-content: center;
+        border: none;
+        color: var(--color-primary);
+        width: 37px;
+        height: 37px;
+        align-items: center;
+        border-radius: 10px;
+        outline: none;
+        transition: $transitionDuration-s;
+
+        .brand-logo {
+          width: 1em;
+          height: 1em;
+          overflow: hidden;
+          font-size: 1.5rem;
+          flex-shrink: 0;
+          user-select: none;
+        }
+      }
+    }
+
+    .label {
+      margin-top: 5px;
+      font-size: 11px;
+      text-align: center;
+      color: #FFFFFF;
+    }
+
+    &:hover {
+      .border {
+        border: 3px solid #999999;
+
+        .icon {
+          color: var(--color-primary-light);
+          cursor: pointer;
+        }
+      }
+    }
+  }
+  .page-active {
+    @extend .nav-tab;
+    .border {
+      border: 3px solid #ffffff;
+
+      .icon {
+        cursor: pointer;
+      }
+    }
+    &:hover {
+      .border {
+        color: var(--color-primary-light);
+        border: 3px solid #ffffff;
+      }
+    }
+  }
+}
+
+.canopy-items {
+  display: flex;
+  justify-self: flex-end;
+  flex-direction: column;
+  justify-content: center;
+  margin-top: auto;
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 75px;
+    height: 75px;
+    text-decoration: none;
+
+    .border{
+      height: 51px;
+      width: 51px;
+      border-radius: 17px;
+      display: flex;
+      align-self: center;
+      align-items: center;
+      justify-content: center;
+
+      .icon {
+        background-color: #FFFFFF;
+        display: flex;
+        justify-content: center;
+        border: none;
+        color: var(--color-primary);
+        width: 37px;
+        height: 37px;
+        align-items: center;
+        border-radius: 10px;
+        outline: none;
+        transition: $transitionDuration-s;
+      }
+    }
+
+    .Logout {
+      width: 0;
+      height: 0;
+      background: none;
+      overflow: hidden;
+      position: absolute;
+      border: unset;
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      text-decoration: none;
+    }
+
+    .label {
+      margin-top: 5px;
+      font-size: 11px;
+      text-align: center;
+      color: #FFFFFF;
+    }
+
+    &:hover {
+      .border {
+        border: 3px solid #999999;
+
+        .icon {
+          color: var(--color-primary-light);
+        }
+      }
+      .Logout {
+        width: 75px;
+        height: 75px;
+        margin-bottom: 144px;
+        outline: none;
+
+        .border {
+          border: none;
+        }
+
+        .icon {
+          color: var(--color-primary);
+        }
+
+        &:hover {
+          .border {
+            border: 3px solid #999999;
+
+            .icon {
+              color: var(--color-primary-light);
+              cursor: pointer;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .page-active {
+    @extend .tab;
+    .border {
+      border: 3px solid #ffffff;
+
+      .icon {
+      }
+    }
+    &:hover {
+      .border {
+        color: var(--color-primary-light);
+        border: 3px solid #ffffff;
+      }
+    }
+  }
+}
