@@ -19,10 +19,9 @@ WORKDIR /saplings/circuits
 
 COPY package*.json ./
 
-RUN apk add --no-cache git
-
-# Gives npm permission to run the prepare script in splinter-canopyjs as root
-RUN npm config set unsafe-perm true && npm install
+RUN apk add --no-cache git \
+ # Gives npm permission to run the prepare script in splinter-canopyjs as root
+ && npm install
 
 COPY . .
 
