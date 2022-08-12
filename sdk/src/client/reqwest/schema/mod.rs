@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(in crate) mod data;
+pub(crate) mod data;
 
 use crate::client::schema::{Schema, SchemaClient};
 

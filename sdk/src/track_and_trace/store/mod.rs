@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub(in crate) mod diesel;
+pub(crate) mod diesel;
 mod error;
 
 use crate::paging::Paging;

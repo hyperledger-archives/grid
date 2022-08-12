@@ -22,7 +22,7 @@ use crate::purchase_order::store::PurchaseOrderStoreError;
 use diesel::{prelude::*, result::Error::NotFound};
 
 #[cfg(feature = "postgres")]
-pub(in crate) mod pg {
+pub(crate) mod pg {
     use super::*;
 
     pub fn get_uid_from_alternate_id(
@@ -73,7 +73,7 @@ pub(in crate) mod pg {
 }
 
 #[cfg(feature = "sqlite")]
-pub(in crate) mod sqlite {
+pub(crate) mod sqlite {
     use super::*;
 
     pub fn get_uid_from_alternate_id(
