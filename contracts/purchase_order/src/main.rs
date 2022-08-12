@@ -35,10 +35,10 @@ cfg_if! {
 }
 
 pub mod handler;
-pub(in crate) mod payload;
+pub(crate) mod payload;
 pub mod permissions;
 mod state;
-pub(in crate) mod workflow;
+pub(crate) mod workflow;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {

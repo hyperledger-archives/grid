@@ -26,7 +26,7 @@ use crate::error::{InternalError, InvalidArgumentError};
 use crate::scope_id::{GlobalScopeId, ServiceScopeId};
 
 #[cfg(feature = "diesel")]
-pub(in crate) mod diesel;
+pub(crate) mod diesel;
 mod error;
 
 pub use error::{BatchBuilderError, BatchTrackingStoreError};

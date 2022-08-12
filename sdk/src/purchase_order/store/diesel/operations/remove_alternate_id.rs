@@ -24,7 +24,7 @@ use crate::{
 use diesel::{dsl::update, prelude::*};
 
 #[cfg(feature = "postgres")]
-pub(in crate) mod pg {
+pub(crate) mod pg {
     use super::*;
 
     pub fn remove_alternate_id(
@@ -118,7 +118,7 @@ pub(in crate) mod pg {
 }
 
 #[cfg(feature = "sqlite")]
-pub(in crate) mod sqlite {
+pub(crate) mod sqlite {
     use super::*;
 
     pub fn remove_alternate_id(
