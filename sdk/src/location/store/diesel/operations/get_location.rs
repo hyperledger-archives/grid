@@ -74,9 +74,9 @@ impl<'a> LocationStoreGetLocationOperation<diesel::pg::PgConnection>
                     LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let roots = Self::get_root_attributes(&*self.conn, location_id, service_id)?;
+            let roots = Self::get_root_attributes(self.conn, location_id, service_id)?;
 
-            let attrs = Self::get_attributes(&*self.conn, roots)?;
+            let attrs = Self::get_attributes(self.conn, roots)?;
 
             Ok(loc.map(|loc| Location::from((loc, attrs))))
         })
@@ -177,9 +177,9 @@ impl<'a> LocationStoreGetLocationOperation<diesel::sqlite::SqliteConnection>
                     LocationStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
 
-            let roots = Self::get_root_attributes(&*self.conn, location_id, service_id)?;
+            let roots = Self::get_root_attributes(self.conn, location_id, service_id)?;
 
-            let attrs = Self::get_attributes(&*self.conn, roots)?;
+            let attrs = Self::get_attributes(self.conn, roots)?;
 
             Ok(loc.map(|loc| Location::from((loc, attrs))))
         })

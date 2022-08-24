@@ -81,9 +81,9 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
 
             for l in locs {
                 let loc: LocationModel = l;
-                let roots = Self::get_root_attributes(&*self.conn, &loc.location_id, service_id)?;
+                let roots = Self::get_root_attributes(self.conn, &loc.location_id, service_id)?;
 
-                let attrs = Self::get_attributes(&*self.conn, roots)?;
+                let attrs = Self::get_attributes(self.conn, roots)?;
 
                 locations.push(Location::from((loc, attrs)));
             }
@@ -193,9 +193,9 @@ impl<'a> LocationStoreListLocationsOperation<diesel::sqlite::SqliteConnection>
 
             for l in locs {
                 let loc: LocationModel = l;
-                let roots = Self::get_root_attributes(&*self.conn, &loc.location_id, service_id)?;
+                let roots = Self::get_root_attributes(self.conn, &loc.location_id, service_id)?;
 
-                let attrs = Self::get_attributes(&*self.conn, roots)?;
+                let attrs = Self::get_attributes(self.conn, roots)?;
 
                 locations.push(Location::from((loc, attrs)));
             }

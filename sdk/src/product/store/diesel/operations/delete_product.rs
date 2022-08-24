@@ -39,8 +39,8 @@ impl<'a> DeleteProductOperation for ProductStoreOperations<'a, diesel::pg::PgCon
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
-            pg::delete_product(&*self.conn, address, current_commit_num)?;
-            pg::delete_product_property_values(&*self.conn, address, current_commit_num)?;
+            pg::delete_product(self.conn, address, current_commit_num)?;
+            pg::delete_product_property_values(self.conn, address, current_commit_num)?;
 
             Ok(())
         })
@@ -55,8 +55,8 @@ impl<'a> DeleteProductOperation for ProductStoreOperations<'a, diesel::sqlite::S
         current_commit_num: i64,
     ) -> Result<(), ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
-            sqlite::delete_product(&*self.conn, address, current_commit_num)?;
-            sqlite::delete_product_property_values(&*self.conn, address, current_commit_num)?;
+            sqlite::delete_product(self.conn, address, current_commit_num)?;
+            sqlite::delete_product_property_values(self.conn, address, current_commit_num)?;
 
             Ok(())
         })

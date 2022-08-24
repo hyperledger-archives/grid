@@ -103,7 +103,7 @@ fn copy_schemas(file: impl Read + Seek, dest_path: &Path) -> Result<(), CliError
 
             debug!("extracting {outpath}", outpath = outpath.to_string_lossy());
 
-            if (&*file.name()).ends_with('/') {
+            if (file.name()).ends_with('/') {
                 debug!("File {} extracted to \"{}\"", i, outpath.display());
                 fs::create_dir_all(&outpath)
                     .map_err(|err| CliError::InternalError(err.to_string()))?;
