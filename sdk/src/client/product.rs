@@ -17,7 +17,7 @@ use crate::error::ClientError;
 use super::Client;
 
 /// The client representation of Grid Product
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Product {
     pub product_id: String,
     pub product_namespace: String,
@@ -26,7 +26,7 @@ pub struct Product {
 }
 
 /// The client representation of Grid Product property value
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PropertyValue {
     pub name: String,
     pub data_type: String,
@@ -40,7 +40,7 @@ pub struct PropertyValue {
 }
 
 /// The client representation of Grid Product lat/long value
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct LatLong {
     pub latitude: i64,
     pub longitude: i64,

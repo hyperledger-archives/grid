@@ -109,7 +109,7 @@ impl ClientFactory for ReqwestClientFactory {
 }
 
 /// Reqwest client representation of response paging
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct Paging {
     current: String,
     offset: i64,

@@ -17,7 +17,7 @@ use std::cmp;
 use url::Url;
 
 /// Paging data for a REST API dataset, intended to be returned with REST response data
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Paging {
     /// URL for the current page of records
     current: Url,

@@ -19,14 +19,14 @@ use crate::error::ClientError;
 use super::Client;
 
 /// The client representation of a Pike Alternate ID
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AlternateId {
     pub id_type: String,
     pub id: String,
 }
 
 /// The client representation of Grid Pike Organization metadata
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct OrganizationMetadata {
     pub key: String,
     pub value: String,
@@ -34,7 +34,7 @@ pub struct OrganizationMetadata {
 }
 
 /// The client representation of a Grid Pike Organization
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PikeOrganization {
     pub org_id: String,
     pub name: String,
@@ -45,7 +45,7 @@ pub struct PikeOrganization {
 }
 
 /// The client representation of a Grid Pike Agent
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PikeAgent {
     pub public_key: String,
     pub org_id: String,
@@ -56,7 +56,7 @@ pub struct PikeAgent {
 }
 
 /// The client representation of a Grid Pike Role
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PikeRole {
     pub org_id: String,
     pub name: String,
@@ -68,7 +68,7 @@ pub struct PikeRole {
 }
 
 /// The client representation of an inherited role
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct InheritFrom {
     pub role_name: String,
     pub org_id: String,

@@ -30,7 +30,7 @@ use crate::protocol::schema::state::PropertyValue;
 /// Possible Location namespaces
 ///
 /// The namespace determines the schema used to define a Location's properties
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LocationNamespace {
     Gs1,
 }
@@ -71,7 +71,7 @@ impl IntoNative<LocationNamespace> for protos::location_state::Location_Location
 ///
 /// A `Location` represents an arbitrary list of properties. The properties defined in the
 /// `Location` are determined by the `Location`'s `namespace`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Location {
     location_id: String,
     namespace: LocationNamespace,
@@ -191,7 +191,7 @@ impl std::fmt::Display for LocationBuildError {
 }
 
 /// Builder used to create a `Location`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct LocationBuilder {
     pub location_id: Option<String>,
     pub namespace: Option<LocationNamespace>,
@@ -251,7 +251,7 @@ impl LocationBuilder {
 }
 
 /// Native representation of a list of `Location`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocationList {
     locations: Vec<Location>,
 }

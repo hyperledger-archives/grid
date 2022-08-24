@@ -15,7 +15,7 @@
 use crate::batches::store::{diesel::schema::*, Batch, BatchSubmitInfo, Transaction};
 use chrono::NaiveDateTime;
 
-#[derive(Insertable, Queryable, PartialEq, Debug)]
+#[derive(Insertable, Queryable, PartialEq, Eq, Debug)]
 #[table_name = "batches"]
 pub struct BatchModel {
     pub header_signature: String,
@@ -32,7 +32,7 @@ pub struct BatchModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, Queryable, PartialEq, Debug)]
+#[derive(Insertable, Queryable, PartialEq, Eq, Debug)]
 #[table_name = "transactions"]
 pub struct TransactionModel {
     pub header_signature: String,
@@ -42,7 +42,7 @@ pub struct TransactionModel {
     pub signer_public_key: String,
 }
 
-#[derive(Insertable, PartialEq, Debug)]
+#[derive(Insertable, PartialEq, Eq, Debug)]
 #[table_name = "transaction_receipts"]
 pub struct TransactionReceiptModel {
     pub transaction_id: String,

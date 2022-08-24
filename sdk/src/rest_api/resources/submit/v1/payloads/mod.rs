@@ -24,12 +24,12 @@ pub use pike::*;
 pub use product::*;
 pub use schema::*;
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct SubmitBatchRequest {
     pub batches: Vec<Batch>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct Batch {
     #[serde(default)]
     pub trace: bool,
@@ -38,7 +38,7 @@ pub struct Batch {
     pub transactions: Vec<Transaction>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct Transaction {
     pub family_name: String,
     pub version: String,
@@ -51,7 +51,7 @@ pub struct Transaction {
     pub payload: Payload,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Payload {
     Pike(PikePayload),
@@ -71,7 +71,7 @@ impl IntoBytes for Payload {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct SubmitBatchResponse {
     ids: Vec<String>,
     message: String,
