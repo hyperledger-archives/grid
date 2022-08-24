@@ -39,7 +39,7 @@ impl<'a> GetUnclaimedBatchesOperation for BatchStoreOperations<'a, diesel::pg::P
     ) -> Result<Vec<BatchSubmitInfo>, BatchStoreError> {
         self.conn.transaction::<_, BatchStoreError, _>(|| {
             let current_timestamp = select(diesel::dsl::now)
-                .get_result::<NaiveDateTime>(&*self.conn)
+                .get_result::<NaiveDateTime>(self.conn)
                 .map_err(|err| {
                     BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;
@@ -93,7 +93,7 @@ impl<'a> GetUnclaimedBatchesOperation
     ) -> Result<Vec<BatchSubmitInfo>, BatchStoreError> {
         self.conn.transaction::<_, BatchStoreError, _>(|| {
             let current_timestamp = select(diesel::dsl::now)
-                .get_result::<NaiveDateTime>(&*self.conn)
+                .get_result::<NaiveDateTime>(self.conn)
                 .map_err(|err| {
                     BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
                 })?;

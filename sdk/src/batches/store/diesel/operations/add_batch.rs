@@ -35,7 +35,7 @@ impl<'a> AddBatchOperation for BatchStoreOperations<'a, diesel::pg::PgConnection
         self.conn.transaction::<_, BatchStoreError, _>(|| {
             insert_into(batches::table)
                 .values(batch_model)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(|err| {
                     BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
@@ -43,7 +43,7 @@ impl<'a> AddBatchOperation for BatchStoreOperations<'a, diesel::pg::PgConnection
 
             insert_into(transactions::table)
                 .values(transaction_models)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(|err| {
                     BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
@@ -61,7 +61,7 @@ impl<'a> AddBatchOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteCo
         self.conn.transaction::<_, BatchStoreError, _>(|| {
             insert_into(batches::table)
                 .values(batch_model)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(|err| {
                     BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))
@@ -69,7 +69,7 @@ impl<'a> AddBatchOperation for BatchStoreOperations<'a, diesel::sqlite::SqliteCo
 
             insert_into(transactions::table)
                 .values(transaction_models)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(|err| {
                     BatchStoreError::InternalError(InternalError::from_source(Box::new(err)))

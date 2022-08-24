@@ -43,16 +43,16 @@ impl<'a> GetProductOperation for ProductStoreOperations<'a, diesel::pg::PgConnec
         service_id: Option<&str>,
     ) -> Result<Option<Product>, ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
-            let product =
-                if let Some(product) = pg::get_product(&*self.conn, product_id, service_id)? {
-                    product
-                } else {
-                    return Ok(None);
-                };
+            let product = if let Some(product) = pg::get_product(self.conn, product_id, service_id)?
+            {
+                product
+            } else {
+                return Ok(None);
+            };
 
-            let root_values = pg::get_root_values(&*self.conn, product_id)?;
+            let root_values = pg::get_root_values(self.conn, product_id)?;
 
-            let values = pg::get_property_values(&*self.conn, root_values)?;
+            let values = pg::get_property_values(self.conn, root_values)?;
 
             Ok(Some(Product::from((product, values))))
         })
@@ -68,15 +68,15 @@ impl<'a> GetProductOperation for ProductStoreOperations<'a, diesel::sqlite::Sqli
     ) -> Result<Option<Product>, ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
             let product =
-                if let Some(product) = sqlite::get_product(&*self.conn, product_id, service_id)? {
+                if let Some(product) = sqlite::get_product(self.conn, product_id, service_id)? {
                     product
                 } else {
                     return Ok(None);
                 };
 
-            let root_values = sqlite::get_root_values(&*self.conn, product_id)?;
+            let root_values = sqlite::get_root_values(self.conn, product_id)?;
 
-            let values = sqlite::get_property_values(&*self.conn, root_values)?;
+            let values = sqlite::get_property_values(self.conn, root_values)?;
 
             Ok(Some(Product::from((product, values))))
         })

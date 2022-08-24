@@ -38,7 +38,7 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnecti
 
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
             update_grid_schema_end_commit_num(
-                &*self.conn,
+                self.conn,
                 &schema_model.name,
                 schema_model.service_id.as_deref(),
                 schema_model.start_commit_num,
@@ -46,12 +46,12 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnecti
 
             insert_into(grid_schema::table)
                 .values(schema_model)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())?;
 
             for definition in &definitions {
                 update_definition_end_commit_num(
-                    &*self.conn,
+                    self.conn,
                     &definition.name,
                     definition.service_id.as_deref(),
                     &definition.schema_name,
@@ -61,7 +61,7 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnecti
 
             insert_into(grid_property_definition::table)
                 .values(definitions)
-                .execute(&*self.conn)?;
+                .execute(self.conn)?;
 
             Ok(())
         })
@@ -75,7 +75,7 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqlite
 
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
             update_grid_schema_end_commit_num(
-                &*self.conn,
+                self.conn,
                 &schema_model.name,
                 schema_model.service_id.as_deref(),
                 schema_model.start_commit_num,
@@ -83,12 +83,12 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqlite
 
             insert_into(grid_schema::table)
                 .values(schema_model)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())?;
 
             for definition in &definitions {
                 update_definition_end_commit_num(
-                    &*self.conn,
+                    self.conn,
                     &definition.name,
                     definition.service_id.as_deref(),
                     &definition.schema_name,
@@ -98,7 +98,7 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqlite
 
             insert_into(grid_property_definition::table)
                 .values(definitions)
-                .execute(&*self.conn)?;
+                .execute(self.conn)?;
 
             Ok(())
         })

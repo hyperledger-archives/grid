@@ -37,13 +37,13 @@ impl<'a> BatchTrackingStoreAddBatchesOperation
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             insert_into(batches::table)
                 .values(batch_models)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(BatchTrackingStoreError::from)?;
 
             insert_into(transactions::table)
                 .values(transaction_models)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(BatchTrackingStoreError::from)?;
 
@@ -62,13 +62,13 @@ impl<'a> BatchTrackingStoreAddBatchesOperation
         self.conn.transaction::<_, BatchTrackingStoreError, _>(|| {
             insert_into(batches::table)
                 .values(batch_models)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(BatchTrackingStoreError::from)?;
 
             insert_into(transactions::table)
                 .values(transaction_models)
-                .execute(&*self.conn)
+                .execute(self.conn)
                 .map(|_| ())
                 .map_err(BatchTrackingStoreError::from)?;
 
