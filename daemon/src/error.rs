@@ -55,7 +55,7 @@ impl Error for DaemonError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ConfigurationError {
     MissingValue(String),
 }

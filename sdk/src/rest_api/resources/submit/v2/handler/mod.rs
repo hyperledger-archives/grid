@@ -46,7 +46,7 @@ pub type SubmitBatchResponse =
     Pin<Box<dyn Future<Output = Result<BatchIdList, SubmitBatchErrorResponse>> + Send>>;
 
 /// Represents a list of Batch IDs of the persisted batches
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BatchIdList {
     pub batch_identifiers: Vec<BatchIdentifier>,
 }
@@ -58,7 +58,7 @@ pub struct SerializedSubmitBatchRequest {
 }
 
 /// Represents errors encountered in the process of persisting a `Batch`
-#[derive(Default, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Default, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SubmitBatchErrorResponse {
     pub status: u16,
     pub message: String,

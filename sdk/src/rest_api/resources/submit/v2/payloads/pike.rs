@@ -30,7 +30,7 @@ use crate::rest_api::resources::{
 pub(super) const GRID_PIKE_FAMILY_NAME: &str = "grid_pike";
 pub(super) const GRID_PIKE_FAMILY_VERSION: &str = "2";
 
-#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(untagged)]
 pub enum PikeAction {
     CreateAgent(CreateAgentAction),
@@ -60,7 +60,7 @@ impl PikeAction {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(try_from = "CreateAgentActionBuilder")]
 pub struct CreateAgentAction {
     org_id: String,
@@ -228,7 +228,7 @@ impl TryFrom<CreateAgentActionBuilder> for CreateAgentAction {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct UpdateAgentAction {
     org_id: String,
     public_key: String,
@@ -329,7 +329,7 @@ impl UpdateAgentActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct DeleteAgentAction {
     org_id: String,
     public_key: String,
@@ -385,7 +385,7 @@ impl DeleteAgentActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct CreateOrganizationAction {
     id: String,
     name: String,
@@ -480,7 +480,7 @@ impl CreateOrganizationActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct UpdateOrganizationAction {
     id: String,
     name: String,
@@ -588,7 +588,7 @@ impl UpdateOrganizationActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct DeleteOrganizationAction {
     id: String,
 }
@@ -629,7 +629,7 @@ impl DeleteOrganizationActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct CreateRoleAction {
     org_id: String,
     name: String,
@@ -767,7 +767,7 @@ impl CreateRoleActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct UpdateRoleAction {
     org_id: String,
     name: String,
@@ -905,7 +905,7 @@ impl UpdateRoleActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct DeleteRoleAction {
     org_id: String,
     name: String,
@@ -961,7 +961,7 @@ impl DeleteRoleActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct AlternateId {
     id_type: String,
     id: String,
@@ -1011,7 +1011,7 @@ impl AlternateIdBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct KeyValueEntry {
     key: String,
     value: String,
@@ -1078,7 +1078,7 @@ impl KeyValueEntryBuilder {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(try_from = "DeserializablePikePayload")]
 pub struct PikePayload {
     #[serde(flatten)]
@@ -1105,7 +1105,7 @@ impl PikePayload {
 }
 
 // Interim struct to assist deserializing into `PikePayload`
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 struct DeserializablePikePayload {
     #[serde(flatten)]
     action: Value,

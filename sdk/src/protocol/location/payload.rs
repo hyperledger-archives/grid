@@ -31,7 +31,7 @@ use crate::protos::{
 /// Possible Location namespaces
 ///
 /// The namespace determines the schema used to define a Location's properties
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LocationNamespace {
     Gs1,
 }
@@ -69,7 +69,7 @@ impl IntoProto<protos::location_payload::LocationNamespace> for LocationNamespac
 impl IntoNative<LocationNamespace> for protos::location_payload::LocationNamespace {}
 
 /// The Location payload's action envelope
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     LocationCreate(LocationCreateAction),
     LocationUpdate(LocationUpdateAction),
@@ -77,7 +77,7 @@ pub enum Action {
 }
 
 /// Native representation of a Location transaction payload
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocationPayload {
     action: Action,
     timestamp: u64,
@@ -232,7 +232,7 @@ impl LocationPayloadBuilder {
 }
 
 /// Native representation of the "create location" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct LocationCreateAction {
     namespace: LocationNamespace,
     location_id: String,
@@ -374,7 +374,7 @@ impl LocationCreateActionBuilder {
 }
 
 /// Native representation of an "update location" action
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct LocationUpdateAction {
     namespace: LocationNamespace,
     location_id: String,
@@ -514,7 +514,7 @@ impl LocationUpdateActionBuilder {
 }
 
 /// Native representation of a "delete location" action
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct LocationDeleteAction {
     namespace: LocationNamespace,
     location_id: String,

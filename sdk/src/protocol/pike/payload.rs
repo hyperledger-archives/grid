@@ -26,7 +26,7 @@ use crate::protos::{
 };
 
 /// The Pike payload's action envelope
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     CreateAgent(CreateAgentAction),
     UpdateAgent(UpdateAgentAction),
@@ -40,7 +40,7 @@ pub enum Action {
 }
 
 /// Native representation of the "create agent" payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CreateAgentAction {
     org_id: String,
     public_key: String,
@@ -233,7 +233,7 @@ impl CreateAgentActionBuilder {
 }
 
 /// Native representation of the "update agent" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UpdateAgentAction {
     org_id: String,
     public_key: String,
@@ -426,7 +426,7 @@ impl UpdateAgentActionBuilder {
 }
 
 /// Native representation of the "delete agent" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct DeleteAgentAction {
     org_id: String,
     public_key: String,
@@ -492,7 +492,7 @@ impl IntoProto<protos::pike_payload::DeleteAgentAction> for DeleteAgentAction {}
 impl IntoNative<DeleteAgentAction> for protos::pike_payload::DeleteAgentAction {}
 
 /// Native representation of the "create organization" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CreateOrganizationAction {
     org_id: String,
     name: String,
@@ -692,7 +692,7 @@ impl CreateOrganizationActionBuilder {
 }
 
 /// Native representation of the "update organization" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UpdateOrganizationAction {
     org_id: String,
     name: String,
@@ -906,7 +906,7 @@ impl UpdateOrganizationActionBuilder {
 }
 
 /// Native representation of the "delete organization" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct DeleteOrganizationAction {
     id: String,
 }
@@ -1023,7 +1023,7 @@ impl DeleteOrganizationActionBuilder {
 }
 
 /// Native representation of the "create role" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CreateRoleAction {
     org_id: String,
     name: String,
@@ -1247,7 +1247,7 @@ impl CreateRoleActionBuilder {
 }
 
 /// Native representation of the "update role" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UpdateRoleAction {
     org_id: String,
     name: String,
@@ -1471,7 +1471,7 @@ impl UpdateRoleActionBuilder {
 }
 
 /// Native representation of the "delete role" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct DeleteRoleAction {
     org_id: String,
     name: String,
@@ -1601,7 +1601,7 @@ impl DeleteRoleActionBuilder {
 }
 
 /// Native representation of a Pike transaction payload
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PikePayload {
     action: Action,
     timestamp: u64,

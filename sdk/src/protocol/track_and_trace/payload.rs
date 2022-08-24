@@ -30,7 +30,7 @@ use crate::protos::{
 };
 
 /// Native representation of a "create record" action
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateRecordAction {
     record_id: String,
     schema: String,
@@ -153,7 +153,7 @@ impl IntoProto<track_and_trace_payload::CreateRecordAction> for CreateRecordActi
 impl IntoNative<CreateRecordAction> for track_and_trace_payload::CreateRecordAction {}
 
 /// Native representation of a "finalize record" action
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FinalizeRecordAction {
     record_id: String,
 }
@@ -230,7 +230,7 @@ impl IntoProto<track_and_trace_payload::FinalizeRecordAction> for FinalizeRecord
 impl IntoNative<FinalizeRecordAction> for track_and_trace_payload::FinalizeRecordAction {}
 
 /// Native representation of an "update properties" action
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpdatePropertiesAction {
     record_id: String,
     properties: Vec<PropertyValue>,
@@ -337,7 +337,7 @@ impl IntoProto<track_and_trace_payload::UpdatePropertiesAction> for UpdateProper
 impl IntoNative<UpdatePropertiesAction> for track_and_trace_payload::UpdatePropertiesAction {}
 
 /// Native representation of the "create proposal" action
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateProposalAction {
     record_id: String,
     receiving_agent: String,
@@ -484,7 +484,7 @@ impl IntoNative<CreateProposalAction> for track_and_trace_payload::CreateProposa
 ///
 /// Returned by an agent in response to a proposal for some `Record`. This response is then recorded
 /// in the `Proposal`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Response {
     Accept,
     Reject,
@@ -523,7 +523,7 @@ impl IntoProto<track_and_trace_payload::AnswerProposalAction_Response> for Respo
 impl IntoNative<Response> for track_and_trace_payload::AnswerProposalAction_Response {}
 
 /// Native representation of an "answer proposal" action
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnswerProposalAction {
     record_id: String,
     receiving_agent: String,
@@ -648,7 +648,7 @@ impl IntoProto<track_and_trace_payload::AnswerProposalAction> for AnswerProposal
 impl IntoNative<AnswerProposalAction> for track_and_trace_payload::AnswerProposalAction {}
 
 /// Native representation of a "revoke reporter" action
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RevokeReporterAction {
     record_id: String,
     reporter_id: String,
@@ -763,7 +763,7 @@ impl IntoProto<track_and_trace_payload::RevokeReporterAction> for RevokeReporter
 impl IntoNative<RevokeReporterAction> for track_and_trace_payload::RevokeReporterAction {}
 
 /// The Track and Trace payload action envelope
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     CreateRecord(CreateRecordAction),
     FinalizeRecord(FinalizeRecordAction),
@@ -774,7 +774,7 @@ pub enum Action {
 }
 
 /// Native representation of a Track and Trace payload
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackAndTracePayload {
     action: Action,
     timestamp: u64,

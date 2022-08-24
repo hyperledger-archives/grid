@@ -34,7 +34,7 @@ pub trait ScopeId: 'static + ValidId + Clone + std::fmt::Debug + PartialEq + Syn
     // Require a collection of trait bounds for a valid scope id
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GlobalScopeId {}
 impl ScopeId for GlobalScopeId {}
 impl ValidId for GlobalScopeId {}
@@ -45,7 +45,7 @@ impl GlobalScopeId {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ServiceScopeId {
     service_id: FullyQualifiedServiceId,
 }

@@ -22,7 +22,7 @@ use crate::client::purchase_order::{
     PurchaseOrderVersion as ClientPurchaseOrderVersion,
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PurchaseOrder {
     purchase_order_uid: String,
     workflow_state: String,
@@ -86,7 +86,7 @@ impl From<PurchaseOrder> for ClientPurchaseOrder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PurchaseOrderVersion {
     version_id: String,
     workflow_state: String,
@@ -127,7 +127,7 @@ impl From<PurchaseOrderVersion> for ClientPurchaseOrderVersion {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PurchaseOrderRevision {
     revision_id: u64,
     order_xml_v3_4: String,
@@ -157,7 +157,7 @@ impl From<PurchaseOrderRevision> for ClientPurchaseOrderRevision {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlternateId {
     pub purchase_order_uid: String,
     pub id_type: String,

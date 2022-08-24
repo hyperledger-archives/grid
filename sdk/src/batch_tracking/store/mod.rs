@@ -33,7 +33,7 @@ pub use error::{BatchBuilderError, BatchTrackingStoreError};
 
 const NON_SPLINTER_SERVICE_ID_DEFAULT: &str = "----";
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BatchStatus {
     Unknown,
     Pending,
@@ -94,7 +94,7 @@ impl fmt::Display for BatchStatusName {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InvalidTransaction {
     transaction_id: String,
     // These are for errors from the DLT itself
@@ -212,7 +212,7 @@ impl InvalidTransactionBuilder {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValidTransaction {
     transaction_id: String,
 }
@@ -246,7 +246,7 @@ impl ValidTransactionBuilder {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SubmissionError {
     error_type: String,
     error_message: String,
@@ -304,7 +304,7 @@ impl SubmissionErrorBuilder {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TrackingBatch {
     service_id: Option<String>,
     batch_header: String,
@@ -522,12 +522,12 @@ impl TrackingBatchBuilder {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TrackingBatchList {
     pub batches: Vec<TrackingBatch>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TrackingTransaction {
     family_name: String,
     family_version: String,
@@ -777,7 +777,7 @@ impl TransactionReceiptBuilder {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ServiceTrackingBatch {
     scope_id: ServiceScopeId,
     batch_header: String,
@@ -864,7 +864,7 @@ impl std::convert::TryFrom<TrackingBatch> for ServiceTrackingBatch {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct GlobalTrackingBatch {
     scope_id: GlobalScopeId,
     batch_header: String,

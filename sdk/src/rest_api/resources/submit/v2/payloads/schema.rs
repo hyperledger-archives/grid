@@ -339,12 +339,13 @@ impl PropertyDefinitionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct PropertyValue {
     name: String,
     data_type: DataType,
     bytes_value: Vec<u8>,
     boolean_value: bool,
+
     number_value: i64,
     string_value: String,
     enum_value: u32,
@@ -553,7 +554,7 @@ impl PropertyValueBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub enum DataType {
     Bytes,
     Boolean,
@@ -564,7 +565,7 @@ pub enum DataType {
     LatLong,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct LatLong {
     latitude: i64,
     longitude: i64,
@@ -607,7 +608,7 @@ impl std::fmt::Display for LatLongBuildError {
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct LatLongBuilder {
     latitude: i64,
     longitude: i64,

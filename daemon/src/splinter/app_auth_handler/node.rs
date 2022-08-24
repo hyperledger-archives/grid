@@ -20,7 +20,7 @@ use std::fmt;
 use std::thread;
 use std::time::Duration;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct GetNodeError(pub String);
 
 impl Error for GetNodeError {

@@ -18,7 +18,7 @@
 use crate::config::Scope;
 
 /// Displays the source of the configuration value
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GriddleConfigSource {
     Default,
     Environment,

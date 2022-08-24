@@ -56,7 +56,7 @@ const DOWNLOADS: &[UrlFile] = &[UrlFile {
 }];
 
 /// Defines how file downloads will be handled in a cached context
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DownloadConfig {
     #[cfg(feature = "xsd-downloader-force-download")]
     Always,

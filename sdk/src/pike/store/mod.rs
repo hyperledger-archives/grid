@@ -40,7 +40,7 @@ pub use builder::{
 pub use error::PikeStoreError;
 
 /// Represents a Grid Agent
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Agent {
     public_key: String,
     org_id: String,
@@ -104,7 +104,7 @@ impl Agent {
 }
 
 /// Represents a Grid Role
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Role {
     name: String,
     org_id: String,
@@ -176,7 +176,7 @@ impl Role {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct RoleList {
     pub data: Vec<Role>,
     pub paging: Paging,
@@ -189,7 +189,7 @@ impl RoleList {
 }
 
 /// Represents a Grid Organization
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Organization {
     org_id: String,
     name: String,
@@ -250,7 +250,7 @@ impl Organization {
 }
 
 /// Represents a Grid Alternate ID
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct AlternateId {
     org_id: String,
     alternate_id_type: String,
@@ -303,7 +303,7 @@ impl OrganizationList {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct AgentList {
     pub data: Vec<Agent>,
     pub paging: Paging,
@@ -316,7 +316,7 @@ impl AgentList {
 }
 
 /// Represents a Grid Organization metadata key-value pair
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct OrganizationMetadata {
     key: String,
     value: String,

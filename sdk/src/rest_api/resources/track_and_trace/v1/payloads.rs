@@ -175,7 +175,7 @@ pub struct PropertyValueSlice {
     pub service_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Value {
     String(String),
@@ -187,7 +187,7 @@ pub enum Value {
     Bytes(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct LatLong {
     pub latitude: i64,
     pub longitude: i64,
@@ -211,7 +211,7 @@ pub struct ReporterSlice {
     pub service_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct StructPropertyValue {
     pub name: String,
     pub data_type: String,

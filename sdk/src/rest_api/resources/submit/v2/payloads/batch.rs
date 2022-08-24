@@ -24,7 +24,7 @@ use transact::{
 use crate::rest_api::resources::error::ErrorResponse;
 use crate::rest_api::resources::submit::v2::payloads::TransactionPayload;
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct TrackingBatchResource {
     pub signed_batch: BatchBytes,
     #[serde(flatten)]
@@ -41,7 +41,7 @@ pub struct SubmitBatchRequest {
     pub batches: Vec<TrackingBatchResource>,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq)]
 /// A batch's identifying information
 pub struct BatchIdentifier {
     pub dlt_batch_id: String,

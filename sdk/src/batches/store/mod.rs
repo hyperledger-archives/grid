@@ -25,7 +25,7 @@ use crate::paging::Paging;
 pub use self::diesel::{DieselBatchStore, DieselConnectionBatchStore};
 pub use error::BatchStoreError;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Batch {
     pub header_signature: String,
     pub data_change_id: Option<String>,
@@ -84,14 +84,14 @@ impl Batch {
 }
 
 /// Data needed to submit a batch
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BatchSubmitInfo {
     pub header_signature: String,
     pub serialized_batch: String,
     pub service_id: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Transaction {
     pub header_signature: String,
     pub batch_id: String,
@@ -100,7 +100,7 @@ pub struct Transaction {
     pub signer_public_key: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionReceipt {
     pub transaction_id: String,
     pub result_valid: bool,

@@ -21,7 +21,7 @@ use crate::rest_api::resources::{error::ErrorResponse, submit::v2::error::Builde
 
 use super::{PropertyValue, TransactionPayload};
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 pub enum LocationNamespace {
     #[serde(rename = "GS1")]
     Gs1,
@@ -35,7 +35,7 @@ impl Default for LocationNamespace {
 
 // Allow the `LocationAction` enum variants to have the same `Location` postfix
 #[allow(clippy::enum_variant_names)]
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum LocationAction {
     CreateLocation(CreateLocationAction),
@@ -49,7 +49,7 @@ impl LocationAction {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "DeserializableLocationPayload")]
 pub struct LocationPayload {
     #[serde(flatten)]
@@ -79,7 +79,7 @@ impl LocationPayload {
 // The `action` is deserialized initially into a generic JSON `Value`,
 // then, the `target` field is parsed to determine which action is represented
 // in the JSON `Value`
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 struct DeserializableLocationPayload {
     #[serde(flatten)]
     action: Value,
@@ -128,7 +128,7 @@ impl TryFrom<DeserializableLocationPayload> for LocationPayload {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct CreateLocationAction {
     namespace: LocationNamespace,
     location_id: String,
@@ -205,7 +205,7 @@ impl CreateLocationActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct UpdateLocationAction {
     namespace: LocationNamespace,
     location_id: String,
@@ -279,7 +279,7 @@ impl UpdateLocationActionBuilder {
         })
     }
 }
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct DeleteLocationAction {
     namespace: LocationNamespace,
     location_id: String,

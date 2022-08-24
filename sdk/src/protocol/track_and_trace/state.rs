@@ -28,7 +28,7 @@ use protobuf::RepeatedField;
 /// Contains a cryptographic public key, associated with an agent, of the agent authorized to
 /// report updates to a `Property`. A flag indicator, `authorized`, determines whether the reporter
 /// is still authorized to report updates.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Reporter {
     public_key: String,
     authorized: bool,
@@ -142,7 +142,7 @@ impl IntoNative<Reporter> for track_and_trace_state::Property_Reporter {}
 /// Native representation of a `Property`
 ///
 /// Contains historical data pertaining to a particular data field of a tracked object.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Property {
     name: String,
     record_id: String,
@@ -313,7 +313,7 @@ impl IntoProto<track_and_trace_state::Property> for Property {}
 impl IntoNative<Property> for track_and_trace_state::Property {}
 
 /// Native representation of a list of `Property` objects
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyList {
     properties: Vec<Property>,
 }
@@ -407,7 +407,7 @@ impl IntoNative<PropertyList> for track_and_trace_state::PropertyList {}
 /// Native representation of a reported property value
 ///
 /// Contains an updated `Property` value as reported by an authorized agent.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReportedValue {
     reporter_index: u32,
     timestamp: u64,
@@ -527,7 +527,7 @@ impl IntoNative<ReportedValue> for track_and_trace_state::PropertyPage_ReportedV
 /// Treated by the Track and Trace transaction processor as a ring buffer to hold all historical
 /// reported values for the corresponding `Property`. Once the reserved namespaces for property
 /// pages are filled, the next update will overwrite the oldest page within the namespace.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyPage {
     name: String,
     record_id: String,
@@ -659,7 +659,7 @@ impl IntoProto<track_and_trace_state::PropertyPage> for PropertyPage {}
 impl IntoNative<PropertyPage> for track_and_trace_state::PropertyPage {}
 
 /// Native representation of a list of `PropertyPage`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyPageList {
     property_pages: Vec<PropertyPage>,
 }
@@ -754,7 +754,7 @@ impl IntoProto<track_and_trace_state::PropertyPageList> for PropertyPageList {}
 impl IntoNative<PropertyPageList> for track_and_trace_state::PropertyPageList {}
 
 /// Possible `Role` values
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Role {
     Owner,
     Custodian,
@@ -793,7 +793,7 @@ impl IntoProto<track_and_trace_state::Proposal_Role> for Role {}
 impl IntoNative<Role> for track_and_trace_state::Proposal_Role {}
 
 /// Possible `Proposal` statuses
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Status {
     Open,
     Accepted,
@@ -838,7 +838,7 @@ impl IntoNative<Status> for track_and_trace_state::Proposal_Status {}
 ///
 /// A `Proposal` contains an offer from the owner or custodian of a `Record` to authorize another
 /// agent a role, either owner, custodian, or reporter for the associated `Record`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Proposal {
     record_id: String,
     timestamp: u64,
@@ -1035,7 +1035,7 @@ impl IntoProto<track_and_trace_state::Proposal> for Proposal {}
 impl IntoNative<Proposal> for track_and_trace_state::Proposal {}
 
 /// Native representation of a list of `Proposal`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProposalList {
     proposals: Vec<Proposal>,
 }
@@ -1132,7 +1132,7 @@ impl IntoNative<ProposalList> for track_and_trace_state::ProposalList {}
 ///
 /// This struct represents a cryptographic public key that identifies an agent associated with
 /// a `Record`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociatedAgent {
     agent_id: String,
     timestamp: u64,
@@ -1236,7 +1236,7 @@ impl IntoNative<AssociatedAgent> for track_and_trace_state::Record_AssociatedAge
 /// Native representation of a `Record`
 ///
 /// A record represents the goods being tracked
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Record {
     record_id: String,
     schema: String,
@@ -1412,7 +1412,7 @@ impl IntoProto<track_and_trace_state::Record> for Record {}
 impl IntoNative<Record> for track_and_trace_state::Record {}
 
 /// Native representation of a list of `Record`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecordList {
     records: Vec<Record>,
 }

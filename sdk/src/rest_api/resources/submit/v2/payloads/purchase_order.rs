@@ -16,7 +16,7 @@ use crate::rest_api::resources::submit::v2::error::BuilderError;
 
 use super::TransactionPayload;
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum PurchaseOrderAction {
     CreatePo(CreatePurchaseOrderAction),
@@ -31,7 +31,7 @@ impl PurchaseOrderAction {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct PurchaseOrderPayload {
     #[serde(flatten)]
     action: PurchaseOrderAction,
@@ -52,7 +52,7 @@ impl PurchaseOrderPayload {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct CreatePurchaseOrderAction {
     uid: String,
     created_at: u64,
@@ -197,7 +197,7 @@ impl CreatePurchaseOrderActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct UpdatePurchaseOrderAction {
     uid: String,
     workflow_state: String,
@@ -306,7 +306,7 @@ impl UpdatePurchaseOrderActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct CreateVersionAction {
     version_id: String,
     po_uid: String,
@@ -407,7 +407,7 @@ impl CreateVersionActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct UpdateVersionAction {
     version_id: String,
     po_uid: String,
@@ -508,7 +508,7 @@ impl UpdateVersionActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct PayloadRevision {
     revision_id: u64,
     submitter: String,
@@ -593,7 +593,7 @@ impl PayloadRevisionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct PurchaseOrderAlternateId {
     id_type: String,
     id: String,
