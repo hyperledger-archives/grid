@@ -629,9 +629,9 @@ impl LatLongBuilder {
         let latitude = self.latitude;
         let longitude = self.longitude;
 
-        if latitude < -90_000_000 || latitude > 90_000_000 {
+        if !(-90_000_000..=90_000_000).contains(&latitude) {
             Err(LatLongBuildError::InvalidLatitude(latitude))
-        } else if longitude < -180_000_000 || longitude > 180_000_000 {
+        } else if !(-180_000_000..=180_000_000).contains(&longitude) {
             Err(LatLongBuildError::InvalidLongitude(longitude))
         } else {
             Ok(LatLong {
