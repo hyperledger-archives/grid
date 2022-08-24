@@ -232,12 +232,10 @@ fn determine_file_type(path: &str) -> Result<ProductFileType, CliError> {
             path
         ))),
         Some(os_str) => match os_str.to_str() {
-            None => {
-                return Err(CliError::UserError(format!(
-                    "Unable to determine file extension: {}",
-                    path
-                )))
-            }
+            None => Err(CliError::UserError(format!(
+                "Unable to determine file extension: {}",
+                path
+            ))),
             Some("yaml") | Some("yml") => Ok(ProductFileType::SchemaBasedDefinition),
             Some("xml") => Ok(ProductFileType::Gdsn3_1),
             Some(_) => Err(CliError::UserError(format!(
