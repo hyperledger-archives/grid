@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub(in crate) mod diesel;
+pub(crate) mod diesel;
 mod error;
 
 use crate::paging::Paging;
@@ -23,7 +23,7 @@ pub use self::diesel::{DieselConnectionLocationStore, DieselLocationStore};
 pub use error::LocationStoreError;
 
 /// Represents a Grid Location
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Location {
     pub location_id: String,
     pub location_address: String,
@@ -37,7 +37,7 @@ pub struct Location {
     pub last_updated: Option<i64>,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct LocationList {
     pub data: Vec<Location>,
     pub paging: Paging,
@@ -50,7 +50,7 @@ impl LocationList {
 }
 
 /// Represents a Grid Location Attribute
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct LocationAttribute {
     pub location_id: String,
     pub location_address: String,
@@ -72,7 +72,7 @@ pub struct LocationAttribute {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct LatLong;
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 pub struct LatLongValue(pub i64, pub i64);
 
 pub trait LocationStore {

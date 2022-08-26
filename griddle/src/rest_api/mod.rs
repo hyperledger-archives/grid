@@ -18,7 +18,7 @@ mod error;
 
 pub use error::GriddleRestApiServerError;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// Indicates the service scope intended for incoming requests and is used by the REST API to
 /// validate requests.
 pub enum Scope {

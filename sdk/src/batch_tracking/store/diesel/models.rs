@@ -27,7 +27,7 @@ use crate::batch_tracking::store::error::BatchTrackingStoreError;
 
 pub const DCID_FORMAT: &str = "^dcid:[\\w\\-\\+=/~!@#\\$%\\^&\\*{}|\\[\\]<>\\?]+$";
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Eq, Debug, Clone)]
 #[table_name = "batches"]
 #[primary_key(service_id, batch_id)]
 pub struct NewBatchModel {
@@ -40,7 +40,7 @@ pub struct NewBatchModel {
     pub submitted: bool,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Eq, Debug, Clone)]
 #[table_name = "batches"]
 #[primary_key(service_id, batch_id)]
 pub struct BatchModel {
@@ -54,7 +54,7 @@ pub struct BatchModel {
     pub created_at: i64,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, QueryableByName)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Eq, Debug, QueryableByName)]
 #[table_name = "transactions"]
 #[primary_key(service_id, transaction_id)]
 pub struct TransactionModel {
@@ -68,7 +68,7 @@ pub struct TransactionModel {
 }
 
 #[derive(
-    Identifiable, Insertable, Queryable, PartialEq, Debug, AsChangeset, Clone, QueryableByName,
+    Identifiable, Insertable, Queryable, PartialEq, Eq, Debug, AsChangeset, Clone, QueryableByName,
 )]
 #[table_name = "transaction_receipts"]
 #[primary_key(service_id, transaction_id)]
@@ -92,7 +92,7 @@ pub struct NewBatchStatusModel {
     pub dlt_status: String,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, Clone)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Eq, Debug, Clone)]
 #[table_name = "batch_statuses"]
 #[primary_key(service_id, batch_id)]
 pub struct BatchStatusModel {
@@ -103,7 +103,7 @@ pub struct BatchStatusModel {
     pub updated_at: i64,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug, AsChangeset)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug, AsChangeset)]
 #[changeset_options(treat_none_as_null = "true")]
 #[table_name = "submissions"]
 pub struct NewSubmissionModel {
@@ -113,7 +113,7 @@ pub struct NewSubmissionModel {
     pub error_message: Option<String>,
 }
 
-#[derive(Identifiable, Insertable, Queryable, PartialEq, Debug, QueryableByName)]
+#[derive(Identifiable, Insertable, Queryable, PartialEq, Eq, Debug, QueryableByName)]
 #[table_name = "submissions"]
 #[primary_key(service_id, batch_id)]
 pub struct SubmissionModel {

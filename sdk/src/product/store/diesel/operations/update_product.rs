@@ -39,7 +39,7 @@ impl<'a> UpdateProductOperation for ProductStoreOperations<'a, diesel::pg::PgCon
     ) -> Result<(), ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
             pg::update_product_property_values(
-                &*self.conn,
+                self.conn,
                 product_id,
                 service_id,
                 current_commit_num,
@@ -60,7 +60,7 @@ impl<'a> UpdateProductOperation for ProductStoreOperations<'a, diesel::sqlite::S
     ) -> Result<(), ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
             sqlite::update_product_property_values(
-                &*self.conn,
+                self.conn,
                 product_id,
                 service_id,
                 current_commit_num,

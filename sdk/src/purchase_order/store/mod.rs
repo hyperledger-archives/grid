@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub(in crate) mod diesel;
+pub(crate) mod diesel;
 mod error;
 
 use crate::paging::Paging;
@@ -23,7 +23,7 @@ pub use self::diesel::{DieselConnectionPurchaseOrderStore, DieselPurchaseOrderSt
 pub use error::{PurchaseOrderBuilderError, PurchaseOrderStoreError};
 
 /// Represents a list of Grid Purchase Orders
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrderList {
     pub data: Vec<PurchaseOrder>,
     pub paging: Paging,
@@ -36,7 +36,7 @@ impl PurchaseOrderList {
 }
 
 /// Represents a Grid Purchase Order
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrder {
     purchase_order_uid: String,
     workflow_state: String,
@@ -294,7 +294,7 @@ impl PurchaseOrderBuilder {
 }
 
 /// Represents a list of Grid Purchase Order Versions
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrderVersionList {
     pub data: Vec<PurchaseOrderVersion>,
     pub paging: Paging,
@@ -307,7 +307,7 @@ impl PurchaseOrderVersionList {
 }
 
 /// Represents a Grid Purchase Order Version
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrderVersion {
     version_id: String,
     is_draft: bool,
@@ -484,7 +484,7 @@ impl PurchaseOrderVersionBuilder {
 }
 
 /// Represents a list of Grid Purchase Order Revisions
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrderVersionRevisionList {
     pub data: Vec<PurchaseOrderVersionRevision>,
     pub paging: Paging,
@@ -497,7 +497,7 @@ impl PurchaseOrderVersionRevisionList {
 }
 
 /// Represents a Grid Purchase Order Version Revision
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrderVersionRevision {
     pub revision_id: i64,
     pub order_xml_v3_4: String,
@@ -653,7 +653,7 @@ impl PurchaseOrderVersionRevisionBuilder {
 }
 
 /// Represents a list of Grid Purchase Order Alternate IDs
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrderAlternateIdList {
     pub data: Vec<PurchaseOrderAlternateId>,
     pub paging: Paging,
@@ -666,7 +666,7 @@ impl PurchaseOrderAlternateIdList {
 }
 
 /// Represents a Grid Purchase Order Alternate ID
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct PurchaseOrderAlternateId {
     purchase_order_uid: String,
     id_type: String,

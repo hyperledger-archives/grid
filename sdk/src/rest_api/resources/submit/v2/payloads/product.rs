@@ -16,7 +16,7 @@ use crate::rest_api::resources::submit::v2::error::BuilderError;
 
 use super::{PropertyValue, TransactionPayload};
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub enum ProductNamespace {
     #[serde(rename = "GS1")]
     Gs1,
@@ -30,7 +30,7 @@ impl Default for ProductNamespace {
 
 // Allow the enum variants to end in the same `Product` postfix
 #[allow(clippy::enum_variant_names)]
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum ProductAction {
     CreateProduct(CreateProductAction),
@@ -44,7 +44,7 @@ impl ProductAction {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct ProductPayload {
     action: ProductAction,
     timestamp: u64,
@@ -67,7 +67,7 @@ impl ProductPayload {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct CreateProductAction {
     product_namespace: ProductNamespace,
     product_id: String,
@@ -143,7 +143,7 @@ impl CreateProductActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct UpdateProductAction {
     product_namespace: ProductNamespace,
     product_id: String,
@@ -218,7 +218,7 @@ impl UpdateProductActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct DeleteProductAction {
     product_namespace: ProductNamespace,
     product_id: String,

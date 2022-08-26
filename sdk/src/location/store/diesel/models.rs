@@ -16,7 +16,7 @@ use chrono::NaiveDateTime;
 
 use super::schema::{location, location_attribute};
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "location"]
 pub struct NewLocationModel {
     pub location_id: String,
@@ -31,7 +31,7 @@ pub struct NewLocationModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "location"]
 pub struct LocationModel {
     pub id: i64,
@@ -48,7 +48,7 @@ pub struct LocationModel {
     pub last_updated: Option<NaiveDateTime>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "location_attribute"]
 pub struct NewLocationAttributeModel {
     pub location_id: String,
@@ -71,7 +71,7 @@ pub struct NewLocationAttributeModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "location_attribute"]
 pub struct LocationAttributeModel {
     pub id: i64,

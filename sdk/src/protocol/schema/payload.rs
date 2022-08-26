@@ -26,14 +26,14 @@ use crate::protos::{
 };
 
 /// Schema payload's action envelope
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     SchemaCreate(SchemaCreateAction),
     SchemaUpdate(SchemaUpdateAction),
 }
 
 /// Native representation of a Schema transaction payload
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchemaPayload {
     action: Action,
 }
@@ -165,7 +165,7 @@ impl SchemaPayloadBuilder {
 }
 
 /// Native implementation for the "create schema" action
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SchemaCreateAction {
     schema_name: String,
     owner: String,
@@ -347,7 +347,7 @@ impl SchemaCreateBuilder {
 }
 
 /// Native representation of an "update schema" action
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SchemaUpdateAction {
     schema_name: String,
     owner: String,

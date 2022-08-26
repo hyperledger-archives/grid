@@ -89,14 +89,14 @@ impl<'a>
             })?;
 
         let roots = Self::get_root_rvs(
-            &*self.conn,
+            self.conn,
             record_id,
             property_name,
             commit_height,
             service_id,
         )?;
 
-        let rvs = Self::get_rvs_for_rv(&*self.conn, roots)?;
+        let rvs = Self::get_rvs_for_rv(self.conn, roots)?;
 
         Ok(val.map(|v| ReportedValueReporterToAgentMetadata::from((v, rvs))))
     }
@@ -229,14 +229,14 @@ impl<'a>
             })?;
 
         let roots = Self::get_root_rvs(
-            &*self.conn,
+            self.conn,
             record_id,
             property_name,
             commit_height,
             service_id,
         )?;
 
-        let rvs = Self::get_rvs_for_rv(&*self.conn, roots)?;
+        let rvs = Self::get_rvs_for_rv(self.conn, roots)?;
 
         Ok(val.map(|v| ReportedValueReporterToAgentMetadata::from((v, rvs))))
     }

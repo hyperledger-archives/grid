@@ -24,14 +24,14 @@ use crate::protos::{
 
 use super::BuilderError;
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum SchemaAction {
     SchemaCreate(SchemaCreateAction),
     SchemaUpdate(SchemaUpdateAction),
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct SchemaPayload {
     action: SchemaAction,
 }
@@ -117,7 +117,7 @@ impl IntoBytes for SchemaPayload {
 impl IntoProto<protos::schema_payload::SchemaPayload> for SchemaPayload {}
 impl IntoNative<SchemaPayload> for protos::schema_payload::SchemaPayload {}
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct SchemaCreateAction {
     schema_name: String,
     description: String,
@@ -250,7 +250,7 @@ impl SchemaCreateBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct SchemaUpdateAction {
     schema_name: String,
     properties: Vec<PropertyDefinition>,
@@ -367,7 +367,7 @@ impl SchemaUpdateBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct PropertyDefinition {
     name: String,
     data_type: DataType,
@@ -477,7 +477,7 @@ impl IntoBytes for PropertyDefinition {
 impl IntoProto<protos::schema_state::PropertyDefinition> for PropertyDefinition {}
 impl IntoNative<PropertyDefinition> for protos::schema_state::PropertyDefinition {}
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct PropertyDefinitionBuilder {
     name: Option<String>,
     data_type: Option<DataType>,
@@ -593,7 +593,7 @@ impl PropertyDefinitionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct PropertyValue {
     name: String,
     data_type: DataType,
@@ -882,7 +882,7 @@ impl PropertyValueBuilder {
 impl IntoProto<protos::schema_state::PropertyValue> for PropertyValue {}
 impl IntoNative<PropertyValue> for protos::schema_state::PropertyValue {}
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub enum DataType {
     Bytes,
     Boolean,
@@ -931,7 +931,7 @@ impl FromNative<DataType> for protos::schema_state::PropertyDefinition_DataType 
 impl IntoProto<protos::schema_state::PropertyDefinition_DataType> for DataType {}
 impl IntoNative<DataType> for protos::schema_state::PropertyDefinition_DataType {}
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct LatLong {
     latitude: i64,
     longitude: i64,
@@ -995,7 +995,7 @@ impl std::fmt::Display for LatLongBuildError {
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct LatLongBuilder {
     latitude: i64,
     longitude: i64,
@@ -1016,9 +1016,9 @@ impl LatLongBuilder {
         let latitude = self.latitude;
         let longitude = self.longitude;
 
-        if latitude < -90_000_000 || latitude > 90_000_000 {
+        if !(-90_000_000..=90_000_000).contains(&latitude) {
             Err(LatLongBuildError::InvalidLatitude(latitude))
-        } else if longitude < -180_000_000 || longitude > 180_000_000 {
+        } else if !(-180_000_000..=180_000_000).contains(&longitude) {
             Err(LatLongBuildError::InvalidLongitude(longitude))
         } else {
             Ok(LatLong {

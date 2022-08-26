@@ -39,7 +39,7 @@ pub use default::DefaultPartialGriddleConfigBuilder;
 pub use env::EnvPartialGriddleConfigBuilder;
 pub use partial::{GriddleConfigSource, PartialGriddleConfig};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// Placeholder for indicating the scope of the requests, will be used to determine if requests
 /// to Griddle should include a scope ID and what format ID to expect
 pub enum Scope {

@@ -14,7 +14,7 @@
 
 pub(in crate::schema) mod models;
 mod operations;
-pub(in crate) mod schema;
+pub(crate) mod schema;
 
 use crate::error::ResourceTemporarilyUnavailableError;
 

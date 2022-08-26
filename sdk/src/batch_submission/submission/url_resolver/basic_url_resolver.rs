@@ -17,7 +17,7 @@ use crate::scope_id::{GlobalScopeId, ServiceScopeId};
 use super::UrlResolver;
 
 /// A url resolver for the `GlobalScopeId`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GlobalUrlResolver {
     base_url: String,
 }
@@ -38,7 +38,7 @@ impl UrlResolver for GlobalUrlResolver {
 }
 
 /// A url resolver for the `ServiceScopeId`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceUrlResolver {
     base_url: String,
 }

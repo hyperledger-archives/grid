@@ -39,8 +39,8 @@ impl<'a> LocationStoreDeleteLocationOperation
         current_commit_num: i64,
     ) -> Result<(), LocationStoreError> {
         self.conn.transaction::<_, LocationStoreError, _>(|| {
-            pg::delete_location(&*self.conn, address, current_commit_num)?;
-            pg::delete_location_attributes(&*self.conn, address, current_commit_num)?;
+            pg::delete_location(self.conn, address, current_commit_num)?;
+            pg::delete_location_attributes(self.conn, address, current_commit_num)?;
 
             Ok(())
         })
@@ -57,8 +57,8 @@ impl<'a> LocationStoreDeleteLocationOperation
         current_commit_num: i64,
     ) -> Result<(), LocationStoreError> {
         self.conn.transaction::<_, LocationStoreError, _>(|| {
-            sqlite::delete_location(&*self.conn, address, current_commit_num)?;
-            sqlite::delete_location_attributes(&*self.conn, address, current_commit_num)?;
+            sqlite::delete_location(self.conn, address, current_commit_num)?;
+            sqlite::delete_location_attributes(self.conn, address, current_commit_num)?;
 
             Ok(())
         })

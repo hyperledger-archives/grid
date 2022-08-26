@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub(in crate) mod diesel;
+pub(crate) mod diesel;
 mod error;
 
 use crate::paging::Paging;
@@ -147,7 +147,7 @@ pub struct ReportedValueReporterToAgentMetadata {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct LatLong;
 
-#[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct LatLongValue(pub i64, pub i64);
 
 pub trait TrackAndTraceStore {

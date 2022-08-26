@@ -25,7 +25,7 @@ use crate::pike::addressing::{
 };
 use crate::pike::store::diesel::schema::*;
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_agent"]
 pub struct NewAgentModel {
     pub state_address: String,
@@ -39,7 +39,7 @@ pub struct NewAgentModel {
 }
 
 /// Database model representation of a Pike `Agent`
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_agent"]
 pub struct AgentModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -55,7 +55,7 @@ pub struct AgentModel {
     pub last_updated: Option<NaiveDateTime>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_role"]
 pub struct NewRoleModel {
     pub state_address: String,
@@ -69,7 +69,7 @@ pub struct NewRoleModel {
 }
 
 /// Database model representation of a Pike `Role`
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_role"]
 pub struct RoleModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -85,7 +85,7 @@ pub struct RoleModel {
     pub last_updated: Option<NaiveDateTime>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_agent_role_assoc"]
 pub struct NewRoleAssociationModel {
     pub agent_public_key: String,
@@ -97,7 +97,7 @@ pub struct NewRoleAssociationModel {
 }
 
 /// Database model representation of a Pike `Role` associated with an `Organization` and `Agent`
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_agent_role_assoc"]
 pub struct RoleAssociationModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -110,7 +110,7 @@ pub struct RoleAssociationModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_role_state_address_assoc"]
 pub struct NewRoleStateAddressAssociationModel {
     pub state_address: String,
@@ -122,7 +122,7 @@ pub struct NewRoleStateAddressAssociationModel {
 }
 
 /// Database model representation of a Pike `Role` associated with a state address
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_role_state_address_assoc"]
 pub struct RoleStateAddressAssociationModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -135,7 +135,7 @@ pub struct RoleStateAddressAssociationModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_permissions"]
 pub struct NewPermissionModel {
     pub role_name: String,
@@ -147,7 +147,7 @@ pub struct NewPermissionModel {
 }
 
 /// Database model representation of a Pike `Permission`
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_permissions"]
 pub struct PermissionModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -160,7 +160,7 @@ pub struct PermissionModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_inherit_from"]
 pub struct NewInheritFromModel {
     pub role_name: String,
@@ -173,7 +173,7 @@ pub struct NewInheritFromModel {
 }
 
 /// Database model representation of the Pike `roles` that a `role` inherits attributes from
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_inherit_from"]
 pub struct InheritFromModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -187,7 +187,7 @@ pub struct InheritFromModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_allowed_orgs"]
 pub struct NewAllowedOrgModel {
     pub role_name: String,
@@ -200,7 +200,7 @@ pub struct NewAllowedOrgModel {
 
 /// Database model representation of Pike `organizations` allowed to use the specified `Role`,
 /// besides the defining `organization`
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_allowed_orgs"]
 pub struct AllowedOrgModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -213,7 +213,7 @@ pub struct AllowedOrgModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_organization"]
 pub struct NewOrganizationModel {
     pub state_address: String,
@@ -225,7 +225,7 @@ pub struct NewOrganizationModel {
 }
 
 /// Database model representation of a Pike `organization`
-#[derive(Queryable, PartialEq, Identifiable, Debug)]
+#[derive(Queryable, PartialEq, Eq, Identifiable, Debug)]
 #[table_name = "pike_organization"]
 pub struct OrganizationModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -239,7 +239,7 @@ pub struct OrganizationModel {
     pub last_updated: Option<NaiveDateTime>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_organization_metadata"]
 pub struct NewOrganizationMetadataModel {
     pub org_id: String,
@@ -251,7 +251,7 @@ pub struct NewOrganizationMetadataModel {
 }
 
 /// Database model representation of a Pike `organization`'s `metadata`
-#[derive(Queryable, PartialEq, Identifiable, Debug)]
+#[derive(Queryable, PartialEq, Eq, Identifiable, Debug)]
 #[table_name = "pike_organization_metadata"]
 pub struct OrganizationMetadataModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -264,7 +264,7 @@ pub struct OrganizationMetadataModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_organization_alternate_id"]
 pub struct NewAlternateIdModel {
     pub org_id: String,
@@ -276,7 +276,7 @@ pub struct NewAlternateIdModel {
 }
 
 /// Database model representation of a Pike `alternate_id`
-#[derive(Queryable, PartialEq, Identifiable, Debug)]
+#[derive(Queryable, PartialEq, Eq, Identifiable, Debug)]
 #[table_name = "pike_organization_alternate_id"]
 pub struct AlternateIdModel {
     ///  This is the record id for the slowly-changing-dimensions table.
@@ -307,7 +307,7 @@ pub fn make_alternate_id_models(org: &Organization) -> Vec<NewAlternateIdModel> 
     models
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "pike_organization_location_assoc"]
 pub struct NewLocationAssociationModel {
     pub org_id: String,
@@ -318,7 +318,7 @@ pub struct NewLocationAssociationModel {
 }
 
 /// Database model representation of a Pike `organization`'s associated `location`
-#[derive(Queryable, PartialEq, Identifiable, Debug)]
+#[derive(Queryable, PartialEq, Eq, Identifiable, Debug)]
 #[table_name = "pike_organization_location_assoc"]
 pub struct LocationAssociationModel {
     ///  This is the record id for the slowly-changing-dimensions table.

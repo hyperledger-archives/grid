@@ -14,7 +14,7 @@
 
 use crate::track_and_trace::store::diesel::schema::*;
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "associated_agent"]
 pub struct NewAssociatedAgentModel {
     pub record_id: String,
@@ -26,7 +26,7 @@ pub struct NewAssociatedAgentModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "associated_agent"]
 pub struct AssociatedAgentModel {
     pub id: i64,
@@ -39,7 +39,7 @@ pub struct AssociatedAgentModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "grid_property_definition"]
 pub struct NewGridPropertyDefinitionModel {
     pub name: String,
@@ -56,7 +56,7 @@ pub struct NewGridPropertyDefinitionModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "grid_property_definition"]
 pub struct GridPropertyDefinitionModel {
     pub id: i64,
@@ -74,7 +74,7 @@ pub struct GridPropertyDefinitionModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "property"]
 pub struct NewPropertyModel {
     pub name: String,
@@ -87,7 +87,7 @@ pub struct NewPropertyModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "property"]
 pub struct PropertyModel {
     pub id: i64,
@@ -101,7 +101,7 @@ pub struct PropertyModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "proposal"]
 pub struct NewProposalModel {
     pub record_id: String,
@@ -119,7 +119,7 @@ pub struct NewProposalModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "proposal"]
 pub struct ProposalModel {
     pub id: i64,
@@ -137,7 +137,7 @@ pub struct ProposalModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "record"]
 pub struct NewRecordModel {
     pub record_id: String,
@@ -152,7 +152,7 @@ pub struct NewRecordModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "record"]
 pub struct RecordModel {
     pub id: i64,
@@ -168,7 +168,7 @@ pub struct RecordModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "reported_value"]
 pub struct NewReportedValueModel {
     pub property_name: String,
@@ -189,7 +189,7 @@ pub struct NewReportedValueModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "reported_value"]
 pub struct ReportedValueModel {
     pub id: i64,
@@ -211,7 +211,7 @@ pub struct ReportedValueModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "reported_value_reporter_to_agent_metadata"]
 pub struct NewReportedValueReporterToAgentMetadataModel {
     pub property_name: String,
@@ -235,7 +235,7 @@ pub struct NewReportedValueReporterToAgentMetadataModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "reported_value_reporter_to_agent_metadata"]
 pub struct ReportedValueReporterToAgentMetadataModel {
     pub id: i64,
@@ -260,7 +260,7 @@ pub struct ReportedValueReporterToAgentMetadataModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "reporter"]
 pub struct NewReporterModel {
     pub property_name: String,
@@ -273,7 +273,7 @@ pub struct NewReporterModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "reporter"]
 pub struct ReporterModel {
     pub id: i64,

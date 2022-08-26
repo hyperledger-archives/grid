@@ -91,7 +91,7 @@ impl From<LocationAttribute> for LocationPropertyValueSlice {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct LatLongSlice {
     pub latitude: i64,
     pub longitude: i64,

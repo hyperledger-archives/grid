@@ -17,7 +17,7 @@ use crate::error::ClientError;
 use super::{schema::DataType, Client};
 
 /// The client representation of a Grid Location
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Location {
     pub location_id: String,
     pub location_namespace: String,
@@ -27,7 +27,7 @@ pub struct Location {
 }
 
 /// The client representation of a Grid Location property value
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct LocationPropertyValue {
     pub name: String,
     pub data_type: DataType,
@@ -42,7 +42,7 @@ pub struct LocationPropertyValue {
 }
 
 /// The client representation of a Grid Location lat/long value
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct LatLong {
     pub latitude: i64,
     pub longitude: i64,

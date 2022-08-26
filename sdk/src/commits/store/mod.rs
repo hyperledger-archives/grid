@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #[cfg(feature = "diesel")]
-pub(in crate) mod diesel;
+pub(crate) mod diesel;
 mod error;
 
 #[cfg(feature = "diesel")]
@@ -21,14 +21,14 @@ pub use self::diesel::{DieselCommitStore, DieselConnectionCommitStore};
 pub use error::CommitStoreError;
 
 /// Represents a Grid commit
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Commit {
     pub commit_id: String,
     pub commit_num: i64,
     pub service_id: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct ChainRecord {
     pub start_commit_num: i64,
     pub end_commit_num: i64,

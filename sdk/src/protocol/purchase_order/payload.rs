@@ -25,7 +25,7 @@ use crate::protos::{
 };
 
 /// The Purchase Order payload's action envelope
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     CreatePo(CreatePurchaseOrderPayload),
     UpdatePo(UpdatePurchaseOrderPayload),
@@ -34,7 +34,7 @@ pub enum Action {
 }
 
 /// Native representation of a Purchase Order payload
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderPayload {
     action: Action,
     timestamp: u64,
@@ -179,7 +179,7 @@ impl PurchaseOrderPayloadBuilder {
 }
 
 /// Native representation of the "create purchase order" payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CreatePurchaseOrderPayload {
     uid: String,
     created_at: u64,
@@ -418,7 +418,7 @@ impl CreatePurchaseOrderPayloadBuilder {
 }
 
 /// Native representation of the "update purchase order" payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UpdatePurchaseOrderPayload {
     uid: String,
     workflow_state: String,
@@ -619,7 +619,7 @@ impl UpdatePurchaseOrderPayloadBuilder {
 }
 
 /// Native representation of the revision made in a "create" or "update" version payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct PayloadRevision {
     revision_id: u64,
     submitter: String,
@@ -758,7 +758,7 @@ impl PayloadRevisionBuilder {
 }
 
 /// Native representation of the "create version" payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CreateVersionPayload {
     version_id: String,
     po_uid: String,
@@ -915,7 +915,7 @@ impl CreateVersionPayloadBuilder {
 }
 
 /// Native representation of the "update version" payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct UpdateVersionPayload {
     version_id: String,
     po_uid: String,

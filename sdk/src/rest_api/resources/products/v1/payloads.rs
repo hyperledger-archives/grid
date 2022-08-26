@@ -112,7 +112,7 @@ impl From<&PropertyValue> for ProductPropertyValueSlice {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct LatLongSlice {
     pub latitude: i64,
     pub longitude: i64,

@@ -23,7 +23,7 @@ use crate::protos::{
 
 use super::{BuilderError, PropertyValue};
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 pub enum LocationNamespace {
     #[serde(rename = "GS1")]
     Gs1,
@@ -61,7 +61,7 @@ impl FromNative<LocationNamespace> for protos::location_payload::LocationNamespa
 impl IntoProto<protos::location_payload::LocationNamespace> for LocationNamespace {}
 impl IntoNative<LocationNamespace> for protos::location_payload::LocationNamespace {}
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum LocationAction {
     LocationCreate(LocationCreateAction),
@@ -69,7 +69,7 @@ pub enum LocationAction {
     LocationDelete(LocationDeleteAction),
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct LocationPayload {
     action: LocationAction,
     timestamp: u64,
@@ -164,7 +164,7 @@ impl IntoBytes for LocationPayload {
 impl IntoProto<protos::location_payload::LocationPayload> for LocationPayload {}
 impl IntoNative<LocationPayload> for protos::location_payload::LocationPayload {}
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct LocationCreateAction {
     namespace: LocationNamespace,
     location_id: String,
@@ -304,7 +304,7 @@ impl LocationCreateActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct LocationUpdateAction {
     namespace: LocationNamespace,
     location_id: String,
@@ -441,7 +441,7 @@ impl LocationUpdateActionBuilder {
         })
     }
 }
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct LocationDeleteAction {
     namespace: LocationNamespace,
     location_id: String,

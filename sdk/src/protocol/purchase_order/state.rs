@@ -27,7 +27,7 @@ use crate::protos::{
 /// Native representation of a `PurchaseOrderRevision`
 ///
 /// The purchase order revision contains the editable fields of a purchase order
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderRevision {
     revision_id: u64,
     submitter: String,
@@ -128,7 +128,7 @@ impl std::fmt::Display for PurchaseOrderRevisionBuildError {
 }
 
 /// Builder used to create a `PurchaseOrderRevision`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderRevisionBuilder {
     revision_id: Option<u64>,
     submitter: Option<String>,
@@ -199,7 +199,7 @@ impl PurchaseOrderRevisionBuilder {
 ///
 /// A purchase order version is created everytime updates are made to the purchase order, requiring
 /// a new version of the original
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderVersion {
     version_id: String,
     workflow_state: String,
@@ -319,7 +319,7 @@ impl std::fmt::Display for PurchaseOrderVersionBuildError {
 }
 
 /// Builder used to create a `PurchaseOrderVersion`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderVersionBuilder {
     version_id: Option<String>,
     workflow_state: Option<String>,
@@ -400,7 +400,7 @@ impl PurchaseOrderVersionBuilder {
 /// Native representation of a `PurchaseOrder`
 ///
 /// Purchase orders in real-life trade scenarios are represented by `PurchaseOrder`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchaseOrder {
     uid: String,
     workflow_state: String,
@@ -587,7 +587,7 @@ impl std::fmt::Display for PurchaseOrderBuildError {
 }
 
 /// Builder used to create a `PurchaseOrder`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderBuilder {
     uid: Option<String>,
     workflow_state: Option<String>,
@@ -709,7 +709,7 @@ impl PurchaseOrderBuilder {
 }
 
 /// Native representation of a list of `PurchaseOrder`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderList {
     purchase_orders: Vec<PurchaseOrder>,
 }
@@ -826,7 +826,7 @@ impl PurchaseOrderListBuilder {
 /// An `AlternateId` is a separate identifier from the `PurchaseOrder`'s unique
 /// identifier. This enables certain smart contracts to identify a
 /// `PurchaseOrder` within its own context.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderAlternateId {
     id_type: String,
     id: String,
@@ -932,7 +932,7 @@ impl std::fmt::Display for PurchaseOrderAlternateIdBuildError {
 }
 
 /// Builder used to create a `PurchaseOrderAlternateId`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderAlternateIdBuilder {
     id_type: Option<String>,
     id: Option<String>,
@@ -985,7 +985,7 @@ impl PurchaseOrderAlternateIdBuilder {
 }
 
 /// Native representation of a list of `PurchaseOrderAlternateId`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchaseOrderAlternateIdList {
     alternate_ids: Vec<PurchaseOrderAlternateId>,
 }

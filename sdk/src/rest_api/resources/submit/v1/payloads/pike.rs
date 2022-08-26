@@ -22,7 +22,7 @@ use crate::protos::{
 
 use super::BuilderError;
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum PikeAction {
     CreateAgent(CreateAgentAction),
@@ -36,7 +36,7 @@ pub enum PikeAction {
     DeleteRole(DeleteRoleAction),
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct CreateAgentAction {
     org_id: String,
     public_key: String,
@@ -200,7 +200,7 @@ impl CreateAgentActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct UpdateAgentAction {
     org_id: String,
     public_key: String,
@@ -364,7 +364,7 @@ impl UpdateAgentActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct DeleteAgentAction {
     org_id: String,
     public_key: String,
@@ -463,7 +463,7 @@ impl DeleteAgentActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct CreateOrganizationAction {
     id: String,
     name: String,
@@ -629,7 +629,7 @@ impl CreateOrganizationActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct UpdateOrganizationAction {
     id: String,
     name: String,
@@ -809,7 +809,7 @@ impl UpdateOrganizationActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct DeleteOrganizationAction {
     id: String,
 }
@@ -893,7 +893,7 @@ impl DeleteOrganizationActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct CreateRoleAction {
     org_id: String,
     name: String,
@@ -1083,7 +1083,7 @@ impl CreateRoleActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct UpdateRoleAction {
     org_id: String,
     name: String,
@@ -1273,7 +1273,7 @@ impl UpdateRoleActionBuilder {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq, Eq)]
 pub struct DeleteRoleAction {
     org_id: String,
     name: String,
@@ -1372,7 +1372,7 @@ impl DeleteRoleActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct AlternateId {
     id_type: String,
     id: String,
@@ -1471,7 +1471,7 @@ impl AlternateIdBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct KeyValueEntry {
     key: String,
     value: String,
@@ -1570,7 +1570,7 @@ impl KeyValueEntryBuilder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct PikePayload {
     action: PikeAction,
 }

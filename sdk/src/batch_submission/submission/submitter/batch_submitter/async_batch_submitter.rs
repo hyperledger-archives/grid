@@ -39,7 +39,7 @@ const RETRY_ATTEMPTS: u16 = 10;
 // Time the submitter will wait to repoll after receiving None, in milliseconds
 const POLLING_INTERVAL: u64 = 1000;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 // Carries the submission response from the http client back through the submitter to the observer
 // Struct is publicly visible via traits associated with BatchSubmitterBuilder but not accessible
 // outside the batch_submitter module

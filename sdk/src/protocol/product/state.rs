@@ -30,7 +30,7 @@ use crate::protocol::schema::state::PropertyValue;
 /// Possible Product namespaces
 ///
 /// The namespace determines the schema used to define a `Product`'s properties
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProductNamespace {
     Gs1,
 }
@@ -70,7 +70,7 @@ impl IntoNative<ProductNamespace> for protos::product_state::Product_ProductName
 /// Native representation of `Product`
 ///
 /// A `Product` contains a list of properties determined by the `product_namespace`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Product {
     product_id: String,
     product_namespace: ProductNamespace,
@@ -197,7 +197,7 @@ impl std::fmt::Display for ProductBuildError {
 }
 
 /// Builder used to create a `Product`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct ProductBuilder {
     pub product_id: Option<String>,
     pub product_namespace: Option<ProductNamespace>,
@@ -258,7 +258,7 @@ impl ProductBuilder {
 }
 
 /// Native representation of a list of `Product`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProductList {
     products: Vec<Product>,
 }
