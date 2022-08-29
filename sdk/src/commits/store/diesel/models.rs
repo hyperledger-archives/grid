@@ -14,7 +14,7 @@
 
 use crate::commits::store::diesel::schema::*;
 
-#[derive(Insertable, PartialEq, Queryable)]
+#[derive(Insertable, PartialEq, Eq, Queryable)]
 #[table_name = "commits"]
 pub struct NewCommitModel {
     pub commit_id: String,
@@ -22,7 +22,7 @@ pub struct NewCommitModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Queryable, PartialEq, Identifiable, Debug)]
+#[derive(Queryable, PartialEq, Eq, Identifiable, Debug)]
 #[table_name = "commits"]
 pub struct CommitModel {
     pub id: i64,

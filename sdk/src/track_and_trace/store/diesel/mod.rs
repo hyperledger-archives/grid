@@ -14,7 +14,7 @@
 
 pub mod models;
 mod operations;
-pub(in crate) mod schema;
+pub(crate) mod schema;
 
 use diesel::connection::AnsiTransactionManager;
 use diesel::r2d2::{ConnectionManager, Pool};

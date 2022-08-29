@@ -23,7 +23,7 @@ use crate::protos::{
 
 use super::{BuilderError, PropertyValue};
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub enum ProductNamespace {
     #[serde(rename = "GS1")]
     Gs1,
@@ -61,7 +61,7 @@ impl FromNative<ProductNamespace> for protos::product_state::Product_ProductName
 impl IntoProto<protos::product_state::Product_ProductNamespace> for ProductNamespace {}
 impl IntoNative<ProductNamespace> for protos::product_state::Product_ProductNamespace {}
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum ProductAction {
     ProductCreate(ProductCreateAction),
@@ -69,7 +69,7 @@ pub enum ProductAction {
     ProductDelete(ProductDeleteAction),
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct ProductPayload {
     action: ProductAction,
     timestamp: u64,
@@ -167,7 +167,7 @@ impl IntoBytes for ProductPayload {
 impl IntoProto<protos::product_payload::ProductPayload> for ProductPayload {}
 impl IntoNative<ProductPayload> for protos::product_payload::ProductPayload {}
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct ProductCreateAction {
     product_namespace: ProductNamespace,
     product_id: String,
@@ -307,7 +307,7 @@ impl ProductCreateActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct ProductUpdateAction {
     product_namespace: ProductNamespace,
     product_id: String,
@@ -445,7 +445,7 @@ impl ProductUpdateActionBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct ProductDeleteAction {
     product_namespace: ProductNamespace,
     product_id: String,

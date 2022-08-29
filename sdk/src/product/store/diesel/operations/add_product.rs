@@ -41,8 +41,8 @@ impl<'a> AddProductOperation for ProductStoreOperations<'a, diesel::pg::PgConnec
         let (product_model, property_models) = product.into();
 
         self.conn.transaction::<_, ProductStoreError, _>(|| {
-            pg::insert_product(&*self.conn, &product_model)?;
-            pg::insert_product_property_values(&*self.conn, &property_models)?;
+            pg::insert_product(self.conn, &product_model)?;
+            pg::insert_product_property_values(self.conn, &property_models)?;
 
             Ok(())
         })
@@ -55,8 +55,8 @@ impl<'a> AddProductOperation for ProductStoreOperations<'a, diesel::sqlite::Sqli
         let (product_model, property_models) = product.into();
 
         self.conn.transaction::<_, ProductStoreError, _>(|| {
-            sqlite::insert_product(&*self.conn, &product_model)?;
-            sqlite::insert_product_property_values(&*self.conn, &property_models)?;
+            sqlite::insert_product(self.conn, &product_model)?;
+            sqlite::insert_product_property_values(self.conn, &property_models)?;
 
             Ok(())
         })

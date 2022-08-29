@@ -87,7 +87,7 @@ impl From<&LocationPropertyValue> for ClientLocationPropertyValue {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 pub struct LatLong {
     pub latitude: i64,
     pub longitude: i64,

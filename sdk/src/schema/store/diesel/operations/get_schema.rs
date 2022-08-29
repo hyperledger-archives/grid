@@ -43,15 +43,15 @@ impl<'a> GetSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnecti
         service_id: Option<&str>,
     ) -> Result<Option<Schema>, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
-            let schema = if let Some(schema) = pg::get_grid_schema(&*self.conn, name, service_id)? {
+            let schema = if let Some(schema) = pg::get_grid_schema(self.conn, name, service_id)? {
                 schema
             } else {
                 return Ok(None);
             };
 
-            let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
+            let roots = pg::get_root_definitions(self.conn, &schema.name)?;
 
-            let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
+            let properties = pg::get_property_definitions_for_schema(self.conn, roots)?;
 
             Ok(Some(Schema::from((schema, properties))))
         })
@@ -66,16 +66,16 @@ impl<'a> GetSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqlite
         service_id: Option<&str>,
     ) -> Result<Option<Schema>, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
-            let schema =
-                if let Some(schema) = sqlite::get_grid_schema(&*self.conn, name, service_id)? {
-                    schema
-                } else {
-                    return Ok(None);
-                };
+            let schema = if let Some(schema) = sqlite::get_grid_schema(self.conn, name, service_id)?
+            {
+                schema
+            } else {
+                return Ok(None);
+            };
 
-            let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
+            let roots = sqlite::get_root_definitions(self.conn, &schema.name)?;
 
-            let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
+            let properties = sqlite::get_property_definitions_for_schema(self.conn, roots)?;
 
             Ok(Some(Schema::from((schema, properties))))
         })

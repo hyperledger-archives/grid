@@ -29,7 +29,7 @@ use crate::protos::{
 };
 
 /// The Product payload's action envelope
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     ProductCreate(ProductCreateAction),
     ProductUpdate(ProductUpdateAction),
@@ -37,7 +37,7 @@ pub enum Action {
 }
 
 /// Native representation of a Product transaction payload
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProductPayload {
     action: Action,
     timestamp: u64,
@@ -191,7 +191,7 @@ impl ProductPayloadBuilder {
 }
 
 /// Native representation of the "create product" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ProductCreateAction {
     product_namespace: ProductNamespace,
     product_id: String,
@@ -333,7 +333,7 @@ impl ProductCreateActionBuilder {
 }
 
 /// Native representation of an "update product" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ProductUpdateAction {
     product_namespace: ProductNamespace,
     product_id: String,
@@ -473,7 +473,7 @@ impl ProductUpdateActionBuilder {
 }
 
 /// Native representation of the "delete product" action payload
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ProductDeleteAction {
     product_namespace: ProductNamespace,
     product_id: String,

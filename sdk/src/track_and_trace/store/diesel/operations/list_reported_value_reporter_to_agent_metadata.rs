@@ -84,14 +84,14 @@ impl<'a>
         for model in query {
             let rv: ReportedValueReporterToAgentMetadataModel = model;
             let roots = Self::get_root_rvs(
-                &*self.conn,
+                self.conn,
                 record_id,
                 property_name,
                 rv.reported_value_end_commit_num,
                 service_id,
             )?;
 
-            let children = Self::get_rvs_for_rv(&*self.conn, roots)?;
+            let children = Self::get_rvs_for_rv(self.conn, roots)?;
 
             rvs.push(ReportedValueReporterToAgentMetadata::from((rv, children)));
         }
@@ -215,14 +215,14 @@ impl<'a>
         for model in query {
             let rv: ReportedValueReporterToAgentMetadataModel = model;
             let roots = Self::get_root_rvs(
-                &*self.conn,
+                self.conn,
                 record_id,
                 property_name,
                 rv.reported_value_end_commit_num,
                 service_id,
             )?;
 
-            let children = Self::get_rvs_for_rv(&*self.conn, roots)?;
+            let children = Self::get_rvs_for_rv(self.conn, roots)?;
 
             rvs.push(ReportedValueReporterToAgentMetadata::from((rv, children)));
         }

@@ -51,7 +51,7 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::pg::PgConn
         limit: i64,
     ) -> Result<ProductList, ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
-            let db_products = pg::list_products(&*self.conn, service_id, offset, limit)?;
+            let db_products = pg::list_products(self.conn, service_id, offset, limit)?;
 
             let total = db_products.len().try_into().map_err(|err| {
                 ProductStoreError::InternalError(InternalError::from_source(Box::new(err)))
@@ -60,9 +60,9 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::pg::PgConn
             let mut products = Vec::new();
 
             for product in db_products {
-                let root_values = pg::get_root_values(&*self.conn, &product.product_id)?;
+                let root_values = pg::get_root_values(self.conn, &product.product_id)?;
 
-                let values = pg::get_property_values(&*self.conn, root_values)?;
+                let values = pg::get_property_values(self.conn, root_values)?;
 
                 products.push(Product::from((product, values)));
             }
@@ -84,7 +84,7 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::sqlite::Sq
         limit: i64,
     ) -> Result<ProductList, ProductStoreError> {
         self.conn.transaction::<_, ProductStoreError, _>(|| {
-            let db_products = sqlite::list_products(&*self.conn, service_id, offset, limit)?;
+            let db_products = sqlite::list_products(self.conn, service_id, offset, limit)?;
 
             let total = db_products.len().try_into().map_err(|err| {
                 ProductStoreError::InternalError(InternalError::from_source(Box::new(err)))
@@ -93,9 +93,9 @@ impl<'a> ListProductsOperation for ProductStoreOperations<'a, diesel::sqlite::Sq
             let mut products = Vec::new();
 
             for product in db_products {
-                let root_values = sqlite::get_root_values(&*self.conn, &product.product_id)?;
+                let root_values = sqlite::get_root_values(self.conn, &product.product_id)?;
 
-                let values = sqlite::get_property_values(&*self.conn, root_values)?;
+                let values = sqlite::get_property_values(self.conn, root_values)?;
 
                 products.push(Product::from((product, values)));
             }

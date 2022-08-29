@@ -54,7 +54,7 @@ pub fn download(url: &Url, file_name: &str) -> Result<(), CliError> {
 }
 
 /// Configuration for the caching downloader
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CachingDownloadConfig {
     pub url: Url,
     pub file_path: PathBuf,

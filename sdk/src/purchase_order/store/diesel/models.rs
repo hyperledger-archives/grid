@@ -30,7 +30,7 @@ use super::{
 use crate::commits::MAX_COMMIT_NUM;
 use crate::purchase_order::store::diesel::schema::*;
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order"]
 pub struct NewPurchaseOrderModel {
     pub purchase_order_uid: String,
@@ -46,7 +46,7 @@ pub struct NewPurchaseOrderModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order"]
 pub struct PurchaseOrderModel {
     pub id: i64,
@@ -63,7 +63,7 @@ pub struct PurchaseOrderModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order_version"]
 pub struct NewPurchaseOrderVersionModel {
     pub purchase_order_uid: String,
@@ -76,7 +76,7 @@ pub struct NewPurchaseOrderVersionModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order_version"]
 pub struct PurchaseOrderVersionModel {
     pub id: i64,
@@ -90,7 +90,7 @@ pub struct PurchaseOrderVersionModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order_version_revision"]
 pub struct NewPurchaseOrderVersionRevisionModel {
     pub purchase_order_uid: String,
@@ -104,7 +104,7 @@ pub struct NewPurchaseOrderVersionRevisionModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order_version_revision"]
 pub struct PurchaseOrderVersionRevisionModel {
     pub id: i64,
@@ -119,7 +119,7 @@ pub struct PurchaseOrderVersionRevisionModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order_alternate_id"]
 pub struct NewPurchaseOrderAlternateIdModel {
     pub purchase_order_uid: String,
@@ -130,7 +130,7 @@ pub struct NewPurchaseOrderAlternateIdModel {
     pub service_id: Option<String>,
 }
 
-#[derive(Insertable, PartialEq, Queryable, Debug)]
+#[derive(Insertable, PartialEq, Eq, Queryable, Debug)]
 #[table_name = "purchase_order_alternate_id"]
 pub struct PurchaseOrderAlternateIdModel {
     pub id: i64,

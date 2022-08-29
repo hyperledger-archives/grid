@@ -45,7 +45,7 @@ pub use error::ProductGdsnError;
 /// Name of the property where GDSN 3.1 XML data will be stored
 pub const GDSN_3_1_PROPERTY_NAME: &str = "GDSN_3_1";
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 /// Struct used for serde deserialization of the GDSN XML elements
 pub struct GridTradeItems {
     #[serde(rename = "tradeItem")]
@@ -53,7 +53,7 @@ pub struct GridTradeItems {
 }
 
 /// Representation of a GDSN trade item, including the GTIN and GDSN XML element
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct TradeItem {
     pub gtin: String,
     #[serde(default)]

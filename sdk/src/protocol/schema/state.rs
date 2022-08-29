@@ -27,7 +27,7 @@ use crate::protos::{
 /// Native representation of a `DataType`
 ///
 /// `DataType`s are used in a schema to define a data field's type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataType {
     Bytes,
     Boolean,
@@ -79,7 +79,7 @@ impl IntoNative<DataType> for protos::schema_state::PropertyDefinition_DataType 
 /// Native representation of the `LatLong` schema data type
 ///
 /// A `LatLong` object is comprised of a latitude, longitude pair represented as signed integers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LatLong {
     latitude: i64,
     longitude: i64,
@@ -146,7 +146,7 @@ impl std::fmt::Display for LatLongBuildError {
 }
 
 /// Builder used to create a `LatLong`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct LatLongBuilder {
     pub latitude: i64,
     pub longitude: i64,
@@ -167,9 +167,9 @@ impl LatLongBuilder {
         let latitude = self.latitude;
         let longitude = self.longitude;
 
-        if latitude < -90_000_000 || latitude > 90_000_000 {
+        if !(-90_000_000..=90_000_000).contains(&latitude) {
             Err(LatLongBuildError::InvalidLatitude(latitude))
-        } else if longitude < -180_000_000 || longitude > 180_000_000 {
+        } else if !(-180_000_000..=180_000_000).contains(&longitude) {
             Err(LatLongBuildError::InvalidLongitude(longitude))
         } else {
             Ok(LatLong {
@@ -183,7 +183,7 @@ impl LatLongBuilder {
 /// Native implementation of `PropertyDefinition`
 ///
 /// This defines a field in a schema
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyDefinition {
     name: String,
     data_type: DataType,
@@ -327,7 +327,7 @@ impl std::fmt::Display for PropertyDefinitionBuildError {
 }
 
 /// Builder used to create a `PropertyDefinition`
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct PropertyDefinitionBuilder {
     pub name: Option<String>,
     pub data_type: Option<DataType>,
@@ -448,7 +448,7 @@ impl PropertyDefinitionBuilder {
 /// Native representation of a `Schema`
 ///
 /// A schema provides the definition for a property across smart contracts
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Schema {
     name: String,
     description: String,
@@ -626,7 +626,7 @@ impl SchemaBuilder {
 }
 
 /// Native representation of a list of `Schema`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchemaList {
     schemas: Vec<Schema>,
 }
@@ -759,7 +759,7 @@ impl SchemaListBuilder {
 /// Native implementation of `PropertyValue`
 ///
 /// This provides the value as defined by the corresponding `PropertyDefinition`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyValue {
     name: String,
     data_type: DataType,

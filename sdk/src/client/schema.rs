@@ -18,7 +18,7 @@ use crate::protocol::schema::state::DataType as StateDataType;
 use super::Client;
 
 /// The client representation of a Grid Schema
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Schema {
     pub name: String,
     pub description: String,
@@ -27,7 +27,7 @@ pub struct Schema {
 }
 
 /// The client representation of a Grid Schema property definition
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PropertyDefinition {
     pub name: String,
     pub schema_name: String,

@@ -28,7 +28,7 @@ use crate::protos::{
 ///
 /// A `KeyValueEntry` organizes additional data, `metadata`, for state objects. Any data,
 /// represented as a `String`, may be stored within a `KeyValueEntry`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyValueEntry {
     key: String,
     value: String,
@@ -161,7 +161,7 @@ impl KeyValueEntryBuilder {
 ///
 /// A `Role` defines the permissions that are able to be assigned to an `Organization`'s `Agent`.
 /// This allows agents to perform actions defined within their role.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Role {
     org_id: String,
     name: String,
@@ -367,7 +367,7 @@ impl RoleBuilder {
 }
 
 /// Native representation of a list of `Role`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoleList {
     roles: Vec<Role>,
 }
@@ -500,7 +500,7 @@ impl RoleListBuilder {
 ///
 /// The `AlternateIdIndexEntry` serves as an index to fetch an `Organization` from an externally
 /// known ID and ensures the alternate ID is unique to the owning organization.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlternateIdIndexEntry {
     id_type: String,
     id: String,
@@ -658,7 +658,7 @@ impl AlternateIdIndexEntryBuilder {
 }
 
 /// Native representation of a list of `AlternateIdIndexEntry`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlternateIdIndexEntryList {
     entries: Vec<AlternateIdIndexEntry>,
 }
@@ -798,7 +798,7 @@ impl AlternateIdIndexEntryListBuilder {
 ///
 /// An `AlternateId` is a separate identifier from the `Organization`'s unique identifier, `org_id`.
 /// This enables certain smart contracts to identify an `Organization` within its own context.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlternateId {
     id_type: String,
     id: String,
@@ -929,7 +929,7 @@ impl AlternateIdBuilder {
 ///
 /// An `Agent` is essentially a cryptographic public key which has a relationship, defined by the
 /// agent's `Role`s, with an `Organization`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Agent {
     org_id: String,
     public_key: String,
@@ -1115,7 +1115,7 @@ impl AgentBuilder {
 }
 
 /// Native representation of a list of `Agent`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentList {
     agents: Vec<Agent>,
 }
@@ -1247,7 +1247,7 @@ impl AgentListBuilder {
 ///
 /// `Organization`s provide a top-level identity to associate the lower-level objects to across
 /// smart contracts.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Organization {
     org_id: String,
     name: String,
@@ -1449,7 +1449,7 @@ impl OrganizationBuilder {
 }
 
 /// Native representation of a list of `Organization`s
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OrganizationList {
     organizations: Vec<Organization>,
 }

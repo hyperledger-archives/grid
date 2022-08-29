@@ -51,15 +51,14 @@ impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::pg::PgConnec
         limit: i64,
     ) -> Result<SchemaList, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
-            let (db_schemas, total) =
-                pg::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
+            let (db_schemas, total) = pg::fetch_grid_schemas(self.conn, service_id, offset, limit)?;
 
             let mut schemas = Vec::new();
 
             for schema in db_schemas {
-                let roots = pg::get_root_definitions(&*self.conn, &schema.name)?;
+                let roots = pg::get_root_definitions(self.conn, &schema.name)?;
 
-                let properties = pg::get_property_definitions_for_schema(&*self.conn, roots)?;
+                let properties = pg::get_property_definitions_for_schema(self.conn, roots)?;
 
                 schemas.push(Schema::from((schema, properties)));
             }
@@ -79,14 +78,14 @@ impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqli
     ) -> Result<SchemaList, SchemaStoreError> {
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
             let (db_schemas, total) =
-                sqlite::fetch_grid_schemas(&*self.conn, service_id, offset, limit)?;
+                sqlite::fetch_grid_schemas(self.conn, service_id, offset, limit)?;
 
             let mut schemas = Vec::new();
 
             for schema in db_schemas {
-                let roots = sqlite::get_root_definitions(&*self.conn, &schema.name)?;
+                let roots = sqlite::get_root_definitions(self.conn, &schema.name)?;
 
-                let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
+                let properties = sqlite::get_property_definitions_for_schema(self.conn, roots)?;
 
                 schemas.push(Schema::from((schema, properties)));
             }
