@@ -28,11 +28,59 @@ jobs:
       - name: Run tests
         run: just ci-test
 
-  publish_docker:
-    needs: unit_test_grid
+  start_cluster:
+    needs:
+      - unit_test_grid
     if: >-
       github.repository_owner == 'hyperledger'
-    runs-on: macos-arm
+    name: Start buildx cluster
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.start-buildx-cluster.outputs.label }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_BUILDX_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - uses: actions/checkout@v2
+
+      - name: Start EC2 runner
+        id: start-buildx-cluster
+        uses: ./.github/actions/ec2-runners
+        with:
+          action: start
+          amd_ami_id: ${{ secrets.AMD_AMI_ID }}
+          amd_instance_type: c6i.4xlarge
+          arm_ami_id: ${{ secrets.ARM_AMI_ID }}
+          arm_instance_type: c6g.4xlarge
+          gh_personal_access_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          security_group_id: ${{ secrets.SECURITY_GROUP_ID }}
+          subnet: ${{ secrets.SUBNET }}
+
+      - name: Output label
+        run: echo ${{ steps.start-buildx-cluster.outputs.label }}
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  publish_docker:
+    needs:
+      - start_cluster
+      - unit_test_grid
+    if: >-
+      github.repository_owner == 'hyperledger'
+    runs-on: ${{ needs.start_cluster.outputs.label }}
     steps:
       - name: Display envvars
         run: env
@@ -58,6 +106,40 @@ jobs:
 
       - name: Notify Slack of Failure
         if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  stop_cluster:
+    name: Stop buildx cluster
+    needs:
+      - start_cluster
+      - publish_docker
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'hyperledger' && always() }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_BUILDX_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - uses: actions/checkout@v2
+
+      - name: Destroy cluster
+        uses: ./.github/actions/ec2-runners
+        with:
+          action: stop
+          label: ${{ needs.start_cluster.outputs.label }}
+
+      - name: Notify Slack of Failure
+        if: cancelled() || failure()
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
