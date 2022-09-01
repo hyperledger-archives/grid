@@ -1,26 +1,26 @@
 ## Maintainers
 
 ### Active Maintainers
-| Name | GitHub | RocketChat |
-| --- | --- | --- |
-| Amelia Bradley | ameliabradley | - |
-| Andi Gunderson | agunde406 | agunde |
-| Chris Eckhardt | cleckhardt | - |
-| Dan Middleton | dcmiddle | Dan |
-| Darian Plumb | dplumb94 | dplumb |
-| Dave Cecchi | davececchi | cecchi |
-| Davey Newhall | dnewh | newhall |
-| James Mitchell | jsmitchell | jsmitchell |
-| Peter Schwarz | peterschwarz | pschwarz |
-| Richard Berg | rberg2 | rberg2 |
-| Ryan Banks | RyanLassigBanks | RyanBanks |
-| Ryan Beck-Buysse | rbuysse | rbuysse |
-| Shannyn Telander | shannynalayna | shannynalayna |
-| Shawn Amundson | vaporos | amundson |
+| Name | GitHub |
+| --- | --- |
+| Amelia Bradley | ameliabradley |
+| Andi Gunderson | agunde406 |
+| Chris Eckhardt | cleckhardt |
+| Dan Middleton | dcmiddle |
+| Darian Plumb | dplumb94 |
+| Dave Cecchi | davececchi |
+| Davey Newhall | dnewh |
+| James Mitchell | jsmitchell |
+| Peter Schwarz | peterschwarz |
+| Richard Berg | rberg2 |
+| Ryan Banks | RyanLassigBanks |
+| Ryan Beck-Buysse | rbuysse |
+| Shannyn Telander | shannynalayna |
+| Shawn Amundson | vaporos |
 
 ### Retired Maintainers
-| Name | GitHub | RocketChat |
-| --- | --- | --- |
-| Anne Chenette | chenette | achenette |
-| Boyd Johnson | boydjohnson | boydjohnson |
-| Eloá Franca Verona | eloaverona | eloafran |
+| Name | GitHub |
+| --- | --- |
+| Anne Chenette | chenette |
+| Boyd Johnson | boydjohnson |
+| Eloá Franca Verona | eloaverona |
