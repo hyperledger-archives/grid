@@ -1,5 +1,9 @@
 # Hyperledger Grid
 
+Hyperledger Grid [has moved](https://github.com/hyperledger/toc/issues/82) to [End of life status](https://toc.hyperledger.org/governing-documents/project-lifecycle.html#end-of-life).
+
+## Previous content
+
 Hyperledger Grid is a platform for building supply chain solutions that include
 distributed ledger components. It provides a growing set of tools that
 accelerate development for supply chain smart contracts and client interfaces.
