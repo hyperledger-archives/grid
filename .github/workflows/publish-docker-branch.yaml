@@ -13,10 +13,56 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  publish_docker_images:
+  start_cluster_nightly:
     if: >-
       github.repository_owner == 'hyperledger'
-    runs-on: macos-arm
+    name: Start buildx cluster
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.start-buildx-cluster.outputs.label }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_BUILDX_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - uses: actions/checkout@v2
+
+      - name: Start EC2 runner
+        id: start-buildx-cluster
+        uses: ./.github/actions/ec2-runners
+        with:
+          action: start
+          amd_ami_id: ${{ secrets.AMD_AMI_ID }}
+          amd_instance_type: c6i.4xlarge
+          arm_ami_id: ${{ secrets.ARM_AMI_ID }}
+          arm_instance_type: c6g.4xlarge
+          gh_personal_access_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          security_group_id: ${{ secrets.SECURITY_GROUP_ID }}
+          subnet: ${{ secrets.SUBNET }}
+
+      - name: Output label
+        run: echo ${{ steps.start-buildx-cluster.outputs.label }}
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  publish_docker_nightly:
+    if: >-
+      github.repository_owner == 'hyperledger'
+    needs:
+      - start_cluster_nightly
+    runs-on: ${{ needs.start_cluster_nightly.outputs.label }}
     steps:
       - name: Display envvars
         run: env
@@ -31,12 +77,121 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Publish main images to dockerhub
+      - name: Publish nightly images to dockerhub
         run: docker buildx ls && ./ci/publish-docker nightly
         env:
           NAMESPACE: ${{ secrets.DOCKER_HUB_NAMESPACE }}/
           VERSION: AUTO_STRICT
           CARGO_TERM_COLOR: always
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  stop_cluster_nightly:
+    if: ${{ github.repository == 'hyperledger/grid' && always() }}
+    name: Stop buildx cluster
+    needs:
+      - start_cluster_nightly
+      - publish_docker_nightly
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_BUILDX_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - uses: actions/checkout@v2
+
+      - name: Destroy cluster
+        uses: ./.github/actions/ec2-runners
+        with:
+          action: stop
+          label: ${{ needs.start_cluster_nightly.outputs.label }}
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+# --== experimental images ==--
+
+  start_cluster_experimental:
+    if: >-
+      github.repository_owner == 'hyperledger'
+    name: Start buildx cluster
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.start-buildx-cluster.outputs.label }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_BUILDX_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - uses: actions/checkout@v2
+
+      - name: Start EC2 runner
+        id: start-buildx-cluster
+        uses: ./.github/actions/ec2-runners
+        with:
+          action: start
+          amd_ami_id: ${{ secrets.AMD_AMI_ID }}
+          amd_instance_type: c6i.4xlarge
+          arm_ami_id: ${{ secrets.ARM_AMI_ID }}
+          arm_instance_type: c6g.4xlarge
+          gh_personal_access_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          security_group_id: ${{ secrets.SECURITY_GROUP_ID }}
+          subnet: ${{ secrets.SUBNET }}
+
+      - name: Output label
+        run: echo ${{ steps.start-buildx-cluster.outputs.label }}
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  publish_docker_experimental:
+    if: >-
+      github.repository_owner == 'hyperledger'
+    needs:
+      - start_cluster_experimental
+    runs-on: ${{ needs.start_cluster_experimental.outputs.label }}
+    steps:
+      - name: Display envvars
+        run: env
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Publish experimental images to dockerhub
         run: docker buildx ls && ./ci/publish-docker experimental
@@ -44,6 +199,40 @@ jobs:
           NAMESPACE: ${{ secrets.DOCKER_HUB_NAMESPACE }}/
           VERSION: AUTO_STRICT
           CARGO_TERM_COLOR: always
+
+      - name: Notify Slack of Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author,job
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  stop_cluster_experimental:
+    if: ${{ github.repository == 'hyperledger/grid' && always() }}
+    name: Stop buildx cluster
+    needs:
+      - start_cluster_experimental
+      - publish_docker_experimental
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ secrets.AWS_BUILDX_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - uses: actions/checkout@v2
+
+      - name: Destroy cluster
+        uses: ./.github/actions/ec2-runners
+        with:
+          action: stop
+          label: ${{ needs.start_cluster_experimental.outputs.label }}
 
       - name: Notify Slack of Failure
         if: failure()
