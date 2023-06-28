@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Cargill Incorporated
+# Copyright 2018-2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Dockerfile for running unit tests and lint on the profile sapling
 FROM node:lts-alpine
 
-WORKDIR /saplings/profile
-
-COPY package*.json ./
-
-RUN apk add --no-cache git \
- # Gives npm permission to run the prepare script in splinter-canopyjs as root
- && npm install
+WORKDIR /splinter-canopyjs
 
 COPY . .
+
+RUN npm install

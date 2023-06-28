@@ -12,7 +12,7 @@
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "react-scripts": "^3.4.0",
-    "splinter-canopyjs": "github:Cargill/splinter-canopyjs#main"
+    "splinter-canopyjs": "file:../canopyjs"
   },
   "scripts": {
     "start:saplings": "http-server .. -p 3030 --cors",
